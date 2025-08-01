@@ -67,7 +67,7 @@ export default function ToolsPage() {
                 </div>
               </div>
               <p className="text-sm text-foreground">
-                Current Pool: <span className="font-semibold">ETH/USDC</span>
+                Current Pool: <span className="font-semibold">ETH/USDT</span>
               </p>
               <Button
                 onClick={handleAddLiquidity}

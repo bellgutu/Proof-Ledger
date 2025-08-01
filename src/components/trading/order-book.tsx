@@ -11,20 +11,22 @@ interface Order {
 
 interface OrderBookProps {
   currentPrice: number;
+  assetSymbol: string;
 }
 
-export function OrderBook({ currentPrice }: OrderBookProps) {
+export function OrderBook({ currentPrice, assetSymbol }: OrderBookProps) {
   const [orderBook, setOrderBook] = useState<{ bids: Order[], asks: Order[] }>({ bids: [], asks: [] });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
+      const priceJitter = currentPrice * 0.01;
       const newBids = Array.from({ length: 8 }, (_, i) => ({
-        price: (currentPrice - 1 - (Math.random() * 5)).toFixed(2),
+        price: (currentPrice - (priceJitter * 0.1) - (Math.random() * priceJitter)).toFixed(4),
         size: (Math.random() * 20).toFixed(4)
       })).sort((a, b) => Number(b.price) - Number(a.price));
       const newAsks = Array.from({ length: 8 }, (_, i) => ({
-        price: (currentPrice + 1 + (Math.random() * 5)).toFixed(2),
+        price: (currentPrice + (priceJitter * 0.1) + (Math.random() * priceJitter)).toFixed(4),
         size: (Math.random() * 20).toFixed(4)
       })).sort((a, b) => Number(a.price) - Number(b.price));
       setOrderBook({ bids: newBids, asks: newAsks });
@@ -34,7 +36,7 @@ export function OrderBook({ currentPrice }: OrderBookProps) {
   }, [currentPrice, isLoading]);
 
   const spread = (orderBook.asks.length > 0 && orderBook.bids.length > 0)
-    ? (Number(orderBook.asks[0].price) - Number(orderBook.bids[0].price)).toFixed(2)
+    ? (Number(orderBook.asks[0].price) - Number(orderBook.bids[0].price)).toFixed(4)
     : 'N/A';
 
   return (
@@ -48,7 +50,7 @@ export function OrderBook({ currentPrice }: OrderBookProps) {
             <thead>
               <tr className="text-left">
                 <th className="py-2 font-medium">Price (USDT)</th>
-                <th className="py-2 font-medium text-right">Size (ETH)</th>
+                <th className="py-2 font-medium text-right">Size ({assetSymbol})</th>
               </tr>
             </thead>
             <tbody>

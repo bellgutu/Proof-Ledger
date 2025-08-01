@@ -12,13 +12,14 @@ interface Candle {
 }
 
 interface TradingChartProps {
-  currentPrice: number;
+  initialPrice: number;
   onPriceChange: (price: number) => void;
 }
 
-export function TradingChart({ currentPrice, onPriceChange }: TradingChartProps) {
+export function TradingChart({ initialPrice, onPriceChange }: TradingChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const candleDataRef = useRef<Candle[]>([]);
+  const currentPriceRef = useRef(initialPrice);
 
   const renderChart = useCallback(() => {
     const canvas = canvasRef.current;
@@ -62,7 +63,7 @@ export function TradingChart({ currentPrice, onPriceChange }: TradingChartProps)
         ctx.moveTo(0, y);
         ctx.lineTo(chartWidth, y);
         ctx.stroke();
-        ctx.fillText(`$${price.toFixed(2)}`, chartWidth + 5, y + 4);
+        ctx.fillText(`$${price.toFixed(4)}`, chartWidth + 5, y + 4);
     }
     
     // Draw X-axis (Time)
@@ -97,7 +98,8 @@ export function TradingChart({ currentPrice, onPriceChange }: TradingChartProps)
       ctx.fillStyle = color;
       ctx.fillRect(x, bodyY, candleWidth, bodyHeight);
     });
-
+    
+    const currentPrice = currentPriceRef.current;
     ctx.strokeStyle = '#7DD3FC'; // primary color
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
@@ -112,9 +114,9 @@ export function TradingChart({ currentPrice, onPriceChange }: TradingChartProps)
     ctx.fillRect(chartWidth, priceY - 10, yAxisWidth, 20);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'center';
-    ctx.fillText(`$${currentPrice.toFixed(2)}`, chartWidth + yAxisWidth / 2, priceY + 4);
+    ctx.fillText(`$${currentPrice.toFixed(4)}`, chartWidth + yAxisWidth / 2, priceY + 4);
 
-  }, [currentPrice]);
+  }, []);
 
   useEffect(() => {
     let candleTimer: NodeJS.Timeout;
@@ -122,7 +124,7 @@ export function TradingChart({ currentPrice, onPriceChange }: TradingChartProps)
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
         ? candleDataRef.current[candleDataRef.current.length - 1]
-        : { close: 3500, time: Date.now() - 2000 };
+        : { close: initialPrice, time: Date.now() - 2000 };
 
       const open = lastCandle.close;
       const change = (Math.random() - 0.5) * (open * 0.01);
@@ -136,21 +138,22 @@ export function TradingChart({ currentPrice, onPriceChange }: TradingChartProps)
       if (candleDataRef.current.length > 50) {
         candleDataRef.current.shift();
       }
+      currentPriceRef.current = newCandle.close;
       onPriceChange(newCandle.close);
     };
 
-    if (candleDataRef.current.length === 0) {
-        let startTime = Date.now() - 50 * 2000;
-        candleDataRef.current.push({ open: 3500, high: 3510, low: 3490, close: 3505, time: startTime });
-        for(let i = 1; i < 50; i++){
-            generateNewCandle();
-        }
+    // Reset and initialize data when pair changes (indicated by initialPrice change)
+    candleDataRef.current = [];
+    let startTime = Date.now() - 50 * 2000;
+    candleDataRef.current.push({ open: initialPrice, high: initialPrice * 1.002, low: initialPrice * 0.998, close: initialPrice * 1.001, time: startTime });
+    for(let i = 1; i < 50; i++){
+        generateNewCandle();
     }
     
     candleTimer = setInterval(generateNewCandle, 2000);
 
     return () => clearInterval(candleTimer);
-  }, [onPriceChange]);
+  }, [initialPrice, onPriceChange]);
   
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -173,7 +176,7 @@ export function TradingChart({ currentPrice, onPriceChange }: TradingChartProps)
 
   useEffect(() => {
     renderChart();
-  }, [currentPrice, renderChart]);
+  }, [onPriceChange, renderChart]);
 
   return <canvas ref={canvasRef} className="w-full h-full"></canvas>;
 }

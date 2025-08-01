@@ -1,7 +1,8 @@
+
 "use client";
 
-import React, { useState } from 'react';
-import { RefreshCcw, ArrowDown, History } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { RefreshCcw, ArrowDown, History, ChevronsUpDown } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WalletHeader } from '@/components/shared/wallet-header';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Image from 'next/image';
+import { getTokenLogo } from '@/lib/tokenLogos';
 
 interface Transaction {
   id: string;
@@ -17,63 +21,109 @@ interface Transaction {
   status: 'Completed' | 'Pending';
 }
 
+type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP';
+
+const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP'];
+
+const exchangeRates: { [key in Token]: number } = {
+    ETH: 3500,
+    USDC: 1,
+    USDT: 1,
+    BNB: 600,
+    XRP: 0.5,
+};
+
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, ethBalance, usdcBalance } = walletState;
-  const { setEthBalance, setUsdcBalance } = walletActions;
+  const { isConnected } = walletState;
+  const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance } = walletActions;
 
   const [stakedAmount, setStakedAmount] = useState(0);
   const [stakingLoading, setStakingLoading] = useState(false);
-  const [token1Amount, setToken1Amount] = useState('');
-  const [token2Amount, setToken2Amount] = useState('');
+  const [fromToken, setFromToken] = useState<Token>('ETH');
+  const [toToken, setToToken] = useState<Token>('USDC');
+  const [fromAmount, setFromAmount] = useState('');
+  const [toAmount, setToAmount] = useState('');
   const [swapping, setSwapping] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const ethToUsdcRate = 3500;
+  const balances: { [key in Token]: number } = {
+    ETH: walletState.ethBalance,
+    USDC: walletState.usdcBalance,
+    USDT: walletState.usdtBalance,
+    BNB: walletState.bnbBalance,
+    XRP: walletState.xrpBalance,
+  };
+
+  const balanceSetters: { [key in Token]: (updater: React.SetStateAction<number>) => void } = {
+    ETH: setEthBalance,
+    USDC: setUsdcBalance,
+    USDT: setUsdtBalance,
+    BNB: setBnbBalance,
+    XRP: setXrpBalance,
+  };
   
   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
     setTransactions(prev => [{ id: new Date().toISOString(), ...transaction }, ...prev]);
   };
 
-  const handleToken1Change = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
+  const conversionRate = useMemo(() => {
+    if (!fromToken || !toToken) return 1;
+    return exchangeRates[fromToken] / exchangeRates[toToken];
+  }, [fromToken, toToken]);
+
+  const handleAmountChange = (val: string) => {
     if (val === '' || parseFloat(val) < 0) {
-      setToken1Amount('');
-      setToken2Amount('');
+      setFromAmount('');
+      setToAmount('');
       return;
     }
     const numVal = parseFloat(val);
-    setToken1Amount(val);
-    setToken2Amount((numVal * ethToUsdcRate).toFixed(2));
+    setFromAmount(val);
+    setToAmount((numVal * conversionRate).toFixed(4));
+  };
+
+  const handleSwapTokens = () => {
+    if (fromToken === toToken) return;
+    const tempToken = fromToken;
+    setFromToken(toToken);
+    setToToken(tempToken);
+    // Also swap amounts if they exist
+    const tempAmount = fromAmount;
+    setFromAmount(toAmount);
+    setToAmount(tempAmount);
   };
   
   const handleSwap = () => {
-    const amountToSwap = parseFloat(token1Amount);
-    if (amountToSwap <= 0 || amountToSwap > ethBalance) return;
+    const amountToSwap = parseFloat(fromAmount);
+    if (!fromToken || !toToken || amountToSwap <= 0 || amountToSwap > balances[fromToken]) return;
+    
     setSwapping(true);
     addTransaction({
         type: 'Swap',
-        details: `Swapping ${amountToSwap.toFixed(4)} ETH for USDC...`,
+        details: `Swapping ${amountToSwap.toFixed(4)} ${fromToken} for ${toToken}...`,
         status: 'Pending'
     });
+
     setTimeout(() => {
-      const usdcReceived = amountToSwap * ethToUsdcRate;
-      setEthBalance(prev => parseFloat((prev - amountToSwap).toFixed(4)));
-      setUsdcBalance(prev => parseFloat((prev + usdcReceived).toFixed(4)));
+      const amountReceived = parseFloat(toAmount);
+      balanceSetters[fromToken](prev => parseFloat((prev - amountToSwap).toFixed(4)));
+      balanceSetters[toToken](prev => parseFloat((prev + amountReceived).toFixed(4)));
+      
       addTransaction({
         type: 'Swap',
-        details: `Swapped ${amountToSwap.toFixed(4)} ETH for ${usdcReceived.toFixed(2)} USDC`,
+        details: `Swapped ${amountToSwap.toFixed(4)} ${fromToken} for ${amountReceived.toFixed(2)} ${toToken}`,
         status: 'Completed'
       });
-      setToken1Amount('');
-      setToken2Amount('');
+      setFromAmount('');
+      setToAmount('');
       setSwapping(false);
     }, 1500);
   };
 
   const handleStake = () => {
     const amountToStake = 0.5;
-    if (ethBalance < amountToStake) {
+    if (walletState.ethBalance < amountToStake) {
       console.log('Not enough ETH to stake!');
       return;
     }
@@ -95,6 +145,15 @@ export default function FinancePage() {
     }, 2000);
   };
 
+  const TokenSelectItem = ({ token }: { token: Token }) => (
+    <SelectItem value={token}>
+      <div className="flex items-center">
+        <Image src={getTokenLogo(token)} alt={token} width={20} height={20} className="mr-2" />
+        {token}
+      </div>
+    </SelectItem>
+  );
+
   return (
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
@@ -105,37 +164,65 @@ export default function FinancePage() {
             <CardHeader>
                 <CardTitle className="text-2xl font-bold text-primary">Token Swap</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col space-y-4">
-                <div>
-                <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From (ETH)</label>
-                <Input
-                    id="from-token"
-                    type="number"
-                    value={token1Amount}
-                    onChange={handleToken1Change}
-                    disabled={!isConnected}
-                    placeholder="0.0"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Balance: {ethBalance.toFixed(4)} ETH</p>
+            <CardContent className="flex flex-col space-y-2">
+                <div className="p-4 bg-background rounded-md border space-y-2">
+                  <div className="flex justify-between items-center">
+                     <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
+                     <p className="text-xs text-muted-foreground mt-1">Balance: {balances[fromToken].toFixed(4)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                        id="from-token"
+                        type="number"
+                        value={fromAmount}
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        disabled={!isConnected}
+                        placeholder="0.0"
+                    />
+                     <Select value={fromToken} onValueChange={(v) => setFromToken(v as Token)}>
+                        <SelectTrigger className="w-[150px]">
+                           <SelectValue placeholder="Select Token" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
+                        </SelectContent>
+                      </Select>
+                  </div>
                 </div>
+
                 <div className="flex justify-center my-2">
-                <ArrowDown size={24} className="text-muted-foreground" />
+                  <Button variant="ghost" size="icon" onClick={handleSwapTokens} disabled={!isConnected}>
+                    <ChevronsUpDown size={20} className="text-muted-foreground" />
+                  </Button>
                 </div>
-                <div>
-                <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To (USDC)</label>
-                <Input
-                    id="to-token"
-                    type="number"
-                    value={token2Amount}
-                    readOnly
-                    disabled={!isConnected}
-                    placeholder="0.0"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Balance: {usdcBalance.toFixed(2)} USDC</p>
+
+                <div className="p-4 bg-background rounded-md border space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
+                    <p className="text-xs text-muted-foreground mt-1">Balance: {balances[toToken].toFixed(4)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                        id="to-token"
+                        type="number"
+                        value={toAmount}
+                        readOnly
+                        disabled={!isConnected}
+                        placeholder="0.0"
+                    />
+                    <Select value={toToken} onValueChange={(v) => setToToken(v as Token)}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Select Token" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <Button
                 onClick={handleSwap}
-                disabled={!isConnected || swapping || !token1Amount || parseFloat(token1Amount) <= 0}
+                disabled={!isConnected || swapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
                 className="w-full mt-6"
                 variant="default"
                 >
@@ -174,7 +261,7 @@ export default function FinancePage() {
                 </div>
                 <Button
                 onClick={handleStake}
-                disabled={!isConnected || stakingLoading || ethBalance < 0.5}
+                disabled={!isConnected || stakingLoading || walletState.ethBalance < 0.5}
                 className="w-full bg-green-600 text-white hover:bg-green-700"
                 >
                 {stakingLoading ? (

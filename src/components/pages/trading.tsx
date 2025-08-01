@@ -87,7 +87,7 @@ export default function TradingPage() {
         <div className="xl:col-span-2 space-y-8">
           <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl font-bold text-primary">ETH/USDC Perpetual Futures</CardTitle>
+              <CardTitle className="text-2xl font-bold text-primary">ETH/USDT Perpetual Futures</CardTitle>
               <span className="text-3xl font-bold text-foreground">${currentPrice.toFixed(2)}</span>
             </CardHeader>
             <CardContent>

@@ -47,7 +47,7 @@ export function OrderBook({ currentPrice }: OrderBookProps) {
           <table className="w-full text-sm text-muted-foreground">
             <thead>
               <tr className="text-left">
-                <th className="py-2 font-medium">Price (USDC)</th>
+                <th className="py-2 font-medium">Price (USDT)</th>
                 <th className="py-2 font-medium text-right">Size (ETH)</th>
               </tr>
             </thead>

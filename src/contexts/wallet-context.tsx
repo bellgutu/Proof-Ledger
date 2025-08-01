@@ -8,6 +8,9 @@ interface WalletState {
   walletAddress: string;
   ethBalance: number;
   usdcBalance: number;
+  bnbBalance: number;
+  usdtBalance: number;
+  xrpBalance: number;
   walletBalance: string;
 }
 
@@ -16,6 +19,9 @@ interface WalletActions {
   disconnectWallet: () => void;
   setEthBalance: (updater: SetStateAction<number>) => void;
   setUsdcBalance: (updater: SetStateAction<number>) => void;
+  setBnbBalance: (updater: SetStateAction<number>) => void;
+  setUsdtBalance: (updater: SetStateAction<number>) => void;
+  setXrpBalance: (updater: SetStateAction<number>) => void;
 }
 
 interface WalletContextType {
@@ -32,14 +38,24 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     walletAddress: '',
     ethBalance: 10,
     usdcBalance: 25000,
+    bnbBalance: 50,
+    usdtBalance: 10000,
+    xrpBalance: 20000,
   });
   const [walletBalance, setWalletBalance] = useState('0.00');
 
   useEffect(() => {
-    const ethPrice = 3500; // Simulated price
-    const total = walletData.ethBalance * ethPrice + walletData.usdcBalance;
+    const ethPrice = 3500;
+    const bnbPrice = 600;
+    const xrpPrice = 0.5;
+    const total = 
+        walletData.ethBalance * ethPrice + 
+        walletData.usdcBalance + 
+        walletData.bnbBalance * bnbPrice + 
+        walletData.usdtBalance + 
+        walletData.xrpBalance * xrpPrice;
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [walletData.ethBalance, walletData.usdcBalance]);
+  }, [walletData.ethBalance, walletData.usdcBalance, walletData.bnbBalance, walletData.usdtBalance, walletData.xrpBalance]);
 
   const connectWallet = useCallback(() => {
     setWalletData(prev => ({ ...prev, isConnecting: true }));
@@ -66,6 +82,18 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setWalletData(prev => ({ ...prev, usdcBalance: typeof updater === 'function' ? updater(prev.usdcBalance) : updater }));
   };
 
+  const setBnbBalance = (updater: SetStateAction<number>) => {
+    setWalletData(prev => ({ ...prev, bnbBalance: typeof updater === 'function' ? updater(prev.bnbBalance) : updater }));
+  };
+
+  const setUsdtBalance = (updater: SetStateAction<number>) => {
+    setWalletData(prev => ({ ...prev, usdtBalance: typeof updater === 'function' ? updater(prev.usdtBalance) : updater }));
+  };
+
+  const setXrpBalance = (updater: SetStateAction<number>) => {
+    setWalletData(prev => ({ ...prev, xrpBalance: typeof updater === 'function' ? updater(prev.xrpBalance) : updater }));
+  };
+
   const value = {
       walletState: { ...walletData, walletBalance },
       walletActions: {
@@ -73,6 +101,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           disconnectWallet,
           setEthBalance,
           setUsdcBalance,
+          setBnbBalance,
+          setUsdtBalance,
+          setXrpBalance,
       }
   }
 

@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, RefreshCcw, Newspaper, Bitcoin, ArrowRight, Waves, CircleDollarSign } from 'lucide-react';
 import { EthereumIcon } from '@/components/icons/ethereum-icon';
+import { BnbIcon } from '@/components/icons/bnb-icon';
+import { UsdtIcon } from '@/components/icons/usdt-icon';
+import { XrpIcon } from '@/components/icons/xrp-icon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,6 +76,15 @@ export default function MarketsPage() {
         {
           id: 4, name: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <CircleDollarSign className="text-blue-500" size={24} />
         },
+        {
+          id: 5, name: 'BNB', value: (Math.random() * 50 + 580).toFixed(2), change: (Math.random() * 5 - 2.5).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <BnbIcon className="text-yellow-500" size={24} />
+        },
+        {
+          id: 6, name: 'USDT', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <UsdtIcon className="text-green-500" size={24} />
+        },
+        {
+          id: 7, name: 'XRP', value: (Math.random() * 0.1 + 0.5).toFixed(4), change: (Math.random() * 10 - 5).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <XrpIcon className="text-gray-400" size={24} />
+        },
       ];
       setMarkets(newMarkets);
 
@@ -112,7 +124,7 @@ export default function MarketsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[170px] w-full" />)
+          Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[170px] w-full" />)
         ) : (
           markets.map(market => <MarketCard key={market.id} {...market} />)
         )}

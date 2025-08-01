@@ -7,13 +7,17 @@ import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type Pool = 'ETH/USDT' | 'ETH/USDC' | 'SOL/USDT' | 'SOL/USDC';
 
 export default function ToolsPage() {
     const { walletState, walletActions } = useWallet();
-    const { isConnected, ethBalance } = walletState;
-    const { setEthBalance } = walletActions;
+    const { isConnected, ethBalance, usdcBalance, usdtBalance, solBalance } = walletState;
+    const { setEthBalance, setUsdcBalance, setUsdtBalance, setSolBalance } = walletActions;
     const [isAddingLiquidity, setIsAddingLiquidity] = useState(false);
     const [lpTokens, setLpTokens] = useState(0);
+    const [selectedPool, setSelectedPool] = useState<Pool>('ETH/USDT');
 
     const [proposal, setProposal] = useState({
       title: 'Upgrade Protocol v2.0',
@@ -23,15 +27,35 @@ export default function ToolsPage() {
       hasVoted: false,
     });
 
+    const liquidityAmounts: {[key in Pool]: { amount1: number, asset1: string, amount2: number, asset2: string}} = {
+      'ETH/USDT': { amount1: 0.5, asset1: 'ETH', amount2: 1750, asset2: 'USDT' },
+      'ETH/USDC': { amount1: 0.5, asset1: 'ETH', amount2: 1750, asset2: 'USDC' },
+      'SOL/USDT': { amount1: 5, asset1: 'SOL', amount2: 750, asset2: 'USDT' },
+      'SOL/USDC': { amount1: 5, asset1: 'SOL', amount2: 750, asset2: 'USDC' },
+    }
+
+    const hasSufficientBalance = () => {
+      const {amount1, asset1, amount2, asset2} = liquidityAmounts[selectedPool];
+      const balance1 = asset1 === 'ETH' ? ethBalance : solBalance;
+      const balance2 = asset2 === 'USDT' ? usdtBalance : usdcBalance;
+      return balance1 >= amount1 && balance2 >= amount2;
+    }
+
     const handleAddLiquidity = () => {
-      const ethAmount = 0.5;
-      if (ethBalance < ethAmount) {
-        console.log("Not enough ETH for liquidity pool!");
+      if (!hasSufficientBalance()) {
+        console.log("Not enough balance for liquidity pool!");
         return;
       }
       setIsAddingLiquidity(true);
+      const { amount1, asset1, amount2, asset2 } = liquidityAmounts[selectedPool];
+
       setTimeout(() => {
-        setEthBalance(prev => parseFloat((prev - ethAmount).toFixed(4)));
+        if(asset1 === 'ETH') setEthBalance(prev => parseFloat((prev - amount1).toFixed(4)));
+        if(asset1 === 'SOL') setSolBalance(prev => parseFloat((prev - amount1).toFixed(4)));
+        
+        if(asset2 === 'USDT') setUsdtBalance(prev => parseFloat((prev - amount2).toFixed(4)));
+        if(asset2 === 'USDC') setUsdcBalance(prev => parseFloat((prev - amount2).toFixed(4)));
+
         setLpTokens(prev => prev + 100);
         setIsAddingLiquidity(false);
       }, 2000);
@@ -49,6 +73,8 @@ export default function ToolsPage() {
 
     const totalVotes = proposal.votesYes + proposal.votesNo;
     const yesPercentage = totalVotes > 0 ? ((proposal.votesYes / totalVotes) * 100) : 0;
+    
+    const {amount1, asset1, amount2, asset2} = liquidityAmounts[selectedPool];
 
     return (
       <div className="container mx-auto p-0 space-y-8">
@@ -59,19 +85,32 @@ export default function ToolsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">Provide liquidity to earn trading fees and rewards.</p>
-              <div className="p-4 bg-background rounded-md border">
-                <p className="text-sm text-muted-foreground">Your LP Tokens:</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-lg font-bold text-foreground">{lpTokens} LP</span>
-                  <span className="text-green-400 font-semibold">0.3% Trading Fees</span>
+              <div className="p-4 bg-background rounded-md border space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Your LP Tokens:</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-lg font-bold text-foreground">{lpTokens} LP</span>
+                    <span className="text-green-400 font-semibold">0.3% Trading Fees</span>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="pool-select" className="block text-sm font-medium text-muted-foreground mb-1">Select Pool</label>
+                  <Select value={selectedPool} onValueChange={(v) => setSelectedPool(v as Pool)}>
+                      <SelectTrigger id="pool-select" className="w-full">
+                          <SelectValue placeholder="Select Pool" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
+                          <SelectItem value="ETH/USDC">ETH/USDC</SelectItem>
+                          <SelectItem value="SOL/USDT">SOL/USDT</SelectItem>
+                          <SelectItem value="SOL/USDC">SOL/USDC</SelectItem>
+                      </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <p className="text-sm text-foreground">
-                Current Pool: <span className="font-semibold">ETH/USDT</span>
-              </p>
               <Button
                 onClick={handleAddLiquidity}
-                disabled={!isConnected || isAddingLiquidity || ethBalance < 0.5}
+                disabled={!isConnected || isAddingLiquidity || !hasSufficientBalance()}
                 className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 {isAddingLiquidity ? (
@@ -79,7 +118,7 @@ export default function ToolsPage() {
                     <RefreshCcw size={16} className="mr-2 animate-spin" /> Adding...
                   </span>
                 ) : (
-                  'Add 0.5 ETH Liquidity'
+                  `Add ${amount1} ${asset1} + ${amount2} ${asset2} Liquidity`
                 )}
               </Button>
             </CardContent>

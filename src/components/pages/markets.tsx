@@ -29,7 +29,7 @@ const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
             <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-muted-foreground">{name}</h3>
-                <Image src={getTokenLogo(symbol)} alt={`${name} logo`} width={24} height={24} />
+                <Image src={getTokenLogo(symbol)} alt={`${name} logo`} width={32} height={32} />
             </div>
             <p className="text-3xl font-bold mb-2 text-foreground">
                 ${value}

@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, RefreshCcw, Newspaper, Bitcoin, ArrowRight, Waves, CircleDollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCcw, Newspaper, ArrowRight } from 'lucide-react';
+import { BitcoinIcon } from '@/components/icons/bitcoin-icon';
 import { EthereumIcon } from '@/components/icons/ethereum-icon';
+import { SolanaIcon } from '@/components/icons/solana-icon';
+import { UsdcIcon } from '@/components/icons/usdc-icon';
 import { BnbIcon } from '@/components/icons/bnb-icon';
 import { UsdtIcon } from '@/components/icons/usdt-icon';
 import { XrpIcon } from '@/components/icons/xrp-icon';
@@ -65,16 +68,16 @@ export default function MarketsPage() {
     setTimeout(() => {
       const newMarkets = [
         {
-          id: 1, name: 'Bitcoin', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <Bitcoin className="text-yellow-400" size={24} />
+          id: 1, name: 'Bitcoin', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <BitcoinIcon className="text-yellow-400" size={24} />
         },
         {
-          id: 2, name: 'Ethereum', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <EthereumIcon className="text-muted-foreground" size={24} />
+          id: 2, name: 'Ethereum', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <EthereumIcon className="text-blue-400" size={24} />
         },
         {
-          id: 3, name: 'Solana', value: (Math.random() * 10 + 150).toFixed(2), change: (Math.random() * 8 - 4).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <Waves className="text-purple-500" size={24} />
+          id: 3, name: 'Solana', value: (Math.random() * 10 + 150).toFixed(2), change: (Math.random() * 8 - 4).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <SolanaIcon className="text-purple-500" size={24} />
         },
         {
-          id: 4, name: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <CircleDollarSign className="text-blue-500" size={24} />
+          id: 4, name: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <UsdcIcon className="text-blue-500" size={24} />
         },
         {
           id: 5, name: 'BNB', value: (Math.random() * 50 + 580).toFixed(2), change: (Math.random() * 5 - 2.5).toFixed(2) + '%', isPositive: Math.random() > 0.5, icon: <BnbIcon className="text-yellow-500" size={24} />

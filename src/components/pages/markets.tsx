@@ -60,54 +60,49 @@ export default function MarketsPage() {
 
   const fetchMarketData = () => {
     setIsLoading(true);
-    setTimeout(() => {
-      const newMarkets = [
-        {
-          id: 1, name: 'Bitcoin', symbol: 'BTC', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5
-        },
-        {
-          id: 2, name: 'Ethereum', symbol: 'ETH', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5
-        },
-        {
-          id: 3, name: 'Solana', symbol: 'SOL', value: (Math.random() * 10 + 150).toFixed(2), change: (Math.random() * 8 - 4).toFixed(2) + '%', isPositive: Math.random() > 0.5
-        },
-        {
-          id: 4, name: 'USDC', symbol: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5
-        },
-        {
-          id: 5, name: 'BNB', symbol: 'BNB', value: (Math.random() * 50 + 580).toFixed(2), change: (Math.random() * 5 - 2.5).toFixed(2) + '%', isPositive: Math.random() > 0.5
-        },
-        {
-          id: 6, name: 'USDT', symbol: 'USDT', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5
-        },
-        {
-          id: 7, name: 'XRP', symbol: 'XRP', value: (Math.random() * 0.1 + 0.5).toFixed(4), change: (Math.random() * 10 - 5).toFixed(2) + '%', isPositive: Math.random() > 0.5
-        },
-      ];
-      setMarkets(newMarkets);
+    // Use a separate state for randomization to avoid hydration issues
+    const [randomizedData, setRandomizedData] = useState<Market[] | null>(null);
 
-      const generatedNews = [
-        { id: 1, title: 'Major Protocol Upgrade Announced', content: 'Developers behind a leading DeFi protocol have announced a significant upgrade, promising lower transaction fees and enhanced security.' },
-        { id: 2, title: 'New NFT Marketplace Launches with Exclusive Art', content: 'A new player in the NFT space has launched its platform, featuring a curated collection from renowned digital artists.' },
-        { id: 3, title: 'Bitcoin ETF Sees Record Inflows', content: 'Recent data shows unprecedented inflows into the largest spot Bitcoin ETF, signaling growing institutional interest.' },
-        { id: 4, title: 'Web3 Gaming Studio Secures $50M in Funding', content: 'A Web3 gaming studio focusing on play-to-earn mechanics has closed a massive funding round, with plans to launch its first title this year.' },
-        { id: 5, title: 'Decentralized Identity Solution Goes Live', content: 'A new decentralized identity (DID) project has officially launched on the mainnet, aiming to give users more control over their data.' },
-        { id: 6, title: 'Stablecoin Regulation Discussions Heat Up', content: 'Global regulators are intensifying talks around stablecoin legislation, a move that could bring more clarity and stability to the market.' },
-      ];
-      setNewsFeed(generatedNews);
+    useEffect(() => {
+        const newMarkets = [
+            { id: 1, name: 'Bitcoin', symbol: 'BTC', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+            { id: 2, name: 'Ethereum', symbol: 'ETH', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+            { id: 3, name: 'Solana', symbol: 'SOL', value: (Math.random() * 10 + 150).toFixed(2), change: (Math.random() * 8 - 4).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+            { id: 4, name: 'USDC', symbol: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+            { id: 5, name: 'BNB', symbol: 'BNB', value: (Math.random() * 50 + 580).toFixed(2), change: (Math.random() * 5 - 2.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+            { id: 6, name: 'USDT', symbol: 'USDT', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+            { id: 7, name: 'XRP', symbol: 'XRP', value: (Math.random() * 0.1 + 0.5).toFixed(4), change: (Math.random() * 10 - 5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+        ];
+        setMarkets(newMarkets);
 
-      setIsLoading(false);
-    }, 1500);
+        const generatedNews = [
+            { id: 1, title: 'Major Protocol Upgrade Announced', content: 'Developers behind a leading DeFi protocol have announced a significant upgrade, promising lower transaction fees and enhanced security.' },
+            { id: 2, title: 'New NFT Marketplace Launches with Exclusive Art', content: 'A new player in the NFT space has launched its platform, featuring a curated collection from renowned digital artists.' },
+            { id: 3, title: 'Bitcoin ETF Sees Record Inflows', content: 'Recent data shows unprecedented inflows into the largest spot Bitcoin ETF, signaling growing institutional interest.' },
+            { id: 4, title: 'Web3 Gaming Studio Secures $50M in Funding', content: 'A Web3 gaming studio focusing on play-to-earn mechanics has closed a massive funding round, with plans to launch its first title this year.' },
+            { id: 5, title: 'Decentralized Identity Solution Goes Live', content: 'A new decentralized identity (DID) project has officially launched on the mainnet, aiming to give users more control over their data.' },
+            { id: 6, title: 'Stablecoin Regulation Discussions Heat Up', content: 'Global regulators are intensifying talks around stablecoin legislation, a move that could bring more clarity and stability to the market.' },
+        ];
+        setNewsFeed(generatedNews);
+        setIsLoading(false);
+    }, []);
   };
 
   useEffect(() => {
     fetchMarketData();
   }, []);
 
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+        fetchMarketData()
+    }, 500)
+  }
+
   return (
     <div className="container mx-auto p-0">
       <div className="flex justify-center mb-8">
-        <Button onClick={fetchMarketData} disabled={isLoading} variant="default" size="lg">
+        <Button onClick={handleRefresh} disabled={isLoading} variant="default" size="lg">
           {isLoading ? (
             <span className="flex items-center">
               <RefreshCcw size={16} className="mr-2 animate-spin" /> Refreshing...

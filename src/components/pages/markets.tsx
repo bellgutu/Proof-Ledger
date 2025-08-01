@@ -60,10 +60,7 @@ export default function MarketsPage() {
 
   const fetchMarketData = () => {
     setIsLoading(true);
-    // Use a separate state for randomization to avoid hydration issues
-    const [randomizedData, setRandomizedData] = useState<Market[] | null>(null);
-
-    useEffect(() => {
+    setTimeout(() => {
         const newMarkets = [
             { id: 1, name: 'Bitcoin', symbol: 'BTC', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
             { id: 2, name: 'Ethereum', symbol: 'ETH', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
@@ -85,24 +82,17 @@ export default function MarketsPage() {
         ];
         setNewsFeed(generatedNews);
         setIsLoading(false);
-    }, []);
+    }, 500);
   };
 
   useEffect(() => {
     fetchMarketData();
   }, []);
 
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-        fetchMarketData()
-    }, 500)
-  }
-
   return (
     <div className="container mx-auto p-0">
       <div className="flex justify-center mb-8">
-        <Button onClick={handleRefresh} disabled={isLoading} variant="default" size="lg">
+        <Button onClick={fetchMarketData} disabled={isLoading} variant="default" size="lg">
           {isLoading ? (
             <span className="flex items-center">
               <RefreshCcw size={16} className="mr-2 animate-spin" /> Refreshing...

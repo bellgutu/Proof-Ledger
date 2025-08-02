@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 
@@ -112,11 +112,13 @@ export default function FinancePage() {
       balanceSetters[fromToken](prev => parseFloat((prev - amountToSwap).toFixed(4)));
       balanceSetters[toToken](prev => parseFloat((prev + amountReceived).toFixed(4)));
       
-      addTransaction({
-        type: 'Swap',
-        details: `Swapped ${amountToSwap.toFixed(4)} ${fromToken} for ${amountReceived.toFixed(2)} ${toToken}`,
-        status: 'Completed'
-      });
+      const newTransactions = [...transactions];
+      newTransactions[0] = {
+          ...newTransactions[0],
+          details: `Swapped ${amountToSwap.toFixed(4)} ${fromToken} for ${amountReceived.toFixed(2)} ${toToken}`,
+          status: 'Completed'
+      };
+      setTransactions(newTransactions);
       setFromAmount('');
       setToAmount('');
       setSwapping(false);
@@ -137,14 +139,35 @@ export default function FinancePage() {
     setTimeout(() => {
       setEthBalance(prev => parseFloat((prev - amountToDeposit).toFixed(4)));
       setVaultBalance(prev => parseFloat((prev + amountToDeposit).toFixed(4)));
-      addTransaction({
-        type: 'Vault Deposit',
-        details: 'Deposited 0.5 ETH',
-        status: 'Completed'
+      setTransactions(prev => {
+        const newTxs = [...prev];
+        const pendingTxIndex = newTxs.findIndex(tx => tx.status === 'Pending' && tx.type === 'Vault Deposit');
+        if (pendingTxIndex > -1) {
+            newTxs[pendingTxIndex] = { ...newTxs[pendingTxIndex], status: 'Completed', details: 'Deposited 0.5 ETH' };
+        }
+        return newTxs;
       });
       setVaultLoading(false);
     }, 2000);
   };
+  
+  const handleAiRebalance = () => {
+    addTransaction({
+        type: 'AI Rebalance',
+        details: 'AI rebalanced portfolio for optimal yield.',
+        status: 'Completed'
+    });
+  }
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if(vaultBalance > 0){
+        intervalId = setInterval(() => {
+            handleAiRebalance();
+        }, 5000); // AI rebalances every 5 seconds
+    }
+    return () => clearInterval(intervalId);
+  }, [vaultBalance]);
 
   const TokenSelectItem = ({ token }: { token: Token }) => (
     <SelectItem value={token}>
@@ -321,3 +344,5 @@ export default function FinancePage() {
     </div>
   );
 };
+
+    

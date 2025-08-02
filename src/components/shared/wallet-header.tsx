@@ -3,7 +3,9 @@
 import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Wallet, RefreshCcw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Wallet, RefreshCcw, Orbit } from 'lucide-react';
+import Image from 'next/image';
 
 export function WalletHeader() {
   const { walletState, walletActions } = useWallet();
@@ -33,15 +35,34 @@ export function WalletHeader() {
             </Button>
           </div>
         ) : (
-          <Button onClick={connectWallet} disabled={isConnecting} variant="default" size="lg">
-            {isConnecting ? (
-              <span className="flex items-center">
-                <RefreshCcw size={16} className="mr-2 animate-spin" /> Connecting...
-              </span>
-            ) : (
-              'Connect Wallet'
-            )}
-          </Button>
+           <Dialog>
+              <DialogTrigger asChild>
+                 <Button disabled={isConnecting} variant="default" size="lg">
+                    {isConnecting ? (
+                      <span className="flex items-center">
+                        <RefreshCcw size={16} className="mr-2 animate-spin" /> Connecting...
+                      </span>
+                    ) : (
+                      'Connect Wallet'
+                    )}
+                  </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle className="text-center text-2xl">Connect a Wallet</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
+                    <Orbit className="mr-4" size={28} />
+                    Browser Wallet
+                  </Button>
+                   <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
+                    <Image src="https://explorer.walletconnect.com/logo.svg" alt="WalletConnect" width={28} height={28} className="mr-4"/>
+                    WalletConnect
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
         )}
       </CardContent>
     </Card>

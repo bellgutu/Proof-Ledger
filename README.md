@@ -1,5 +1,5 @@
-# Firebase Studio
+# ProfitForge
 
-This is a NextJS starter in Firebase Studio.
+This is a NextJS application built in Firebase Studio.
 
-To get started, take a look at src/app/page.tsx.
+ProfitForge is an AI-powered crypto platform designed to give users an edge in the DeFi market. It combines real-time data, simulated trading, and a suite of advanced AI tools to help users discover, analyze, and act on market opportunities.

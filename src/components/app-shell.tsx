@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/logo';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -53,7 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col min-h-screen lg:flex-row">
       <aside className="bg-card text-card-foreground w-full lg:w-64 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-b lg:border-r border-border/60">
         <div className="flex items-center justify-between mb-4 lg:mb-8">
-          <h1 className="text-2xl font-extrabold text-primary">Apex Navigator</h1>
+          <Logo />
           <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </Button>

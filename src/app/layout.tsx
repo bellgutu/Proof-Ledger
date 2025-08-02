@@ -6,8 +6,8 @@ import { WalletProvider } from '@/contexts/wallet-context';
 import AppShell from '@/components/app-shell';
 
 export const metadata: Metadata = {
-  title: 'Apex Navigator',
-  description: 'A Web3 dashboard for market data, trading, and finance.',
+  title: 'ProfitForge',
+  description: 'AI-powered tools for DeFi and crypto trading.',
 };
 
 export default function RootLayout({

@@ -249,9 +249,9 @@ export default function TradingPage() {
             </CardContent>
           </Card>
 
-          <AIChartAnalysis key={selectedPair} candleData={candleDataRef.current} />
+          <AIChartAnalysis key={`ai-analysis-${selectedPair}`} candleData={candleDataRef.current} />
 
-          <WhaleWatch key={selectedPair} pair={selectedPair} />
+          <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
           
           <OrderBook currentPrice={currentPrice} assetSymbol={asset} />
         </div>

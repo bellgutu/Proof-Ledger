@@ -6,3 +6,4 @@ import '@/ai/flows/news-generator.ts';
 import '@/ai/flows/whale-watcher-flow.ts';
 import '@/ai/flows/chart-analyzer-flow.ts';
 import '@/ai/flows/whitepaper-analyzer-flow.ts';
+import '@/ai/flows/rebalance-narrator-flow.ts';

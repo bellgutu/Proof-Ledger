@@ -1,9 +1,10 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
+import { getRebalanceDetail } from '@/ai/flows/rebalance-narrator-flow';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -151,23 +152,33 @@ export default function FinancePage() {
     }, 2000);
   };
   
-  const handleAiRebalance = () => {
-    addTransaction({
-        type: 'AI Rebalance',
-        details: 'AI rebalanced portfolio for optimal yield.',
-        status: 'Completed'
-    });
-  }
+  const handleAiRebalance = useCallback(async () => {
+    try {
+        const result = await getRebalanceDetail();
+        addTransaction({
+            type: 'AI Rebalance',
+            details: result.detail,
+            status: 'Completed'
+        });
+    } catch (e) {
+        console.error("Failed to get rebalance detail:", e);
+        addTransaction({
+            type: 'AI Rebalance',
+            details: 'AI rebalanced portfolio for optimal yield.',
+            status: 'Completed'
+        });
+    }
+  }, []);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout | undefined;
     if(vaultBalance > 0){
         intervalId = setInterval(() => {
             handleAiRebalance();
         }, 5000); // AI rebalances every 5 seconds
     }
     return () => clearInterval(intervalId);
-  }, [vaultBalance]);
+  }, [vaultBalance, handleAiRebalance]);
 
   const TokenSelectItem = ({ token }: { token: Token }) => (
     <SelectItem value={token}>
@@ -344,5 +355,3 @@ export default function FinancePage() {
     </div>
   );
 };
-
-    

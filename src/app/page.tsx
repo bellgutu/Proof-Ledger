@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit } from 'lucide-react';
+import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 
@@ -10,11 +10,12 @@ import { WalletProvider } from '@/contexts/wallet-context';
 import MarketsPage from '@/components/pages/markets';
 import TradingPage from '@/components/pages/trading';
 import FinancePage from '@/components/pages/finance';
+import AnalyzerPage from '@/components/pages/analyzer';
 import ToolsPage from '@/components/pages/tools';
 import AssistantPage from '@/components/pages/assistant';
 import CoinDetail from '@/components/pages/coin-detail';
 
-type Page = 'markets' | 'trading' | 'finance' | 'tools' | 'assistant' | 'coin-detail';
+type Page = 'markets' | 'trading' | 'finance' | 'analyzer' | 'tools' | 'assistant' | 'coin-detail';
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState<Page>('markets');
@@ -62,6 +63,8 @@ export default function Home() {
         return <TradingPage />;
       case 'finance':
         return <FinancePage />;
+      case 'analyzer':
+        return <AnalyzerPage />;
       case 'tools':
         return <ToolsPage />;
       case 'assistant':
@@ -84,6 +87,7 @@ export default function Home() {
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} /> },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} /> },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} /> },
+    { id: 'analyzer', label: 'Analyzer', icon: <FileText size={20} /> },
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} /> },
     { id: 'assistant', label: 'AI Assistant', icon: <BrainCircuit size={20} /> },
   ];

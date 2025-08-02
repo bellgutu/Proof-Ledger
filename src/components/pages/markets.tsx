@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getTokenLogo } from '@/lib/tokenLogos';
+import Link from 'next/link';
 
 interface Market {
   id: number;
@@ -25,7 +26,8 @@ interface News {
 
 const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
     return (
-        <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-105">
+      <Link href={`/markets/${symbol}`}>
+        <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-105 h-full">
             <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-muted-foreground">{name}</h3>
@@ -46,6 +48,7 @@ const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
             </div>
             </CardContent>
         </Card>
+      </Link>
     );
 };
 

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { WalletProvider } from '@/contexts/wallet-context';
@@ -10,17 +12,34 @@ import TradingPage from '@/components/pages/trading';
 import FinancePage from '@/components/pages/finance';
 import ToolsPage from '@/components/pages/tools';
 import AssistantPage from '@/components/pages/assistant';
+import CoinDetail from '@/components/pages/coin-detail';
 
-type Page = 'markets' | 'trading' | 'finance' | 'tools' | 'assistant';
+type Page = 'markets' | 'trading' | 'finance' | 'tools' | 'assistant' | 'coin-detail';
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState<Page>('markets');
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
     setIsDarkMode(isDark);
   }, []);
+  
+  useEffect(() => {
+    const segments = pathname.split('/').filter(Boolean);
+    const newPage = segments[0] || 'markets';
+    if(segments[0] === 'markets' && segments[1]){
+      setCurrentPage('coin-detail');
+    } else {
+      setCurrentPage((newPage as Page) || 'markets');
+    }
+  }, [pathname]);
+
+  const navigate = (page: Page) => {
+    router.push(page === 'markets' ? '/' : `/${page}`);
+  };
 
   const toggleTheme = () => {
     const newIsDark = !isDarkMode;
@@ -33,9 +52,12 @@ export default function Home() {
   };
 
   const renderPage = () => {
-    switch (currentPage) {
-      case 'markets':
-        return <MarketsPage />;
+    const segments = pathname.split('/').filter(Boolean);
+    if(segments[0] === 'markets' && segments[1]){
+      return <CoinDetail symbol={segments[1]} />;
+    }
+    
+    switch (segments[0]) {
       case 'trading':
         return <TradingPage />;
       case 'finance':
@@ -44,10 +66,19 @@ export default function Home() {
         return <ToolsPage />;
       case 'assistant':
         return <AssistantPage />;
+      case 'markets':
       default:
         return <MarketsPage />;
     }
   };
+  
+  const getActivePage = () => {
+     const segments = pathname.split('/').filter(Boolean);
+     if(segments[0] === 'markets' && segments[1]){
+      return 'markets';
+    }
+    return segments[0] || 'markets';
+  }
 
   const navItems = [
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} /> },
@@ -56,6 +87,8 @@ export default function Home() {
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} /> },
     { id: 'assistant', label: 'AI Assistant', icon: <BrainCircuit size={20} /> },
   ];
+  
+  const activePage = getActivePage();
 
   return (
     <WalletProvider>
@@ -72,8 +105,8 @@ export default function Home() {
               {navItems.map(item => (
                 <li key={item.id}>
                   <Button
-                    variant={currentPage === item.id ? 'default' : 'ghost'}
-                    onClick={() => setCurrentPage(item.id as Page)}
+                    variant={activePage === item.id ? 'default' : 'ghost'}
+                    onClick={() => navigate(item.id as Page)}
                     className="w-full flex items-center justify-start text-left text-base font-semibold py-6"
                   >
                     <div className="mr-3">{item.icon}</div>

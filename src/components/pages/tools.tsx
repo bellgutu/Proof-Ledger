@@ -11,6 +11,12 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '../ui/input';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '../ui/alert-dialog';
+
+import { auditContract } from '@/ai/flows/contract-auditor-flow';
+import { auditToken } from '@/ai/flows/token-auditor-flow';
+import { marked } from 'marked';
+
 
 type Pool = 'ETH/USDT' | 'ETH/USDC' | 'SOL/USDT' | 'SOL/USDC';
 
@@ -22,8 +28,13 @@ export default function ToolsPage() {
     const [lpTokens, setLpTokens] = useState(0);
     const [selectedPool, setSelectedPool] = useState<Pool>('ETH/USDT');
 
-    const [isAuditingContract, setIsAuditingContract] = useState(false);
-    const [isAuditingToken, setIsAuditingToken] = useState(false);
+    const [isAuditing, setIsAuditing] = useState(false);
+    const [auditResult, setAuditResult] = useState<string | null>(null);
+    const [auditTitle, setAuditTitle] = useState('');
+    const [contractAddress, setContractAddress] = useState('');
+    const [tokenAddress, setTokenAddress] = useState('');
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+
 
     const [proposal, setProposal] = useState({
       title: 'Upgrade Protocol v2.0',
@@ -95,15 +106,30 @@ export default function ToolsPage() {
       }));
     };
 
-    const handleAuditContract = () => {
-        setIsAuditingContract(true);
-        setTimeout(() => setIsAuditingContract(false), 2000);
-    }
-    
-    const handleAuditToken = () => {
-        setIsAuditingToken(true);
-        setTimeout(() => setIsAuditingToken(false), 2000);
-    }
+    const handleAudit = async (type: 'contract' | 'token') => {
+        const address = type === 'contract' ? contractAddress : tokenAddress;
+        if (!address) return;
+
+        setIsAuditing(true);
+        setAuditResult(null);
+
+        try {
+            const result = type === 'contract' 
+                ? await auditContract(address) 
+                : await auditToken(address);
+            
+            const htmlResult = await marked(result.analysis);
+            setAuditResult(htmlResult);
+            setAuditTitle(type === 'contract' ? 'Smart Contract Audit Result' : 'Token Audit Result');
+        } catch (e) {
+            console.error(`${type} audit failed:`, e);
+            setAuditResult(`<p class="text-destructive">Audit failed. Please try again.</p>`);
+            setAuditTitle('Audit Error');
+        } finally {
+            setIsAuditing(false);
+            setIsAlertOpen(true);
+        }
+    };
 
     const totalVotes = proposal.votesYes + proposal.votesNo;
     const yesPercentage = totalVotes > 0 ? ((proposal.votesYes / totalVotes) * 100) : 0;
@@ -216,9 +242,9 @@ export default function ToolsPage() {
               <CardDescription>Enter a contract address to get an AI-powered security audit.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Input placeholder="0x..." />
-                <Button onClick={handleAuditContract} disabled={isAuditingContract} className="w-full">
-                    {isAuditingContract ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                <Input placeholder="0x..." value={contractAddress} onChange={(e) => setContractAddress(e.target.value)} />
+                <Button onClick={() => handleAudit('contract')} disabled={isAuditing || !contractAddress} className="w-full">
+                    {isAuditing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                     Audit Contract
                 </Button>
             </CardContent>
@@ -230,17 +256,28 @@ export default function ToolsPage() {
               <CardDescription>Enter a token address to analyze its potential risks (e.g., rug pull).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Input placeholder="0x..." />
-                <Button onClick={handleAuditToken} disabled={isAuditingToken} className="w-full">
-                    {isAuditingToken ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                <Input placeholder="0x..." value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value)} />
+                <Button onClick={() => handleAudit('token')} disabled={isAuditing || !tokenAddress} className="w-full">
+                    {isAuditing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                     Audit Token
                 </Button>
             </CardContent>
           </Card>
 
         </div>
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{auditTitle}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        <div className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground" dangerouslySetInnerHTML={{ __html: auditResult ?? ""}} />
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => setIsAlertOpen(false)}>Close</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
 };
-
-    

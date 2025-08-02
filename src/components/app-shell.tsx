@@ -51,17 +51,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen lg:flex-row">
-      <aside className="bg-card text-card-foreground w-full lg:w-64 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-r border-border/60">
-        <div className="flex items-center justify-between mb-8">
+      <aside className="bg-card text-card-foreground w-full lg:w-64 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-b lg:border-r border-border/60">
+        <div className="flex items-center justify-between mb-4 lg:mb-8">
           <h1 className="text-2xl font-extrabold text-primary">Apex Navigator</h1>
           <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </Button>
         </div>
         <nav>
-          <ul className="space-y-2">
+          <ul className="flex flex-row lg:flex-col lg:space-y-2 overflow-x-auto lg:overflow-x-visible space-x-2 lg:space-x-0">
             {navItems.map(item => (
-              <li key={item.id}>
+              <li key={item.id} className="flex-shrink-0">
                 <Button
                   variant={activePage === item.id ? 'default' : 'ghost'}
                   onClick={() => navigate(item.path)}

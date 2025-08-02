@@ -133,8 +133,8 @@ export default function TradingPage() {
   return (
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
           <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">

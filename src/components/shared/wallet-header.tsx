@@ -15,14 +15,14 @@ export function WalletHeader() {
   return (
     <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01]">
       <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between">
-        <div className="flex items-center space-x-4 mb-4 md:mb-0">
-          <Wallet size={48} className="text-primary" />
+        <div className="flex items-center space-x-4 mb-4 md:mb-0 w-full md:w-auto">
+          <Wallet size={48} className="text-primary flex-shrink-0" />
           {!isConnected ? (
             <h3 className="text-xl font-bold">Connect your wallet</h3>
           ) : (
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <h3 className="text-xl font-bold text-foreground">Connected Wallet</h3>
-              <p className="text-muted-foreground text-sm break-all">{walletAddress}</p>
+              <p className="text-muted-foreground text-sm break-all truncate">{walletAddress}</p>
             </div>
           )}
         </div>

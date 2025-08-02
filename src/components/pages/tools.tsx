@@ -142,7 +142,7 @@ export default function ToolsPage() {
                   </Select>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                     onClick={handleAddLiquidity}
                     disabled={!isConnected || isLiquidityLoading || !hasSufficientBalance()}
@@ -198,7 +198,7 @@ export default function ToolsPage() {
                     </div>
                 </div>
                 {!proposal.hasVoted ? (
-                    <div className="flex space-x-4 pt-2">
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 pt-2">
                         <Button onClick={() => handleVote('yes')} disabled={!isConnected} className="w-full bg-green-600 hover:bg-green-700 text-white">Vote Yes</Button>
                         <Button onClick={() => handleVote('no')} disabled={!isConnected} className="w-full bg-red-600 hover:bg-red-700 text-white">Vote No</Button>
                     </div>

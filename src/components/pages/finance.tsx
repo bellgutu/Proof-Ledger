@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { RefreshCcw, ArrowDown, History, ChevronsUpDown } from 'lucide-react';
+import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,12 +16,13 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 
 interface Transaction {
   id: string;
-  type: 'Swap' | 'Stake';
+  type: 'Swap' | 'Vault Deposit' | 'AI Rebalance';
   details: string;
   status: 'Completed' | 'Pending';
 }
 
 type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP';
+type VaultStrategy = 'ETH Yield Maximizer' | 'Stablecoin Growth';
 
 const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP'];
 
@@ -38,8 +39,10 @@ export default function FinancePage() {
   const { isConnected } = walletState;
   const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance } = walletActions;
 
-  const [stakedAmount, setStakedAmount] = useState(0);
-  const [stakingLoading, setStakingLoading] = useState(false);
+  const [vaultBalance, setVaultBalance] = useState(0);
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [selectedVault, setSelectedVault] = useState<VaultStrategy>('ETH Yield Maximizer');
+
   const [fromToken, setFromToken] = useState<Token>('ETH');
   const [toToken, setToToken] = useState<Token>('USDC');
   const [fromAmount, setFromAmount] = useState('');
@@ -88,7 +91,6 @@ export default function FinancePage() {
     const tempToken = fromToken;
     setFromToken(toToken);
     setToToken(tempToken);
-    // Also swap amounts if they exist
     const tempAmount = fromAmount;
     setFromAmount(toAmount);
     setToAmount(tempAmount);
@@ -121,27 +123,26 @@ export default function FinancePage() {
     }, 1500);
   };
 
-  const handleStake = () => {
-    const amountToStake = 0.5;
-    if (walletState.ethBalance < amountToStake) {
-      console.log('Not enough ETH to stake!');
+  const handleDepositToVault = () => {
+    const amountToDeposit = 0.5;
+    if (walletState.ethBalance < amountToDeposit) {
       return;
     }
-    setStakingLoading(true);
+    setVaultLoading(true);
     addTransaction({
-        type: 'Stake',
-        details: 'Staking 0.5 ETH...',
+        type: 'Vault Deposit',
+        details: 'Depositing 0.5 ETH into AI Yield Maximizer...',
         status: 'Pending'
     });
     setTimeout(() => {
-      setEthBalance(prev => parseFloat((prev - amountToStake).toFixed(4)));
-      setStakedAmount(prev => parseFloat((prev + amountToStake).toFixed(4)));
+      setEthBalance(prev => parseFloat((prev - amountToDeposit).toFixed(4)));
+      setVaultBalance(prev => parseFloat((prev + amountToDeposit).toFixed(4)));
       addTransaction({
-        type: 'Stake',
-        details: 'Staked 0.5 ETH',
+        type: 'Vault Deposit',
+        details: 'Deposited 0.5 ETH',
         status: 'Completed'
       });
-      setStakingLoading(false);
+      setVaultLoading(false);
     }, 2000);
   };
 
@@ -239,38 +240,53 @@ export default function FinancePage() {
 
             <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader>
-                <CardTitle className="text-2xl font-bold text-primary">Staking Pool</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary flex items-center"><BrainCircuit className="mr-2" /> AI Strategy Vault</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="p-4 bg-background rounded-md border">
-                <p className="text-sm text-muted-foreground">Your Staked Assets:</p>
-                <div className="flex items-center justify-between mt-1">
-                    <span className="text-lg font-bold text-foreground">{stakedAmount.toFixed(4)} ETH</span>
-                    <span className="text-green-400 font-semibold">12% APY (Simulated)</span>
+                  <p className="text-sm text-muted-foreground">Your Vault Balance:</p>
+                  <div className="flex items-center justify-between mt-1">
+                      <span className="text-lg font-bold text-foreground">{vaultBalance.toFixed(4)} ETH</span>
+                      <span className="text-green-400 font-semibold">23% APY (Projected)</span>
+                  </div>
                 </div>
-                </div>
+
                 <div>
-                <label htmlFor="stake-amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount to Stake (ETH)</label>
-                <Input
-                    id="stake-amount"
-                    type="number"
-                    value={0.5}
-                    readOnly
-                    disabled={!isConnected}
-                />
+                  <label htmlFor="vault-select" className="block text-sm font-medium text-muted-foreground mb-1">Select Strategy</label>
+                  <Select value={selectedVault} onValueChange={(v) => setSelectedVault(v as VaultStrategy)}>
+                      <SelectTrigger id="vault-select" className="w-full">
+                          <SelectValue placeholder="Select Vault" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="ETH Yield Maximizer">ETH Yield Maximizer</SelectItem>
+                          <SelectItem value="Stablecoin Growth">Stablecoin Growth</SelectItem>
+                      </SelectContent>
+                  </Select>
                 </div>
+                
+                <div>
+                  <label htmlFor="stake-amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount to Deposit (ETH)</label>
+                  <Input
+                      id="stake-amount"
+                      type="number"
+                      value={0.5}
+                      readOnly
+                      disabled={!isConnected}
+                  />
+                </div>
+
                 <Button
-                onClick={handleStake}
-                disabled={!isConnected || stakingLoading || walletState.ethBalance < 0.5}
-                className="w-full bg-green-600 text-white hover:bg-green-700"
+                  onClick={handleDepositToVault}
+                  disabled={!isConnected || vaultLoading || walletState.ethBalance < 0.5}
+                  className="w-full bg-green-600 text-white hover:bg-green-700"
                 >
-                {stakingLoading ? (
-                    <span className="flex items-center">
-                    <RefreshCcw size={16} className="mr-2 animate-spin" /> Staking...
-                    </span>
-                ) : (
-                    'Stake 0.5 ETH'
-                )}
+                  {vaultLoading ? (
+                      <span className="flex items-center">
+                      <RefreshCcw size={16} className="mr-2 animate-spin" /> Depositing...
+                      </span>
+                  ) : (
+                      'Deposit 0.5 ETH'
+                  )}
                 </Button>
             </CardContent>
             </Card>

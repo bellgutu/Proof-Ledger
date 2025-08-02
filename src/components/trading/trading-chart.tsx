@@ -43,8 +43,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const chartWidth = width - yAxisWidth;
     const chartHeight = height - xAxisHeight;
 
-    // Clear canvas
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
+    // Clear canvas with a light background color
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
     ctx.fillRect(0, 0, width, height);
       
     const candles = candleDataRef.current;
@@ -97,8 +97,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     visibleCandles.forEach((candle, index) => {
       const x = index * (candleWidth + spacing) + spacing;
       const color = candle.close >= candle.open 
-        ? getComputedStyle(document.documentElement).getPropertyValue('--green-500').trim() || '#22c55e'
-        : getComputedStyle(document.documentElement).getPropertyValue('--red-500').trim() || '#ef4444'; 
+        ? '#22c55e' // Hardcoded green for better visibility
+        : '#ef4444'; // Hardcoded red for better visibility
 
       ctx.beginPath();
       ctx.strokeStyle = color;
@@ -156,7 +156,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       if (candleDataRef.current.length > 100) {
         candleDataRef.current.shift();
       }
-      // The price is now updated by the context, but we keep this for candle generation
       onCandleDataUpdate([...candleDataRef.current]);
     };
 
@@ -192,13 +191,13 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     };
 
     window.addEventListener('resize', updateCanvasSize);
-    updateCanvasSize();
     
+    let animationFrameId: number;
     const renderLoop = () => {
         drawChart();
-        requestAnimationFrame(renderLoop);
+        animationFrameId = requestAnimationFrame(renderLoop);
     }
-    const animationFrameId = requestAnimationFrame(renderLoop);
+    renderLoop();
     
     return () => {
         window.removeEventListener('resize', updateCanvasSize);

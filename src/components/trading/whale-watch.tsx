@@ -63,8 +63,8 @@ export function WhaleWatch({ pair }: { pair: string }) {
                 </div>
                 <ScrollArea className="h-60">
                     <div className="space-y-2 pr-4">
-                    {data.transactions.map(tx => (
-                        <div key={tx.id} className="p-2 bg-background rounded-md border text-xs">
+                    {data.transactions.map((tx, index) => (
+                        <div key={`${tx.id}-${index}`} className="p-2 bg-background rounded-md border text-xs">
                             <div className="flex justify-between items-center font-mono">
                                 <span className="font-bold text-primary">{tx.asset}</span>
                                 <span>${tx.amountUSD.toLocaleString()}</span>

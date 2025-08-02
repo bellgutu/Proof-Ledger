@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState } from 'react';
-import { RefreshCcw, Handshake, Vote, CheckCircle, XCircle } from 'lucide-react';
+import { Handshake, Vote, CheckCircle, XCircle, FileSearch, ShieldCheck, Search, Loader2 } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '../ui/input';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 type Pool = 'ETH/USDT' | 'ETH/USDC' | 'SOL/USDT' | 'SOL/USDC';
 
@@ -18,6 +20,9 @@ export default function ToolsPage() {
     const [isAddingLiquidity, setIsAddingLiquidity] = useState(false);
     const [lpTokens, setLpTokens] = useState(0);
     const [selectedPool, setSelectedPool] = useState<Pool>('ETH/USDT');
+
+    const [isAuditingContract, setIsAuditingContract] = useState(false);
+    const [isAuditingToken, setIsAuditingToken] = useState(false);
 
     const [proposal, setProposal] = useState({
       title: 'Upgrade Protocol v2.0',
@@ -35,6 +40,7 @@ export default function ToolsPage() {
     }
 
     const hasSufficientBalance = () => {
+      if (!isConnected) return false;
       const {amount1, asset1, amount2, asset2} = liquidityAmounts[selectedPool];
       const balance1 = asset1 === 'ETH' ? ethBalance : solBalance;
       const balance2 = asset2 === 'USDT' ? usdtBalance : usdcBalance;
@@ -70,6 +76,16 @@ export default function ToolsPage() {
         hasVoted: true,
       }));
     };
+
+    const handleAuditContract = () => {
+        setIsAuditingContract(true);
+        setTimeout(() => setIsAuditingContract(false), 2000);
+    }
+    
+    const handleAuditToken = () => {
+        setIsAuditingToken(true);
+        setTimeout(() => setIsAuditingToken(false), 2000);
+    }
 
     const totalVotes = proposal.votesYes + proposal.votesNo;
     const yesPercentage = totalVotes > 0 ? ((proposal.votesYes / totalVotes) * 100) : 0;
@@ -114,13 +130,13 @@ export default function ToolsPage() {
                 className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 {isAddingLiquidity ? (
-                  <span className="flex items-center">
-                    <RefreshCcw size={16} className="mr-2 animate-spin" /> Adding...
-                  </span>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   `Add ${amount1} ${asset1} + ${amount2} ${asset2} Liquidity`
                 )}
               </Button>
+               {!isConnected && <Alert variant="destructive"><AlertDescription className="text-center">Please connect your wallet to add liquidity.</AlertDescription></Alert>}
+               {isConnected && !hasSufficientBalance() && <Alert variant="destructive"><AlertDescription className="text-center">Insufficient balance to add liquidity to this pool.</AlertDescription></Alert>}
             </CardContent>
           </Card>
 
@@ -157,9 +173,39 @@ export default function ToolsPage() {
                 ) : (
                   <p className="text-center text-sm text-primary pt-2">Thank you for your vote!</p>
                 )}
+                 {!isConnected && <Alert variant="destructive"><AlertDescription className="text-center">Please connect your wallet to vote.</AlertDescription></Alert>}
               </div>
             </CardContent>
           </Card>
+
+           <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+            <CardHeader>
+              <CardTitle className="flex items-center text-2xl font-bold text-primary"><ShieldCheck size={24} className="mr-2"/> Smart Contract Auditor</CardTitle>
+              <CardDescription>Enter a contract address to get an AI-powered security audit.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Input placeholder="0x..." />
+                <Button onClick={handleAuditContract} disabled={isAuditingContract} className="w-full">
+                    {isAuditingContract ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Audit Contract
+                </Button>
+            </CardContent>
+          </Card>
+          
+           <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+            <CardHeader>
+              <CardTitle className="flex items-center text-2xl font-bold text-primary"><FileSearch size={24} className="mr-2"/> Token & Meme Coin Auditor</CardTitle>
+              <CardDescription>Enter a token address to analyze its potential risks (e.g., rug pull).</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Input placeholder="0x..." />
+                <Button onClick={handleAuditToken} disabled={isAuditingToken} className="w-full">
+                    {isAuditingToken ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Audit Token
+                </Button>
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     );

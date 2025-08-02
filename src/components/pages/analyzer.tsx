@@ -10,12 +10,38 @@ import { Form, FormControl, FormDescription as FormDesc, FormField, FormItem, Fo
 import { Input } from '@/components/ui/input';
 import { FileText, Bot, Zap, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
+import { marked } from 'marked';
 
 const AnalyzerInputSchema = z.object({
   whitePaperUrl: z.string().url({ message: "Please enter a valid URL." }),
 });
 
 type AnalyzerInput = z.infer<typeof AnalyzerInputSchema>;
+
+// Mock Genkit flow - in a real scenario this would be in src/ai/flows/
+async function analyzeWhitePaper(url: string): Promise<string> {
+  console.log("Analyzing white paper at:", url);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const mockAnalysis = `
+### Summary
+This white paper outlines a decentralized perpetuals exchange on the Solana blockchain, aiming to provide fast, low-cost trading. The core innovation is a hybrid on-chain/off-chain order book model.
+
+### Tokenomics
+- **Token:** APEX
+- **Total Supply:** 1,000,000,000
+- **Distribution:** 40% ecosystem, 25% team, 20% investors, 15% community treasury.
+- **Utility:** Governance, staking rewards, reduced trading fees.
+
+### Potential Red Flags
+- **Team Anonymity:** The development team is anonymous, which can be a risk for accountability.
+- **Vague Roadmap:** The roadmap is light on specifics for post-launch features and timelines.
+- **Centralization Risk:** The off-chain order book component introduces a potential point of centralization.
+      `;
+      resolve(mockAnalysis);
+    }, 2500);
+  });
+}
 
 export default function AnalyzerPage() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
@@ -34,27 +60,16 @@ export default function AnalyzerPage() {
     setError(null);
     setAnalysisResult(null);
 
-    // Simulate AI analysis
-    setTimeout(() => {
-      // In a real scenario, you'd call a Genkit flow here
-      // const result = await analyzeWhitePaper({ url: values.whitePaperUrl });
-      // setAnalysisResult(result);
-      const mockAnalysis = `
-### Summary
-This white paper outlines a decentralized perpetuals exchange on the Solana blockchain, aiming to provide fast, low-cost trading. The core innovation is a hybrid on-chain/off-chain order book model.
-
-### Tokenomics
-- **Token:** APEX
-- **Total Supply:** 1,000,000,000
-- **Distribution:** 40% ecosystem, 25% team, 20% investors, 15% community treasury.
-
-### Red Flags
-- Team is anonymous.
-- Roadmap is vague on post-launch features.
-      `;
-      setAnalysisResult(mockAnalysis);
+    try {
+      const result = await analyzeWhitePaper(values.whitePaperUrl);
+      const htmlResult = await marked(result);
+      setAnalysisResult(htmlResult);
+    } catch (e) {
+      console.error("Analysis failed:", e);
+      setError("Failed to analyze the white paper. Please check the URL and try again.");
+    } finally {
       setIsLoading(false);
-    }, 2500);
+    }
   }
 
   return (
@@ -87,7 +102,7 @@ This white paper outlines a decentralized perpetuals exchange on the Solana bloc
                         {...field}
                       />
                     </FormControl>
-                    <FormDesc>The URL must be publicly accessible and point directly to a PDF file.</FormDesc>
+                    <FormDesc>The URL must be publicly accessible. The AI will attempt to fetch and parse it.</FormDesc>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -137,8 +152,8 @@ This white paper outlines a decentralized perpetuals exchange on the Solana bloc
           <CardHeader>
             <CardTitle className="flex items-center"><Bot className="mr-2 text-primary" /> AI Analysis</CardTitle>
           </CardHeader>
-          <CardContent className="prose prose-invert max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: analysisResult.replace(/\n/g, '<br />') }} />
+          <CardContent className="prose prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground">
+            <div dangerouslySetInnerHTML={{ __html: analysisResult }} />
           </CardContent>
         </Card>
       )}

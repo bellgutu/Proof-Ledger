@@ -27,8 +27,15 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+    
     const yAxisWidth = 60;
     const xAxisHeight = 30;
     const chartWidth = width - yAxisWidth;
@@ -45,10 +52,13 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const maxPrice = Math.max(...candles.map(c => c.high));
     const minPrice = Math.min(...candles.map(c => c.low));
     const priceRange = maxPrice - minPrice > 0 ? maxPrice - minPrice : 1;
+
+    const scaleY = (price: number) => {
+        return chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+    };
+
     const candleWidth = chartWidth / (candles.length * 1.5);
     const spacing = candleWidth * 0.5;
-
-    const scaleY = (y: number) => chartHeight - ((y - minPrice) / priceRange) * chartHeight * 0.9 - chartHeight * 0.05;
 
     // Draw Y-axis (Price)
     ctx.strokeStyle = '#374151'; // border color
@@ -69,7 +79,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     // Draw X-axis (Time)
     ctx.textAlign = 'center';
     const numTimeLabels = Math.floor(chartWidth / 100);
-    const timeInterval = Math.floor(candles.length / numTimeLabels);
+    const timeInterval = Math.max(1, Math.floor(candles.length / numTimeLabels));
     for (let i = 0; i < candles.length; i++) {
         if (i % timeInterval === 0) {
             const candle = candles[i];
@@ -80,7 +90,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
             }
         }
     }
-
 
     candles.forEach((candle, index) => {
       const x = index * (candleWidth + spacing) + spacing;
@@ -100,22 +109,24 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     });
     
     const currentPrice = currentPriceRef.current;
-    ctx.strokeStyle = '#7DD3FC'; // primary color
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
     const priceY = scaleY(currentPrice);
-    ctx.moveTo(0, priceY);
-    ctx.lineTo(chartWidth, priceY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    
-    ctx.fillStyle = '#7DD3FC';
-    ctx.fillRect(chartWidth, priceY - 10, yAxisWidth, 20);
-    ctx.fillStyle = '#000';
-    ctx.textAlign = 'center';
-    ctx.fillText(`$${currentPrice.toFixed(4)}`, chartWidth + yAxisWidth / 2, priceY + 4);
 
+    if (priceY >= 0 && priceY <= chartHeight) {
+      ctx.strokeStyle = '#7DD3FC'; // primary color
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(0, priceY);
+      ctx.lineTo(chartWidth, priceY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#7DD3FC';
+      ctx.fillRect(chartWidth, priceY - 10, yAxisWidth, 20);
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'center';
+      ctx.fillText(`$${currentPrice.toFixed(4)}`, chartWidth + yAxisWidth / 2, priceY + 4);
+    }
   }, []);
 
   useEffect(() => {
@@ -146,9 +157,16 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     // Reset and initialize data when pair changes (indicated by initialPrice change)
     candleDataRef.current = [];
     let startTime = Date.now() - 50 * 2000;
-    candleDataRef.current.push({ open: initialPrice, high: initialPrice * 1.002, low: initialPrice * 0.998, close: initialPrice * 1.001, time: startTime });
-    for(let i = 1; i < 50; i++){
-        generateNewCandle();
+    let price = initialPrice;
+    for(let i = 0; i < 50; i++){
+        const open = price;
+        const change = (Math.random() - 0.5) * (open * 0.01);
+        const close = open + change;
+        const high = Math.max(open, close) + Math.random() * (open * 0.005);
+        const low = Math.min(open, close) - Math.random() * (open * 0.005);
+        const time = startTime + i * 2000;
+        candleDataRef.current.push({ open, high, low, close, time });
+        price = close;
     }
     
     candleTimer = setInterval(generateNewCandle, 2000);
@@ -161,23 +179,23 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     if (!canvas) return;
 
     const updateCanvasSize = () => {
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
         renderChart();
-      }
     };
 
     window.addEventListener('resize', updateCanvasSize);
     updateCanvasSize();
     
-    return () => window.removeEventListener('resize', updateCanvasSize);
+    const renderLoop = () => {
+        renderChart();
+        requestAnimationFrame(renderLoop);
+    }
+    const animationFrameId = requestAnimationFrame(renderLoop);
+    
+    return () => {
+        window.removeEventListener('resize', updateCanvasSize);
+        cancelAnimationFrame(animationFrameId);
+    }
   }, [renderChart]);
-
-  useEffect(() => {
-    renderChart();
-  }, [onPriceChange, renderChart]);
 
   return <canvas ref={canvasRef} className="w-full h-full"></canvas>;
 }

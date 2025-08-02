@@ -52,6 +52,10 @@ export default function TradingPage() {
   
   const candleDataRef = useRef<Candle[]>([]);
 
+  const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
+    candleDataRef.current = candles;
+  }, []);
+
   const asset = selectedPair.split('/')[0];
 
   const getAssetBalance = useCallback(() => {
@@ -154,7 +158,7 @@ export default function TradingPage() {
                     key={selectedPair} 
                     initialPrice={initialPrices[selectedPair]} 
                     onPriceChange={setCurrentPrice} 
-                    onCandleDataUpdate={(candles) => { candleDataRef.current = candles; }}
+                    onCandleDataUpdate={handleCandleDataUpdate}
                 />
               </div>
             </CardContent>

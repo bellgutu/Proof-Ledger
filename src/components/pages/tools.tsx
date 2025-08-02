@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -17,7 +18,7 @@ export default function ToolsPage() {
     const { walletState, walletActions } = useWallet();
     const { isConnected, ethBalance, usdcBalance, usdtBalance, solBalance } = walletState;
     const { setEthBalance, setUsdcBalance, setUsdtBalance, setSolBalance } = walletActions;
-    const [isAddingLiquidity, setIsAddingLiquidity] = useState(false);
+    const [isLiquidityLoading, setIsLiquidityLoading] = useState(false);
     const [lpTokens, setLpTokens] = useState(0);
     const [selectedPool, setSelectedPool] = useState<Pool>('ETH/USDT');
 
@@ -52,7 +53,7 @@ export default function ToolsPage() {
         console.log("Not enough balance for liquidity pool!");
         return;
       }
-      setIsAddingLiquidity(true);
+      setIsLiquidityLoading(true);
       const { amount1, asset1, amount2, asset2 } = liquidityAmounts[selectedPool];
 
       setTimeout(() => {
@@ -63,9 +64,26 @@ export default function ToolsPage() {
         if(asset2 === 'USDC') setUsdcBalance(prev => parseFloat((prev - amount2).toFixed(4)));
 
         setLpTokens(prev => prev + 100);
-        setIsAddingLiquidity(false);
+        setIsLiquidityLoading(false);
       }, 2000);
     };
+
+    const handleRemoveLiquidity = () => {
+        if (lpTokens <= 0) return;
+        setIsLiquidityLoading(true);
+        const { amount1, asset1, amount2, asset2 } = liquidityAmounts[selectedPool];
+
+        setTimeout(() => {
+            if(asset1 === 'ETH') setEthBalance(prev => parseFloat((prev + amount1).toFixed(4)));
+            if(asset1 === 'SOL') setSolBalance(prev => parseFloat((prev + amount1).toFixed(4)));
+            
+            if(asset2 === 'USDT') setUsdtBalance(prev => parseFloat((prev + amount2).toFixed(4)));
+            if(asset2 === 'USDC') setUsdcBalance(prev => parseFloat((prev + amount2).toFixed(4)));
+
+            setLpTokens(0); // Assume removing all liquidity for simplicity
+            setIsLiquidityLoading(false);
+        }, 2000);
+    }
 
     const handleVote = (voteType: 'yes' | 'no') => {
       if (!isConnected || proposal.hasVoted) return;
@@ -124,19 +142,33 @@ export default function ToolsPage() {
                   </Select>
                 </div>
               </div>
-              <Button
-                onClick={handleAddLiquidity}
-                disabled={!isConnected || isAddingLiquidity || !hasSufficientBalance()}
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                {isAddingLiquidity ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  `Add ${amount1} ${asset1} + ${amount2} ${asset2} Liquidity`
-                )}
-              </Button>
-               {!isConnected && <Alert variant="destructive"><AlertDescription className="text-center">Please connect your wallet to add liquidity.</AlertDescription></Alert>}
-               {isConnected && !hasSufficientBalance() && <Alert variant="destructive"><AlertDescription className="text-center">Insufficient balance to add liquidity to this pool.</AlertDescription></Alert>}
+              <div className="flex gap-2">
+                <Button
+                    onClick={handleAddLiquidity}
+                    disabled={!isConnected || isLiquidityLoading || !hasSufficientBalance()}
+                    className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                    {isLiquidityLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                    `Add ${amount1} ${asset1} + ${amount2} ${asset2}`
+                    )}
+                </Button>
+                <Button
+                    onClick={handleRemoveLiquidity}
+                    disabled={!isConnected || isLiquidityLoading || lpTokens <= 0}
+                    className="w-full"
+                    variant="destructive"
+                >
+                    {isLiquidityLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                    `Remove Liquidity`
+                    )}
+                </Button>
+              </div>
+               {!isConnected && <Alert variant="destructive"><AlertDescription className="text-center">Please connect your wallet to manage liquidity.</AlertDescription></Alert>}
+               {isConnected && !hasSufficientBalance() && lpTokens <= 0 && <Alert variant="destructive"><AlertDescription className="text-center">Insufficient balance to add liquidity to this pool.</AlertDescription></Alert>}
             </CardContent>
           </Card>
 
@@ -210,3 +242,5 @@ export default function ToolsPage() {
       </div>
     );
 };
+
+    

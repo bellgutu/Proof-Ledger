@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit } from 'lucide-react';
+import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 import { getRebalanceDetail } from '@/ai/flows/rebalance-narrator-flow';
 
@@ -17,7 +17,7 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 
 interface Transaction {
   id: string;
-  type: 'Swap' | 'Vault Deposit' | 'AI Rebalance';
+  type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance';
   details: string;
   status: 'Completed' | 'Pending';
 }
@@ -67,8 +67,8 @@ export default function FinancePage() {
     XRP: setXrpBalance,
   };
   
-  const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    setTransactions(prev => [{ id: new Date().toISOString(), ...transaction }, ...prev]);
+  const addTransaction = (transaction: Omit<Transaction, 'id' | 'status'>) => {
+    setTransactions(prev => [{ id: new Date().toISOString(), status: 'Completed', ...transaction }, ...prev]);
   };
 
   const conversionRate = useMemo(() => {
@@ -102,24 +102,14 @@ export default function FinancePage() {
     if (!fromToken || !toToken || amountToSwap <= 0 || amountToSwap > balances[fromToken]) return;
     
     setSwapping(true);
-    addTransaction({
-        type: 'Swap',
-        details: `Swapping ${amountToSwap.toFixed(4)} ${fromToken} for ${toToken}...`,
-        status: 'Pending'
-    });
-
     setTimeout(() => {
       const amountReceived = parseFloat(toAmount);
       balanceSetters[fromToken](prev => parseFloat((prev - amountToSwap).toFixed(4)));
       balanceSetters[toToken](prev => parseFloat((prev + amountReceived).toFixed(4)));
-      
-      const newTransactions = [...transactions];
-      newTransactions[0] = {
-          ...newTransactions[0],
-          details: `Swapped ${amountToSwap.toFixed(4)} ${fromToken} for ${amountReceived.toFixed(2)} ${toToken}`,
-          status: 'Completed'
-      };
-      setTransactions(newTransactions);
+      addTransaction({
+        type: 'Swap',
+        details: `Swapped ${amountToSwap.toFixed(4)} ${fromToken} for ${amountReceived.toFixed(2)} ${toToken}`
+      });
       setFromAmount('');
       setToAmount('');
       setSwapping(false);
@@ -132,25 +122,31 @@ export default function FinancePage() {
       return;
     }
     setVaultLoading(true);
-    addTransaction({
-        type: 'Vault Deposit',
-        details: 'Depositing 0.5 ETH into AI Yield Maximizer...',
-        status: 'Pending'
-    });
     setTimeout(() => {
       setEthBalance(prev => parseFloat((prev - amountToDeposit).toFixed(4)));
       setVaultBalance(prev => parseFloat((prev + amountToDeposit).toFixed(4)));
-      setTransactions(prev => {
-        const newTxs = [...prev];
-        const pendingTxIndex = newTxs.findIndex(tx => tx.status === 'Pending' && tx.type === 'Vault Deposit');
-        if (pendingTxIndex > -1) {
-            newTxs[pendingTxIndex] = { ...newTxs[pendingTxIndex], status: 'Completed', details: 'Deposited 0.5 ETH' };
-        }
-        return newTxs;
+      addTransaction({
+        type: 'Vault Deposit',
+        details: `Deposited 0.5 ETH to ${selectedVault}`
       });
       setVaultLoading(false);
     }, 2000);
   };
+
+  const handleWithdrawFromVault = () => {
+    if (vaultBalance <= 0) return;
+    setVaultLoading(true);
+    setTimeout(() => {
+        const amountToWithdraw = vaultBalance;
+        setEthBalance(prev => parseFloat((prev + amountToWithdraw).toFixed(4)));
+        setVaultBalance(0);
+        addTransaction({
+            type: 'Vault Withdraw',
+            details: `Withdrew ${amountToWithdraw.toFixed(4)} ETH from ${selectedVault}`
+        });
+        setVaultLoading(false);
+    }, 2000);
+  }
   
   const handleAiRebalance = useCallback(async () => {
     try {
@@ -158,14 +154,12 @@ export default function FinancePage() {
         addTransaction({
             type: 'AI Rebalance',
             details: result.detail,
-            status: 'Completed'
         });
     } catch (e) {
         console.error("Failed to get rebalance detail:", e);
         addTransaction({
             type: 'AI Rebalance',
             details: 'AI rebalanced portfolio for optimal yield.',
-            status: 'Completed'
         });
     }
   }, []);
@@ -309,19 +303,35 @@ export default function FinancePage() {
                   />
                 </div>
 
-                <Button
-                  onClick={handleDepositToVault}
-                  disabled={!isConnected || vaultLoading || walletState.ethBalance < 0.5}
-                  className="w-full bg-green-600 text-white hover:bg-green-700"
-                >
-                  {vaultLoading ? (
-                      <span className="flex items-center">
-                      <RefreshCcw size={16} className="mr-2 animate-spin" /> Depositing...
-                      </span>
-                  ) : (
-                      'Deposit 0.5 ETH'
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                      onClick={handleDepositToVault}
+                      disabled={!isConnected || vaultLoading || walletState.ethBalance < 0.5}
+                      className="w-full bg-green-600 text-white hover:bg-green-700"
+                    >
+                      {vaultLoading ? (
+                          <span className="flex items-center">
+                          <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                          </span>
+                      ) : (
+                          <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit 0.5 ETH</span>
+                      )}
+                    </Button>
+                     <Button
+                      onClick={handleWithdrawFromVault}
+                      disabled={!isConnected || vaultLoading || vaultBalance <= 0}
+                      className="w-full"
+                      variant="destructive"
+                    >
+                      {vaultLoading ? (
+                          <span className="flex items-center">
+                          <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                          </span>
+                      ) : (
+                          <span className="flex items-center"><ArrowUp size={16} className="mr-2" />Withdraw All</span>
+                      )}
+                    </Button>
+                </div>
             </CardContent>
             </Card>
         </div>
@@ -355,3 +365,5 @@ export default function FinancePage() {
     </div>
   );
 };
+
+    

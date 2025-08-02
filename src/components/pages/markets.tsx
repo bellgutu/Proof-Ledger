@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import Link from 'next/link';
 import { generateNews, type NewsGeneratorOutput } from '@/ai/flows/news-generator';
+import { WalletHeader } from '../shared/wallet-header';
 
 interface Market {
   id: number;
@@ -105,7 +106,8 @@ export default function MarketsPage() {
   }
 
   return (
-    <div className="container mx-auto p-0">
+    <div className="container mx-auto p-0 space-y-8">
+        <WalletHeader />
       <div className="flex justify-center mb-8">
         <Button onClick={refreshData} disabled={isLoading} variant="default" size="lg">
           {isLoading ? (

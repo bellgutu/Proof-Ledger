@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
 import { RefreshCcw, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WalletHeader } from '@/components/shared/wallet-header';
-import { TradingChart } from '@/components/trading/trading-chart';
+import { TradingChart, type Candle } from '@/components/trading/trading-chart';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
+import { AIChartAnalysis } from '@/components/trading/ai-chart-analysis';
 
 interface Trade {
   amount: number;
@@ -48,6 +49,8 @@ export default function TradingPage() {
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryItem[]>([]);
   const [currentPrice, setCurrentPrice] = useState(initialPrices[selectedPair]);
+  
+  const candleDataRef = useRef<Candle[]>([]);
 
   const asset = selectedPair.split('/')[0];
 
@@ -147,7 +150,12 @@ export default function TradingPage() {
             </CardHeader>
             <CardContent>
               <div className="h-96 bg-background rounded-md p-2">
-                <TradingChart key={selectedPair} initialPrice={initialPrices[selectedPair]} onPriceChange={setCurrentPrice} />
+                <TradingChart 
+                    key={selectedPair} 
+                    initialPrice={initialPrices[selectedPair]} 
+                    onPriceChange={setCurrentPrice} 
+                    onCandleDataUpdate={(candles) => { candleDataRef.current = candles; }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -240,6 +248,8 @@ export default function TradingPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <AIChartAnalysis key={selectedPair} candleData={candleDataRef.current} />
 
           <WhaleWatch key={selectedPair} pair={selectedPair} />
           

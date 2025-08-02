@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useRef, useEffect, useCallback } from 'react';
 
-interface Candle {
+export interface Candle {
   open: number;
   high: number;
   low: number;
@@ -14,9 +13,10 @@ interface Candle {
 interface TradingChartProps {
   initialPrice: number;
   onPriceChange: (price: number) => void;
+  onCandleDataUpdate: (candles: Candle[]) => void;
 }
 
-export function TradingChart({ initialPrice, onPriceChange }: TradingChartProps) {
+export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }: TradingChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const candleDataRef = useRef<Candle[]>([]);
   const currentPriceRef = useRef(initialPrice);
@@ -140,6 +140,7 @@ export function TradingChart({ initialPrice, onPriceChange }: TradingChartProps)
       }
       currentPriceRef.current = newCandle.close;
       onPriceChange(newCandle.close);
+      onCandleDataUpdate([...candleDataRef.current]);
     };
 
     // Reset and initialize data when pair changes (indicated by initialPrice change)
@@ -153,7 +154,7 @@ export function TradingChart({ initialPrice, onPriceChange }: TradingChartProps)
     candleTimer = setInterval(generateNewCandle, 2000);
 
     return () => clearInterval(candleTimer);
-  }, [initialPrice, onPriceChange]);
+  }, [initialPrice, onPriceChange, onCandleDataUpdate]);
   
   useEffect(() => {
     const canvas = canvasRef.current;

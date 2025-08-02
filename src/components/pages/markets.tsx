@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { TrendingUp, TrendingDown, RefreshCcw, Newspaper, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import Link from 'next/link';
+import { generateNews, type NewsGeneratorOutput } from '@/ai/flows/news-generator';
 
 interface Market {
   id: number;
@@ -18,15 +20,11 @@ interface Market {
   isPositive: boolean;
 }
 
-interface News {
-  id: number;
-  title: string;
-  content: string;
-}
+type NewsArticle = NewsGeneratorOutput['articles'][0];
 
 const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
     return (
-      <Link href={`/markets/${symbol}`}>
+      <Link href={`/markets/${symbol.toLowerCase()}`}>
         <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-105 h-full">
             <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -52,7 +50,7 @@ const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
     );
 };
 
-const NewsCard = ({ title, content }: News) => (
+const NewsCard = ({ title, content }: NewsArticle) => (
   <Card className="bg-card text-card-foreground flex-none w-80 min-w-80 h-full p-4 hover:bg-secondary transition-colors duration-200 cursor-pointer">
     <div className="flex flex-col h-full">
       <h4 className="text-md font-semibold text-primary mb-2 truncate">{title}</h4>
@@ -67,38 +65,40 @@ const NewsCard = ({ title, content }: News) => (
 export default function MarketsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [markets, setMarkets] = useState<Market[]>([]);
-  const [newsFeed, setNewsFeed] = useState<News[]>([]);
+  const [newsFeed, setNewsFeed] = useState<NewsArticle[]>([]);
 
-  const fetchMarketData = () => {
+  const fetchMarketData = useCallback(async () => {
     setIsLoading(true);
-    setTimeout(() => {
-        const newMarkets = [
-            { id: 1, name: 'Bitcoin', symbol: 'BTC', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-            { id: 2, name: 'Ethereum', symbol: 'ETH', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-            { id: 3, name: 'Solana', symbol: 'SOL', value: (Math.random() * 10 + 150).toFixed(2), change: (Math.random() * 8 - 4).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-            { id: 4, name: 'USDC', symbol: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-            { id: 5, name: 'BNB', symbol: 'BNB', value: (Math.random() * 50 + 580).toFixed(2), change: (Math.random() * 5 - 2.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-            { id: 6, name: 'USDT', symbol: 'USDT', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-            { id: 7, name: 'XRP', symbol: 'XRP', value: (Math.random() * 0.1 + 0.5).toFixed(4), change: (Math.random() * 10 - 5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-        ];
-        setMarkets(newMarkets);
+    // Simulate fetching market data
+    const newMarkets = [
+        { id: 1, name: 'Bitcoin', symbol: 'BTC', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+        { id: 2, name: 'Ethereum', symbol: 'ETH', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+        { id: 3, name: 'Solana', symbol: 'SOL', value: (Math.random() * 10 + 150).toFixed(2), change: (Math.random() * 8 - 4).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+        { id: 4, name: 'USDC', symbol: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+        { id: 5, name: 'BNB', symbol: 'BNB', value: (Math.random() * 50 + 580).toFixed(2), change: (Math.random() * 5 - 2.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+        { id: 6, name: 'USDT', symbol: 'USDT', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+        { id: 7, name: 'XRP', symbol: 'XRP', value: (Math.random() * 0.1 + 0.5).toFixed(4), change: (Math.random() * 10 - 5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
+    ];
+    setMarkets(newMarkets);
 
-        const generatedNews = [
-            { id: 1, title: 'Major Protocol Upgrade Announced', content: 'Developers behind a leading DeFi protocol have announced a significant upgrade, promising lower transaction fees and enhanced security.' },
-            { id: 2, title: 'New NFT Marketplace Launches with Exclusive Art', content: 'A new player in the NFT space has launched its platform, featuring a curated collection from renowned digital artists.' },
-            { id: 3, title: 'Bitcoin ETF Sees Record Inflows', content: 'Recent data shows unprecedented inflows into the largest spot Bitcoin ETF, signaling growing institutional interest.' },
-            { id: 4, title: 'Web3 Gaming Studio Secures $50M in Funding', content: 'A Web3 gaming studio focusing on play-to-earn mechanics has closed a massive funding round, with plans to launch its first title this year.' },
-            { id: 5, title: 'Decentralized Identity Solution Goes Live', content: 'A new decentralized identity (DID) project has officially launched on the mainnet, aiming to give users more control over their data.' },
-            { id: 6, title: 'Stablecoin Regulation Discussions Heat Up', content: 'Global regulators are intensifying talks around stablecoin legislation, a move that could bring more clarity and stability to the market.' },
-        ];
-        setNewsFeed(generatedNews);
-        setIsLoading(false);
-    }, 500);
-  };
+    // Generate news using AI
+    try {
+        const newsOutput = await generateNews();
+        setNewsFeed(newsOutput.articles);
+    } catch(e) {
+        console.error("Failed to generate news:", e);
+        // Set a default news feed on error
+        setNewsFeed([
+             { id: 1, title: 'AI News Feed Error', content: 'Could not generate news from the AI service. Displaying cached or placeholder content.' },
+        ]);
+    }
+    
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     fetchMarketData();
-  }, []);
+  }, [fetchMarketData]);
 
   const refreshData = () => {
     fetchMarketData();

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { getTradingStrategy, TradingStrategyInput, TradingStrategyOutput } from "@/ai/flows/trading-strategy-assistant";
+import { getTradingStrategy, type TradingStrategyInput, type TradingStrategyOutput } from "@/ai/flows/trading-strategy-assistant";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

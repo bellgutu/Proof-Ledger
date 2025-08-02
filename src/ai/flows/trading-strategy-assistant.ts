@@ -5,8 +5,6 @@
  * and suggests potential strategies based on user risk profiles.
  *
  * - getTradingStrategy - A function to retrieve trading strategies.
- * - TradingStrategyInput - The input type for the getTradingStrategy function.
- * - TradingStrategyOutput - The return type for the getTradingStrategy function.
  */
 
 import {ai} from '@/ai/genkit';

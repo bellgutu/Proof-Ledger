@@ -83,26 +83,39 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   }, [walletData, marketData]);
 
-  // Centralized Market Data Simulation
+  // Real-time market data fetching from CoinGecko
   useEffect(() => {
-    const marketUpdateInterval = setInterval(() => {
-      setMarketData(prevData => {
-        const newData = { ...prevData };
-        for (const symbol in newData) {
-          if (symbol !== 'USDC' && symbol !== 'USDT') { // Stablecoins don't fluctuate much
-            const oldPrice = newData[symbol].price;
-            // More realistic trend-based movement
-            const trend = (Math.random() - 0.49) * (oldPrice * 0.005); 
-            const newPrice = oldPrice + trend;
-            const oldPrice24h = oldPrice / (1 + newData[symbol].change / 100);
-            const newChange = ((newPrice - oldPrice24h) / oldPrice24h) * 100;
-            
-            newData[symbol] = { ...newData[symbol], price: newPrice, change: newChange };
-          }
+    const fetchMarketData = async () => {
+      try {
+        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin';
+        const response = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch market data from CoinGecko');
         }
-        return newData;
-      });
-    }, 2000); // Update every 2 seconds
+        const data = await response.json();
+        
+        setMarketData(prevData => {
+            const newData: MarketData = { ...initialMarketData, ...prevData };
+            data.forEach((coin: any) => {
+                const symbol = coin.symbol.toUpperCase() as AssetSymbol;
+                if (newData[symbol]) {
+                    newData[symbol] = {
+                        ...newData[symbol],
+                        price: coin.current_price,
+                        change: coin.price_change_percentage_24h,
+                    };
+                }
+            });
+            return newData;
+        });
+
+      } catch (error) {
+        console.error("Error fetching market data:", error);
+      }
+    };
+
+    fetchMarketData();
+    const marketUpdateInterval = setInterval(fetchMarketData, 5000); // Update every 5 seconds
 
     return () => clearInterval(marketUpdateInterval);
   }, []);

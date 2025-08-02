@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseAuthHandler } from '@/components/firebase-auth-handler';
+import { WalletProvider } from '@/contexts/wallet-context';
+import AppShell from '@/components/app-shell';
 
 export const metadata: Metadata = {
   title: 'Apex Navigator',
@@ -25,7 +27,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseAuthHandler />
-        {children}
+        <WalletProvider>
+          <AppShell>
+            {children}
+          </AppShell>
+        </WalletProvider>
         <Toaster />
       </body>
     </html>

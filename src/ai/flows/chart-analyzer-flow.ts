@@ -21,6 +21,8 @@ const CandlestickSchema = z.object({
 const ChartAnalysisInputSchema = z.object({
   candles: z.array(CandlestickSchema).describe('An array of candlestick data points for the chart.'),
 });
+export type ChartAnalysisInput = z.infer<typeof ChartAnalysisInputSchema>;
+
 
 const IdentifiedPatternSchema = z.object({
     name: z.string().describe('The name of the identified technical pattern (e.g., "Head and Shoulders", "Bullish Engulfing").'),
@@ -33,19 +35,8 @@ const ChartAnalysisDataSchema = z.object({
 });
 export type ChartAnalysisData = z.infer<typeof ChartAnalysisDataSchema>;
 
-export async function analyzeChartPatterns(candles: z.infer<typeof ChartAnalysisInputSchema>): Promise<ChartAnalysisData> {
-  // This is a mock implementation. In a real scenario, this would call the Genkit flow.
-  console.log("Analyzing chart patterns for", candles.candles.length, "candles");
-  return new Promise((resolve) => {
-    setTimeout(() => {
-        const mockPattern = {
-            name: 'Bullish Engulfing',
-            type: 'Bullish' as const,
-            description: 'A Bullish Engulfing pattern has been detected, which can indicate a potential upward reversal in price momentum.'
-        };
-        resolve({ patterns: [mockPattern] });
-    }, 3000);
-  });
+export async function analyzeChartPatterns(input: ChartAnalysisInput): Promise<ChartAnalysisData> {
+  return chartAnalyzerFlow(input);
 }
 
 const prompt = ai.definePrompt({

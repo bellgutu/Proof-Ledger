@@ -21,6 +21,7 @@ export function AIChartAnalysis({ candleData }: AIChartAnalysisProps) {
       if (candleData.length < 10) return; // Wait for sufficient data
       setIsLoading(true);
       try {
+        // Using the real Genkit flow now
         const result = await analyzeChartPatterns({ candles: candleData });
         setAnalysis(result);
       } catch (error) {

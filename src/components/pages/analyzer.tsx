@@ -11,37 +11,13 @@ import { Input } from '@/components/ui/input';
 import { FileText, Bot, Zap, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { marked } from 'marked';
+import { analyzeWhitePaper } from '@/ai/flows/whitepaper-analyzer-flow';
 
 const AnalyzerInputSchema = z.object({
   whitePaperUrl: z.string().url({ message: "Please enter a valid URL." }),
 });
 
 type AnalyzerInput = z.infer<typeof AnalyzerInputSchema>;
-
-// Mock Genkit flow - in a real scenario this would be in src/ai/flows/
-async function analyzeWhitePaper(url: string): Promise<string> {
-  console.log("Analyzing white paper at:", url);
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const mockAnalysis = `
-### Summary
-This white paper outlines a decentralized perpetuals exchange on the Solana blockchain, aiming to provide fast, low-cost trading. The core innovation is a hybrid on-chain/off-chain order book model.
-
-### Tokenomics
-- **Token:** APEX
-- **Total Supply:** 1,000,000,000
-- **Distribution:** 40% ecosystem, 25% team, 20% investors, 15% community treasury.
-- **Utility:** Governance, staking rewards, reduced trading fees.
-
-### Potential Red Flags
-- **Team Anonymity:** The development team is anonymous, which can be a risk for accountability.
-- **Vague Roadmap:** The roadmap is light on specifics for post-launch features and timelines.
-- **Centralization Risk:** The off-chain order book component introduces a potential point of centralization.
-      `;
-      resolve(mockAnalysis);
-    }, 2500);
-  });
-}
 
 export default function AnalyzerPage() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
@@ -61,8 +37,9 @@ export default function AnalyzerPage() {
     setAnalysisResult(null);
 
     try {
+      // Using the real Genkit flow now
       const result = await analyzeWhitePaper(values.whitePaperUrl);
-      const htmlResult = await marked(result);
+      const htmlResult = await marked(result.analysis);
       setAnalysisResult(htmlResult);
     } catch (e) {
       console.error("Analysis failed:", e);
@@ -85,7 +62,7 @@ export default function AnalyzerPage() {
       <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
         <CardHeader>
           <CardTitle>Analyze a White Paper</CardTitle>
-          <CardDescription>Enter the public URL of a white paper PDF.</CardDescription>
+          <CardDescription>Enter the public URL of a white paper PDF or a page linking to one.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

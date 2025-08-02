@@ -176,3 +176,5 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
     </div>
   );
 }
+
+    

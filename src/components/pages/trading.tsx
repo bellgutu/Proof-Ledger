@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { WalletHeader } from '@/components/shared/wallet-header';
 import { TradingChart } from '@/components/trading/trading-chart';
 import { OrderBook } from '@/components/trading/order-book';
+import { WhaleWatch } from '@/components/trading/whale-watch';
 
 interface Trade {
   amount: number;
@@ -239,6 +240,8 @@ export default function TradingPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <WhaleWatch key={selectedPair} pair={selectedPair} />
           
           <OrderBook currentPrice={currentPrice} assetSymbol={asset} />
         </div>
@@ -246,5 +249,3 @@ export default function TradingPage() {
     </div>
   );
 }
-
-    

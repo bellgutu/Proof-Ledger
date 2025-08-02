@@ -11,9 +11,10 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import Link from 'next/link';
 import { generateNews, type NewsGeneratorOutput } from '@/ai/flows/news-generator';
 import { WalletHeader } from '../shared/wallet-header';
+import { useWallet } from '@/contexts/wallet-context';
 
 interface Market {
-  id: number;
+  id: string;
   name: string;
   symbol: string;
   value: string;
@@ -64,22 +65,24 @@ const NewsCard = ({ title, content }: NewsArticle) => (
 );
 
 export default function MarketsPage() {
+  const { walletState } = useWallet();
+  const { marketData } = walletState;
+  
   const [isLoading, setIsLoading] = useState(true);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [newsFeed, setNewsFeed] = useState<NewsArticle[]>([]);
 
   const fetchMarketData = useCallback(async () => {
     setIsLoading(true);
-    // Simulate fetching market data
-    const newMarkets = [
-        { id: 1, name: 'Bitcoin', symbol: 'BTC', value: (Math.random() * 5000 + 65000).toFixed(2), change: (Math.random() * 3 - 1.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-        { id: 2, name: 'Ethereum', symbol: 'ETH', value: (Math.random() * 200 + 3800).toFixed(2), change: (Math.random() * 4 - 2).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-        { id: 3, name: 'Solana', symbol: 'SOL', value: (Math.random() * 10 + 150).toFixed(2), change: (Math.random() * 8 - 4).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-        { id: 4, name: 'USDC', symbol: 'USDC', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-        { id: 5, name: 'BNB', symbol: 'BNB', value: (Math.random() * 50 + 580).toFixed(2), change: (Math.random() * 5 - 2.5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-        { id: 6, name: 'USDT', symbol: 'USDT', value: (1 + (Math.random() * 0.01 - 0.005)).toFixed(4), change: (Math.random() * 0.02 - 0.01).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-        { id: 7, name: 'XRP', symbol: 'XRP', value: (Math.random() * 0.1 + 0.5).toFixed(4), change: (Math.random() * 10 - 5).toFixed(2) + '%', isPositive: Math.random() > 0.5 },
-    ];
+
+    const newMarkets = Object.values(marketData).map(data => ({
+      id: data.symbol,
+      name: data.name,
+      symbol: data.symbol,
+      value: data.price.toFixed(data.price > 1 ? 2 : 4),
+      change: data.change.toFixed(2) + '%',
+      isPositive: data.change >= 0,
+    }));
     setMarkets(newMarkets);
 
     // Generate news using AI
@@ -95,34 +98,19 @@ export default function MarketsPage() {
     }
     
     setIsLoading(false);
-  }, []);
+  }, [marketData]);
 
   useEffect(() => {
     fetchMarketData();
   }, [fetchMarketData]);
-
-  const refreshData = () => {
-    fetchMarketData();
-  }
+  
+  // No refresh button needed as data streams from context now.
 
   return (
     <div className="container mx-auto p-0 space-y-8">
         <WalletHeader />
-      <div className="flex justify-center mb-8">
-        <Button onClick={refreshData} disabled={isLoading} variant="default" size="lg">
-          {isLoading ? (
-            <span className="flex items-center">
-              <RefreshCcw size={16} className="mr-2 animate-spin" /> Refreshing...
-            </span>
-          ) : (
-            <span className="flex items-center">
-              <RefreshCcw size={16} className="mr-2" /> Refresh Data
-            </span>
-          )}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
         {isLoading ? (
           Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[170px] w-full" />)
         ) : (

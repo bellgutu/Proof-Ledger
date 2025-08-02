@@ -2,6 +2,17 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction } from 'react';
 
+type AssetSymbol = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC';
+
+interface MarketData {
+  [key: string]: {
+    name: string;
+    symbol: AssetSymbol;
+    price: number;
+    change: number;
+  };
+}
+
 interface WalletState {
   isConnected: boolean;
   isConnecting: boolean;
@@ -13,6 +24,7 @@ interface WalletState {
   xrpBalance: number;
   solBalance: number;
   walletBalance: string;
+  marketData: MarketData;
 }
 
 interface WalletActions {
@@ -33,6 +45,17 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+const initialMarketData: MarketData = {
+    BTC: { name: 'Bitcoin', symbol: 'BTC', price: 68000, change: 0 },
+    ETH: { name: 'Ethereum', symbol: 'ETH', price: 3500, change: 0 },
+    SOL: { name: 'Solana', symbol: 'SOL', price: 150, change: 0 },
+    BNB: { name: 'BNB', symbol: 'BNB', price: 600, change: 0 },
+    XRP: { name: 'XRP', symbol: 'XRP', price: 0.5, change: 0 },
+    USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
+    USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
+};
+
+
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [walletData, setWalletData] = useState({
     isConnected: false,
@@ -45,22 +68,44 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     xrpBalance: 20000,
     solBalance: 100,
   });
+  
+  const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [walletBalance, setWalletBalance] = useState('0.00');
 
   useEffect(() => {
-    const ethPrice = 3500;
-    const bnbPrice = 600;
-    const xrpPrice = 0.5;
-    const solPrice = 150;
     const total = 
-        walletData.ethBalance * ethPrice + 
-        walletData.usdcBalance + 
-        walletData.bnbBalance * bnbPrice + 
-        walletData.usdtBalance + 
-        walletData.xrpBalance * xrpPrice +
-        walletData.solBalance * solPrice;
+        walletData.ethBalance * marketData.ETH.price + 
+        walletData.usdcBalance * marketData.USDC.price + 
+        walletData.bnbBalance * marketData.BNB.price + 
+        walletData.usdtBalance * marketData.USDT.price + 
+        walletData.xrpBalance * marketData.XRP.price +
+        walletData.solBalance * marketData.SOL.price;
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [walletData.ethBalance, walletData.usdcBalance, walletData.bnbBalance, walletData.usdtBalance, walletData.xrpBalance, walletData.solBalance]);
+  }, [walletData, marketData]);
+
+  // Centralized Market Data Simulation
+  useEffect(() => {
+    const marketUpdateInterval = setInterval(() => {
+      setMarketData(prevData => {
+        const newData = { ...prevData };
+        for (const symbol in newData) {
+          if (symbol !== 'USDC' && symbol !== 'USDT') { // Stablecoins don't fluctuate much
+            const oldPrice = newData[symbol].price;
+            // More realistic trend-based movement
+            const trend = (Math.random() - 0.49) * (oldPrice * 0.005); 
+            const newPrice = oldPrice + trend;
+            const oldPrice24h = oldPrice / (1 + newData[symbol].change / 100);
+            const newChange = ((newPrice - oldPrice24h) / oldPrice24h) * 100;
+            
+            newData[symbol] = { ...newData[symbol], price: newPrice, change: newChange };
+          }
+        }
+        return newData;
+      });
+    }, 2000); // Update every 2 seconds
+
+    return () => clearInterval(marketUpdateInterval);
+  }, []);
 
   const connectWallet = useCallback(() => {
     setWalletData(prev => ({ ...prev, isConnecting: true }));
@@ -104,7 +149,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const value = {
-      walletState: { ...walletData, walletBalance },
+      walletState: { ...walletData, walletBalance, marketData },
       walletActions: {
           connectWallet,
           disconnectWallet,

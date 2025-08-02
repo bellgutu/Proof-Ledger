@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { TradingChart } from '@/components/trading/trading-chart';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Skeleton } from '../ui/skeleton';
+import { useWallet } from '@/contexts/wallet-context';
 
 interface CoinData {
   id: string;
@@ -23,43 +24,37 @@ interface CoinData {
   change6h: number;
 }
 
-const initialPrices: { [key: string]: number } = {
-    'ETH': 3500,
-    'BTC': 68000,
-    'SOL': 150,
-    'BNB': 600,
-    'XRP': 0.5,
-    'USDT': 1,
-    'USDC': 1,
-};
-
 export default function CoinDetail({ symbol }: { symbol: string }) {
+  const { walletState } = useWallet();
+  const { marketData } = walletState;
+  
   const [coinData, setCoinData] = useState<CoinData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<'24h' | '12h' | '6h'>('24h');
-  const [currentPrice, setCurrentPrice] = useState(initialPrices[symbol.toUpperCase()] || 0);
+  const [currentPrice, setCurrentPrice] = useState(0);
 
   useEffect(() => {
     setIsLoading(true);
     const upperSymbol = symbol.toUpperCase();
-    const price = initialPrices[upperSymbol] || 0;
-    // Simulate fetching data
-    setTimeout(() => {
+    const priceData = marketData[upperSymbol];
+
+    if (priceData) {
+      setCurrentPrice(priceData.price);
       setCoinData({
         id: symbol.toLowerCase(),
-        name: upperSymbol,
+        name: priceData.name,
         symbol: upperSymbol,
-        price: price,
-        marketCap: Math.random() * 1e12,
+        price: priceData.price,
+        marketCap: Math.random() * 1e12, // These can remain random for detail view
         volume: Math.random() * 1e10,
         circulatingSupply: Math.random() * 1e9,
-        change24h: (Math.random() * 10 - 5),
+        change24h: (Math.random() * 10 - 5), // Change can also be random for now
         change12h: (Math.random() * 5 - 2.5),
         change6h: (Math.random() * 2 - 1),
       });
       setIsLoading(false);
-    }, 1000);
-  }, [symbol]);
+    }
+  }, [symbol, marketData]);
 
   const getChange = () => {
     if (!coinData) return 0;
@@ -72,7 +67,7 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4 space-y-4">
+      <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-12 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -176,5 +171,3 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
     </div>
   );
 }
-
-    

@@ -27,17 +27,9 @@ type VaultStrategy = 'ETH Yield Maximizer' | 'Stablecoin Growth';
 
 const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP'];
 
-const exchangeRates: { [key in Token]: number } = {
-    ETH: 3500,
-    USDC: 1,
-    USDT: 1,
-    BNB: 600,
-    XRP: 0.5,
-};
-
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
-  const { isConnected } = walletState;
+  const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance, marketData } = walletState;
   const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance } = walletActions;
 
   const [vaultBalance, setVaultBalance] = useState(0);
@@ -52,11 +44,11 @@ export default function FinancePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const balances: { [key in Token]: number } = {
-    ETH: walletState.ethBalance,
-    USDC: walletState.usdcBalance,
-    USDT: walletState.usdtBalance,
-    BNB: walletState.bnbBalance,
-    XRP: walletState.xrpBalance,
+    ETH: ethBalance,
+    USDC: usdcBalance,
+    USDT: usdtBalance,
+    BNB: bnbBalance,
+    XRP: xrpBalance,
   };
 
   const balanceSetters: { [key in Token]: (updater: React.SetStateAction<number>) => void } = {
@@ -71,10 +63,20 @@ export default function FinancePage() {
     setTransactions(prev => [{ id: new Date().toISOString(), status: 'Completed', ...transaction }, ...prev]);
   };
 
+  const exchangeRates = useMemo(() => {
+    return {
+      ETH: marketData.ETH.price,
+      USDC: marketData.USDC.price,
+      USDT: marketData.USDT.price,
+      BNB: marketData.BNB.price,
+      XRP: marketData.XRP.price,
+    };
+  }, [marketData]);
+
   const conversionRate = useMemo(() => {
-    if (!fromToken || !toToken) return 1;
+    if (!fromToken || !toToken || !exchangeRates[fromToken] || !exchangeRates[toToken]) return 1;
     return exchangeRates[fromToken] / exchangeRates[toToken];
-  }, [fromToken, toToken]);
+  }, [fromToken, toToken, exchangeRates]);
 
   const handleAmountChange = (val: string) => {
     if (val === '' || parseFloat(val) < 0) {
@@ -365,5 +367,3 @@ export default function FinancePage() {
     </div>
   );
 };
-
-    

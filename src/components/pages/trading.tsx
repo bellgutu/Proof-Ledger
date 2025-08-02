@@ -29,17 +29,9 @@ interface TradeHistoryItem extends Trade {
   closePrice: string;
 }
 
-const initialPrices: { [key: string]: number } = {
-    'ETH/USDT': 3500,
-    'BTC/USDT': 68000,
-    'SOL/USDT': 150,
-    'BNB/USDT': 600,
-    'XRP/USDT': 0.5,
-};
-
 export default function TradingPage() {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance } = walletState;
+  const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance, marketData } = walletState;
   const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance } = walletActions;
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
@@ -49,7 +41,7 @@ export default function TradingPage() {
   const [isPlacingTrade, setIsPlacingTrade] = useState(false);
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryItem[]>([]);
-  const [currentPrice, setCurrentPrice] = useState(initialPrices[selectedPair]);
+  const [currentPrice, setCurrentPrice] = useState(marketData['ETH'].price);
   
   const candleDataRef = useRef<Candle[]>([]);
 
@@ -58,33 +50,43 @@ export default function TradingPage() {
   }, []);
 
   const asset = selectedPair.split('/')[0];
+  const initialPrices = Object.fromEntries(
+    Object.entries(marketData).map(([key, value]) => [key + '/USDT', value.price])
+  );
+
+  useEffect(() => {
+    const pairAsset = selectedPair.split('/')[0];
+    setCurrentPrice(marketData[pairAsset].price);
+  }, [marketData, selectedPair]);
+
 
   const getAssetBalance = useCallback(() => {
     switch(asset) {
         case 'ETH': return ethBalance;
-        case 'BTC': return usdcBalance / initialPrices['BTC/USDT']; // Mock BTC balance
-        case 'SOL': return usdcBalance / initialPrices['SOL/USDT']; // Mock SOL balance
+        case 'BTC': return usdcBalance / marketData['BTC'].price;
+        case 'SOL': return usdcBalance / marketData['SOL'].price;
         case 'BNB': return bnbBalance;
         case 'XRP': return xrpBalance;
         default: return 0;
     }
-  }, [asset, ethBalance, usdcBalance, bnbBalance, xrpBalance]);
+  }, [asset, ethBalance, usdcBalance, bnbBalance, xrpBalance, marketData]);
   
   const setAssetBalance = useCallback((updater: (prev: number) => number) => {
      switch(asset) {
         case 'ETH': setEthBalance(updater); break;
         // In a real app, you'd have separate balance setters for each asset
-        case 'BTC': setUsdcBalance(prev => prev + (updater(0) * initialPrices['BTC/USDT'])); break;
-        case 'SOL': setUsdcBalance(prev => prev + (updater(0) * initialPrices['SOL/USDT'])); break;
+        case 'BTC': setUsdcBalance(prev => prev + (updater(0) * marketData['BTC'].price)); break;
+        case 'SOL': setUsdcBalance(prev => prev + (updater(0) * marketData['SOL'].price)); break;
         case 'BNB': setBnbBalance(updater); break;
         case 'XRP': setXrpBalance(updater); break;
     }
-  }, [asset, setEthBalance, setUsdcBalance, setBnbBalance, setXrpBalance]);
+  }, [asset, setEthBalance, setUsdcBalance, setBnbBalance, setXrpBalance, marketData]);
 
   const handlePairChange = (pair: string) => {
     if(activeTrade) return; // Prevent changing pair with an active trade
     setSelectedPair(pair);
-    setCurrentPrice(initialPrices[pair]);
+    const pairAsset = pair.split('/')[0];
+    setCurrentPrice(marketData[pairAsset].price);
     setTradeAmount('');
   };
 
@@ -157,7 +159,7 @@ export default function TradingPage() {
               <div className="h-96 bg-background rounded-md p-2">
                 <TradingChart 
                     key={selectedPair} 
-                    initialPrice={initialPrices[selectedPair]} 
+                    initialPrice={marketData[selectedPair.split('/')[0]].price} 
                     onPriceChange={setCurrentPrice} 
                     onCandleDataUpdate={handleCandleDataUpdate}
                 />
@@ -264,5 +266,3 @@ export default function TradingPage() {
     </div>
   );
 }
-
-    

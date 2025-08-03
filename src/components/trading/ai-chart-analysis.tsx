@@ -38,14 +38,6 @@ export function AIChartAnalysis({ candleData, onError }: AIChartAnalysisProps) {
     }
   }, [candleData, onError]);
 
-  useEffect(() => {
-    // Automatically run analysis when candle data is available
-    if (candleData.length > 0) {
-      performAnalysis();
-    }
-  }, [candleData, performAnalysis]);
-
-
   const getSentimentVariant = (sentiment: 'Bullish' | 'Bearish' | 'Neutral' | undefined) => {
     switch (sentiment) {
       case 'Bullish': return 'bg-green-500/20 text-green-400 border-green-500/30';

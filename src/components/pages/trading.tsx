@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
 import { RefreshCcw, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 
@@ -43,11 +43,10 @@ const TradingPageContent = () => {
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryItem[]>([]);
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH'].price);
-  
-  const candleDataRef = useRef<Candle[]>([]);
+  const [candleData, setCandleData] = useState<Candle[]>([]);
 
   const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
-    candleDataRef.current = candles;
+    setCandleData(candles);
   }, []);
 
   const asset = selectedPair.split('/')[0];
@@ -245,7 +244,7 @@ const TradingPageContent = () => {
           </CardContent>
         </Card>
 
-        <AIChartAnalysis key={`ai-analysis-${selectedPair}`} candleData={candleDataRef.current} />
+        <AIChartAnalysis key={`ai-analysis-${selectedPair}`} candleData={candleData} />
 
         <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
         

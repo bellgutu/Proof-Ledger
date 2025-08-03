@@ -39,8 +39,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
     
-    const cardColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--card').trim()})`;
-    ctx.fillStyle = cardColor;
+    const cardColor = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
+    ctx.fillStyle = `hsl(${cardColor})`;
     ctx.fillRect(0, 0, width, height);
       
     const candles = candleDataRef.current;
@@ -62,8 +62,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         return chartHeight - ((price - paddedMin) / paddedRange) * chartHeight;
     };
 
-    // Draw Y-axis (Price)
-    const textColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim()})`;
+    const textColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim()})`;
     const borderColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--border').trim()})`;
 
     ctx.font = '12px Inter';
@@ -83,7 +82,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         ctx.stroke();
     }
     
-    // Draw X-axis (Time)
     ctx.textAlign = 'center';
     const numTimeLabels = Math.floor(chartWidth / 100);
     const timeInterval = Math.max(1, Math.floor(visibleCandles.length / numTimeLabels));
@@ -149,14 +147,14 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
         ? candleDataRef.current[candleDataRef.current.length - 1]
-        : { close: initialPrice, time: Date.now() - 2000 };
+        : { close: initialPrice, time: Date.now() - 3400 };
 
       const open = currentPriceRef.current;
       const change = (Math.random() - 0.5) * (open * 0.005);
       const close = open + change;
       const high = Math.max(open, close) + Math.random() * (open * 0.002);
       const low = Math.min(open, close) - Math.random() * (open * 0.002);
-      const time = lastCandle.time + 2000;
+      const time = lastCandle.time + 3400;
 
       const newCandle = { open, high, low, close, time };
       candleDataRef.current.push(newCandle);
@@ -167,7 +165,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     };
 
     candleDataRef.current = [];
-    let startTime = Date.now() - 100 * 2000;
+    let startTime = Date.now() - 100 * 3400;
     let price = initialPrice;
     for(let i = 0; i < 50; i++){
         const open = price;
@@ -175,12 +173,12 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         const close = open + change;
         const high = Math.max(open, close) + Math.random() * (open * 0.002);
         const low = Math.min(open, close) - Math.random() * (open * 0.002);
-        const time = startTime + i * 2000;
+        const time = startTime + i * 3400;
         candleDataRef.current.push({ open, high, low, close, time });
         price = close;
     }
     
-    candleTimer = setInterval(generateNewCandle, 2000);
+    candleTimer = setInterval(generateNewCandle, 3400);
 
     return () => clearInterval(candleTimer);
   }, [initialPrice, onCandleDataUpdate]);
@@ -198,7 +196,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         currentPriceRef.current = newPrice;
         onPriceChange(newPrice);
       }
-      priceTimer = setInterval(updatePrice, 500);
+      priceTimer = setInterval(updatePrice, 850);
       return () => clearInterval(priceTimer);
   }, [initialPrice, onPriceChange]);
   

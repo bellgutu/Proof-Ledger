@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { TrendingUp, TrendingDown, RefreshCcw, Newspaper, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCcw, Newspaper, ArrowRight, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -68,50 +68,51 @@ export default function MarketsPage() {
   const { walletState } = useWallet();
   const { marketData } = walletState;
   
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMarkets, setIsLoadingMarkets] = useState(true);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [newsFeed, setNewsFeed] = useState<NewsArticle[]>([]);
 
-  const fetchMarketData = useCallback(async () => {
-    setIsLoading(true);
-
-    const newMarkets = Object.values(marketData).map(data => ({
-      id: data.symbol,
-      name: data.name,
-      symbol: data.symbol,
-      value: data.price.toFixed(data.price > 1 ? 2 : 4),
-      change: data.change.toFixed(2) + '%',
-      isPositive: data.change >= 0,
-    }));
-    setMarkets(newMarkets);
-
-    // Generate news using AI
+  const fetchNews = useCallback(async () => {
+    setIsLoadingNews(true);
     try {
         const newsOutput = await generateNews();
         setNewsFeed(newsOutput.articles);
     } catch(e) {
         console.error("Failed to generate news:", e);
-        // Set a default news feed on error
         setNewsFeed([
              { id: 1, title: 'AI News Feed Error', content: 'Could not generate news from the AI service. Displaying cached or placeholder content.' },
         ]);
     }
-    
-    setIsLoading(false);
-  }, [marketData]);
+    setIsLoadingNews(false);
+  }, []);
 
   useEffect(() => {
-    fetchMarketData();
-  }, [fetchMarketData]);
-  
-  // No refresh button needed as data streams from context now.
+    fetchNews();
+  }, [fetchNews]);
+
+  useEffect(() => {
+    setIsLoadingMarkets(true);
+    if (Object.keys(marketData).length > 0) {
+        const newMarkets = Object.values(marketData).map(data => ({
+            id: data.symbol,
+            name: data.name,
+            symbol: data.symbol,
+            value: data.price.toFixed(data.price > 1 ? 2 : 4),
+            change: data.change.toFixed(2) + '%',
+            isPositive: data.change >= 0,
+        }));
+        setMarkets(newMarkets);
+        setIsLoadingMarkets(false);
+    }
+  }, [marketData]);
 
   return (
     <div className="container mx-auto p-0 space-y-8">
         <WalletHeader />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-        {isLoading ? (
+        {isLoadingMarkets ? (
           Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[170px] w-full" />)
         ) : (
           markets.map(market => <MarketCard key={market.id} {...market} />)
@@ -119,9 +120,15 @@ export default function MarketsPage() {
       </div>
 
       <div className="mt-12">
-        <div className="flex items-center mb-4">
-          <Newspaper size={24} className="text-primary mr-3" />
-          <h2 className="text-2xl font-bold text-foreground">Top Web3 News</h2>
+        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <Newspaper size={24} className="text-primary mr-3" />
+              <h2 className="text-2xl font-bold text-foreground">Top Web3 News</h2>
+            </div>
+            <Button onClick={fetchNews} disabled={isLoadingNews} size="sm" variant="ghost">
+                {isLoadingNews ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                <span className="sr-only">Refresh News</span>
+            </Button>
         </div>
         <div className="flex overflow-x-auto gap-4 py-4 -mx-6 px-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
            <style>{`
@@ -129,7 +136,7 @@ export default function MarketsPage() {
               display: none;
             }
           `}</style>
-          {isLoading ? (
+          {isLoadingNews ? (
              Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="w-80 h-40 flex-none" />)
           ) : (
             newsFeed.map(news => <NewsCard key={news.id} {...news} />)

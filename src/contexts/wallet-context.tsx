@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction } from 'react';
 
-type AssetSymbol = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC';
+type AssetSymbol = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH';
 
 interface MarketData {
   [key: string]: {
@@ -24,6 +24,7 @@ interface WalletState {
   usdtBalance: number;
   xrpBalance: number;
   solBalance: number;
+  wethBalance: number;
   walletBalance: string;
   marketData: MarketData;
   isMarketDataLoaded: boolean;
@@ -38,6 +39,7 @@ interface WalletActions {
   setUsdtBalance: (updater: SetStateAction<number>) => void;
   setXrpBalance: (updater: SetStateAction<number>) => void;
   setSolBalance: (updater: SetStateAction<number>) => void;
+  setWethBalance: (updater: SetStateAction<number>) => void;
 }
 
 interface WalletContextType {
@@ -55,6 +57,7 @@ const initialMarketData: MarketData = {
     XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
     USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
+    WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
 };
 
 
@@ -69,6 +72,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     usdtBalance: 10000,
     xrpBalance: 20000,
     solBalance: 100,
+    wethBalance: 0,
   });
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
@@ -83,7 +87,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         walletData.bnbBalance * marketData.BNB.price + 
         walletData.usdtBalance * marketData.USDT.price + 
         walletData.xrpBalance * marketData.XRP.price +
-        walletData.solBalance * marketData.SOL.price;
+        walletData.solBalance * marketData.SOL.price +
+        walletData.wethBalance * marketData.WETH.price;
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   }, [walletData, marketData, isMarketDataLoaded]);
 
@@ -91,7 +96,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin';
+        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,weth';
         const response = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}`);
         if (!response.ok) {
           throw new Error('Failed to fetch market data from CoinGecko');
@@ -168,6 +173,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const setSolBalance = (updater: SetStateAction<number>) => {
     setWalletData(prev => ({ ...prev, solBalance: typeof updater === 'function' ? updater(prev.solBalance) : updater }));
   };
+  
+  const setWethBalance = (updater: SetStateAction<number>) => {
+    setWalletData(prev => ({ ...prev, wethBalance: typeof updater === 'function' ? updater(prev.wethBalance) : updater }));
+  };
 
   const value = {
       walletState: { ...walletData, walletBalance, marketData, isMarketDataLoaded },
@@ -180,6 +189,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           setUsdtBalance,
           setXrpBalance,
           setSolBalance,
+          setWethBalance,
       }
   }
 

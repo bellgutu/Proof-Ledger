@@ -11,6 +11,7 @@ export const getTokenLogo = (symbol: string): string => {
     USDT: 'https://assets.coingecko.com/coins/images/325/thumb/Tether-logo.png',
     BNB: 'https://assets.coingecko.com/coins/images/825/thumb/binance-coin-logo.png',
     XRP: 'https://assets.coingecko.com/coins/images/44/thumb/xrp-symbol-white-128.png',
+    WETH: 'https://assets.coingecko.com/coins/images/2518/thumb/weth.png',
   };
 
   return logos[symbolUpper] || `https://via.placeholder.com/32?text=${symbolUpper}`;

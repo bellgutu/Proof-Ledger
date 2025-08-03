@@ -123,7 +123,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     };
 
     fetchMarketData();
-    const marketUpdateInterval = setInterval(fetchMarketData, 5000); // Update every 5 seconds
+    const marketUpdateInterval = setInterval(fetchMarketData, 60000); // Update every 60 seconds to be safe with public API rate limits
 
     return () => clearInterval(marketUpdateInterval);
   }, [isMarketDataLoaded]);

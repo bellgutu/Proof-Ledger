@@ -1,76 +1,45 @@
 
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useWallet } from '@/contexts/wallet-context';
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TradingChart, type Candle } from '@/components/trading/trading-chart';
+import { AIChartAnalysis } from '@/components/trading/ai-chart-analysis';
+import { Skeleton } from '../ui/skeleton';
+import { AlertCircle, Bot, Loader2, PlusCircle, Search, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { getWatchlistBriefing, type WatchlistBriefing } from '@/ai/flows/watchlist-flow';
+import Image from 'next/image';
+import { getTokenLogo } from '@/lib/tokenLogos';
+import { Button } from '../ui/button';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { Skeleton } from '../ui/skeleton';
-import { List, GitBranch, ShieldCheck, FileSearch, Search, Loader2, Bot, PlusCircle, Trash2, ArrowRight } from 'lucide-react';
-import Image from 'next/image';
-import { getTokenLogo } from '@/lib/tokenLogos';
-import { useWallet } from '@/contexts/wallet-context';
 
-import { getWatchlistBriefing, type WatchlistBriefing } from '@/ai/flows/watchlist-flow';
-import { getBridgeTransactionDetails } from '@/ai/flows/bridge-narrator-flow';
-import { auditContract } from '@/ai/flows/contract-auditor-flow';
-import { auditToken } from '@/ai/flows/token-auditor-flow';
-import { marked } from 'marked';
-
-// Schemas
 const AddToWatchlistSchema = z.object({
   symbol: z.string().min(2, "Please select a token."),
 });
 type AddToWatchlistInput = z.infer<typeof AddToWatchlistSchema>;
 
-const BridgeSchema = z.object({
-  amount: z.coerce.number().positive("Amount must be positive."),
-  token: z.string().min(2, "Please select a token."),
-  fromChain: z.string().min(2, "Please select a source chain."),
-  toChain: z.string().min(2, "Please select a destination chain."),
-});
-type BridgeInput = z.infer<typeof BridgeSchema>;
-
-const AuditorSchema = z.object({
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Please enter a valid address."),
-});
-type AuditorInput = z.infer<typeof AuditorSchema>;
-
-// Chains & Tokens for Bridge
-const supportedChains = ['Ethereum', 'Polygon', 'Arbitrum', 'Optimism', 'BNB Chain'];
-const bridgeableTokens = ['ETH', 'USDC', 'USDT'];
-
-export default function IntelligencePage() {
+const IntelligencePageContent = () => {
   const { walletState } = useWallet();
-  const [activeTab, setActiveTab] = useState('watchlist');
+  const { marketData } = walletState;
+
+  const [selectedPair, setSelectedPair] = useState('ETH/USDT');
+  const [currentPrice, setCurrentPrice] = useState(marketData['ETH'].price);
+  const [candleData, setCandleData] = useState<Candle[]>([]);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Watchlist State
   const [watchlist, setWatchlist] = useState<string[]>(['BTC', 'SOL']);
   const [briefings, setBriefings] = useState<Record<string, WatchlistBriefing>>({});
   const [isBriefingLoading, setIsBriefingLoading] = useState<Record<string, boolean>>({});
-
-  // Bridge State
-  const [isBridging, setIsBridging] = useState(false);
-  const [bridgeResult, setBridgeResult] = useState<{ title: string; description: string } | null>(null);
-
-  // Auditor State
-  const [isAuditing, setIsAuditing] = useState(false);
-  const [auditResult, setAuditResult] = useState<string | null>(null);
-  const [auditTitle, setAuditTitle] = useState('');
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
-
-  // Forms
+  
   const watchlistForm = useForm<AddToWatchlistInput>({ resolver: zodResolver(AddToWatchlistSchema), defaultValues: { symbol: "" } });
-  const bridgeForm = useForm<BridgeInput>({ resolver: zodResolver(BridgeSchema), defaultValues: { amount: 0, token: "", fromChain: "", toChain: "" } });
-  const contractAuditorForm = useForm<AuditorInput>({ resolver: zodResolver(AuditorSchema) });
-  const tokenAuditorForm = useForm<AuditorInput>({ resolver: zodResolver(AuditorSchema) });
+  const tokenOptions = Object.keys(walletState.marketData);
 
   const fetchBriefing = useCallback(async (symbol: string) => {
     setIsBriefingLoading(prev => ({ ...prev, [symbol]: true }));
@@ -84,7 +53,7 @@ export default function IntelligencePage() {
       setIsBriefingLoading(prev => ({ ...prev, [symbol]: false }));
     }
   }, []);
-  
+
   const handleAddToWatchlist = (values: AddToWatchlistInput) => {
     const symbol = values.symbol.toUpperCase();
     if (!watchlist.includes(symbol)) {
@@ -103,58 +72,66 @@ export default function IntelligencePage() {
     });
   };
 
-  const handleBridge = async (values: BridgeInput) => {
-    setIsBridging(true);
-    setBridgeResult(null);
-    try {
-        const result = await getBridgeTransactionDetails(values);
-        setBridgeResult({
-            title: 'Bridge Transaction Initiated',
-            description: `${result.summary}\nSource Tx: ${result.sourceTxHash}\nDest Tx: ${result.destTxHash}`
-        });
-    } catch(e) {
-        console.error("Bridging failed", e);
-        setBridgeResult({
-            title: 'Bridge Failed',
-            description: "The AI transaction simulator failed. Please try again."
-        });
-    } finally {
-        setIsBridging(false);
-        setIsAlertOpen(true);
+  const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
+    setCandleData(candles);
+  }, []);
+  
+  useEffect(() => {
+    const pairAsset = selectedPair.split('/')[0];
+    if (marketData[pairAsset]) {
+      setCurrentPrice(marketData[pairAsset].price);
+    }
+  }, [marketData, selectedPair]);
+
+  const handlePairChange = (pair: string) => {
+    setSelectedPair(pair);
+    const pairAsset = pair.split('/')[0];
+    if (marketData[pairAsset]) {
+        setCurrentPrice(marketData[pairAsset].price);
     }
   };
-
-  const handleAudit = async (type: 'contract' | 'token', values: AuditorInput) => {
-    setIsAuditing(true);
-    setAuditResult(null);
-    try {
-      const result = type === 'contract' ? await auditContract(values.address) : await auditToken(values.address);
-      const htmlResult = await marked(result.analysis);
-      setAuditResult(htmlResult);
-      setAuditTitle(type === 'contract' ? 'Smart Contract Audit Result' : 'Token Audit Result');
-    } catch (e) {
-      setAuditResult(`<p class="text-destructive">Audit failed. Please try again.</p>`);
-      setAuditTitle('Audit Error');
-    } finally {
-      setIsAuditing(false);
-      setIsAlertOpen(true);
-    }
-  };
-
-  const tokenOptions = Object.keys(walletState.marketData);
+  
+  const tradeablePairs = ['ETH/USDT', 'BTC/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT'];
+  const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
+  
+  if (!initialPriceForChart) {
+    return null; // or a loading skeleton
+  }
 
   return (
-    <div className="space-y-8">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="watchlist"><List className="mr-2"/>AI Watchlist</TabsTrigger>
-          <TabsTrigger value="bridge"><GitBranch className="mr-2"/>Cross-Chain Bridge</TabsTrigger>
-          <TabsTrigger value="auditors"><ShieldCheck className="mr-2"/>Auditors</TabsTrigger>
-        </TabsList>
-        
-        {/* AI Watchlist Tab */}
-        <TabsContent value="watchlist" className="mt-6">
-          <Card>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-8">
+        <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+          <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                     <h2 className="text-xl font-bold text-foreground">Live Chart</h2>
+                      <Select value={selectedPair} onValueChange={handlePairChange}>
+                          <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Select Pair" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {tradeablePairs.map(pair => (
+                                  <SelectItem key={pair} value={pair}>{pair}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                   <span className="text-3xl font-bold text-foreground">${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
+              </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[60vh] bg-card rounded-md">
+              <TradingChart 
+                  key={selectedPair} 
+                  initialPrice={initialPriceForChart} 
+                  onPriceChange={setCurrentPrice} 
+                  onCandleDataUpdate={handleCandleDataUpdate}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
             <CardHeader>
               <CardTitle>AI-Powered Asset Watchlist</CardTitle>
               <CardDescription>Add assets to your watchlist to get personalized AI intelligence briefings.</CardDescription>
@@ -203,107 +180,44 @@ export default function IntelligencePage() {
                 </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Cross-Chain Bridge Tab */}
-        <TabsContent value="bridge" className="mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Cross-Chain Bridge</CardTitle>
-                    <CardDescription>Securely transfer your assets between different blockchains.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={bridgeForm.handleSubmit(handleBridge)} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label>From Chain</label>
-                                <Select onValueChange={val => bridgeForm.setValue('fromChain', val)}>
-                                    <SelectTrigger><SelectValue placeholder="Select Source"/></SelectTrigger>
-                                    <SelectContent>{supportedChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <label>To Chain</label>
-                                <Select onValueChange={val => bridgeForm.setValue('toChain', val)}>
-                                    <SelectTrigger><SelectValue placeholder="Select Destination"/></SelectTrigger>
-                                    <SelectContent>{supportedChains.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div>
-                            <label>Token & Amount</label>
-                            <div className="flex gap-2">
-                                <Input type="number" placeholder="0.0" {...bridgeForm.register("amount")} />
-                                <Select onValueChange={val => bridgeForm.setValue('token', val)}>
-                                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select Token"/></SelectTrigger>
-                                    <SelectContent>{bridgeableTokens.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <Button type="submit" className="w-full" disabled={isBridging}>
-                            {isBridging ? <Loader2 className="mr-2 animate-spin"/> : <ArrowRight className="mr-2" />}
-                            Initiate Bridge
-                        </Button>
-                    </form>
-                </CardContent>
-            </Card>
-        </TabsContent>
-
-        {/* Auditors Tab */}
-        <TabsContent value="auditors" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center"><ShieldCheck className="mr-2 text-primary"/> Smart Contract Auditor</CardTitle>
-                  <CardDescription>Enter a contract address for an AI security analysis.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                   <form onSubmit={contractAuditorForm.handleSubmit(data => handleAudit('contract', data))} className="space-y-4">
-                        <Input placeholder="0x..." {...contractAuditorForm.register("address")} />
-                        <Button type="submit" disabled={isAuditing} className="w-full">
-                            {isAuditing ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
-                            Audit Contract
-                        </Button>
-                   </form>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center"><FileSearch className="mr-2 text-primary"/> Token Auditor</CardTitle>
-                  <CardDescription>Enter a token address to analyze for potential risks.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                   <form onSubmit={tokenAuditorForm.handleSubmit(data => handleAudit('token', data))} className="space-y-4">
-                        <Input placeholder="0x..." {...tokenAuditorForm.register("address")} />
-                        <Button type="submit" disabled={isAuditing} className="w-full">
-                           {isAuditing ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
-                            Audit Token
-                        </Button>
-                   </form>
-                </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-        
-      {/* Universal Alert Dialog */}
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{auditTitle || bridgeResult?.title}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                         {auditResult ? (
-                            <div className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground" dangerouslySetInnerHTML={{ __html: auditResult }} />
-                         ) : (
-                            <p className="whitespace-pre-wrap">{bridgeResult?.description}</p>
-                         )}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => { setIsAlertOpen(false); setAuditResult(null); setBridgeResult(null); } }>Close</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+      </div>
+      <div className="space-y-8">
+         <AIChartAnalysis 
+            candleData={candleData} 
+            onError={setAnalysisError}
+        />
+        {analysisError && (
+             <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Analysis Error</AlertTitle>
+                <AlertDescription>
+                    {analysisError}
+                </AlertDescription>
+            </Alert>
+        )}
+      </div>
     </div>
   );
+}
+
+
+export default function IntelligencePage() {
+  const { walletState } = useWallet();
+  const { isMarketDataLoaded } = walletState;
+
+  if (!isMarketDataLoaded) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+           <Skeleton className="h-[75vh] w-full" />
+           <Skeleton className="h-64 w-full mt-8" />
+        </div>
+        <div className="space-y-8">
+            <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  return <IntelligencePageContent />;
 }

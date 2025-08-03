@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, BarChartHorizontalBig, SearchCode } from 'lucide-react';
+import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -44,10 +44,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} />, path: '/finance' },
-    { id: 'chart-intel', label: 'Chart Intel', icon: <BarChartHorizontalBig size={20} />, path: '/chart-intel' },
-    { id: 'analyzer', label: 'Doc Analyzer', icon: <FileText size={20} />, path: '/analyzer' },
-    { id: 'intelligence', label: 'Intelligence', icon: <SearchCode size={20} />, path: '/intelligence' },
-    { id: 'assistant', label: 'AI Assistant', icon: <BrainCircuit size={20} />, path: '/assistant' },
+    { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },
+    { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} />, path: '/tools' },
+    { id: 'assistant', label: 'AI Assistant', icon: <FileText size={20} />, path: '/assistant' },
   ];
   
   const activePage = getActivePage();

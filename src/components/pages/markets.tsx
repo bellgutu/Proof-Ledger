@@ -69,26 +69,24 @@ export default function MarketsPage() {
   const { marketData, isMarketDataLoaded } = walletState;
   
   const [markets, setMarkets] = useState<Market[]>([]);
-  const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
   const [newsFeed, setNewsFeed] = useState<NewsArticle[]>([]);
+  const [newsFetched, setNewsFetched] = useState(false);
 
   const fetchNews = useCallback(async () => {
     setIsLoadingNews(true);
+    setNewsFetched(true);
     try {
         const newsOutput = await generateNews();
         setNewsFeed(newsOutput.articles);
     } catch(e) {
         console.error("Failed to generate news:", e);
         setNewsFeed([
-             { id: 1, title: 'AI News Feed Error', content: 'Could not generate news from the AI service. Displaying cached or placeholder content.' },
+             { id: 1, title: 'AI News Feed Error', content: 'Could not generate news from the AI service. Please try again later.' },
         ]);
     }
     setIsLoadingNews(false);
   }, []);
-
-  useEffect(() => {
-    fetchNews();
-  }, [fetchNews]);
 
   useEffect(() => {
     if (isMarketDataLoaded) {
@@ -135,8 +133,12 @@ export default function MarketsPage() {
           `}</style>
           {isLoadingNews ? (
              Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="w-80 h-40 flex-none" />)
-          ) : (
+          ) : newsFetched ? (
             newsFeed.map(news => <NewsCard key={news.id} {...news} />)
+          ) : (
+            <div className="w-full h-40 flex items-center justify-center text-muted-foreground">
+              Click the refresh button to load AI-generated news.
+            </div>
           )}
         </div>
       </div>

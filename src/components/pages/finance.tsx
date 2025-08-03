@@ -110,7 +110,7 @@ export default function FinancePage() {
       balanceSetters[toToken](prev => parseFloat((prev + amountReceived).toFixed(4)));
       addTransaction({
         type: 'Swap',
-        details: `Swapped ${amountToSwap.toFixed(4)} ${fromToken} for ${amountReceived.toFixed(2)} ${toToken}`
+        details: `Swapped ${amountToSwap.toLocaleString('en-US', {maximumFractionDigits: 4})} ${fromToken} for ${amountReceived.toLocaleString('en-US', {maximumFractionDigits: 2})} ${toToken}`
       });
       setFromAmount('');
       setToAmount('');
@@ -144,7 +144,7 @@ export default function FinancePage() {
         setVaultBalance(0);
         addTransaction({
             type: 'Vault Withdraw',
-            details: `Withdrew ${amountToWithdraw.toFixed(4)} ETH from ${selectedVault}`
+            details: `Withdrew ${amountToWithdraw.toLocaleString('en-US', {maximumFractionDigits: 4})} ETH from ${selectedVault}`
         });
         setVaultLoading(false);
     }, 2000);
@@ -199,7 +199,7 @@ export default function FinancePage() {
                 <div className="p-4 bg-background rounded-md border space-y-2">
                   <div className="flex justify-between items-center">
                      <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
-                     <p className="text-xs text-muted-foreground mt-1">Balance: {balances[fromToken].toFixed(4)}</p>
+                     <p className="text-xs text-muted-foreground mt-1">Balance: {balances[fromToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                   </div>
                   <div className="flex gap-2">
                     <Input
@@ -230,7 +230,7 @@ export default function FinancePage() {
                 <div className="p-4 bg-background rounded-md border space-y-2">
                   <div className="flex justify-between items-center">
                     <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
-                    <p className="text-xs text-muted-foreground mt-1">Balance: {balances[toToken].toFixed(4)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Balance: {balances[toToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                   </div>
                   <div className="flex gap-2">
                     <Input
@@ -276,7 +276,7 @@ export default function FinancePage() {
                 <div className="p-4 bg-background rounded-md border">
                   <p className="text-sm text-muted-foreground">Your Vault Balance:</p>
                   <div className="flex items-center justify-between mt-1">
-                      <span className="text-lg font-bold text-foreground">{vaultBalance.toFixed(4)} ETH</span>
+                      <span className="text-lg font-bold text-foreground">{vaultBalance.toLocaleString('en-US', {maximumFractionDigits: 4})} ETH</span>
                       <span className="text-green-400 font-semibold">23% APY (Projected)</span>
                   </div>
                 </div>

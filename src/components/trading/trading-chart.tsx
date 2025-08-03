@@ -108,7 +108,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
             ctx.moveTo(0, y);
             ctx.lineTo(chartWidth, y);
             ctx.stroke();
-            ctx.fillText(`${price.toFixed(2)}`, chartWidth + 5, y + 4);
+            ctx.fillText(price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), chartWidth + 5, y + 4);
         }
     }
 
@@ -161,7 +161,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.fillStyle = theme.priceLabelText;
       ctx.textAlign = 'center';
       ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.fillText(`${currentPrice.toFixed(2)}`, chartWidth + yAxisWidth / 2, priceY + 4);
+      ctx.fillText(currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), chartWidth + yAxisWidth / 2, priceY + 4);
     }
   }, [getThemeColors]);
 

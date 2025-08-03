@@ -94,7 +94,7 @@ export default function MarketsPage() {
             id: data.symbol,
             name: data.name,
             symbol: data.symbol,
-            value: data.price.toFixed(data.price > 1 ? 2 : 4),
+            value: data.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: data.price > 1 ? 2 : 4}),
             change: data.change.toFixed(2) + '%',
             isPositive: data.change >= 0,
         }));

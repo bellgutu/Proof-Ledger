@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -64,8 +65,8 @@ export function OrderBook({ currentPrice, assetSymbol }: OrderBookProps) {
               ) : (
                 orderBook.asks.slice().reverse().map((ask, index) => (
                   <tr key={index} className="text-red-400">
-                    <td className="py-1">{ask.price}</td>
-                    <td className="text-right">{ask.size}</td>
+                    <td className="py-1">{parseFloat(ask.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</td>
+                    <td className="text-right">{parseFloat(ask.size).toLocaleString('en-US', {maximumFractionDigits: 4})}</td>
                   </tr>
                 ))
               )}
@@ -83,8 +84,8 @@ export function OrderBook({ currentPrice, assetSymbol }: OrderBookProps) {
               ) : (
                 orderBook.bids.map((bid, index) => (
                   <tr key={index} className="text-green-400">
-                    <td className="py-1">{bid.price}</td>
-                    <td className="text-right">{bid.size}</td>
+                    <td className="py-1">{parseFloat(bid.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</td>
+                    <td className="text-right">{parseFloat(bid.size).toLocaleString('en-US', {maximumFractionDigits: 4})}</td>
                   </tr>
                 ))
               )}

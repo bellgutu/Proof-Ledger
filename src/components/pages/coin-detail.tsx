@@ -113,7 +113,7 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
           />
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">{coinData.name} ({coinData.symbol})</h1>
-            <p className="text-3xl font-bold text-primary">${currentPrice.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-primary">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
         </div>
       </div>

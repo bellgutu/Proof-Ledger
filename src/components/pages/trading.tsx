@@ -139,7 +139,7 @@ const TradingPageContent = () => {
                       </SelectContent>
                   </Select>
               </div>
-            <span className="text-3xl font-bold text-foreground">${currentPrice.toFixed(4)}</span>
+            <span className="text-3xl font-bold text-foreground">${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-card rounded-md">
@@ -163,15 +163,15 @@ const TradingPageContent = () => {
                 <p className="text-sm text-muted-foreground">Active Position:</p>
                 <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
                   <span className={`text-lg font-bold ${activeTrade.direction === 'long' ? 'text-green-400' : 'text-red-400'}`}>
-                    {activeTrade.direction.toUpperCase()} ${activeTrade.amount.toFixed(2)}
+                    {activeTrade.direction.toUpperCase()} ${activeTrade.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </span>
                    <span className="text-foreground font-semibold">{activeTrade.pair}</span>
-                  <span className="text-foreground font-semibold">Entry: ${activeTrade.entryPrice}</span>
+                  <span className="text-foreground font-semibold">Entry: ${parseFloat(activeTrade.entryPrice).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
                   <span className="text-foreground font-semibold">Leverage: {activeTrade.leverage}x</span>
                 </div>
                 <div className="mt-2 text-2xl font-bold">
                   P&L: <span className={parseFloat(activeTrade.livePnl) >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    ${activeTrade.livePnl}
+                    ${parseFloat(activeTrade.livePnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </span>
                 </div>
                 <Button onClick={closeTrade} className="w-full mt-4" variant="destructive">Close Position</Button>
@@ -184,11 +184,11 @@ const TradingPageContent = () => {
                   <div key={index} className="flex justify-between items-center p-3 bg-background rounded-md border">
                     <div>
                       <span className={`font-bold ${trade.direction === 'long' ? 'text-green-400' : 'text-red-400'}`}>
-                        {trade.direction.toUpperCase()} ${trade.amount.toFixed(2)} {trade.pair}
+                        {trade.direction.toUpperCase()} ${trade.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} {trade.pair}
                       </span>
                       <span className="text-xs text-muted-foreground ml-2">({trade.leverage}x)</span>
                     </div>
-                    <p className="text-sm">PnL: <span className={parseFloat(trade.finalPnl) >= 0 ? 'text-green-400' : 'text-red-400'}>${trade.finalPnl}</span></p>
+                    <p className="text-sm">PnL: <span className={parseFloat(trade.finalPnl) >= 0 ? 'text-green-400' : 'text-red-400'}>${parseFloat(trade.finalPnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
                   </div>
                 ))}
               </div>
@@ -215,7 +215,7 @@ const TradingPageContent = () => {
                 disabled={!isConnected || activeTrade !== null}
                 placeholder="0.0"
               />
-              <p className="text-xs text-muted-foreground mt-1">Balance: {usdcBalance.toFixed(2)} USDC</p>
+              <p className="text-xs text-muted-foreground mt-1">Balance: {usdcBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDC</p>
             </div>
             <div>
               <label htmlFor="leverage-select" className="block text-sm font-medium text-muted-foreground mb-1">Leverage</label>

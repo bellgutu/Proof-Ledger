@@ -39,17 +39,12 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
     
-    // Define constants for layout
     const Y_AXIS_WIDTH = 60;
     const X_AXIS_HEIGHT = 30;
-    const PRICE_BUFFER = 0.05; // 5% buffer for better scaling
 
-    const yAxisWidth = 60;
-    const xAxisHeight = 30;
-    const chartWidth = width - yAxisWidth;
-    const chartHeight = height - xAxisHeight;
+    const chartWidth = width - Y_AXIS_WIDTH;
+    const chartHeight = height - X_AXIS_HEIGHT;
 
-    // Clear canvas with a light background color
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
     ctx.fillRect(0, 0, width, height);
       
@@ -68,7 +63,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const candleWidth = chartWidth / (visibleCandles.length * 1.5);
     const spacing = candleWidth * 0.5;
 
-    // Draw Y-axis (Price) and grid lines
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim();
     ctx.font = '12px Inter';
@@ -82,12 +76,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         ctx.lineTo(chartWidth, y);
         ctx.stroke();
         
-        // Dynamic decimal places for price labels
         const priceDecimalPlaces = priceRange < 0.1 ? 4 : (priceRange < 10 ? 2 : 0);
         ctx.fillText(`$${price.toFixed(priceDecimalPlaces)}`, chartWidth + 5, y + 4);
     }
 
-    // Draw X-axis (Time)
     ctx.textAlign = 'center';
     const numTimeLabels = Math.floor(chartWidth / 100);
     const timeInterval = Math.max(1, Math.floor(visibleCandles.length / numTimeLabels));
@@ -96,23 +88,16 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
             const candle = visibleCandles[i];
             const x = i * (candleWidth + spacing) + spacing + candleWidth / 2;
             if(x < chartWidth) {
-                // Dynamic time label formatting
-                const firstTime = visibleCandles[0].time;
-                const lastTime = visibleCandles[visibleCandles.length - 1].time;
-                const timeRange = lastTime - firstTime;
-                const timeFormatOptions: Intl.DateTimeFormatOptions = timeRange > 24 * 60 * 60 * 1000 ? { month: 'short', day: 'numeric' } : { hour: '2-digit', minute: '2-digit' };
+                const timeFormatOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
                 const time = new Date(candle.time).toLocaleTimeString([], timeFormatOptions);
                  ctx.fillText(time, x, chartHeight + 20);
             }
         }
     }
 
-    // Draw candles
     visibleCandles.forEach((candle, index) => {
       const x = index * (candleWidth + spacing) + spacing;
-      const color = candle.close >= candle.open 
-        ? '#22c55e' // Hardcoded green for better visibility
-        : '#ef4444'; // Hardcoded red for better visibility
+      const color = candle.close >= candle.open ? '#22c55e' : '#ef4444';
 
       ctx.beginPath();
       ctx.strokeStyle = color;
@@ -127,7 +112,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.fillRect(x, bodyY, candleWidth, bodyHeight);
     });
     
-    // Draw current price line
     const currentPrice = currentPriceRef.current;
     const priceY = scaleY(currentPrice);
 
@@ -143,12 +127,11 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.setLineDash([]);
       
       ctx.fillStyle = `hsl(${primaryColor})`;
-      ctx.fillRect(chartWidth, priceY - 10, yAxisWidth, 20);
+      ctx.fillRect(chartWidth, priceY - 10, Y_AXIS_WIDTH, 20);
       ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim();
       ctx.textAlign = 'center';
-      // Dynamic decimal places for current price label
       const currentPriceDecimalPlaces = currentPrice < 0.1 ? 4 : (currentPrice < 10 ? 2 : 0);
-      ctx.fillText(`$${currentPrice.toFixed(currentPriceDecimalPlaces)}`, chartWidth + yAxisWidth / 2, priceY + 4);
+      ctx.fillText(`$${currentPrice.toFixed(currentPriceDecimalPlaces)}`, chartWidth + Y_AXIS_WIDTH / 2, priceY + 4);
     }
   }, []);
 
@@ -160,7 +143,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         ? candleDataRef.current[candleDataRef.current.length - 1]
         : { close: initialPrice, time: Date.now() - 2000 };
 
-      const open = currentPriceRef.current; // Start new candle from current price
+      const open = currentPriceRef.current;
       const change = (Math.random() - 0.5) * (open * 0.01);
       const close = open + change;
       const high = Math.max(open, close) + Math.random() * (open * 0.005);
@@ -200,14 +183,14 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         const lastCandle = candleDataRef.current[candleDataRef.current.length-1];
         if(!lastCandle) return;
 
-        const volatility = 0.005; // 0.5%
+        const volatility = 0.005;
         const priceChange = (Math.random() - 0.5) * (lastCandle.close * volatility);
         const newPrice = lastCandle.close + priceChange;
 
         currentPriceRef.current = newPrice;
         onPriceChange(newPrice);
       }
-      priceTimer = setInterval(updatePrice, 500); // Update price more frequently
+      priceTimer = setInterval(updatePrice, 500);
       return () => clearInterval(priceTimer);
   }, [initialPrice, onPriceChange]);
   
@@ -215,11 +198,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const updateCanvasSize = () => {
+    const observer = new ResizeObserver(() => {
         drawChart();
-    };
-
-    window.addEventListener('resize', updateCanvasSize);
+    });
+    observer.observe(canvas);
     
     let animationFrameId: number;
     const renderLoop = () => {
@@ -229,7 +211,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     renderLoop();
     
     return () => {
-        window.removeEventListener('resize', updateCanvasSize);
+        observer.disconnect();
         cancelAnimationFrame(animationFrameId);
     }
   }, [drawChart]);

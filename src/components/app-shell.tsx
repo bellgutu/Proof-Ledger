@@ -43,7 +43,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
-    { id: 'liquidity', label: 'Liquidity', icon: <Droplets size={20} />, path: '/liquidity' },
+    { id: 'liquidity', label: 'Liquidity Pro', icon: <Droplets size={20} />, path: '/liquidity' },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} />, path: '/finance' },
     { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} />, path: '/tools' },

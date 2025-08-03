@@ -57,27 +57,29 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
 
   const handleAmount1Change = (value: string) => {
     setAmount1(value);
-    if (value && !isNaN(parseFloat(value)) && priceRatio > 0 && pool.type === 'V2') {
+    const isV2Pool = pool.type === 'V2';
+    if (value && !isNaN(parseFloat(value)) && priceRatio > 0 && isV2Pool) {
       setAmount2((parseFloat(value) * priceRatio).toFixed(4));
-    } else if (pool.type === 'V2') {
+    } else if (isV2Pool) {
       setAmount2('');
     }
   };
   
    const handleAmount2Change = (value: string) => {
     setAmount2(value);
-    if (value && !isNaN(parseFloat(value)) && priceRatio > 0 && pool.type === 'V2') {
+     const isV2Pool = pool.type === 'V2';
+    if (value && !isNaN(parseFloat(value)) && priceRatio > 0 && isV2Pool) {
       setAmount1((parseFloat(value) / priceRatio).toFixed(4));
-    } else if (pool.type === 'V2') {
+    } else if (isV2Pool) {
       setAmount1('');
     }
   };
 
   const handleDeposit = () => {
-    const numAmount1 = parseFloat(amount1);
-    const numAmount2 = parseFloat(amount2);
+    const numAmount1 = parseFloat(amount1) || 0;
+    const numAmount2 = parseFloat(amount2) || 0;
 
-    if (isNaN(numAmount1) || (pool.type === 'V2' && isNaN(numAmount2)) || numAmount1 < 0 || numAmount2 < 0) {
+    if (numAmount1 <= 0 && numAmount2 <= 0) {
       toast({ variant: 'destructive', title: 'Invalid amount' });
       return;
     }
@@ -111,6 +113,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
   };
   
   const isV3AndUnset = pool.type === 'V3' && !pool.priceRange;
+  const isV2 = pool.type === 'V2';
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -118,9 +121,9 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
         <DialogHeader>
           <DialogTitle>Add Liquidity to {pool.name}</DialogTitle>
           <DialogDescription>
-             {pool.type === 'V2'
-              ? 'Provide tokens in a balanced ratio to earn fees.'
-              : 'Provide liquidity within a specific price range for higher capital efficiency.'}
+             {pool.type === 'V2' && 'Provide tokens in a balanced ratio to earn fees.'}
+             {pool.type === 'V3' && 'Provide liquidity within a specific price range for higher capital efficiency.'}
+             {pool.type === 'Stable' && 'Provide any amount of one or both tokens to a stable-swap pool.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -147,7 +150,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
             </div>
           </div>
           
-          {pool.type === 'V2' && <div className="flex justify-center -my-2"><ArrowDown size={16} className="text-muted-foreground"/></div>}
+          {isV2 && <div className="flex justify-center -my-2"><ArrowDown size={16} className="text-muted-foreground"/></div>}
 
           <div className="p-4 bg-background/50 rounded-md border space-y-2">
             <div className="flex justify-between items-center text-xs text-muted-foreground">
@@ -156,7 +159,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
             </div>
             <div className="flex items-center gap-2">
               <Image src={getTokenLogo(token2)} alt={token2} width={24} height={24} />
-              <Input type="number" value={amount2} onChange={(e) => handleAmount2Change(e.target.value)} readOnly={pool.type === 'V2'} placeholder="0.0" className="text-lg" />
+              <Input type="number" value={amount2} onChange={(e) => handleAmount2Change(e.target.value)} readOnly={isV2} placeholder="0.0" className="text-lg" />
             </div>
           </div>
 

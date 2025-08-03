@@ -128,5 +128,3 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition, 
     </>
   );
 }
-
-    

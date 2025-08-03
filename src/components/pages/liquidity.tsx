@@ -22,7 +22,7 @@ import { TrendingUp } from 'lucide-react';
 export interface Pool {
   id: string;
   name: string;
-  type: 'V2' | 'V3'; // V2 = Standard, V3 = Concentrated
+  type: 'V2' | 'V3' | 'Stable'; // V2 = Standard, V3 = Concentrated, Stable = Stable-Swap
   token1: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP'; amount: number };
   token2: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP'; amount: number };
   tvl: number;
@@ -50,6 +50,7 @@ export default function LiquidityPage() {
 
   const [availablePools, setAvailablePools] = useState<Pool[]>([
     { id: '1', name: 'WETH/USDC', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '4', name: 'USDC/USDT', type: 'Stable', token1: { symbol: 'USDC', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 250_000_000, volume24h: 55_000_000, apr: 2.8 },
     { id: '2', name: 'WETH/USDT', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
     { id: '3', name: 'SOL/USDC', type: 'V3', token1: { symbol: 'SOL', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 80_000_000, volume24h: 40_000_000, apr: 18.2, feeTier: 0.05, priceRange: { min: 120, max: 200 } },
   ]);
@@ -57,7 +58,7 @@ export default function LiquidityPage() {
   const [userPositions, setUserPositions] = useState<UserPosition[]>([]);
 
   // State for creating a new pool
-  const [newPoolType, setNewPoolType] = useState<'V2' | 'V3'>('V2');
+  const [newPoolType, setNewPoolType] = useState<'V2' | 'V3' | 'Stable'>('V2');
   const [newToken1, setNewToken1] = useState('');
   const [newToken2, setNewToken2] = useState('');
   const [newFeeTier, setNewFeeTier] = useState<number | undefined>(0.3);
@@ -99,7 +100,7 @@ export default function LiquidityPage() {
   };
 
   const handleCreatePool = () => {
-    if (!newToken1 || !newToken2 || !newFeeTier || newToken1 === newToken2) {
+    if (!newToken1 || !newToken2 || (newPoolType !== 'Stable' && !newFeeTier) || newToken1 === newToken2) {
       toast({ variant: 'destructive', title: 'Invalid Pool Data', description: 'Please select two different tokens and a fee tier.'});
       return;
     }
@@ -119,8 +120,8 @@ export default function LiquidityPage() {
       token2: { symbol: newToken2 as any, amount: 0 },
       tvl: 0,
       volume24h: 0,
-      apr: Math.random() * 20,
-      feeTier: newFeeTier,
+      apr: Math.random() * (newPoolType === 'Stable' ? 5 : 20),
+      ...(newPoolType !== 'Stable' && { feeTier: newFeeTier }),
       ...(newPoolType === 'V3' && { priceRange: { min: parseFloat(newPriceRange.min), max: parseFloat(newPriceRange.max) } }),
     };
 
@@ -245,9 +246,10 @@ export default function LiquidityPage() {
               <CardContent className="space-y-4">
                   <div>
                     <Label>Pool Type</Label>
-                    <RadioGroup defaultValue="V2" onValueChange={(val) => setNewPoolType(val as 'V2' | 'V3')} className="flex gap-4 pt-2">
+                    <RadioGroup defaultValue="V2" onValueChange={(val) => setNewPoolType(val as 'V2' | 'V3' | 'Stable')} className="grid grid-cols-3 gap-4 pt-2">
                       <div className="flex items-center space-x-2"><RadioGroupItem value="V2" id="v2"/><Label htmlFor="v2">V2 Standard</Label></div>
                       <div className="flex items-center space-x-2"><RadioGroupItem value="V3" id="v3"/><Label htmlFor="v3">V3 Concentrated</Label></div>
+                       <div className="flex items-center space-x-2"><RadioGroupItem value="Stable" id="stable"/><Label htmlFor="stable">Stable</Label></div>
                     </RadioGroup>
                   </div>
 
@@ -265,6 +267,7 @@ export default function LiquidityPage() {
                     </div>
                   </div>
                     
+                  {newPoolType !== 'Stable' && (
                     <div className="space-y-2">
                       <Label>Fee Tier</Label>
                       <Select value={newFeeTier?.toString()} onValueChange={(val) => setNewFeeTier(parseFloat(val))}>
@@ -276,6 +279,7 @@ export default function LiquidityPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
 
                   {newPoolType === 'V3' && (
                       <div className="space-y-2">
@@ -307,5 +311,3 @@ export default function LiquidityPage() {
     </div>
   );
 }
-
-    

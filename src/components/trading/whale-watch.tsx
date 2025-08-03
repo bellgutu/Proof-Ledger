@@ -1,32 +1,35 @@
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getWhaleWatchData, type WhaleWatchData } from '@/ai/flows/whale-watcher-flow';
 import { Badge } from '../ui/badge';
-import { Bot, ArrowRight } from 'lucide-react';
+import { Bot, ArrowRight, RefreshCcw, Loader2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Button } from '../ui/button';
 
 export function WhaleWatch({ pair }: { pair: string }) {
   const [data, setData] = useState<WhaleWatchData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const result = await getWhaleWatchData(pair);
-        setData(result);
-      } catch (error) {
-        console.error("Failed to get whale watch data:", error);
-        setData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getWhaleWatchData(pair);
+      setData(result);
+    } catch (error) {
+      console.error("Failed to get whale watch data:", error);
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, [pair]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const getSentimentVariant = (sentiment: 'Bullish' | 'Bearish' | 'Neutral' | undefined) => {
     switch (sentiment) {
@@ -39,8 +42,12 @@ export function WhaleWatch({ pair }: { pair: string }) {
 
   return (
     <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-2xl font-bold text-primary">Whale Watch</CardTitle>
+        <Button onClick={fetchData} disabled={isLoading} size="sm" variant="ghost">
+           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+           <span className="sr-only">Refresh</span>
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? (

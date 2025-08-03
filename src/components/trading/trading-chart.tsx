@@ -34,10 +34,15 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
-
+    
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
     
+    // Define constants for layout
+    const Y_AXIS_WIDTH = 60;
+    const X_AXIS_HEIGHT = 30;
+    const PRICE_BUFFER = 0.05; // 5% buffer for better scaling
+
     const yAxisWidth = 60;
     const xAxisHeight = 30;
     const chartWidth = width - yAxisWidth;
@@ -53,10 +58,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const visibleCandles = candles.slice(-50);
     const maxPrice = Math.max(...visibleCandles.map(c => c.high));
     const minPrice = Math.min(...visibleCandles.map(c => c.low));
-    const priceRange = maxPrice - minPrice > 0 ? maxPrice - minPrice : 1;
+    const priceRange = maxPrice - minPrice;
 
     const scaleY = (price: number) => {
-        return chartHeight - ((price - minPrice) / priceRange) * chartHeight * 0.9 - chartHeight * 0.05;
+        return chartHeight - ((price - minPrice) / priceRange) * chartHeight;
     };
 
     const candleWidth = chartWidth / (visibleCandles.length * 1.5);
@@ -75,9 +80,12 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         ctx.moveTo(0, y);
         ctx.lineTo(chartWidth, y);
         ctx.stroke();
-        ctx.fillText(`$${price.toFixed(4)}`, chartWidth + 5, y + 4);
+        
+        // Dynamic decimal places for price labels
+        const priceDecimalPlaces = priceRange < 0.1 ? 4 : (priceRange < 10 ? 2 : 0);
+        ctx.fillText(`$${price.toFixed(priceDecimalPlaces)}`, chartWidth + 5, y + 4);
     }
-    
+
     // Draw X-axis (Time)
     ctx.textAlign = 'center';
     const numTimeLabels = Math.floor(chartWidth / 100);
@@ -87,7 +95,12 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
             const candle = visibleCandles[i];
             const x = i * (candleWidth + spacing) + spacing + candleWidth / 2;
             if(x < chartWidth) {
-                 const time = new Date(candle.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                // Dynamic time label formatting
+                const firstTime = visibleCandles[0].time;
+                const lastTime = visibleCandles[visibleCandles.length - 1].time;
+                const timeRange = lastTime - firstTime;
+                const timeFormatOptions: Intl.DateTimeFormatOptions = timeRange > 24 * 60 * 60 * 1000 ? { month: 'short', day: 'numeric' } : { hour: '2-digit', minute: '2-digit' };
+                const time = new Date(candle.time).toLocaleTimeString([], timeFormatOptions);
                  ctx.fillText(time, x, chartHeight + 20);
             }
         }
@@ -132,7 +145,9 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.fillRect(chartWidth, priceY - 10, yAxisWidth, 20);
       ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim();
       ctx.textAlign = 'center';
-      ctx.fillText(`$${currentPrice.toFixed(4)}`, chartWidth + yAxisWidth / 2, priceY + 4);
+      // Dynamic decimal places for current price label
+      const currentPriceDecimalPlaces = currentPrice < 0.1 ? 4 : (currentPrice < 10 ? 2 : 0);
+      ctx.fillText(`$${currentPrice.toFixed(currentPriceDecimalPlaces)}`, chartWidth + yAxisWidth / 2, priceY + 4);
     }
   }, []);
 
@@ -179,8 +194,21 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
   }, [initialPrice, onCandleDataUpdate]);
 
   useEffect(() => {
-      currentPriceRef.current = initialPrice;
-  }, [initialPrice]);
+      let priceTimer: NodeJS.Timeout;
+      const updatePrice = () => {
+        const lastCandle = candleDataRef.current[candleDataRef.current.length-1];
+        if(!lastCandle) return;
+
+        const volatility = 0.005; // 0.5%
+        const priceChange = (Math.random() - 0.5) * (lastCandle.close * volatility);
+        const newPrice = lastCandle.close + priceChange;
+
+        currentPriceRef.current = newPrice;
+        onPriceChange(newPrice);
+      }
+      priceTimer = setInterval(updatePrice, 500); // Update price more frequently
+      return () => clearInterval(priceTimer);
+  }, [initialPrice, onPriceChange]);
   
   useEffect(() => {
     const canvas = canvasRef.current;

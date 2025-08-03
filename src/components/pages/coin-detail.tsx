@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, BarChart2, TrendingUp, TrendingDown, Clock, Layers, CircleDollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TradingChart } from '@/components/trading/trading-chart';
+import { TradingChart, type Candle } from '@/components/trading/trading-chart';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Skeleton } from '../ui/skeleton';
 import { useWallet } from '@/contexts/wallet-context';
@@ -32,6 +32,10 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
   const [coinData, setCoinData] = useState<CoinData | null>(null);
   const [timeframe, setTimeframe] = useState<'24h' | '12h' | '6h'>('24h');
   const [currentPrice, setCurrentPrice] = useState(0);
+
+  const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
+    // We can use this for AI analysis in the future
+  }, []);
 
   useEffect(() => {
     if (isMarketDataLoaded) {
@@ -168,7 +172,7 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
         </CardHeader>
         <CardContent>
           <div className="h-96 bg-card rounded-md">
-            <TradingChart key={symbol} initialPrice={coinData.price} onPriceChange={setCurrentPrice} onCandleDataUpdate={() => {}} />
+            <TradingChart key={symbol} initialPrice={coinData.price} onPriceChange={setCurrentPrice} onCandleDataUpdate={handleCandleDataUpdate} />
           </div>
         </CardContent>
       </Card>

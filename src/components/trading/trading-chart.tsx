@@ -25,7 +25,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
   const currentPriceRef = useRef(initialPrice);
   const animationFrameIdRef = useRef<number>();
 
-  const getThemeColors = () => {
+  const getThemeColors = useCallback(() => {
     if (typeof window === 'undefined') {
         return {
             background: '#0f172a', text: '#94a3b8', grid: '#334155',
@@ -44,7 +44,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         priceLabelBackground: `hsl(${styles.getPropertyValue('--primary').trim()})`,
         priceLabelText: `hsl(${styles.getPropertyValue('--primary-foreground').trim()})`,
     };
-  };
+  }, []);
 
   const drawChart = useCallback(() => {
     const canvas = canvasRef.current;
@@ -163,11 +163,12 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.fillText(`${currentPrice.toFixed(2)}`, chartWidth + yAxisWidth / 2, priceY + 4);
     }
-  }, []);
+  }, [getThemeColors]);
 
+  // Effect for generating candle data and simulating price
   useEffect(() => {
-    const candleInterval = 5000; 
-    const priceVolatility = 0.0005;
+    const candleInterval = 10000;
+    const volatility = 0.0001;
 
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
@@ -175,10 +176,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         : { close: initialPrice, time: Date.now() - candleInterval };
       
       const open = lastCandle.close;
-      const change = (Math.random() - 0.5) * (open * priceVolatility);
+      const change = (Math.random() - 0.5) * (open * volatility * 10);
       const close = open + change;
-      const high = Math.max(open, close) + Math.random() * (open * priceVolatility);
-      const low = Math.min(open, close) - Math.random() * (open * priceVolatility);
+      const high = Math.max(open, close) + Math.random() * (open * volatility);
+      const low = Math.min(open, close) - Math.random() * (open * volatility);
       const time = lastCandle.time + candleInterval;
 
       const newCandle = { open, high, low, close, time };
@@ -190,16 +191,17 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       onPriceChange(close);
       onCandleDataUpdate([...candleDataRef.current]);
     };
-
+    
+    // Generate initial set of candles
     candleDataRef.current = [];
     let startTime = Date.now() - 100 * candleInterval;
     let price = initialPrice;
     for (let i = 0; i < 100; i++) {
         const open = price;
-        const change = (Math.random() - 0.5) * (open * priceVolatility);
+        const change = (Math.random() - 0.5) * (open * volatility * 10);
         const close = open + change;
-        const high = Math.max(open, close) + Math.random() * (open * priceVolatility);
-        const low = Math.min(open, close) - Math.random() * (open * priceVolatility);
+        const high = Math.max(open, close) + Math.random() * (open * volatility);
+        const low = Math.min(open, close) - Math.random() * (open * volatility);
         const time = startTime + i * candleInterval;
         candleDataRef.current.push({ open, high, low, close, time });
         price = close;

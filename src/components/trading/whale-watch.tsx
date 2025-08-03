@@ -12,7 +12,7 @@ import { Button } from '../ui/button';
 
 export function WhaleWatch({ pair }: { pair: string }) {
   const [data, setData] = useState<WhaleWatchData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -26,10 +26,6 @@ export function WhaleWatch({ pair }: { pair: string }) {
       setIsLoading(false);
     }
   }, [pair]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const getSentimentVariant = (sentiment: 'Bullish' | 'Bearish' | 'Neutral' | undefined) => {
     switch (sentiment) {
@@ -87,7 +83,7 @@ export function WhaleWatch({ pair }: { pair: string }) {
                 </ScrollArea>
             </>
         ) : (
-          <p className="text-muted-foreground text-sm text-center">Could not load whale activity.</p>
+          <p className="text-muted-foreground text-sm text-center">Click the refresh button to load whale activity.</p>
         )}
       </CardContent>
     </Card>

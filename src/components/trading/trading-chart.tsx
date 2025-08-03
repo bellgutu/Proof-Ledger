@@ -147,14 +147,14 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
         ? candleDataRef.current[candleDataRef.current.length - 1]
-        : { close: initialPrice, time: Date.now() - 3400 };
+        : { close: initialPrice, time: Date.now() - 5000 };
 
       const open = currentPriceRef.current;
       const change = (Math.random() - 0.5) * (open * 0.005);
       const close = open + change;
       const high = Math.max(open, close) + Math.random() * (open * 0.002);
       const low = Math.min(open, close) - Math.random() * (open * 0.002);
-      const time = lastCandle.time + 3400;
+      const time = lastCandle.time + 5000;
 
       const newCandle = { open, high, low, close, time };
       candleDataRef.current.push(newCandle);
@@ -165,7 +165,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     };
 
     candleDataRef.current = [];
-    let startTime = Date.now() - 100 * 3400;
+    let startTime = Date.now() - 100 * 5000;
     let price = initialPrice;
     for(let i = 0; i < 50; i++){
         const open = price;
@@ -173,12 +173,12 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         const close = open + change;
         const high = Math.max(open, close) + Math.random() * (open * 0.002);
         const low = Math.min(open, close) - Math.random() * (open * 0.002);
-        const time = startTime + i * 3400;
+        const time = startTime + i * 5000;
         candleDataRef.current.push({ open, high, low, close, time });
         price = close;
     }
     
-    candleTimer = setInterval(generateNewCandle, 3400);
+    candleTimer = setInterval(generateNewCandle, 5000);
 
     return () => clearInterval(candleTimer);
   }, [initialPrice, onCandleDataUpdate]);
@@ -196,7 +196,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         currentPriceRef.current = newPrice;
         onPriceChange(newPrice);
       }
-      priceTimer = setInterval(updatePrice, 850);
+      priceTimer = setInterval(updatePrice, 1500);
       return () => clearInterval(priceTimer);
   }, [initialPrice, onPriceChange]);
   

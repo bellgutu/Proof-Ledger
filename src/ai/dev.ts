@@ -11,3 +11,4 @@ import '@/ai/flows/contract-auditor-flow.ts';
 import '@/ai/flows/token-auditor-flow.ts';
 import '@/ai/flows/watchlist-flow.ts';
 import '@/ai/flows/bridge-narrator-flow.ts';
+import '@/ai/flows/lp-advisor-flow.ts';

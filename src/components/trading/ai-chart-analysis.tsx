@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { analyzeChartPatterns, type ChartAnalysisData } from '@/ai/flows/chart-analyzer-flow';
@@ -69,13 +68,15 @@ export function AIChartAnalysis({ candleData, onError }: AIChartAnalysisProps) {
           </div>
         ) : analysis && analysis.patterns.length > 0 ? (
             analysis.patterns.map((pattern, index) => (
-                 <div key={index} className="p-3 bg-background rounded-lg border space-y-2">
-                    <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold flex items-center"><Bot size={16} className="mr-2" /> {pattern.name}</h4>
-                        <Badge variant="outline" className={getSentimentVariant(pattern.type)}>{pattern.type}</Badge>
+                pattern && (
+                    <div key={index} className="p-3 bg-background rounded-lg border space-y-2">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold flex items-center"><Bot size={16} className="mr-2" /> {pattern.name}</h4>
+                            <Badge variant="outline" className={getSentimentVariant(pattern.type)}>{pattern.type}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{pattern.description}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{pattern.description}</p>
-                </div>
+                )
             ))
         ) : (
           <p className="text-muted-foreground text-sm text-center">

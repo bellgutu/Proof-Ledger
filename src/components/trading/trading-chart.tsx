@@ -24,6 +24,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
   const animationFrameIdRef = useRef<number>();
   const lastUpdateRef = useRef(Date.now());
   const lastCandleUpdateRef = useRef(Date.now());
+  const lastPriceUpdateRef = useRef(Date.now());
+
 
   const drawChart = useCallback(() => {
     const canvas = canvasRef.current;
@@ -150,15 +152,15 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
   useEffect(() => {
     const generateInitialCandles = () => {
         candleDataRef.current = [];
-        let startTime = Date.now() - 100 * 5000;
+        let startTime = Date.now() - 100 * 10000;
         let price = initialPrice;
         for(let i = 0; i < 100; i++){
             const open = price;
-            const change = (Math.random() - 0.49) * open * 0.01;
+            const change = (Math.random() - 0.49) * open * 0.005; // Reduced volatility
             const close = open + change;
-            const high = Math.max(open, close) + Math.random() * open * 0.005;
-            const low = Math.min(open, close) - Math.random() * open * 0.005;
-            const time = startTime + i * 5000;
+            const high = Math.max(open, close) + Math.random() * open * 0.0025;
+            const low = Math.min(open, close) - Math.random() * open * 0.0025;
+            const time = startTime + i * 10000;
             candleDataRef.current.push({ open, high, low, close, time });
             price = close;
         }
@@ -170,33 +172,38 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     generateInitialCandles();
     lastUpdateRef.current = Date.now();
     lastCandleUpdateRef.current = Date.now();
+    lastPriceUpdateRef.current = Date.now();
+
 
     const updateSimulation = () => {
         const now = Date.now();
-        const deltaTime = now - lastUpdateRef.current;
         lastUpdateRef.current = now;
 
-        // Update price based on a smooth random walk
-        const lastPrice = currentPriceRef.current;
-        const volatility = 0.0001; 
-        const trend = 0.00001; 
-        const priceChange = (Math.random() - 0.5 + trend) * lastPrice * volatility;
-        const newPrice = Math.max(0, lastPrice + priceChange);
+        // Update price only every 1.5 seconds
+        if (now - lastPriceUpdateRef.current > 1500) {
+            lastPriceUpdateRef.current = now;
 
-        currentPriceRef.current = newPrice;
-        onPriceChange(newPrice);
-        
-        // Update current candle
-        const currentCandle = candleDataRef.current[candleDataRef.current.length - 1];
-        if (currentCandle) {
-          currentCandle.close = newPrice;
-          currentCandle.high = Math.max(currentCandle.high, newPrice);
-          currentCandle.low = Math.min(currentCandle.low, newPrice);
+            const lastPrice = currentPriceRef.current;
+            const volatility = 0.0001; // Reduced volatility
+            const trend = 0.000005; 
+            const priceChange = (Math.random() - 0.5 + trend) * lastPrice * volatility;
+            const newPrice = Math.max(0, lastPrice + priceChange);
+
+            currentPriceRef.current = newPrice;
+            onPriceChange(newPrice);
+            
+            const currentCandle = candleDataRef.current[candleDataRef.current.length - 1];
+            if (currentCandle) {
+              currentCandle.close = newPrice;
+              currentCandle.high = Math.max(currentCandle.high, newPrice);
+              currentCandle.low = Math.min(currentCandle.low, newPrice);
+            }
         }
-
-        // Generate new candle every 5 seconds
-        if (now - lastCandleUpdateRef.current > 5000) {
+        
+        // Generate new candle every 10 seconds
+        if (now - lastCandleUpdateRef.current > 10000) {
             lastCandleUpdateRef.current = now;
+            const currentCandle = candleDataRef.current[candleDataRef.current.length - 1];
             const open = currentCandle.close;
             const time = now;
             const newCandle = { open, high: open, low: open, close: open, time };

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction } from 'react';
@@ -25,6 +26,7 @@ interface WalletState {
   solBalance: number;
   walletBalance: string;
   marketData: MarketData;
+  isMarketDataLoaded: boolean;
 }
 
 interface WalletActions {
@@ -46,11 +48,11 @@ interface WalletContextType {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const initialMarketData: MarketData = {
-    BTC: { name: 'Bitcoin', symbol: 'BTC', price: 68000, change: 0 },
-    ETH: { name: 'Ethereum', symbol: 'ETH', price: 3500, change: 0 },
-    SOL: { name: 'Solana', symbol: 'SOL', price: 150, change: 0 },
-    BNB: { name: 'BNB', symbol: 'BNB', price: 600, change: 0 },
-    XRP: { name: 'XRP', symbol: 'XRP', price: 0.5, change: 0 },
+    BTC: { name: 'Bitcoin', symbol: 'BTC', price: 0, change: 0 },
+    ETH: { name: 'Ethereum', symbol: 'ETH', price: 0, change: 0 },
+    SOL: { name: 'Solana', symbol: 'SOL', price: 0, change: 0 },
+    BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
+    XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
     USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
 };
@@ -70,9 +72,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   });
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
+  const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
   const [walletBalance, setWalletBalance] = useState('0.00');
 
   useEffect(() => {
+    if (!isMarketDataLoaded) return;
     const total = 
         walletData.ethBalance * marketData.ETH.price + 
         walletData.usdcBalance * marketData.USDC.price + 
@@ -81,7 +85,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         walletData.xrpBalance * marketData.XRP.price +
         walletData.solBalance * marketData.SOL.price;
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [walletData, marketData]);
+  }, [walletData, marketData, isMarketDataLoaded]);
 
   // Real-time market data fetching from CoinGecko
   useEffect(() => {
@@ -109,6 +113,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             return newData;
         });
 
+        if (!isMarketDataLoaded) {
+          setIsMarketDataLoaded(true);
+        }
+
       } catch (error) {
         console.error("Error fetching market data:", error);
       }
@@ -118,7 +126,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const marketUpdateInterval = setInterval(fetchMarketData, 5000); // Update every 5 seconds
 
     return () => clearInterval(marketUpdateInterval);
-  }, []);
+  }, [isMarketDataLoaded]);
 
   const connectWallet = useCallback(() => {
     setWalletData(prev => ({ ...prev, isConnecting: true }));
@@ -162,7 +170,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const value = {
-      walletState: { ...walletData, walletBalance, marketData },
+      walletState: { ...walletData, walletBalance, marketData, isMarketDataLoaded },
       walletActions: {
           connectWallet,
           disconnectWallet,

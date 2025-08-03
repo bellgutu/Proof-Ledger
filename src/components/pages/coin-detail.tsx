@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -26,35 +27,34 @@ interface CoinData {
 
 export default function CoinDetail({ symbol }: { symbol: string }) {
   const { walletState } = useWallet();
-  const { marketData } = walletState;
+  const { marketData, isMarketDataLoaded } = walletState;
   
   const [coinData, setCoinData] = useState<CoinData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<'24h' | '12h' | '6h'>('24h');
   const [currentPrice, setCurrentPrice] = useState(0);
 
   useEffect(() => {
-    setIsLoading(true);
-    const upperSymbol = symbol.toUpperCase();
-    const priceData = marketData[upperSymbol];
+    if (isMarketDataLoaded) {
+      const upperSymbol = symbol.toUpperCase();
+      const priceData = marketData[upperSymbol];
 
-    if (priceData) {
-      setCurrentPrice(priceData.price);
-      setCoinData({
-        id: symbol.toLowerCase(),
-        name: priceData.name,
-        symbol: upperSymbol,
-        price: priceData.price,
-        marketCap: Math.random() * 1e12, // These can remain random for detail view
-        volume: Math.random() * 1e10,
-        circulatingSupply: Math.random() * 1e9,
-        change24h: (Math.random() * 10 - 5), // Change can also be random for now
-        change12h: (Math.random() * 5 - 2.5),
-        change6h: (Math.random() * 2 - 1),
-      });
-      setIsLoading(false);
+      if (priceData) {
+        setCurrentPrice(priceData.price);
+        setCoinData({
+          id: symbol.toLowerCase(),
+          name: priceData.name,
+          symbol: upperSymbol,
+          price: priceData.price,
+          marketCap: Math.random() * 1e12, // These can remain random for detail view
+          volume: Math.random() * 1e10,
+          circulatingSupply: Math.random() * 1e9,
+          change24h: (Math.random() * 10 - 5), // Change can also be random for now
+          change12h: (Math.random() * 5 - 2.5),
+          change6h: (Math.random() * 2 - 1),
+        });
+      }
     }
-  }, [symbol, marketData]);
+  }, [symbol, marketData, isMarketDataLoaded]);
 
   const getChange = () => {
     if (!coinData) return 0;
@@ -65,23 +65,27 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
     }
   };
 
-  if (isLoading) {
+  if (!isMarketDataLoaded || !coinData) {
     return (
-      <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-12 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+      <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+        <div>
+           <Skeleton className="h-6 w-36 mb-4" />
+           <div className="flex items-center gap-4">
+              <Skeleton className="w-12 h-12 rounded-full" />
+              <div>
+                  <Skeleton className="h-10 w-48" />
+                  <Skeleton className="h-8 w-32 mt-2" />
+              </div>
+           </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
         </div>
         <Skeleton className="h-96 w-full" />
       </div>
     );
-  }
-
-  if (!coinData) {
-    return <div>Coin not found</div>;
   }
   
   const isPositive = getChange() >= 0;
@@ -163,8 +167,8 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-96 bg-background rounded-md">
-            <TradingChart key={symbol} initialPrice={coinData.price} onPriceChange={setCurrentPrice} />
+          <div className="h-96 bg-card rounded-md">
+            <TradingChart key={symbol} initialPrice={coinData.price} onPriceChange={setCurrentPrice} onCandleDataUpdate={() => {}} />
           </div>
         </CardContent>
       </Card>

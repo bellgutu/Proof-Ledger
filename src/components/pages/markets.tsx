@@ -66,11 +66,10 @@ const NewsCard = ({ title, content }: NewsArticle) => (
 
 export default function MarketsPage() {
   const { walletState } = useWallet();
-  const { marketData } = walletState;
+  const { marketData, isMarketDataLoaded } = walletState;
   
-  const [isLoadingMarkets, setIsLoadingMarkets] = useState(true);
-  const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [markets, setMarkets] = useState<Market[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [newsFeed, setNewsFeed] = useState<NewsArticle[]>([]);
 
   const fetchNews = useCallback(async () => {
@@ -92,8 +91,7 @@ export default function MarketsPage() {
   }, [fetchNews]);
 
   useEffect(() => {
-    setIsLoadingMarkets(true);
-    if (Object.keys(marketData).length > 0) {
+    if (isMarketDataLoaded) {
         const newMarkets = Object.values(marketData).map(data => ({
             id: data.symbol,
             name: data.name,
@@ -103,16 +101,15 @@ export default function MarketsPage() {
             isPositive: data.change >= 0,
         }));
         setMarkets(newMarkets);
-        setIsLoadingMarkets(false);
     }
-  }, [marketData]);
+  }, [marketData, isMarketDataLoaded]);
 
   return (
     <div className="container mx-auto p-0 space-y-8">
         <WalletHeader />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-        {isLoadingMarkets ? (
+        {!isMarketDataLoaded ? (
           Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[170px] w-full" />)
         ) : (
           markets.map(market => <MarketCard key={market.id} {...market} />)

@@ -7,7 +7,7 @@ import { WalletHeader } from '@/components/shared/wallet-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PoolCard } from '@/components/liquidity/pool-card';
-import { PlusCircle, ChevronsUpDown, BrainCircuit, Loader2 } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown, BrainCircuit, Loader2, BarChart2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -15,6 +15,8 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
 import { getLpStrategy, type LPStrategy } from '@/ai/flows/lp-advisor-flow';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { TrendingUp } from 'lucide-react';
 
 
 export interface Pool {
@@ -34,11 +36,13 @@ export interface UserPosition extends Pool {
   lpTokens: number;
   share: number;
   unclaimedRewards: number;
+  impermanentLoss: number; // Added for IL tracking
 }
 
 export default function LiquidityPage() {
-  const { walletState } = useWallet();
+  const { walletState, walletActions } = useWallet();
   const { isConnected, marketData } = walletState;
+  const { setUsdcBalance } = walletActions;
   const { toast } = useToast();
   
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -70,7 +74,7 @@ export default function LiquidityPage() {
         updatedPositions[existingPositionIndex].share += share;
         return updatedPositions;
       }
-      return [...prev, { ...pool, lpTokens, share, unclaimedRewards: Math.random() * 50 }];
+      return [...prev, { ...pool, lpTokens, share, unclaimedRewards: Math.random() * 50, impermanentLoss: Math.random() * -5 }];
     });
   };
 
@@ -81,6 +85,17 @@ export default function LiquidityPage() {
       }
       return p;
     }).filter(p => p.lpTokens > 0.00001));
+  };
+
+  const handleClaimRewards = (positionId: string, rewards: number) => {
+    setUsdcBalance(prev => prev + rewards); // Assuming rewards are in USDC
+    setUserPositions(prev => prev.map(p => {
+      if (p.id === positionId) {
+        return { ...p, unclaimedRewards: 0 };
+      }
+      return p;
+    }));
+    toast({ title: 'Rewards Claimed!', description: `$${rewards.toFixed(2)} has been added to your wallet.`});
   };
 
   const handleCreatePool = () => {
@@ -145,130 +160,152 @@ export default function LiquidityPage() {
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-primary">Your Liquidity Positions</CardTitle>
-              <CardDescription>Manage your LP tokens and claim rewards.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isConnected && userPositions.length > 0 ? (
-                userPositions.map(position => (
-                  <PoolCard 
-                    key={`pos-${position.id}`} 
-                    pool={position}
-                    userPosition={position} 
-                    onAddPosition={handleAddPosition}
-                    onUpdatePosition={handleUpdatePosition}
-                  />
-                ))
-              ) : (
-                <p className="text-muted-foreground text-center py-8">{isConnected ? "You have no active liquidity positions." : "Connect your wallet to see your positions."}</p>
-              )}
-            </CardContent>
-          </Card>
-
-           <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold text-primary">Available Liquidity Pools</CardTitle>
-                <CardDescription>Provide liquidity to earn trading fees and rewards.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {availablePools.map(pool => (
-                <PoolCard 
-                    key={`avail-${pool.id}`} 
-                    pool={pool} 
-                    onAddPosition={handleAddPosition}
-                    onUpdatePosition={handleUpdatePosition}
-                    userPosition={userPositions.find(p => p.id === pool.id)}
-                  />
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-1 space-y-8">
-             <Card>
+      <Tabs defaultValue="positions" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="positions"><TrendingUp className="mr-2" />Positions & Pools</TabsTrigger>
+          <TabsTrigger value="create"><PlusCircle className="mr-2" />Create & Advise</TabsTrigger>
+          <TabsTrigger value="analytics" disabled><BarChart2 className="mr-2" />Analytics</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="positions" className="mt-6 space-y-8">
+            <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
                 <CardHeader>
-                  <CardTitle className="flex justify-between items-center">
-                    <span>AI Strategy Advisor</span>
-                    <Button size="sm" onClick={fetchSuggestions} disabled={isLoadingSuggestions}>
-                      {isLoadingSuggestions ? <Loader2 className="animate-spin" /> : <BrainCircuit />}
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>Get AI-powered suggestions for new liquidity pools.</CardDescription>
+                  <CardTitle className="text-2xl font-bold text-primary">Your Liquidity Positions</CardTitle>
+                  <CardDescription>Manage your LP tokens and claim rewards.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  {isLoadingSuggestions && <div className="text-sm text-center text-muted-foreground">Looking for opportunities...</div>}
-                  {suggestions.length > 0 ? (
-                    suggestions.map((strat, i) => (
-                       <Alert key={i}>
-                          <AlertTitle className="font-bold">{strat.pair} at {strat.feeTier}%</AlertTitle>
-                          <AlertDescription>{strat.justification}</AlertDescription>
-                          <Button size="sm" variant="link" className="p-0 h-auto mt-2" onClick={() => useSuggestion(strat)}>Use this pair</Button>
-                       </Alert>
+                <CardContent className="space-y-4">
+                  {isConnected && userPositions.length > 0 ? (
+                    userPositions.map(position => (
+                      <PoolCard 
+                        key={`pos-${position.id}`} 
+                        pool={position}
+                        userPosition={position} 
+                        onAddPosition={handleAddPosition}
+                        onUpdatePosition={handleUpdatePosition}
+                        onClaimRewards={handleClaimRewards}
+                      />
                     ))
-                  ) : !isLoadingSuggestions && (
-                     <p className="text-sm text-center text-muted-foreground py-4">Click the AI button for suggestions.</p>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-8">{isConnected ? "You have no active liquidity positions." : "Connect your wallet to see your positions."}</p>
                   )}
                 </CardContent>
               </Card>
-            <Card>
+
+               <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
                 <CardHeader>
-                    <CardTitle>Create a New Pool</CardTitle>
-                    <CardDescription>Bootstrap a new pool by providing the initial liquidity.</CardDescription>
+                    <CardTitle className="text-2xl font-bold text-primary">Available Liquidity Pools</CardTitle>
+                    <CardDescription>Provide liquidity to earn trading fees and rewards.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div>
-                      <Label>Pool Type</Label>
-                      <RadioGroup defaultValue="V2" onValueChange={(val) => setNewPoolType(val as 'V2' | 'V3')} className="flex gap-4 pt-2">
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="V2" id="v2"/><Label htmlFor="v2">V2 Standard</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="V3" id="v3"/><Label htmlFor="v3">V3 Concentrated</Label></div>
-                      </RadioGroup>
-                    </div>
+                  {availablePools.map(pool => (
+                    <PoolCard 
+                        key={`avail-${pool.id}`} 
+                        pool={pool} 
+                        onAddPosition={handleAddPosition}
+                        onUpdatePosition={handleUpdatePosition}
+                        userPosition={userPositions.find(p => p.id === pool.id)}
+                        onClaimRewards={handleClaimRewards}
+                      />
+                  ))}
+                </CardContent>
+              </Card>
+        </TabsContent>
 
-                    <div className="space-y-2">
-                      <Label>Token Pair</Label>
-                      <div className="flex items-center gap-2">
-                       <Select value={newToken1} onValueChange={setNewToken1}>
-                          <SelectTrigger><SelectValue placeholder="Token A"/></SelectTrigger>
+        <TabsContent value="create" className="mt-6 space-y-8">
+           <Card>
+              <CardHeader>
+                <CardTitle className="flex justify-between items-center">
+                  <span>AI Strategy Advisor</span>
+                  <Button size="sm" onClick={fetchSuggestions} disabled={isLoadingSuggestions}>
+                    {isLoadingSuggestions ? <Loader2 className="animate-spin" /> : <BrainCircuit />}
+                  </Button>
+                </CardTitle>
+                <CardDescription>Get AI-powered suggestions for new liquidity pools.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {isLoadingSuggestions && <div className="text-sm text-center text-muted-foreground">Looking for opportunities...</div>}
+                {suggestions.length > 0 ? (
+                  suggestions.map((strat, i) => (
+                      <Alert key={i}>
+                        <AlertTitle className="font-bold">{strat.pair} at {strat.feeTier}%</AlertTitle>
+                        <AlertDescription>{strat.justification}</AlertDescription>
+                        <Button size="sm" variant="link" className="p-0 h-auto mt-2" onClick={() => useSuggestion(strat)}>Use this pair</Button>
+                      </Alert>
+                  ))
+                ) : !isLoadingSuggestions && (
+                    <p className="text-sm text-center text-muted-foreground py-4">Click the AI button for suggestions.</p>
+                )}
+              </CardContent>
+            </Card>
+          <Card>
+              <CardHeader>
+                  <CardTitle>Create a New Pool</CardTitle>
+                  <CardDescription>Bootstrap a new pool by providing the initial liquidity.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div>
+                    <Label>Pool Type</Label>
+                    <RadioGroup defaultValue="V2" onValueChange={(val) => setNewPoolType(val as 'V2' | 'V3')} className="flex gap-4 pt-2">
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="V2" id="v2"/><Label htmlFor="v2">V2 Standard</Label></div>
+                      <div className="flex items-center space-x-2"><RadioGroupItem value="V3" id="v3"/><Label htmlFor="v3">V3 Concentrated</Label></div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Token Pair</Label>
+                    <div className="flex items-center gap-2">
+                      <Select value={newToken1} onValueChange={setNewToken1}>
+                        <SelectTrigger><SelectValue placeholder="Token A"/></SelectTrigger>
+                        <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                      </Select>
+                        <Select value={newToken2} onValueChange={setNewToken2}>
+                          <SelectTrigger><SelectValue placeholder="Token B"/></SelectTrigger>
                           <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                         </Select>
-                         <Select value={newToken2} onValueChange={setNewToken2}>
-                            <SelectTrigger><SelectValue placeholder="Token B"/></SelectTrigger>
-                            <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                          </Select>
-                      </div>
                     </div>
-                     
-                     <div className="space-y-2">
-                        <Label>Fee Tier</Label>
-                        <Select value={newFeeTier?.toString()} onValueChange={(val) => setNewFeeTier(parseFloat(val))}>
-                          <SelectTrigger><SelectValue placeholder="Select Fee Tier"/></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0.05">0.05%</SelectItem>
-                            <SelectItem value="0.3">0.30%</SelectItem>
-                            <SelectItem value="1">1.00%</SelectItem>
-                          </SelectContent>
-                        </Select>
-                     </div>
+                  </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Fee Tier</Label>
+                      <Select value={newFeeTier?.toString()} onValueChange={(val) => setNewFeeTier(parseFloat(val))}>
+                        <SelectTrigger><SelectValue placeholder="Select Fee Tier"/></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0.05">0.05%</SelectItem>
+                          <SelectItem value="0.3">0.30%</SelectItem>
+                          <SelectItem value="1">1.00%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                    {newPoolType === 'V3' && (
-                       <div className="space-y-2">
-                        <Label>Price Range</Label>
-                         <div className="flex items-center gap-2">
-                          <Input type="number" value={newPriceRange.min} onChange={(e) => setNewPriceRange(p => ({...p, min: e.target.value}))} placeholder={`Min Price (${newToken2 || '...'})`}/>
-                          <Input type="number" value={newPriceRange.max} onChange={(e) => setNewPriceRange(p => ({...p, max: e.target.value}))} placeholder={`Max Price (${newToken2 || '...'})`}/>
-                        </div>
-                       </div>
-                    )}
-                     
-                     <Button onClick={handleCreatePool} disabled={!isConnected} className="w-full"><PlusCircle className="mr-2"/>Create Pool</Button>
-                </CardContent>
-            </Card>
-        </div>
-      </div>
+                  {newPoolType === 'V3' && (
+                      <div className="space-y-2">
+                      <Label>Price Range</Label>
+                        <div className="flex items-center gap-2">
+                        <Input type="number" value={newPriceRange.min} onChange={(e) => setNewPriceRange(p => ({...p, min: e.target.value}))} placeholder={`Min Price (${newToken2 || '...'})`}/>
+                        <Input type="number" value={newPriceRange.max} onChange={(e) => setNewPriceRange(p => ({...p, max: e.target.value}))} placeholder={`Max Price (${newToken2 || '...'})`}/>
+                      </div>
+                      </div>
+                  )}
+                    
+                    <Button onClick={handleCreatePool} disabled={!isConnected} className="w-full"><PlusCircle className="mr-2"/>Create Pool</Button>
+              </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics & Simulations</CardTitle>
+              <CardDescription>Advanced analytics and predictive modeling are coming soon.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center py-16">This section is under construction.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
+    

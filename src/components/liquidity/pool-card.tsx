@@ -16,9 +16,10 @@ interface PoolCardProps {
   userPosition?: UserPosition;
   onAddPosition: (pool: Pool, lpTokens: number, share: number) => void;
   onUpdatePosition: (poolId: string, lpAmount: number, shareChange: number) => void;
+  onClaimRewards: (positionId: string, rewards: number) => void;
 }
 
-export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition }: PoolCardProps) {
+export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition, onClaimRewards }: PoolCardProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isManageDialogOpen, setIsManageDialogOpen] = React.useState(false);
 
@@ -83,9 +84,26 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition }
                     <span className="text-muted-foreground">LP Tokens:</span>
                     <span>{userPosition.lpTokens.toLocaleString('en-US', {maximumFractionDigits: 4})}</span>
                 </div>
-                 <div className="flex justify-between">
-                    <span className="text-muted-foreground">Unclaimed Rewards:</span>
-                    <span className="text-green-400">${userPosition.unclaimedRewards.toFixed(2)}</span>
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Impermanent Loss:</span>
+                    <span className={userPosition.impermanentLoss >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {userPosition.impermanentLoss.toFixed(2)}%
+                    </span>
+                </div>
+                 <div className="flex justify-between items-center mt-1">
+                    <div className="flex items-center">
+                      <span className="text-muted-foreground">Unclaimed Rewards:</span>
+                      <span className="text-green-400 ml-2 font-bold">${userPosition.unclaimedRewards.toFixed(2)}</span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="link" 
+                      className="p-0 h-auto text-primary"
+                      onClick={() => onClaimRewards(userPosition.id, userPosition.unclaimedRewards)}
+                      disabled={userPosition.unclaimedRewards <= 0}
+                    >
+                      Claim
+                    </Button>
                 </div>
               </div>
           </CardHeader>
@@ -110,3 +128,5 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition }
     </>
   );
 }
+
+    

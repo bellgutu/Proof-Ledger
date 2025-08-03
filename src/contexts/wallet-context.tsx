@@ -115,6 +115,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     };
                 }
             });
+            // Ensure WETH tracks ETH price
+            if (newData.ETH) {
+                newData.WETH.price = newData.ETH.price;
+                newData.WETH.change = newData.ETH.change;
+            }
             return newData;
         });
 

@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp, Handshake, Vote, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
-import { getRebalanceAction } from '@/ai/flows/rebalance-narrator-flow';
+import { getRebalanceAction, type RebalanceAction } from '@/ai/flows/rebalance-narrator-flow';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,12 +21,18 @@ import { Alert } from '../ui/alert';
 interface Transaction {
   id: string;
   type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote';
-  details: string;
+  details: string | React.ReactNode;
   status: 'Completed' | 'Pending';
 }
 
+interface VaultStrategy {
+    name: string;
+    value: number;
+    asset: 'WETH' | 'USDC';
+    apy: number;
+}
+
 type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL';
-type VaultStrategy = 'ETH Yield Maximizer' | 'Stablecoin Growth';
 type Pool = 'ETH/USDT' | 'ETH/USDC' | 'SOL/USDT' | 'SOL/USDC';
 
 const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL'];
@@ -39,6 +45,9 @@ export default function FinancePage() {
 
   const [vaultEth, setVaultEth] = useState(0);
   const [vaultWeth, setVaultWeth] = useState(0);
+  const [vaultUsdc, setVaultUsdc] = useState(0);
+  const [activeStrategy, setActiveStrategy] = useState<VaultStrategy | null>(null);
+
 
   const [vaultLoading, setVaultLoading] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
@@ -104,8 +113,14 @@ export default function FinancePage() {
   const vaultTotalUsd = useMemo(() => {
     const ethValue = vaultEth * (exchangeRates.ETH || 0);
     const wethValue = vaultWeth * (exchangeRates.WETH || 0);
-    return ethValue + wethValue;
-  }, [vaultEth, vaultWeth, exchangeRates]);
+    const usdcValue = vaultUsdc * (exchangeRates.USDC || 0);
+    let strategyValue = 0;
+    if (activeStrategy) {
+      const assetPrice = activeStrategy.asset === 'WETH' ? exchangeRates.WETH : exchangeRates.USDC;
+      strategyValue = activeStrategy.value * (assetPrice || 0);
+    }
+    return ethValue + wethValue + usdcValue + strategyValue;
+  }, [vaultEth, vaultWeth, vaultUsdc, activeStrategy, exchangeRates]);
 
   const handleAmountChange = (val: string) => {
     if (val === '' || parseFloat(val) < 0) {
@@ -165,13 +180,25 @@ export default function FinancePage() {
   };
 
   const handleWithdrawFromVault = () => {
-    if (vaultEth <= 0 && vaultWeth <=0) return;
+    if (vaultTotalUsd <= 0) return;
     setVaultLoading(true);
     setTimeout(() => {
         setEthBalance(prev => parseFloat((prev + vaultEth).toFixed(4)));
         setWethBalance(prev => parseFloat((prev + vaultWeth).toFixed(4)));
+        setUsdcBalance(prev => parseFloat((prev + vaultUsdc).toFixed(4)));
+        if (activeStrategy) {
+            if (activeStrategy.asset === 'WETH') {
+                setWethBalance(prev => parseFloat((prev + activeStrategy.value).toFixed(4)));
+            } else {
+                 setUsdcBalance(prev => parseFloat((prev + activeStrategy.value).toFixed(4)));
+            }
+        }
+
         setVaultEth(0);
         setVaultWeth(0);
+        setVaultUsdc(0);
+        setActiveStrategy(null);
+
         addTransaction({
             type: 'Vault Withdraw',
             details: `Withdrew all assets from AI Strategy Vault`
@@ -184,31 +211,38 @@ export default function FinancePage() {
     if(rebalanceLoading) return;
     setRebalanceLoading(true);
     try {
-        const action = await getRebalanceAction(vaultEth, vaultWeth);
-        if (action.fromToken === action.toToken) {
-           toast({ title: "AI Rebalance", description: "No rebalancing needed at this time."});
-           return;
-        };
-
-        let amount = Math.min(action.amount, action.fromToken === 'ETH' ? vaultEth : vaultWeth);
-        if (amount <= 0) {
-           toast({ title: "AI Rebalance", description: "Not enough funds for rebalancing."});
-           return;
-        }
-
-        // Simulate the swap inside the vault
+        const action = await getRebalanceAction({ currentEth: vaultEth, currentWeth: vaultWeth, currentUsdc: vaultUsdc });
+        
+        let amount = action.amount;
         if (action.fromToken === 'ETH') {
             setVaultEth(prev => prev - amount);
-            setVaultWeth(prev => prev + amount); // Assume 1:1 for ETH:WETH
-        } else {
-            setVaultWeth(prev => prev - amount);
-            setVaultEth(prev => prev + amount);
+            setVaultWeth(prev => prev + amount);
+        } else if (action.fromToken === 'WETH' && action.toToken === 'USDC') {
+            const wethAmount = Math.min(amount, vaultWeth);
+            setVaultWeth(prev => prev - wethAmount);
+            const usdcAmount = wethAmount * exchangeRates.WETH / exchangeRates.USDC;
+            setVaultUsdc(prev => prev + usdcAmount);
+            setActiveStrategy({name: action.strategyName, value: usdcAmount, asset: 'USDC', apy: action.expectedApy});
+        } else if (action.fromToken === 'USDC' && action.toToken === 'WETH') {
+            const usdcAmount = Math.min(amount, vaultUsdc);
+            setVaultUsdc(prev => prev - usdcAmount);
+            const wethAmount = usdcAmount * exchangeRates.USDC / exchangeRates.WETH;
+            setVaultWeth(prev => prev + wethAmount);
+            setActiveStrategy({name: action.strategyName, value: wethAmount, asset: 'WETH', apy: action.expectedApy});
         }
-
+        
         addTransaction({
             type: 'AI Rebalance',
-            details: action.summary,
+            details: (
+                <div className="text-xs space-y-1">
+                    <p><strong>Strategy:</strong> {action.strategyName}</p>
+                    <p><strong>Justification:</strong> {action.justification}</p>
+                    <p><strong>Risk Analysis:</strong> {action.riskAnalysis}</p>
+                    <p><strong>Expected APY:</strong> {action.expectedApy}%</p>
+                </div>
+            )
         });
+
     } catch (e) {
         console.error("Failed to get rebalance detail:", e);
          toast({
@@ -219,9 +253,9 @@ export default function FinancePage() {
     } finally {
         setRebalanceLoading(false);
     }
-  }, [vaultEth, vaultWeth, toast, rebalanceLoading]);
+  }, [vaultEth, vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates.WETH, exchangeRates.USDC, toast]);
 
-  const hasVaultBalance = vaultEth > 0 || vaultWeth > 0;
+  const hasVaultBalance = vaultTotalUsd > 0;
 
   const TokenSelectItem = ({ token }: { token: Token }) => (
     <SelectItem value={token}>
@@ -263,7 +297,7 @@ export default function FinancePage() {
         if(asset2 === 'USDC') setUsdcBalance(prev => parseFloat((prev - amount2).toFixed(4)));
 
         setLpTokens(prev => prev + 100);
-        addTransaction({ type: 'Add Liquidity', details: `Added ${amount1} ${asset1} and ${amount2} ${asset2}` });
+        addTransaction({ type: 'Add Liquidity', details: `Added ${amount1.toLocaleString('en-US', {maximumFractionDigits: 4})} ${asset1} and ${amount2.toLocaleString('en-US', {maximumFractionDigits: 4})} ${asset2}` });
         setIsLiquidityLoading(false);
       }, 2000);
     };
@@ -281,7 +315,7 @@ export default function FinancePage() {
             if(asset2 === 'USDC') setUsdcBalance(prev => parseFloat((prev + amount2).toFixed(4)));
 
             setLpTokens(0);
-            addTransaction({ type: 'Remove Liquidity', details: `Removed ${amount1} ${asset1} and ${amount2} ${asset2}` });
+            addTransaction({ type: 'Remove Liquidity', details: `Removed ${amount1.toLocaleString('en-US', {maximumFractionDigits: 4})} ${asset1} and ${amount2.toLocaleString('en-US', {maximumFractionDigits: 4})} ${asset2}` });
             setIsLiquidityLoading(false);
         }, 2000);
     }
@@ -401,27 +435,28 @@ export default function FinancePage() {
                 <CardContent className="space-y-4">
                     <div className="p-4 bg-background rounded-md border">
                         <div className="flex justify-between items-center">
-                            <p className="text-sm text-muted-foreground">Vault Value:</p>
-                            <span className="text-green-400 font-semibold">23% APY (Projected)</span>
+                            <p className="text-sm text-muted-foreground">Total Vault Value:</p>
                         </div>
                         <p className="text-2xl font-bold text-foreground">${vaultTotalUsd.toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
-                        <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                            <div className="flex justify-between"><span>ETH Balance:</span> <span className="font-mono">{vaultEth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
-                            <div className="flex justify-between"><span>WETH Balance:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
+                         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                            {activeStrategy ? (
+                                <div className="p-3 bg-primary/10 rounded-md">
+                                    <p className="font-bold text-primary">{activeStrategy.name}</p>
+                                    <div className="flex justify-between items-center">
+                                        <span>{activeStrategy.value.toLocaleString('en-US', {maximumFractionDigits: 4})} {activeStrategy.asset}</span>
+                                        <span className="text-green-400 font-semibold">{activeStrategy.apy}% APY</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-center text-xs">No active strategy. Click the AI button to deploy funds.</p>
+                            )}
+                            <p className="text-sm font-bold pt-2">Idle Assets:</p>
+                            <div className="flex justify-between"><span>ETH:</span> <span className="font-mono">{vaultEth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
+                            <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
+                            <div className="flex justify-between"><span>USDC:</span> <span className="font-mono">{vaultUsdc.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
                         </div>
                     </div>
                     
-                    <div>
-                      <label htmlFor="stake-amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount to Deposit (ETH)</label>
-                      <Input
-                          id="stake-amount"
-                          type="number"
-                          value={0.5}
-                          readOnly
-                          disabled={!isConnected}
-                      />
-                    </div>
-
                     <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                           onClick={handleDepositToVault}
@@ -493,7 +528,7 @@ export default function FinancePage() {
                       {isLiquidityLoading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
-                      `Add ${amount1} ${asset1} + ${amount2.toLocaleString('en-US', {maximumFractionDigits: 0})} ${asset2}`
+                      `Add ${amount1.toLocaleString('en-US', {maximumFractionDigits: 4})} ${asset1} + ${amount2.toLocaleString('en-US', {maximumFractionDigits: 0})} ${asset2}`
                       )}
                   </Button>
                   <Button
@@ -568,7 +603,7 @@ export default function FinancePage() {
                                             {tx.status}
                                         </span>
                                     </div>
-                                    <p className="text-muted-foreground text-xs mt-1">{tx.details}</p>
+                                    <div className="text-muted-foreground text-xs mt-1">{tx.details}</div>
                                 </div>
                             ))}
                         </div>

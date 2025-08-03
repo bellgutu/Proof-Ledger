@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -8,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const CandlestickSchema = z.object({
@@ -41,6 +43,7 @@ export async function analyzeChartPatterns(input: ChartAnalysisInput): Promise<C
 
 const prompt = ai.definePrompt({
   name: 'chartAnalyzerPrompt',
+  model: googleAI('gemini-1.5-flash-latest'),
   input: { schema: ChartAnalysisInputSchema },
   output: { schema: ChartAnalysisDataSchema },
   prompt: `You are an expert technical analyst. Analyze the following series of candlestick data and identify any significant technical analysis patterns.

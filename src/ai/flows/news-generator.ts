@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -7,6 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const NewsArticleSchema = z.object({
@@ -27,6 +29,7 @@ export async function generateNews(): Promise<NewsGeneratorOutput> {
 
 const prompt = ai.definePrompt({
   name: 'newsGeneratorPrompt',
+  model: googleAI('gemini-1.5-flash-latest'),
   output: {schema: NewsGeneratorOutputSchema},
   prompt: `You are a Web3 and cryptocurrency news journalist. Generate a list of 6 recent, plausible-sounding news headlines and short summaries. The topics should be varied and cover things like protocol upgrades, NFT marketplaces, institutional investment, Web3 gaming, regulation, and decentralized identity.
 

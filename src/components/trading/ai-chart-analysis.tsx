@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -11,32 +12,31 @@ import { Button } from '../ui/button';
 
 interface AIChartAnalysisProps {
   candleData: Candle[];
+  onError: (message: string | null) => void;
 }
 
-export function AIChartAnalysis({ candleData }: AIChartAnalysisProps) {
+export function AIChartAnalysis({ candleData, onError }: AIChartAnalysisProps) {
   const [analysis, setAnalysis] = useState<ChartAnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  
   const performAnalysis = useCallback(async () => {
     if (candleData.length < 10) {
-        setError("Not enough chart data to perform analysis.");
         return;
     };
     setIsLoading(true);
-    setError(null);
+    onError(null);
     setAnalysis(null);
     try {
       const result = await analyzeChartPatterns({ candles: candleData });
       setAnalysis(result);
     } catch (error) {
       console.error("Failed to get chart analysis:", error);
-      setError("AI analysis failed. Please try again later.");
+      onError("AI analysis failed. The service may be temporarily unavailable.");
       setAnalysis(null);
     } finally {
       setIsLoading(false);
     }
-  }, [candleData]);
+  }, [candleData, onError]);
 
   useEffect(() => {
     // Automatically run analysis when candle data is available
@@ -62,20 +62,19 @@ export function AIChartAnalysis({ candleData }: AIChartAnalysisProps) {
             <BrainCircuit size={24} className="mr-2" />
             AI Chart Analysis
         </CardTitle>
-        <Button onClick={performAnalysis} disabled={isLoading} size="sm">
+        <Button onClick={performAnalysis} disabled={isLoading || candleData.length < 10} size="sm">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
             Analyze
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4 h-48 flex flex-col justify-center">
+      <CardContent className="space-y-4 h-96 flex flex-col justify-center">
         {isLoading ? (
           <div className="space-y-2">
+            <p className="text-sm text-center text-muted-foreground">AI is analyzing patterns...</p>
             <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
           </div>
-        ) : error ? (
-            <p className="text-destructive text-sm text-center">{error}</p>
         ) : analysis && analysis.patterns.length > 0 ? (
             analysis.patterns.map((pattern, index) => (
                  <div key={index} className="p-3 bg-background rounded-lg border space-y-2">
@@ -87,7 +86,9 @@ export function AIChartAnalysis({ candleData }: AIChartAnalysisProps) {
                 </div>
             ))
         ) : (
-          <p className="text-muted-foreground text-sm text-center">Click "Analyze" to run AI chart analysis.</p>
+          <p className="text-muted-foreground text-sm text-center">
+            {candleData.length < 10 ? 'Waiting for more chart data...' : 'Click "Analyze" to run AI chart analysis.'}
+            </p>
         )}
       </CardContent>
     </Card>

@@ -13,7 +13,6 @@ import { WalletHeader } from '@/components/shared/wallet-header';
 import { TradingChart, type Candle } from '@/components/trading/trading-chart';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
-import { AIChartAnalysis } from '@/components/trading/ai-chart-analysis';
 import { Skeleton } from '../ui/skeleton';
 
 interface Trade {
@@ -243,8 +242,6 @@ const TradingPageContent = () => {
             </Button>
           </CardContent>
         </Card>
-
-        <AIChartAnalysis key={`ai-analysis-${selectedPair}`} candleData={candleData} />
 
         <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
         

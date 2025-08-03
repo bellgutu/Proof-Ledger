@@ -39,9 +39,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
 
-    // Set a pure black background as per the visual reference
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
+    // Clear the canvas. This makes the background transparent.
+    ctx.clearRect(0, 0, width, height);
       
     const candles = candleDataRef.current;
     if (candles.length === 0) return;

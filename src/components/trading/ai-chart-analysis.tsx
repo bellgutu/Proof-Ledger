@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { analyzeChartPatterns, type ChartAnalysisData } from '@/ai/flows/chart-analyzer-flow';
@@ -37,6 +37,14 @@ export function AIChartAnalysis({ candleData }: AIChartAnalysisProps) {
       setIsLoading(false);
     }
   }, [candleData]);
+
+  useEffect(() => {
+    // Automatically run analysis when candle data is available
+    if (candleData.length > 0) {
+      performAnalysis();
+    }
+  }, [candleData, performAnalysis]);
+
 
   const getSentimentVariant = (sentiment: 'Bullish' | 'Bearish' | 'Neutral' | undefined) => {
     switch (sentiment) {

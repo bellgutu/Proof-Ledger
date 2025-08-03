@@ -32,8 +32,8 @@ interface TradeHistoryItem extends Trade {
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance, solBalance, marketData } = walletState;
-  const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance, setSolBalance } = walletActions;
+  const { isConnected, usdcBalance, marketData } = walletState;
+  const { setUsdcBalance } = walletActions;
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeAmount, setTradeAmount] = useState('');
@@ -59,28 +59,6 @@ const TradingPageContent = () => {
     }
   }, [marketData, selectedPair]);
 
-
-  const getAssetBalance = useCallback(() => {
-    switch(asset) {
-        case 'ETH': return ethBalance;
-        case 'BTC': return usdcBalance / marketData['BTC'].price;
-        case 'SOL': return solBalance;
-        case 'BNB': return bnbBalance;
-        case 'XRP': return xrpBalance;
-        default: return 0;
-    }
-  }, [asset, ethBalance, usdcBalance, bnbBalance, xrpBalance, solBalance, marketData]);
-  
-  const setAssetBalance = useCallback((updater: (prev: number) => number) => {
-     switch(asset) {
-        case 'ETH': setEthBalance(updater); break;
-        case 'BTC': setUsdcBalance(prev => prev + (updater(0) * marketData['BTC'].price)); break;
-        case 'SOL': setSolBalance(updater); break;
-        case 'BNB': setBnbBalance(updater); break;
-        case 'XRP': setXrpBalance(updater); break;
-    }
-  }, [asset, setEthBalance, setUsdcBalance, setBnbBalance, setXrpBalance, setSolBalance, marketData]);
-
   const handlePairChange = (pair: string) => {
     if(activeTrade) return; // Prevent changing pair with an active trade
     setSelectedPair(pair);
@@ -93,7 +71,8 @@ const TradingPageContent = () => {
 
   const placeTrade = () => {
     const amount = parseFloat(tradeAmount);
-    if (isNaN(amount) || amount <= 0 || amount * leverage > getAssetBalance()) return;
+    if (isNaN(amount) || amount <= 0 || amount > usdcBalance) return;
+    
     setIsPlacingTrade(true);
     setTimeout(() => {
       const entryPrice = currentPrice;
@@ -105,7 +84,7 @@ const TradingPageContent = () => {
         leverage,
         livePnl: '0.00',
       });
-      setAssetBalance(prev => parseFloat((prev - amount).toFixed(4)));
+      setUsdcBalance(prev => parseFloat((prev - amount).toFixed(4)));
       setTradeAmount('');
       setIsPlacingTrade(false);
     }, 1500);
@@ -115,31 +94,28 @@ const TradingPageContent = () => {
     if (!activeTrade) return;
     const finalPrice = currentPrice + (Math.random() - 0.5) * (currentPrice * 0.01);
     const pnl = activeTrade.direction === 'long'
-      ? (finalPrice - parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage
-      : (parseFloat(activeTrade.entryPrice) - finalPrice) * activeTrade.amount * activeTrade.leverage;
+      ? ((finalPrice - parseFloat(activeTrade.entryPrice)) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage
+      : ((parseFloat(activeTrade.entryPrice) - finalPrice) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage;
 
-    const newBalance = activeTrade.amount + pnl / currentPrice;
+    const newBalance = activeTrade.amount + pnl;
 
-    setAssetBalance(prev => parseFloat((prev + newBalance).toFixed(4)));
+    setUsdcBalance(prev => parseFloat((prev + newBalance).toFixed(4)));
     setTradeHistory(prev => [{ ...activeTrade, finalPnl: pnl.toFixed(2), closePrice: finalPrice.toFixed(4) }, ...prev]);
     setActiveTrade(null);
-  }, [activeTrade, currentPrice, setAssetBalance]);
+  }, [activeTrade, currentPrice, setUsdcBalance]);
 
   useEffect(() => {
     if (activeTrade) {
       const pnl = activeTrade.direction === 'long'
-        ? (currentPrice - parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage
-        : (parseFloat(activeTrade.entryPrice) - currentPrice) * activeTrade.amount * activeTrade.leverage;
+        ? ((currentPrice - parseFloat(activeTrade.entryPrice)) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage
+        : ((parseFloat(activeTrade.entryPrice) - currentPrice) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage;
+
       setActiveTrade(prev => prev ? ({ ...prev, livePnl: pnl.toFixed(2) }) : null);
     }
   }, [currentPrice, activeTrade]);
   
   const tradeablePairs = ['ETH/USDT', 'BTC/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
-
-  if (!initialPriceForChart) {
-      return null;
-  }
   
   return (
     <>
@@ -185,8 +161,9 @@ const TradingPageContent = () => {
                 <p className="text-sm text-muted-foreground">Active Position:</p>
                 <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
                   <span className={`text-lg font-bold ${activeTrade.direction === 'long' ? 'text-green-400' : 'text-red-400'}`}>
-                    {activeTrade.direction.toUpperCase()} {activeTrade.amount.toFixed(2)} {activeTrade.pair.split('/')[0]}
+                    {activeTrade.direction.toUpperCase()} ${activeTrade.amount.toFixed(2)}
                   </span>
+                   <span className="text-foreground font-semibold">{activeTrade.pair}</span>
                   <span className="text-foreground font-semibold">Entry: ${activeTrade.entryPrice}</span>
                   <span className="text-foreground font-semibold">Leverage: {activeTrade.leverage}x</span>
                 </div>
@@ -205,7 +182,7 @@ const TradingPageContent = () => {
                   <div key={index} className="flex justify-between items-center p-3 bg-background rounded-md border">
                     <div>
                       <span className={`font-bold ${trade.direction === 'long' ? 'text-green-400' : 'text-red-400'}`}>
-                        {trade.direction.toUpperCase()} {trade.amount.toFixed(2)} {trade.pair.split('/')[0]}
+                        {trade.direction.toUpperCase()} ${trade.amount.toFixed(2)} {trade.pair}
                       </span>
                       <span className="text-xs text-muted-foreground ml-2">({trade.leverage}x)</span>
                     </div>
@@ -227,7 +204,7 @@ const TradingPageContent = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label htmlFor="trade-amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount ({asset})</label>
+              <label htmlFor="trade-amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount (USDC)</label>
               <Input
                 id="trade-amount"
                 type="number"
@@ -236,7 +213,7 @@ const TradingPageContent = () => {
                 disabled={!isConnected || activeTrade !== null}
                 placeholder="0.0"
               />
-              <p className="text-xs text-muted-foreground mt-1">Balance: {getAssetBalance().toFixed(4)} {asset}</p>
+              <p className="text-xs text-muted-foreground mt-1">Balance: {usdcBalance.toFixed(2)} USDC</p>
             </div>
             <div>
               <label htmlFor="leverage-select" className="block text-sm font-medium text-muted-foreground mb-1">Leverage</label>
@@ -258,7 +235,7 @@ const TradingPageContent = () => {
               <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected || !!activeTrade}><TrendingUp size={16} className="mr-2" /> Long</Button>
               <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected || !!activeTrade}><TrendingDown size={16} className="mr-2" /> Short</Button>
             </div>
-            <Button onClick={placeTrade} disabled={!isConnected || isPlacingTrade || !tradeAmount || parseFloat(tradeAmount) * leverage > getAssetBalance() || !!activeTrade} className="w-full">
+            <Button onClick={placeTrade} disabled={!isConnected || isPlacingTrade || !tradeAmount || parseFloat(tradeAmount) > usdcBalance || !!activeTrade} className="w-full">
               {isPlacingTrade ? <span className="flex items-center"><RefreshCcw size={16} className="mr-2 animate-spin" /> Placing...</span> : `Place ${tradeDirection === 'long' ? 'Long' : 'Short'} Trade`}
             </Button>
           </CardContent>

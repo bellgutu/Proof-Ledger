@@ -56,7 +56,7 @@ const rebalanceNarratorFlow = ai.defineFlow(
     outputSchema: RebalanceActionSchema,
   },
   async (input) => {
-    // Ensure we don't try to rebalance from a zero balance
+    // If the user has ETH but nothing in the vault, the first step is to wrap ETH.
     if (input.currentEth > 0 && input.currentWeth === 0 && input.currentUsdc === 0) {
         return {
             fromToken: 'ETH',

@@ -16,7 +16,6 @@ import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
-import { Alert } from '../ui/alert';
 
 interface Transaction {
   id: string;
@@ -32,6 +31,16 @@ interface VaultStrategy {
     apy: number;
 }
 
+interface Proposal {
+  id: string;
+  title: string;
+  description: string;
+  votesFor: number;
+  votesAgainst: number;
+  userVote?: 'for' | 'against';
+}
+
+
 type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL';
 
 const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL'];
@@ -46,7 +55,6 @@ export default function FinancePage() {
   const [vaultUsdc, setVaultUsdc] = useState(0);
   const [activeStrategy, setActiveStrategy] = useState<VaultStrategy | null>(null);
 
-
   const [vaultLoading, setVaultLoading] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
 
@@ -56,6 +64,12 @@ export default function FinancePage() {
   const [toAmount, setToAmount] = useState('');
   const [swapping, setSwapping] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  
+  const [proposals, setProposals] = useState<Proposal[]>([
+    { id: '1', title: 'Increase LP Rewards for WETH/USDC', description: 'Boost the rewards for the WETH/USDC pool by 5% to attract more liquidity.', votesFor: 1250000, votesAgainst: 340000 },
+    { id: '2', title: 'Onboard a new collateral asset: LINK', description: 'Allow Chainlink (LINK) to be used as collateral within the protocol.', votesFor: 850000, votesAgainst: 600000 },
+    { id: '3', title: 'Adjust AI Vault Risk Parameters', description: 'Slightly increase the risk tolerance of the AI Strategy Vault to pursue higher yields.', votesFor: 450000, votesAgainst: 480000 },
+  ]);
 
   const balances: { [key in Token]: number } = {
     ETH: ethBalance,
@@ -146,16 +160,34 @@ export default function FinancePage() {
       setSwapping(false);
     }, 1500);
   };
+  
+  const handleVote = (proposalId: string, vote: 'for' | 'against') => {
+    setProposals(prev => prev.map(p => {
+        if (p.id === proposalId && !p.userVote) {
+            const simulatedVotingPower = (Math.random() * 50000) + 10000;
+            return {
+                ...p,
+                userVote: vote,
+                votesFor: p.votesFor + (vote === 'for' ? simulatedVotingPower : 0),
+                votesAgainst: p.votesAgainst + (vote === 'against' ? simulatedVotingPower : 0)
+            };
+        }
+        return p;
+    }));
+    addTransaction({ type: 'Vote', details: `Voted ${vote} on proposal "${proposals.find(p => p.id === proposalId)?.title}"` });
+  };
+
 
   const handleDepositToVault = () => {
     const amountToDeposit = 0.5;
-    if (walletState.ethBalance < amountToDeposit) {
-      return;
+    if (walletState.wethBalance < amountToDeposit) {
+       toast({ variant: "destructive", title: "Insufficient WETH balance" });
+       return;
     }
     setVaultLoading(true);
     setTimeout(() => {
-      setEthBalance(prev => parseFloat((prev - amountToDeposit).toFixed(4)));
-      setWethBalance(prev => parseFloat((prev + amountToDeposit).toFixed(4)));
+      setWethBalance(prev => parseFloat((prev - amountToDeposit).toFixed(4)));
+      setVaultWeth(prev => prev + amountToDeposit);
       addTransaction({
         type: 'Vault Deposit',
         details: `Deposited 0.5 WETH to AI Strategy Vault`
@@ -194,34 +226,70 @@ export default function FinancePage() {
     if(rebalanceLoading) return;
     setRebalanceLoading(true);
     try {
+        // Ensure there are assets to rebalance.
+        if (vaultWeth <= 0 && vaultUsdc <= 0) {
+            toast({ variant: "destructive", title: "Vault is empty", description: "Deposit WETH or USDC to enable AI rebalancing." });
+            setRebalanceLoading(false);
+            return;
+        }
+
         const action = await getRebalanceAction({ currentEth: 0, currentWeth: vaultWeth, currentUsdc: vaultUsdc });
         
         let amount = action.amount;
         if (action.fromToken === 'WETH' && action.toToken === 'USDC') {
             const wethAmount = Math.min(amount, vaultWeth);
-            setVaultWeth(prev => prev - wethAmount);
-            const usdcAmount = wethAmount * exchangeRates.WETH / exchangeRates.USDC;
-            setVaultUsdc(prev => prev + usdcAmount);
-            setActiveStrategy({name: action.strategyName, value: usdcAmount, asset: 'USDC', apy: action.expectedApy});
+            if (wethAmount > 0) {
+                setVaultWeth(prev => prev - wethAmount);
+                const usdcAmount = wethAmount * exchangeRates.WETH / exchangeRates.USDC;
+                setVaultUsdc(prev => prev + usdcAmount); // This was missing
+                setActiveStrategy({name: action.strategyName, value: usdcAmount, asset: 'USDC', apy: action.expectedApy});
+                 addTransaction({
+                    type: 'AI Rebalance',
+                    details: (
+                        <div className="text-xs space-y-1">
+                            <p><strong>Strategy:</strong> {action.strategyName}</p>
+                            <p><strong>Action:</strong> Swapped {wethAmount.toFixed(4)} WETH for {usdcAmount.toFixed(2)} USDC.</p>
+                            <p><strong>Justification:</strong> {action.justification}</p>
+                        </div>
+                    )
+                });
+            }
         } else if (action.fromToken === 'USDC' && action.toToken === 'WETH') {
             const usdcAmount = Math.min(amount, vaultUsdc);
-            setVaultUsdc(prev => prev - usdcAmount);
-            const wethAmount = usdcAmount * exchangeRates.USDC / exchangeRates.WETH;
-            setVaultWeth(prev => prev + wethAmount);
-            setActiveStrategy({name: action.strategyName, value: wethAmount, asset: 'WETH', apy: action.expectedApy});
+            if (usdcAmount > 0) {
+                setVaultUsdc(prev => prev - usdcAmount);
+                const wethAmount = usdcAmount * exchangeRates.USDC / exchangeRates.WETH;
+                setVaultWeth(prev => prev + wethAmount); // This was missing
+                setActiveStrategy({name: action.strategyName, value: wethAmount, asset: 'WETH', apy: action.expectedApy});
+                 addTransaction({
+                    type: 'AI Rebalance',
+                    details: (
+                         <div className="text-xs space-y-1">
+                            <p><strong>Strategy:</strong> {action.strategyName}</p>
+                            <p><strong>Action:</strong> Swapped {usdcAmount.toFixed(2)} USDC for {wethAmount.toFixed(4)} WETH.</p>
+                            <p><strong>Justification:</strong> {action.justification}</p>
+                        </div>
+                    )
+                });
+            }
+        } else if (action.fromToken === 'ETH' && action.toToken === 'WETH') {
+            // This is the wrap ETH case
+             const ethAmount = Math.min(ethBalance, action.amount);
+             if (ethAmount > 0) {
+                setEthBalance(prev => prev - ethAmount);
+                setVaultWeth(prev => prev + ethAmount);
+                 addTransaction({
+                    type: 'AI Rebalance',
+                    details: (
+                         <div className="text-xs space-y-1">
+                            <p><strong>Strategy:</strong> {action.strategyName}</p>
+                            <p><strong>Action:</strong> Wrapped {ethAmount.toFixed(4)} ETH to WETH and deposited to vault.</p>
+                            <p><strong>Justification:</strong> {action.justification}</p>
+                        </div>
+                    )
+                });
+             }
         }
-        
-        addTransaction({
-            type: 'AI Rebalance',
-            details: (
-                <div className="text-xs space-y-1">
-                    <p><strong>Strategy:</strong> {action.strategyName}</p>
-                    <p><strong>Justification:</strong> {action.justification}</p>
-                    <p><strong>Risk Analysis:</strong> {action.riskAnalysis}</p>
-                    <p><strong>Expected APY:</strong> {action.expectedApy}%</p>
-                </div>
-            )
-        });
 
     } catch (e) {
         console.error("Failed to get rebalance detail:", e);
@@ -233,7 +301,7 @@ export default function FinancePage() {
     } finally {
         setRebalanceLoading(false);
     }
-  }, [vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates.WETH, exchangeRates.USDC, toast]);
+  }, [vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates, toast, ethBalance, setEthBalance]);
 
   const hasVaultBalance = vaultTotalUsd > 0;
 
@@ -252,152 +320,198 @@ export default function FinancePage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold text-primary">Token Swap</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col space-y-2">
-                <div className="p-4 bg-background rounded-md border space-y-2">
-                  <div className="flex justify-between items-center">
-                     <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
-                     <p className="text-xs text-muted-foreground mt-1">Balance: {balances[fromToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                        id="from-token"
-                        type="number"
-                        value={fromAmount}
-                        onChange={(e) => handleAmountChange(e.target.value)}
-                        disabled={!isConnected}
-                        placeholder="0.0"
-                    />
-                     <Select value={fromToken} onValueChange={(v) => setFromToken(v as Token)}>
-                        <SelectTrigger className="w-[150px]">
-                           <SelectValue placeholder="Select Token" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
-                        </SelectContent>
-                      </Select>
-                  </div>
-                </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+                <CardHeader>
+                    <CardTitle className="text-2xl font-bold text-primary">Token Swap</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col space-y-2">
+                    <div className="p-4 bg-background rounded-md border space-y-2">
+                      <div className="flex justify-between items-center">
+                         <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
+                         <p className="text-xs text-muted-foreground mt-1">Balance: {balances[fromToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                            id="from-token"
+                            type="number"
+                            value={fromAmount}
+                            onChange={(e) => handleAmountChange(e.target.value)}
+                            disabled={!isConnected}
+                            placeholder="0.0"
+                        />
+                         <Select value={fromToken} onValueChange={(v) => setFromToken(v as Token)}>
+                            <SelectTrigger className="w-[150px]">
+                               <SelectValue placeholder="Select Token" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
+                            </SelectContent>
+                          </Select>
+                      </div>
+                    </div>
 
-                <div className="flex justify-center my-2">
-                  <Button variant="ghost" size="icon" onClick={handleSwapTokens} disabled={!isConnected}>
-                    <ChevronsUpDown size={20} className="text-muted-foreground" />
-                  </Button>
-                </div>
+                    <div className="flex justify-center my-2">
+                      <Button variant="ghost" size="icon" onClick={handleSwapTokens} disabled={!isConnected}>
+                        <ChevronsUpDown size={20} className="text-muted-foreground" />
+                      </Button>
+                    </div>
 
-                <div className="p-4 bg-background rounded-md border space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
-                    <p className="text-xs text-muted-foreground mt-1">Balance: {balances[toToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                        id="to-token"
-                        type="number"
-                        value={toAmount}
-                        readOnly
-                        disabled={!isConnected}
-                        placeholder="0.0"
-                    />
-                    <Select value={toToken} onValueChange={(v) => setToToken(v as Token)}>
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Select Token" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <Button
-                onClick={handleSwap}
-                disabled={!isConnected || swapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
-                className="w-full mt-6"
-                variant="default"
-                >
-                {swapping ? (
-                    <span className="flex items-center">
-                    <RefreshCcw size={16} className="mr-2 animate-spin" /> Swapping...
-                    </span>
-                ) : (
-                    'Swap Tokens'
-                )}
-                </Button>
-            </CardContent>
-            </Card>
+                    <div className="p-4 bg-background rounded-md border space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
+                        <p className="text-xs text-muted-foreground mt-1">Balance: {balances[toToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                            id="to-token"
+                            type="number"
+                            value={toAmount}
+                            readOnly
+                            disabled={!isConnected}
+                            placeholder="0.0"
+                        />
+                        <Select value={toToken} onValueChange={(v) => setToToken(v as Token)}>
+                          <SelectTrigger className="w-[150px]">
+                            <SelectValue placeholder="Select Token" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button
+                    onClick={handleSwap}
+                    disabled={!isConnected || swapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
+                    className="w-full mt-6"
+                    variant="default"
+                    >
+                    {swapping ? (
+                        <span className="flex items-center">
+                        <RefreshCcw size={16} className="mr-2 animate-spin" /> Swapping...
+                        </span>
+                    ) : (
+                        'Swap Tokens'
+                    )}
+                    </Button>
+                </CardContent>
+                </Card>
 
+                <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+                    <CardHeader>
+                      <CardTitle className="text-2xl font-bold text-primary flex items-center justify-between">
+                        <div className="flex items-center">
+                          <BrainCircuit className="mr-2" /> AI Strategy Vault
+                        </div>
+                        <Button onClick={handleAiRebalance} disabled={rebalanceLoading || vaultLoading} size="icon" variant="ghost">
+                          {rebalanceLoading ? <RefreshCcw className="animate-spin"/> :<BrainCircuit />}
+                          <span className="sr-only">Rebalance Vault</span>
+                        </Button>
+                      </CardTitle>
+                       <CardDescription>Deposit WETH or USDC and let the AI manage your funds.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="p-4 bg-background rounded-md border">
+                            <div className="flex justify-between items-center">
+                                <p className="text-sm text-muted-foreground">Total Vault Value:</p>
+                            </div>
+                            <p className="text-2xl font-bold text-foreground">${vaultTotalUsd.toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
+                             <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                {activeStrategy ? (
+                                    <div className="p-3 bg-primary/10 rounded-md">
+                                        <p className="font-bold text-primary">{activeStrategy.name}</p>
+                                        <div className="flex justify-between items-center">
+                                            <span>{activeStrategy.value.toLocaleString('en-US', {maximumFractionDigits: 4})} {activeStrategy.asset}</span>
+                                            <span className="text-green-400 font-semibold">{activeStrategy.apy}% APY</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-xs py-2">No active strategy. Click the AI button to deploy funds.</p>
+                                )}
+                                <p className="text-sm font-bold pt-2">Idle Assets:</p>
+                                <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
+                                <div className="flex justify-between"><span>USDC:</span> <span className="font-mono">{vaultUsdc.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              onClick={handleDepositToVault}
+                              disabled={!isConnected || vaultLoading || walletState.wethBalance <= 0}
+                              className="w-full bg-green-600 text-white hover:bg-green-700"
+                            >
+                              {vaultLoading ? (
+                                  <span className="flex items-center">
+                                  <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                                  </span>
+                              ) : (
+                                  <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit WETH</span>
+                              )}
+                            </Button>
+                             <Button
+                              onClick={handleWithdrawFromVault}
+                              disabled={!isConnected || vaultLoading || !hasVaultBalance}
+                              className="w-full"
+                              variant="destructive"
+                            >
+                              {vaultLoading ? (
+                                  <span className="flex items-center">
+                                  <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                                  </span>
+                              ) : (
+                                  <span className="flex items-center"><ArrowUp size={16} className="mr-2" />Withdraw All</span>
+                              )}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
             <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
                 <CardHeader>
-                  <CardTitle className="text-2xl font-bold text-primary flex items-center justify-between">
-                    <div className="flex items-center">
-                      <BrainCircuit className="mr-2" /> AI Strategy Vault
-                    </div>
-                    <Button onClick={handleAiRebalance} disabled={rebalanceLoading || !hasVaultBalance} size="icon" variant="ghost">
-                      {rebalanceLoading ? <RefreshCcw className="animate-spin"/> :<BrainCircuit />}
-                      <span className="sr-only">Rebalance Vault</span>
-                    </Button>
-                  </CardTitle>
+                    <CardTitle className="text-2xl font-bold text-primary flex items-center">
+                        <Vote className="mr-3" /> Governance
+                    </CardTitle>
+                    <CardDescription>Use your token power to vote on protocol proposals.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="p-4 bg-background rounded-md border">
-                        <div className="flex justify-between items-center">
-                            <p className="text-sm text-muted-foreground">Total Vault Value:</p>
-                        </div>
-                        <p className="text-2xl font-bold text-foreground">${vaultTotalUsd.toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
-                         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                            {activeStrategy ? (
-                                <div className="p-3 bg-primary/10 rounded-md">
-                                    <p className="font-bold text-primary">{activeStrategy.name}</p>
-                                    <div className="flex justify-between items-center">
-                                        <span>{activeStrategy.value.toLocaleString('en-US', {maximumFractionDigits: 4})} {activeStrategy.asset}</span>
-                                        <span className="text-green-400 font-semibold">{activeStrategy.apy}% APY</span>
-                                    </div>
+                    {proposals.map(p => {
+                        const totalVotes = p.votesFor + p.votesAgainst;
+                        const forPercentage = totalVotes > 0 ? (p.votesFor / totalVotes) * 100 : 0;
+                        const againstPercentage = totalVotes > 0 ? (p.votesAgainst / totalVotes) * 100 : 0;
+                        
+                        return (
+                            <div key={p.id} className="p-4 border rounded-lg bg-background">
+                                <h4 className="font-semibold text-foreground">{p.title}</h4>
+                                <p className="text-sm text-muted-foreground mt-1 mb-3">{p.description}</p>
+                                <Progress value={forPercentage} className="h-2" />
+                                <div className="flex justify-between text-xs mt-2 text-muted-foreground">
+                                    <span className="text-green-400">For: {forPercentage.toFixed(1)}%</span>
+                                    <span className="text-red-400">Against: {againstPercentage.toFixed(1)}%</span>
                                 </div>
-                            ) : (
-                                <p className="text-center text-xs">No active strategy. Click the AI button to deploy funds.</p>
-                            )}
-                            <p className="text-sm font-bold pt-2">Idle Assets:</p>
-                            <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
-                            <div className="flex justify-between"><span>USDC:</span> <span className="font-mono">{vaultUsdc.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                          onClick={handleDepositToVault}
-                          disabled={!isConnected || vaultLoading || walletState.ethBalance < 0.5}
-                          className="w-full bg-green-600 text-white hover:bg-green-700"
-                        >
-                          {vaultLoading ? (
-                              <span className="flex items-center">
-                              <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
-                              </span>
-                          ) : (
-                              <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit 0.5 ETH</span>
-                          )}
-                        </Button>
-                         <Button
-                          onClick={handleWithdrawFromVault}
-                          disabled={!isConnected || vaultLoading || !hasVaultBalance}
-                          className="w-full"
-                          variant="destructive"
-                        >
-                          {vaultLoading ? (
-                              <span className="flex items-center">
-                              <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
-                              </span>
-                          ) : (
-                              <span className="flex items-center"><ArrowUp size={16} className="mr-2" />Withdraw All</span>
-                          )}
-                        </Button>
-                    </div>
+                                <div className="flex gap-2 mt-3">
+                                    <Button 
+                                        onClick={() => handleVote(p.id, 'for')}
+                                        disabled={!!p.userVote}
+                                        variant={p.userVote === 'for' ? 'default' : 'outline'}
+                                        className="w-full"
+                                    >
+                                        <CheckCircle className="mr-2" /> Vote For
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleVote(p.id, 'against')}
+                                        disabled={!!p.userVote}
+                                         variant={p.userVote === 'against' ? 'destructive' : 'outline'}
+                                        className="w-full"
+                                    >
+                                        <XCircle className="mr-2" /> Vote Against
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    })}
                 </CardContent>
             </Card>
-          </div>
         </div>
         <Card className="transform transition-transform duration-300 hover:scale-[1.01] lg:col-span-1">
             <CardHeader>
@@ -420,7 +534,7 @@ export default function FinancePage() {
                             ))}
                         </div>
                     ) : (
-                        <p className="text-muted-foreground text-center text-sm">No transactions yet.</p>
+                        <p className="text-muted-foreground text-center text-sm py-16">No transactions yet.</p>
                     )}
                 </ScrollArea>
             </CardContent>

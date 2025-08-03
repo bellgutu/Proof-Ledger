@@ -31,8 +31,8 @@ interface TradeHistoryItem extends Trade {
 
 export default function TradingPage() {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance, marketData } = walletState;
-  const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance } = walletActions;
+  const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance, solBalance, marketData } = walletState;
+  const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance, setSolBalance } = walletActions;
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeAmount, setTradeAmount] = useState('');
@@ -64,23 +64,22 @@ export default function TradingPage() {
     switch(asset) {
         case 'ETH': return ethBalance;
         case 'BTC': return usdcBalance / marketData['BTC'].price;
-        case 'SOL': return usdcBalance / marketData['SOL'].price;
+        case 'SOL': return solBalance;
         case 'BNB': return bnbBalance;
         case 'XRP': return xrpBalance;
         default: return 0;
     }
-  }, [asset, ethBalance, usdcBalance, bnbBalance, xrpBalance, marketData]);
+  }, [asset, ethBalance, usdcBalance, bnbBalance, xrpBalance, solBalance, marketData]);
   
   const setAssetBalance = useCallback((updater: (prev: number) => number) => {
      switch(asset) {
         case 'ETH': setEthBalance(updater); break;
-        // In a real app, you'd have separate balance setters for each asset
         case 'BTC': setUsdcBalance(prev => prev + (updater(0) * marketData['BTC'].price)); break;
-        case 'SOL': setUsdcBalance(prev => prev + (updater(0) * marketData['SOL'].price)); break;
+        case 'SOL': setSolBalance(updater); break;
         case 'BNB': setBnbBalance(updater); break;
         case 'XRP': setXrpBalance(updater); break;
     }
-  }, [asset, setEthBalance, setUsdcBalance, setBnbBalance, setXrpBalance, marketData]);
+  }, [asset, setEthBalance, setUsdcBalance, setBnbBalance, setXrpBalance, setSolBalance, marketData]);
 
   const handlePairChange = (pair: string) => {
     if(activeTrade) return; // Prevent changing pair with an active trade
@@ -132,6 +131,8 @@ export default function TradingPage() {
       setActiveTrade(prev => prev ? ({ ...prev, livePnl: pnl.toFixed(2) }) : null);
     }
   }, [currentPrice, activeTrade]);
+  
+  const tradeablePairs = ['ETH/USDT', 'BTC/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT'];
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -147,7 +148,7 @@ export default function TradingPage() {
                             <SelectValue placeholder="Select Pair" />
                         </SelectTrigger>
                         <SelectContent>
-                            {Object.keys(initialPrices).map(pair => (
+                            {tradeablePairs.map(pair => (
                                 <SelectItem key={pair} value={pair}>{pair}</SelectItem>
                             ))}
                         </SelectContent>

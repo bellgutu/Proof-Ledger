@@ -17,6 +17,7 @@ import { getLpStrategy, type LPStrategy } from '@/ai/flows/lp-advisor-flow';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { TrendingUp } from 'lucide-react';
+import { LiquidityAnalytics } from '../liquidity/liquidity-analytics';
 
 
 export interface Pool {
@@ -165,7 +166,7 @@ export default function LiquidityPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="positions"><TrendingUp className="mr-2" />Positions & Pools</TabsTrigger>
           <TabsTrigger value="create"><PlusCircle className="mr-2" />Create & Advise</TabsTrigger>
-          <TabsTrigger value="analytics" disabled><BarChart2 className="mr-2" />Analytics</TabsTrigger>
+          <TabsTrigger value="analytics"><BarChart2 className="mr-2" />Analytics</TabsTrigger>
         </TabsList>
         
         <TabsContent value="positions" className="mt-6 space-y-8">
@@ -297,15 +298,7 @@ export default function LiquidityPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Analytics & Simulations</CardTitle>
-              <CardDescription>Advanced analytics and predictive modeling are coming soon.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-16">This section is under construction.</p>
-            </CardContent>
-          </Card>
+          <LiquidityAnalytics userPositions={userPositions} />
         </TabsContent>
       </Tabs>
     </div>

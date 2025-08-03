@@ -38,8 +38,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
-
-    ctx.clearRect(0, 0, width, height);
+    
+    const cardColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--card').trim()})`;
+    ctx.fillStyle = cardColor;
+    ctx.fillRect(0, 0, width, height);
       
     const candles = candleDataRef.current;
     if (candles.length === 0) return;
@@ -61,7 +63,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     };
 
     // Draw Y-axis (Price)
-    const textColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim()})`;
+    const textColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim()})`;
     const borderColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--border').trim()})`;
 
     ctx.font = '12px Inter';
@@ -134,10 +136,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.fillRect(chartWidth, priceY - 10, Y_AXIS_WIDTH, 20);
       const primaryFgColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim()})`;
       ctx.fillStyle = primaryFgColor;
-      ctx.font = '12px Inter';
+      ctx.font = 'bold 12px Inter';
       ctx.textAlign = 'center';
       const currentPriceDecimalPlaces = currentPrice < 0.1 ? 4 : (currentPrice < 10 ? 2 : 0);
-      ctx.fillText(`$${currentPrice.toFixed(currentPriceDecimalPlaces)}`, chartWidth + Y_AXIS_WIDTH / 2, priceY + 4);
+      ctx.fillText(`${currentPrice.toFixed(currentPriceDecimalPlaces)}`, chartWidth + Y_AXIS_WIDTH / 2, priceY + 4);
     }
   }, []);
 
@@ -178,7 +180,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         price = close;
     }
     
-    candleTimer = setInterval(generateNewCandle, 2000); // Slowed down candle generation to 2 seconds
+    candleTimer = setInterval(generateNewCandle, 2000);
 
     return () => clearInterval(candleTimer);
   }, [initialPrice, onCandleDataUpdate]);
@@ -196,7 +198,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         currentPriceRef.current = newPrice;
         onPriceChange(newPrice);
       }
-      priceTimer = setInterval(updatePrice, 500); // Slowed down price updates to 0.5 seconds
+      priceTimer = setInterval(updatePrice, 500);
       return () => clearInterval(priceTimer);
   }, [initialPrice, onPriceChange]);
   

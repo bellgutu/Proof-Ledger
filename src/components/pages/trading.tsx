@@ -139,9 +139,9 @@ export default function TradingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <CardHeader>
                 <div className="flex items-center gap-4">
-                    <CardTitle className="text-2xl font-bold text-primary">Perpetual Futures</CardTitle>
+                    <h2 className="text-xl font-bold text-foreground">Futures</h2>
                     <Select value={selectedPair} onValueChange={handlePairChange} disabled={!!activeTrade}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Select Pair" />
@@ -156,7 +156,7 @@ export default function TradingPage() {
               <span className="text-3xl font-bold text-foreground">${currentPrice.toFixed(4)}</span>
             </CardHeader>
             <CardContent>
-              <div className="h-96 bg-background rounded-md p-2">
+              <div className="h-96 bg-card rounded-md">
                 <TradingChart 
                     key={selectedPair} 
                     initialPrice={marketData[selectedPair.split('/')[0]].price} 

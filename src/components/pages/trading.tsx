@@ -117,6 +117,10 @@ const TradingPageContent = () => {
   const tradeablePairs = ['ETH/USDT', 'BTC/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
   
+  if (!initialPriceForChart) {
+    return null; // or a loading skeleton
+  }
+
   return (
     <>
     <WalletHeader />

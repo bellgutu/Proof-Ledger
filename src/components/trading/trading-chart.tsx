@@ -21,6 +21,9 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const candleDataRef = useRef<Candle[]>([]);
   const currentPriceRef = useRef(initialPrice);
+  const animationFrameIdRef = useRef<number>();
+  const lastUpdateRef = useRef(Date.now());
+  const lastCandleUpdateRef = useRef(Date.now());
 
   const drawChart = useCallback(() => {
     const canvas = canvasRef.current;
@@ -145,9 +148,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
   }, []);
 
   useEffect(() => {
-    let candleTimer: NodeJS.Timeout;
-    let priceTimer: NodeJS.Timeout;
-
     const generateInitialCandles = () => {
         candleDataRef.current = [];
         let startTime = Date.now() - 100 * 5000;
@@ -168,59 +168,58 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     };
     
     generateInitialCandles();
+    lastUpdateRef.current = Date.now();
+    lastCandleUpdateRef.current = Date.now();
 
-    const updatePrice = () => {
-      const lastPrice = currentPriceRef.current;
-      const volatility = 0.0001; 
-      const trend = 0.00001; 
-      const priceChange = (Math.random() - 0.5 + trend) * lastPrice * volatility;
-      const newPrice = Math.max(0, lastPrice + priceChange);
+    const updateSimulation = () => {
+        const now = Date.now();
+        const deltaTime = now - lastUpdateRef.current;
+        lastUpdateRef.current = now;
 
-      currentPriceRef.current = newPrice;
-      onPriceChange(newPrice);
-    };
+        // Update price based on a smooth random walk
+        const lastPrice = currentPriceRef.current;
+        const volatility = 0.0001; 
+        const trend = 0.00001; 
+        const priceChange = (Math.random() - 0.5 + trend) * lastPrice * volatility;
+        const newPrice = Math.max(0, lastPrice + priceChange);
 
-    const generateNewCandle = () => {
-      const lastCandle = candleDataRef.current[candleDataRef.current.length - 1];
-      const open = lastCandle.close;
-      const close = currentPriceRef.current;
-      const high = Math.max(open, close, lastCandle.high);
-      const low = Math.min(open, close, lastCandle.low);
-      const time = Date.now();
-
-      // Start a new candle from the last close price
-      const newCandle = { ...lastCandle, open: lastCandle.close, high: lastCandle.close, low: lastCandle.close, time: lastCandle.time + 5000 };
-      candleDataRef.current.push(newCandle);
-
-      if (candleDataRef.current.length > 200) {
-        candleDataRef.current.shift();
-      }
-      onCandleDataUpdate([...candleDataRef.current]);
-    };
-
-    const updateCurrentCandle = () => {
+        currentPriceRef.current = newPrice;
+        onPriceChange(newPrice);
+        
+        // Update current candle
         const currentCandle = candleDataRef.current[candleDataRef.current.length - 1];
-        if(!currentCandle) return;
+        if (currentCandle) {
+          currentCandle.close = newPrice;
+          currentCandle.high = Math.max(currentCandle.high, newPrice);
+          currentCandle.low = Math.min(currentCandle.low, newPrice);
+        }
 
-        const price = currentPriceRef.current;
-        currentCandle.close = price;
-        currentCandle.high = Math.max(currentCandle.high, price);
-        currentCandle.low = Math.min(currentCandle.low, price);
+        // Generate new candle every 5 seconds
+        if (now - lastCandleUpdateRef.current > 5000) {
+            lastCandleUpdateRef.current = now;
+            const open = currentCandle.close;
+            const time = now;
+            const newCandle = { open, high: open, low: open, close: open, time };
+            candleDataRef.current.push(newCandle);
+
+            if (candleDataRef.current.length > 200) {
+                candleDataRef.current.shift();
+            }
+            onCandleDataUpdate([...candleDataRef.current]);
+        }
+        
+        drawChart();
+        animationFrameIdRef.current = requestAnimationFrame(updateSimulation);
     };
 
-
-    priceTimer = setInterval(() => {
-        updatePrice();
-        updateCurrentCandle();
-    }, 1500);
-
-    candleTimer = setInterval(generateNewCandle, 5000);
+    animationFrameIdRef.current = requestAnimationFrame(updateSimulation);
 
     return () => {
-        clearInterval(priceTimer);
-        clearInterval(candleTimer);
+        if (animationFrameIdRef.current) {
+            cancelAnimationFrame(animationFrameIdRef.current);
+        }
     };
-  }, [initialPrice, onCandleDataUpdate, onPriceChange]);
+  }, [initialPrice, onCandleDataUpdate, onPriceChange, drawChart]);
   
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -231,16 +230,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     });
     observer.observe(canvas);
     
-    let animationFrameId: number;
-    const renderLoop = () => {
-        drawChart();
-        animationFrameId = requestAnimationFrame(renderLoop);
-    }
-    renderLoop();
-    
     return () => {
         observer.disconnect();
-        cancelAnimationFrame(animationFrameId);
     }
   }, [drawChart]);
 

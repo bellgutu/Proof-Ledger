@@ -51,22 +51,56 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const priceRange = maxPrice - minPrice;
 
     const Y_AXIS_WIDTH = 60;
+    const X_AXIS_HEIGHT = 30;
     const chartWidth = width - Y_AXIS_WIDTH;
-    const chartHeight = height;
+    const chartHeight = height - X_AXIS_HEIGHT;
 
     const scaleY = (price: number) => {
-        // Add a small padding to the top and bottom
         const paddedRange = priceRange * 1.1;
         const paddedMin = minPrice - (priceRange * 0.05);
         return chartHeight - ((price - paddedMin) / paddedRange) * chartHeight;
     };
 
-    const candleWidth = chartWidth / (visibleCandles.length * 1.5);
+    // Draw Y-axis (Price)
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim();
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+    ctx.font = '12px Inter';
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'left';
+    const numPriceLabels = 5;
+    for (let i = 0; i <= numPriceLabels; i++) {
+        const price = minPrice + (priceRange / numPriceLabels) * i;
+        const y = scaleY(price);
+        ctx.fillText(price.toFixed(2), chartWidth + 5, y);
+        
+        ctx.beginPath();
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 0.5;
+        ctx.moveTo(0, y);
+        ctx.lineTo(chartWidth, y);
+        ctx.stroke();
+    }
+    
+    // Draw X-axis (Time)
+    ctx.textAlign = 'center';
+    const numTimeLabels = Math.floor(chartWidth / 100);
+    const timeInterval = Math.max(1, Math.floor(visibleCandles.length / numTimeLabels));
+    for (let i = 0; i < visibleCandles.length; i++) {
+        if (i % timeInterval === 0) {
+            const candle = visibleCandles[i];
+            const date = new Date(candle.time);
+            const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+            const x = (i * (chartWidth / visibleCandles.length)) + (chartWidth / (visibleCandles.length * 2));
+            ctx.fillText(timeString, x, chartHeight + 20);
+        }
+    }
+
+
+    const candleWidth = (chartWidth / (visibleCandles.length * 1.5));
     const spacing = candleWidth * 0.5;
 
     visibleCandles.forEach((candle, index) => {
       const x = index * (candleWidth + spacing) + spacing;
-      // Use bright, hardcoded colors for high contrast
       const color = candle.close >= candle.open ? '#22c55e' : '#ef4444';
 
       ctx.beginPath();
@@ -88,7 +122,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     if (priceY >= 0 && priceY <= chartHeight) {
       const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
       
-      // Dashed line for current price
       ctx.strokeStyle = `hsl(${primaryColor})`;
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
@@ -98,7 +131,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.stroke();
       ctx.setLineDash([]);
       
-      // Price label with solid background
       ctx.fillStyle = `hsl(${primaryColor})`;
       ctx.fillRect(chartWidth, priceY - 10, Y_AXIS_WIDTH, 20);
       ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim();
@@ -118,7 +150,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         : { close: initialPrice, time: Date.now() - 2000 };
 
       const open = currentPriceRef.current;
-      const change = (Math.random() - 0.5) * (open * 0.005); // Reduced volatility
+      const change = (Math.random() - 0.5) * (open * 0.005);
       const close = open + change;
       const high = Math.max(open, close) + Math.random() * (open * 0.002);
       const low = Math.min(open, close) - Math.random() * (open * 0.002);
@@ -146,7 +178,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         price = close;
     }
     
-    candleTimer = setInterval(generateNewCandle, 2000);
+    candleTimer = setInterval(generateNewCandle, 2000); // Slowed down candle generation to 2 seconds
 
     return () => clearInterval(candleTimer);
   }, [initialPrice, onCandleDataUpdate]);
@@ -157,14 +189,14 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         const lastCandle = candleDataRef.current[candleDataRef.current.length-1];
         if(!lastCandle) return;
 
-        const volatility = 0.001; // Reduced volatility
+        const volatility = 0.001;
         const priceChange = (Math.random() - 0.5) * (lastCandle.close * volatility);
         const newPrice = lastCandle.close + priceChange;
 
         currentPriceRef.current = newPrice;
         onPriceChange(newPrice);
       }
-      priceTimer = setInterval(updatePrice, 500);
+      priceTimer = setInterval(updatePrice, 500); // Slowed down price updates to 0.5 seconds
       return () => clearInterval(priceTimer);
   }, [initialPrice, onPriceChange]);
   

@@ -42,6 +42,8 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
       const upperSymbol = symbol.toUpperCase();
       const priceData = marketData[upperSymbol];
 
+      if (!priceData) return; // Guard clause to prevent error
+
       if (priceData) {
         setCurrentPrice(priceData.price);
         setCoinData({

@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
+import { useToast } from '@/hooks/use-toast';
 
 interface Transaction {
   id: string;
@@ -31,11 +32,13 @@ export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
   const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance, wethBalance, marketData } = walletState;
   const { setEthBalance, setUsdcBalance, setBnbBalance, setUsdtBalance, setXrpBalance, setWethBalance } = walletActions;
+  const { toast } = useToast();
 
   const [vaultEth, setVaultEth] = useState(0);
   const [vaultWeth, setVaultWeth] = useState(0);
 
   const [vaultLoading, setVaultLoading] = useState(false);
+  const [rebalanceLoading, setRebalanceLoading] = useState(false);
   const [selectedVault, setSelectedVault] = useState<VaultStrategy>('ETH Yield Maximizer');
 
   const [fromToken, setFromToken] = useState<Token>('ETH');
@@ -145,10 +148,9 @@ export default function FinancePage() {
   };
 
   const handleWithdrawFromVault = () => {
-    if (vaultEth <= 0) return;
+    if (vaultEth <= 0 && vaultWeth <=0) return;
     setVaultLoading(true);
     setTimeout(() => {
-        const amountToWithdraw = vaultEth + vaultWeth;
         setEthBalance(prev => parseFloat((prev + vaultEth).toFixed(4)));
         setWethBalance(prev => parseFloat((prev + vaultWeth).toFixed(4)));
         setVaultEth(0);
@@ -162,12 +164,20 @@ export default function FinancePage() {
   }
   
   const handleAiRebalance = useCallback(async () => {
+    if(rebalanceLoading) return;
+    setRebalanceLoading(true);
     try {
         const action = await getRebalanceAction(vaultEth, vaultWeth);
-        if (action.fromToken === action.toToken) return;
+        if (action.fromToken === action.toToken) {
+           toast({ title: "AI Rebalance", description: "No rebalancing needed at this time."});
+           return;
+        };
 
         let amount = Math.min(action.amount, action.fromToken === 'ETH' ? vaultEth : vaultWeth);
-        if (amount <= 0) return;
+        if (amount <= 0) {
+           toast({ title: "AI Rebalance", description: "Not enough funds for rebalancing."});
+           return;
+        }
 
         // Simulate the swap inside the vault
         if (action.fromToken === 'ETH') {
@@ -184,25 +194,17 @@ export default function FinancePage() {
         });
     } catch (e) {
         console.error("Failed to get rebalance detail:", e);
-        // Fallback transaction
-        addTransaction({
-            type: 'AI Rebalance',
-            details: 'AI optimized portfolio for yield.',
+         toast({
+            variant: "destructive",
+            title: "Rebalance Error",
+            description: "Could not get rebalancing strategy from AI.",
         });
+    } finally {
+        setRebalanceLoading(false);
     }
-  }, [vaultEth, vaultWeth]);
+  }, [vaultEth, vaultWeth, toast, rebalanceLoading]);
 
   const hasVaultBalance = vaultEth > 0 || vaultWeth > 0;
-
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | undefined;
-    if(hasVaultBalance){
-        intervalId = setInterval(() => {
-            handleAiRebalance();
-        }, 5000); // AI rebalances every 5 seconds
-    }
-    return () => clearInterval(intervalId);
-  }, [hasVaultBalance, handleAiRebalance]);
 
   const TokenSelectItem = ({ token }: { token: Token }) => (
     <SelectItem value={token}>
@@ -298,7 +300,15 @@ export default function FinancePage() {
 
             <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-primary flex items-center"><BrainCircuit className="mr-2" /> AI Strategy Vault</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-primary flex items-center justify-between">
+                    <div className="flex items-center">
+                      <BrainCircuit className="mr-2" /> AI Strategy Vault
+                    </div>
+                    <Button onClick={handleAiRebalance} disabled={rebalanceLoading || !hasVaultBalance} size="icon" variant="ghost">
+                      {rebalanceLoading ? <RefreshCcw className="animate-spin"/> :<BrainCircuit />}
+                      <span className="sr-only">Rebalance Vault</span>
+                    </Button>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="p-4 bg-background rounded-md border">
@@ -399,3 +409,5 @@ export default function FinancePage() {
     </div>
   );
 };
+
+    

@@ -14,5 +14,5 @@ export const getTokenLogo = (symbol: string): string => {
     WETH: 'https://assets.coingecko.com/coins/images/2518/thumb/weth.png',
   };
 
-  return logos[symbolUpper] || `https://via.placeholder.com/32?text=${symbolUpper}`;
+  return logos[symbolUpper] || `https://placehold.co/32x32.png`;
 };

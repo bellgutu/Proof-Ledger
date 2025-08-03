@@ -72,7 +72,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     usdtBalance: 10000,
     xrpBalance: 20000,
     solBalance: 100,
-    wethBalance: 0,
+    wethBalance: 5,
   });
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);

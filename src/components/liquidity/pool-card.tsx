@@ -1,11 +1,11 @@
+
 "use client"
 
-import React, { useState } from 'react';
+import React, 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowDown, Droplets, PlusCircle } from 'lucide-react';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { type Pool, type UserPosition } from '@/components/pages/liquidity';
 import { AddLiquidityDialog } from './add-liquidity-dialog';
@@ -19,8 +19,8 @@ interface PoolCardProps {
 }
 
 export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition }: PoolCardProps) {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isManageDialogOpen, setIsManageDialogOpen] = React.useState(false);
 
   const [token1, token2] = pool.name.split('/');
   
@@ -33,7 +33,13 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition }
               <Image src={getTokenLogo(token1)} alt={token1} width={40} height={40} className="rounded-full z-10 border-2 border-background" />
               <Image src={getTokenLogo(token2)} alt={token2} width={40} height={40} className="rounded-full" />
             </div>
-            <p className="font-bold text-lg">{pool.name}</p>
+             <div>
+                <p className="font-bold text-lg">{pool.name}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{pool.type}</Badge>
+                  {pool.feeTier && <Badge variant="secondary">{pool.feeTier}%</Badge>}
+                </div>
+              </div>
           </div>
 
           <div className="col-span-1 md:col-span-2 grid grid-cols-3 gap-4 text-center">
@@ -67,7 +73,13 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition }
                     <span>Your Position</span>
                     <span>{userPosition.share.toFixed(4)}% of pool</span>
                 </div>
-                <div className="flex justify-between">
+                {userPosition.type === 'V3' && userPosition.priceRange && (
+                    <div className="flex justify-between font-semibold">
+                         <span>Price Range:</span>
+                         <span>${userPosition.priceRange.min} - ${userPosition.priceRange.max}</span>
+                    </div>
+                )}
+                <div className="flex justify-between mt-2">
                     <span className="text-muted-foreground">LP Tokens:</span>
                     <span>{userPosition.lpTokens.toLocaleString('en-US', {maximumFractionDigits: 4})}</span>
                 </div>

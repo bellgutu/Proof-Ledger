@@ -11,6 +11,7 @@ import { type Pool } from '@/components/pages/liquidity';
 import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { ArrowDown, Loader2 } from 'lucide-react';
+import { Label } from '../ui/label';
 
 interface AddLiquidityDialogProps {
   isOpen: boolean;
@@ -29,6 +30,8 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
   const [amount1, setAmount1] = useState('');
   const [amount2, setAmount2] = useState('');
   const [isDepositing, setIsDepositing] = useState(false);
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+
 
   const [token1, token2] = pool.name.split('/');
   
@@ -54,10 +57,19 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
 
   const handleAmount1Change = (value: string) => {
     setAmount1(value);
-    if (value && !isNaN(parseFloat(value)) && priceRatio > 0) {
+    if (value && !isNaN(parseFloat(value)) && priceRatio > 0 && pool.type === 'V2') {
       setAmount2((parseFloat(value) * priceRatio).toFixed(4));
-    } else {
+    } else if (pool.type === 'V2') {
       setAmount2('');
+    }
+  };
+  
+   const handleAmount2Change = (value: string) => {
+    setAmount2(value);
+    if (value && !isNaN(parseFloat(value)) && priceRatio > 0 && pool.type === 'V2') {
+      setAmount1((parseFloat(value) / priceRatio).toFixed(4));
+    } else if (pool.type === 'V2') {
+      setAmount1('');
     }
   };
 
@@ -65,7 +77,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
     const numAmount1 = parseFloat(amount1);
     const numAmount2 = parseFloat(amount2);
 
-    if (isNaN(numAmount1) || isNaN(numAmount2) || numAmount1 <= 0 || numAmount2 <= 0) {
+    if (isNaN(numAmount1) || (pool.type === 'V2' && isNaN(numAmount2)) || numAmount1 < 0 || numAmount2 < 0) {
       toast({ variant: 'destructive', title: 'Invalid amount' });
       return;
     }
@@ -74,14 +86,18 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
         toast({ variant: 'destructive', title: 'Insufficient balance' });
         return;
     }
+    
+     if (pool.type === 'V3' && (!priceRange.min || !priceRange.max || parseFloat(priceRange.min) >= parseFloat(priceRange.max))) {
+      toast({ variant: 'destructive', title: 'Invalid Price Range' });
+      return;
+    }
 
     setIsDepositing(true);
     setTimeout(() => {
-        // Simulate transaction
         setters[token1 as keyof typeof setters]((prev) => prev - numAmount1);
         setters[token2 as keyof typeof setters]((prev) => prev - numAmount2);
 
-        const lpTokensReceived = Math.sqrt(numAmount1 * numAmount2);
+        const lpTokensReceived = Math.sqrt(numAmount1 * numAmount2); // Simplified LP calculation
         const poolShare = (lpTokensReceived / (pool.tvl + numAmount1 * token1Price + numAmount2 * token2Price)) * 100;
         
         onAddPosition(pool, lpTokensReceived, poolShare);
@@ -93,15 +109,33 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
         setIsOpen(false);
     }, 1500);
   };
+  
+  const isV3AndUnset = pool.type === 'V3' && !pool.priceRange;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Liquidity to {pool.name}</DialogTitle>
-          <DialogDescription>Provide tokens to the pool to earn fees. Amounts will be automatically balanced.</DialogDescription>
+          <DialogDescription>
+             {pool.type === 'V2'
+              ? 'Provide tokens in a balanced ratio to earn fees.'
+              : 'Provide liquidity within a specific price range for higher capital efficiency.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+        
+          {isV3AndUnset && (
+            <div className="space-y-2 p-3 bg-muted rounded-md border">
+              <Label>Set Initial Price Range</Label>
+              <p className="text-xs text-muted-foreground">You are the first liquidity provider. Set the initial price range for this V3 pool.</p>
+               <div className="flex items-center gap-2">
+                <Input type="number" value={priceRange.min} onChange={(e) => setPriceRange(p => ({...p, min: e.target.value}))} placeholder="Min Price"/>
+                <Input type="number" value={priceRange.max} onChange={(e) => setPriceRange(p => ({...p, max: e.target.value}))} placeholder="Max Price"/>
+              </div>
+            </div>
+          )}
+          
           <div className="p-4 bg-background/50 rounded-md border space-y-2">
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>{token1}</span>
@@ -113,7 +147,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
             </div>
           </div>
           
-          <div className="flex justify-center -my-2"><ArrowDown size={16} className="text-muted-foreground"/></div>
+          {pool.type === 'V2' && <div className="flex justify-center -my-2"><ArrowDown size={16} className="text-muted-foreground"/></div>}
 
           <div className="p-4 bg-background/50 rounded-md border space-y-2">
             <div className="flex justify-between items-center text-xs text-muted-foreground">
@@ -122,7 +156,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
             </div>
             <div className="flex items-center gap-2">
               <Image src={getTokenLogo(token2)} alt={token2} width={24} height={24} />
-              <Input type="number" value={amount2} placeholder="0.0" readOnly className="text-lg" />
+              <Input type="number" value={amount2} onChange={(e) => handleAmount2Change(e.target.value)} readOnly={pool.type === 'V2'} placeholder="0.0" className="text-lg" />
             </div>
           </div>
 

@@ -39,7 +39,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
 
-    // Clear the canvas. This makes the background transparent.
     ctx.clearRect(0, 0, width, height);
       
     const candles = candleDataRef.current;
@@ -62,8 +61,9 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     };
 
     // Draw Y-axis (Price)
-    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim();
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+    const textColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim()})`;
+    const borderColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--border').trim()})`;
+
     ctx.font = '12px Inter';
     ctx.fillStyle = textColor;
     ctx.textAlign = 'left';
@@ -71,7 +71,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     for (let i = 0; i <= numPriceLabels; i++) {
         const price = minPrice + (priceRange / numPriceLabels) * i;
         const y = scaleY(price);
-        ctx.fillText(price.toFixed(2), chartWidth + 5, y);
+        ctx.fillText(price.toFixed(2), chartWidth + 5, y + 4);
         
         ctx.beginPath();
         ctx.strokeStyle = borderColor;
@@ -94,7 +94,6 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
             ctx.fillText(timeString, x, chartHeight + 20);
         }
     }
-
 
     const candleWidth = (chartWidth / (visibleCandles.length * 1.5));
     const spacing = candleWidth * 0.5;
@@ -120,9 +119,9 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const priceY = scaleY(currentPrice);
 
     if (priceY >= 0 && priceY <= chartHeight) {
-      const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+      const primaryColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()})`;
       
-      ctx.strokeStyle = `hsl(${primaryColor})`;
+      ctx.strokeStyle = primaryColor;
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -131,9 +130,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.stroke();
       ctx.setLineDash([]);
       
-      ctx.fillStyle = `hsl(${primaryColor})`;
+      ctx.fillStyle = primaryColor;
       ctx.fillRect(chartWidth, priceY - 10, Y_AXIS_WIDTH, 20);
-      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim();
+      const primaryFgColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim()})`;
+      ctx.fillStyle = primaryFgColor;
       ctx.font = '12px Inter';
       ctx.textAlign = 'center';
       const currentPriceDecimalPlaces = currentPrice < 0.1 ? 4 : (currentPrice < 10 ? 2 : 0);

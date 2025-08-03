@@ -20,6 +20,7 @@ export function OrderBook({ currentPrice, assetSymbol }: OrderBookProps) {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      if (currentPrice === 0) return;
       const priceJitter = currentPrice * 0.01;
       const newBids = Array.from({ length: 8 }, (_, i) => ({
         price: (currentPrice - (priceJitter * 0.1) - (Math.random() * priceJitter)).toFixed(4),
@@ -36,8 +37,10 @@ export function OrderBook({ currentPrice, assetSymbol }: OrderBookProps) {
   }, [currentPrice, isLoading]);
 
   const spread = (orderBook.asks.length > 0 && orderBook.bids.length > 0)
-    ? (Number(orderBook.asks[0].price) - Number(orderBook.bids[0].price)).toFixed(4)
-    : 'N/A';
+    ? (Number(orderBook.asks[0].price) - Number(orderBook.bids[0].price))
+    : 0;
+  
+  const spreadBPS = currentPrice > 0 ? (spread / currentPrice) * 10000 : 0;
 
   return (
     <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
@@ -68,8 +71,8 @@ export function OrderBook({ currentPrice, assetSymbol }: OrderBookProps) {
               )}
             </tbody>
           </table>
-          <div className="text-center font-bold text-foreground py-2 my-1 border-y border-border">
-              Spread: <span className="text-primary">${spread}</span>
+          <div className="text-center font-bold text-foreground py-2 my-1 border-y border-border text-sm">
+              Spread: <span className="text-primary">${spread.toFixed(4)} ({spreadBPS.toFixed(2)} BPS)</span>
           </div>
           <table className="w-full text-sm text-muted-foreground">
              <tbody>

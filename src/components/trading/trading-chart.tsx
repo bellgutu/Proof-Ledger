@@ -38,14 +38,9 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
-    
-    const Y_AXIS_WIDTH = 60;
-    const X_AXIS_HEIGHT = 30;
 
-    const chartWidth = width - Y_AXIS_WIDTH;
-    const chartHeight = height - X_AXIS_HEIGHT;
-
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+    // Set a pure black background as per the visual reference
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
       
     const candles = candleDataRef.current;
@@ -56,47 +51,23 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
     const minPrice = Math.min(...visibleCandles.map(c => c.low));
     const priceRange = maxPrice - minPrice;
 
+    const Y_AXIS_WIDTH = 60;
+    const chartWidth = width - Y_AXIS_WIDTH;
+    const chartHeight = height;
+
     const scaleY = (price: number) => {
-        return chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+        // Add a small padding to the top and bottom
+        const paddedRange = priceRange * 1.1;
+        const paddedMin = minPrice - (priceRange * 0.05);
+        return chartHeight - ((price - paddedMin) / paddedRange) * chartHeight;
     };
 
     const candleWidth = chartWidth / (visibleCandles.length * 1.5);
     const spacing = candleWidth * 0.5;
 
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground').trim();
-    ctx.font = '12px Inter';
-    ctx.textAlign = 'left';
-    const numPriceLevels = 6;
-    for (let i = 0; i <= numPriceLevels; i++) {
-        const price = minPrice + (priceRange / numPriceLevels) * i;
-        const y = scaleY(price);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(chartWidth, y);
-        ctx.stroke();
-        
-        const priceDecimalPlaces = priceRange < 0.1 ? 4 : (priceRange < 10 ? 2 : 0);
-        ctx.fillText(`$${price.toFixed(priceDecimalPlaces)}`, chartWidth + 5, y + 4);
-    }
-
-    ctx.textAlign = 'center';
-    const numTimeLabels = Math.floor(chartWidth / 100);
-    const timeInterval = Math.max(1, Math.floor(visibleCandles.length / numTimeLabels));
-    for (let i = 0; i < visibleCandles.length; i++) {
-        if (i % timeInterval === 0) {
-            const candle = visibleCandles[i];
-            const x = i * (candleWidth + spacing) + spacing + candleWidth / 2;
-            if(x < chartWidth) {
-                const timeFormatOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
-                const time = new Date(candle.time).toLocaleTimeString([], timeFormatOptions);
-                 ctx.fillText(time, x, chartHeight + 20);
-            }
-        }
-    }
-
     visibleCandles.forEach((candle, index) => {
       const x = index * (candleWidth + spacing) + spacing;
+      // Use bright, hardcoded colors for high contrast
       const color = candle.close >= candle.open ? '#22c55e' : '#ef4444';
 
       ctx.beginPath();
@@ -117,6 +88,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
 
     if (priceY >= 0 && priceY <= chartHeight) {
       const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+      
+      // Dashed line for current price
       ctx.strokeStyle = `hsl(${primaryColor})`;
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
@@ -126,9 +99,11 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       ctx.stroke();
       ctx.setLineDash([]);
       
+      // Price label with solid background
       ctx.fillStyle = `hsl(${primaryColor})`;
       ctx.fillRect(chartWidth, priceY - 10, Y_AXIS_WIDTH, 20);
       ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-foreground').trim();
+      ctx.font = '12px Inter';
       ctx.textAlign = 'center';
       const currentPriceDecimalPlaces = currentPrice < 0.1 ? 4 : (currentPrice < 10 ? 2 : 0);
       ctx.fillText(`$${currentPrice.toFixed(currentPriceDecimalPlaces)}`, chartWidth + Y_AXIS_WIDTH / 2, priceY + 4);
@@ -144,10 +119,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         : { close: initialPrice, time: Date.now() - 2000 };
 
       const open = currentPriceRef.current;
-      const change = (Math.random() - 0.5) * (open * 0.01);
+      const change = (Math.random() - 0.5) * (open * 0.005); // Reduced volatility
       const close = open + change;
-      const high = Math.max(open, close) + Math.random() * (open * 0.005);
-      const low = Math.min(open, close) - Math.random() * (open * 0.005);
+      const high = Math.max(open, close) + Math.random() * (open * 0.002);
+      const low = Math.min(open, close) - Math.random() * (open * 0.002);
       const time = lastCandle.time + 2000;
 
       const newCandle = { open, high, low, close, time };
@@ -165,8 +140,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         const open = price;
         const change = (Math.random() - 0.5) * (open * 0.005);
         const close = open + change;
-        const high = Math.max(open, close) + Math.random() * (open * 0.005);
-        const low = Math.min(open, close) - Math.random() * (open * 0.005);
+        const high = Math.max(open, close) + Math.random() * (open * 0.002);
+        const low = Math.min(open, close) - Math.random() * (open * 0.002);
         const time = startTime + i * 2000;
         candleDataRef.current.push({ open, high, low, close, time });
         price = close;
@@ -183,7 +158,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         const lastCandle = candleDataRef.current[candleDataRef.current.length-1];
         if(!lastCandle) return;
 
-        const volatility = 0.005;
+        const volatility = 0.001; // Reduced volatility
         const priceChange = (Math.random() - 0.5) * (lastCandle.close * volatility);
         const newPrice = lastCandle.close + priceChange;
 

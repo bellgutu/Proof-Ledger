@@ -67,7 +67,7 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition, 
           </div>
         </CardContent>
         
-        {userPosition && (
+        {userPosition && userPosition.lpTokens > 0 && (
           <CardHeader className="pt-0 px-4 pb-4">
               <div className="bg-primary/10 p-3 rounded-lg text-xs">
                 <div className="flex justify-between items-center font-bold text-primary mb-2">

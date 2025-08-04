@@ -15,17 +15,15 @@ interface MarketData {
   };
 }
 
+interface Balances {
+  [symbol: string]: number;
+}
+
 interface WalletState {
   isConnected: boolean;
   isConnecting: boolean;
   walletAddress: string;
-  ethBalance: number;
-  usdcBalance: number;
-  bnbBalance: number;
-  usdtBalance: number;
-  xrpBalance: number;
-  solBalance: number;
-  wethBalance: number;
+  balances: Balances;
   walletBalance: string;
   marketData: MarketData;
   isMarketDataLoaded: boolean;
@@ -34,13 +32,8 @@ interface WalletState {
 interface WalletActions {
   connectWallet: () => void;
   disconnectWallet: () => void;
-  setEthBalance: (updater: SetStateAction<number>) => void;
-  setUsdcBalance: (updater: SetStateAction<number>) => void;
-  setBnbBalance: (updater: SetStateAction<number>) => void;
-  setUsdtBalance: (updater: SetStateAction<number>) => void;
-  setXrpBalance: (updater: SetStateAction<number>) => void;
-  setSolBalance: (updater: SetStateAction<number>) => void;
-  setWethBalance: (updater: SetStateAction<number>) => void;
+  setBalances: React.Dispatch<SetStateAction<Balances>>;
+  updateBalance: (symbol: string, amount: number) => void;
 }
 
 interface WalletContextType {
@@ -63,18 +56,10 @@ const initialMarketData: MarketData = {
 
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
-  const [walletData, setWalletData] = useState({
-    isConnected: false,
-    isConnecting: false,
-    walletAddress: '',
-    ethBalance: 0,
-    usdcBalance: 0,
-    bnbBalance: 0,
-    usdtBalance: 0,
-    xrpBalance: 0,
-    solBalance: 0,
-    wethBalance: 0,
-  });
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
+  const [balances, setBalances] = useState<Balances>({});
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
@@ -83,16 +68,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
     if (!isMarketDataLoaded) return;
-    const total = 
-        walletData.ethBalance * (marketData.ETH?.price || 0) + 
-        walletData.usdcBalance * (marketData.USDC?.price || 0) + 
-        walletData.bnbBalance * (marketData.BNB?.price || 0) + 
-        walletData.usdtBalance * (marketData.USDT?.price || 0) + 
-        walletData.xrpBalance * (marketData.XRP?.price || 0) +
-        walletData.solBalance * (marketData.SOL?.price || 0) +
-        walletData.wethBalance * (marketData.WETH?.price || 0);
+    const total = Object.entries(balances).reduce((acc, [symbol, balance]) => {
+      const price = marketData[symbol]?.price || 0;
+      return acc + (balance * price);
+    }, 0);
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [walletData, marketData, isMarketDataLoaded]);
+  }, [balances, marketData, isMarketDataLoaded]);
 
   // Fetch real-time market data from CoinGecko
   useEffect(() => {
@@ -148,89 +129,44 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [isMarketDataLoaded]);
 
   const connectWallet = useCallback(() => {
-    setWalletData(prev => ({ ...prev, isConnecting: true }));
+    setIsConnecting(true);
     setTimeout(async () => {
       const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
       
       const assets = await BlockchainService.getWalletAssets(address);
       
-      const newBalances = {
-        ethBalance: 0,
-        usdcBalance: 0,
-        wethBalance: 0,
-      };
+      const newBalances = assets.reduce((acc: Balances, asset) => {
+        acc[asset.symbol] = asset.balance;
+        return acc;
+      }, {});
 
-      assets.forEach(asset => {
-        if (asset.symbol === 'ETH') newBalances.ethBalance = asset.balance;
-        if (asset.symbol === 'USDC') newBalances.usdcBalance = asset.balance;
-        if (asset.symbol === 'WETH') newBalances.wethBalance = asset.balance;
-      });
-
-      setWalletData(prev => ({
-        ...prev,
-        isConnected: true,
-        isConnecting: false,
-        walletAddress: address,
-        ...newBalances
-      }));
+      setBalances(newBalances);
+      setWalletAddress(address);
+      setIsConnected(true);
+      setIsConnecting(false);
     }, 1500);
   }, []);
 
   const disconnectWallet = useCallback(() => {
-    setWalletData(prev => ({ 
-        ...prev, 
-        isConnected: false, 
-        walletAddress: '',
-        ethBalance: 0,
-        usdcBalance: 0,
-        bnbBalance: 0,
-        usdtBalance: 0,
-        xrpBalance: 0,
-        solBalance: 0,
-        wethBalance: 0,
-    }));
+    setIsConnected(false);
+    setWalletAddress('');
+    setBalances({});
   }, []);
   
-  const setEthBalance = (updater: SetStateAction<number>) => {
-    setWalletData(prev => ({ ...prev, ethBalance: typeof updater === 'function' ? updater(prev.ethBalance) : updater }));
-  };
+  const updateBalance = useCallback((symbol: string, amount: number) => {
+    setBalances(prev => ({
+        ...prev,
+        [symbol]: (prev[symbol] || 0) + amount
+    }));
+  }, []);
 
-  const setUsdcBalance = (updater: SetStateAction<number>) => {
-    setWalletData(prev => ({ ...prev, usdcBalance: typeof updater === 'function' ? updater(prev.usdcBalance) : updater }));
-  };
-
-  const setBnbBalance = (updater: SetStateAction<number>) => {
-    setWalletData(prev => ({ ...prev, bnbBalance: typeof updater === 'function' ? updater(prev.bnbBalance) : updater }));
-  };
-
-  const setUsdtBalance = (updater: SetStateAction<number>) => {
-    setWalletData(prev => ({ ...prev, usdtBalance: typeof updater === 'function' ? updater(prev.usdtBalance) : updater }));
-  };
-
-  const setXrpBalance = (updater: SetStateAction<number>) => {
-    setWalletData(prev => ({ ...prev, xrpBalance: typeof updater === 'function' ? updater(prev.xrpBalance) : updater }));
-  };
-
-  const setSolBalance = (updater: SetStateAction<number>) => {
-    setWalletData(prev => ({ ...prev, solBalance: typeof updater === 'function' ? updater(prev.solBalance) : updater }));
-  };
-  
-  const setWethBalance = (updater: SetStateAction<number>) => {
-    setWalletData(prev => ({ ...prev, wethBalance: typeof updater === 'function' ? updater(prev.wethBalance) : updater }));
-  };
-
-  const value = {
-      walletState: { ...walletData, walletBalance, marketData, isMarketDataLoaded },
+  const value: WalletContextType = {
+      walletState: { isConnected, isConnecting, walletAddress, balances, walletBalance, marketData, isMarketDataLoaded },
       walletActions: {
           connectWallet,
           disconnectWallet,
-          setEthBalance,
-          setUsdcBalance,
-          setBnbBalance,
-          setUsdtBalance,
-          setXrpBalance,
-          setSolBalance,
-          setWethBalance,
+          setBalances,
+          updateBalance,
       }
   }
 

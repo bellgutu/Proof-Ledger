@@ -41,14 +41,14 @@ interface Proposal {
 }
 
 
-type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL';
+type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH';
 
-const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL'];
+const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL', 'WETH'];
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, ethBalance, usdcBalance, bnbBalance, usdtBalance, xrpBalance, wethBalance, solBalance, marketData } = walletState;
-  const { setEthBalance, setUsdcBalance, setWethBalance, setSolBalance } = walletActions;
+  const { isConnected, balances, marketData } = walletState;
+  const { updateBalance } = walletActions;
   const { toast } = useToast();
 
   const [vaultWeth, setVaultWeth] = useState(0);
@@ -71,38 +71,15 @@ export default function FinancePage() {
     { id: '3', title: 'Adjust AI Vault Risk Parameters', description: 'Slightly increase the risk tolerance of the AI Strategy Vault to pursue higher yields.', votesFor: 450000, votesAgainst: 480000 },
   ]);
 
-  const balances: { [key in Token]: number } = {
-    ETH: ethBalance,
-    USDC: usdcBalance,
-    USDT: usdtBalance,
-    BNB: bnbBalance,
-    XRP: xrpBalance,
-    SOL: solBalance,
-  };
-
-  const balanceSetters: { [key in Token]: (updater: React.SetStateAction<number>) => void } = {
-    ETH: walletActions.setEthBalance,
-    USDC: walletActions.setUsdcBalance,
-    USDT: walletActions.setUsdtBalance,
-    BNB: walletActions.setBnbBalance,
-    XRP: walletActions.setXrpBalance,
-    SOL: walletActions.setSolBalance,
-  };
-  
   const addTransaction = (transaction: Omit<Transaction, 'id' | 'status'>) => {
     setTransactions(prev => [{ id: new Date().toISOString(), status: 'Completed', ...transaction }, ...prev]);
   };
 
   const exchangeRates = useMemo(() => {
-    return {
-      ETH: marketData.ETH.price,
-      USDC: marketData.USDC.price,
-      USDT: marketData.USDT.price,
-      BNB: marketData.BNB.price,
-      XRP: marketData.XRP.price,
-      WETH: marketData.WETH.price,
-      SOL: marketData.SOL.price,
-    };
+    return Object.keys(marketData).reduce((acc, key) => {
+        acc[key as Token] = marketData[key].price;
+        return acc;
+    }, {} as Record<Token, number>);
   }, [marketData]);
 
   const conversionRate = useMemo(() => {
@@ -144,13 +121,17 @@ export default function FinancePage() {
   
   const handleSwap = () => {
     const amountToSwap = parseFloat(fromAmount);
-    if (!fromToken || !toToken || amountToSwap <= 0 || amountToSwap > balances[fromToken]) return;
+    if (!fromToken || !toToken || amountToSwap <= 0 || amountToSwap > (balances[fromToken] || 0)) {
+        toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
+        return;
+    }
     
     setSwapping(true);
     setTimeout(() => {
       const amountReceived = parseFloat(toAmount);
-      balanceSetters[fromToken](prev => parseFloat((prev - amountToSwap).toFixed(4)));
-      balanceSetters[toToken](prev => parseFloat((prev + amountReceived).toFixed(4)));
+      updateBalance(fromToken, -amountToSwap);
+      updateBalance(toToken, amountReceived);
+      
       addTransaction({
         type: 'Swap',
         details: `Swapped ${amountToSwap.toLocaleString('en-US', {maximumFractionDigits: 4})} ${fromToken} for ${amountReceived.toLocaleString('en-US', {maximumFractionDigits: 2})} ${toToken}`
@@ -180,13 +161,13 @@ export default function FinancePage() {
 
   const handleDepositToVault = () => {
     const amountToDeposit = 0.5;
-    if (walletState.wethBalance < amountToDeposit) {
+    if ((balances['WETH'] || 0) < amountToDeposit) {
        toast({ variant: "destructive", title: "Insufficient WETH balance" });
        return;
     }
     setVaultLoading(true);
     setTimeout(() => {
-      setWethBalance(prev => parseFloat((prev - amountToDeposit).toFixed(4)));
+      updateBalance('WETH', -amountToDeposit);
       setVaultWeth(prev => prev + amountToDeposit);
       addTransaction({
         type: 'Vault Deposit',
@@ -200,14 +181,11 @@ export default function FinancePage() {
     if (vaultTotalUsd <= 0) return;
     setVaultLoading(true);
     setTimeout(() => {
-        setWethBalance(prev => parseFloat((prev + vaultWeth).toFixed(4)));
-        setUsdcBalance(prev => parseFloat((prev + vaultUsdc).toFixed(4)));
+        updateBalance('WETH', vaultWeth);
+        updateBalance('USDC', vaultUsdc);
+
         if (activeStrategy) {
-            if (activeStrategy.asset === 'WETH') {
-                setWethBalance(prev => parseFloat((prev + activeStrategy.value).toFixed(4)));
-            } else {
-                 setUsdcBalance(prev => parseFloat((prev + activeStrategy.value).toFixed(4)));
-            }
+            updateBalance(activeStrategy.asset, activeStrategy.value);
         }
 
         setVaultWeth(0);
@@ -226,14 +204,15 @@ export default function FinancePage() {
     if(rebalanceLoading) return;
     setRebalanceLoading(true);
     try {
+        const currentEth = balances['ETH'] || 0;
         // Ensure there are assets to rebalance.
-        if (vaultWeth <= 0 && vaultUsdc <= 0) {
-            toast({ variant: "destructive", title: "Vault is empty", description: "Deposit WETH or USDC to enable AI rebalancing." });
+        if (vaultWeth <= 0 && vaultUsdc <= 0 && currentEth <= 0) {
+            toast({ variant: "destructive", title: "Vault is empty", description: "Deposit WETH/USDC or hold ETH to enable AI rebalancing." });
             setRebalanceLoading(false);
             return;
         }
 
-        const action = await getRebalanceAction({ currentEth: 0, currentWeth: vaultWeth, currentUsdc: vaultUsdc });
+        const action = await getRebalanceAction({ currentEth: currentEth, currentWeth: vaultWeth, currentUsdc: vaultUsdc });
         
         let amount = action.amount;
         if (action.fromToken === 'WETH' && action.toToken === 'USDC') {
@@ -241,7 +220,7 @@ export default function FinancePage() {
             if (wethAmount > 0) {
                 setVaultWeth(prev => prev - wethAmount);
                 const usdcAmount = wethAmount * exchangeRates.WETH / exchangeRates.USDC;
-                setVaultUsdc(prev => prev + usdcAmount); // This was missing
+                setVaultUsdc(prev => prev + usdcAmount);
                 setActiveStrategy({name: action.strategyName, value: usdcAmount, asset: 'USDC', apy: action.expectedApy});
                  addTransaction({
                     type: 'AI Rebalance',
@@ -259,7 +238,7 @@ export default function FinancePage() {
             if (usdcAmount > 0) {
                 setVaultUsdc(prev => prev - usdcAmount);
                 const wethAmount = usdcAmount * exchangeRates.USDC / exchangeRates.WETH;
-                setVaultWeth(prev => prev + wethAmount); // This was missing
+                setVaultWeth(prev => prev + wethAmount);
                 setActiveStrategy({name: action.strategyName, value: wethAmount, asset: 'WETH', apy: action.expectedApy});
                  addTransaction({
                     type: 'AI Rebalance',
@@ -273,10 +252,9 @@ export default function FinancePage() {
                 });
             }
         } else if (action.fromToken === 'ETH' && action.toToken === 'WETH') {
-            // This is the wrap ETH case
-             const ethAmount = Math.min(ethBalance, action.amount);
+             const ethAmount = Math.min(currentEth, action.amount);
              if (ethAmount > 0) {
-                setEthBalance(prev => prev - ethAmount);
+                updateBalance('ETH', -ethAmount);
                 setVaultWeth(prev => prev + ethAmount);
                  addTransaction({
                     type: 'AI Rebalance',
@@ -301,7 +279,7 @@ export default function FinancePage() {
     } finally {
         setRebalanceLoading(false);
     }
-  }, [vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates, toast, ethBalance, setEthBalance]);
+  }, [vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates, toast, balances, updateBalance]);
 
   const hasVaultBalance = vaultTotalUsd > 0;
 
@@ -329,7 +307,7 @@ export default function FinancePage() {
                     <div className="p-4 bg-background rounded-md border space-y-2">
                       <div className="flex justify-between items-center">
                          <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
-                         <p className="text-xs text-muted-foreground mt-1">Balance: {balances[fromToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                         <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[fromToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                       </div>
                       <div className="flex gap-2">
                         <Input
@@ -360,7 +338,7 @@ export default function FinancePage() {
                     <div className="p-4 bg-background rounded-md border space-y-2">
                       <div className="flex justify-between items-center">
                         <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
-                        <p className="text-xs text-muted-foreground mt-1">Balance: {balances[toToken].toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[toToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                       </div>
                       <div className="flex gap-2">
                         <Input
@@ -438,7 +416,7 @@ export default function FinancePage() {
                         <div className="flex flex-col sm:flex-row gap-2">
                             <Button
                               onClick={handleDepositToVault}
-                              disabled={!isConnected || vaultLoading || walletState.wethBalance <= 0}
+                              disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) <= 0}
                               className="w-full bg-green-600 text-white hover:bg-green-700"
                             >
                               {vaultLoading ? (

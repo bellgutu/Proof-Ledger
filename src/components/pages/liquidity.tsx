@@ -43,7 +43,7 @@ export interface UserPosition extends Pool {
 export default function LiquidityPage() {
   const { walletState, walletActions } = useWallet();
   const { isConnected, marketData } = walletState;
-  const { setUsdcBalance } = walletActions;
+  const { updateBalance } = walletActions;
   const { toast } = useToast();
   
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -90,7 +90,7 @@ export default function LiquidityPage() {
   };
 
   const handleClaimRewards = (positionId: string, rewards: number) => {
-    setUsdcBalance(prev => prev + rewards); // Assuming rewards are in USDC
+    updateBalance('USDC', rewards); // Assuming rewards are in USDC
     setUserPositions(prev => prev.map(p => {
       if (p.id === positionId) {
         return { ...p, unclaimedRewards: 0 };

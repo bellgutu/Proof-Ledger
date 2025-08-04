@@ -22,8 +22,8 @@ interface AddLiquidityDialogProps {
 
 export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: AddLiquidityDialogProps) {
   const { walletState, walletActions } = useWallet();
-  const { marketData, ethBalance, usdcBalance, wethBalance, solBalance, usdtBalance } = walletState;
-  const { setEthBalance, setUsdcBalance, setWethBalance, setSolBalance, setUsdtBalance } = walletActions;
+  const { marketData, balances } = walletState;
+  const { updateBalance } = walletActions;
   
   const { toast } = useToast();
   
@@ -34,22 +34,9 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
 
 
   const [token1, token2] = pool.name.split('/');
-  
-  const balances = {
-    ETH: ethBalance,
-    WETH: wethBalance,
-    SOL: solBalance,
-    USDC: usdcBalance,
-    USDT: usdtBalance,
-  };
 
-  const setters = {
-    ETH: setEthBalance,
-    WETH: setWethBalance,
-    SOL: setSolBalance,
-    USDC: setUsdcBalance,
-    USDT: setUsdtBalance,
-  }
+  const token1Balance = balances[token1] || 0;
+  const token2Balance = balances[token2] || 0;
 
   const token1Price = marketData[token1 as keyof typeof marketData]?.price || 0;
   const token2Price = marketData[token2 as keyof typeof marketData]?.price || 0;
@@ -84,7 +71,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
       return;
     }
     
-    if (numAmount1 > balances[token1 as keyof typeof balances] || numAmount2 > balances[token2 as keyof typeof balances]) {
+    if (numAmount1 > token1Balance || numAmount2 > token2Balance) {
         toast({ variant: 'destructive', title: 'Insufficient balance' });
         return;
     }
@@ -96,8 +83,8 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
 
     setIsDepositing(true);
     setTimeout(() => {
-        setters[token1 as keyof typeof setters]((prev) => prev - numAmount1);
-        setters[token2 as keyof typeof setters]((prev) => prev - numAmount2);
+        if(numAmount1 > 0) updateBalance(token1, -numAmount1);
+        if(numAmount2 > 0) updateBalance(token2, -numAmount2);
 
         const lpTokensReceived = Math.sqrt(numAmount1 * numAmount2); // Simplified LP calculation
         const poolShare = (lpTokensReceived / (pool.tvl + numAmount1 * token1Price + numAmount2 * token2Price)) * 100;
@@ -142,7 +129,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
           <div className="p-4 bg-background/50 rounded-md border space-y-2">
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>{token1}</span>
-              <span>Balance: {balances[token1 as keyof typeof balances].toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
+              <span>Balance: {token1Balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
             </div>
             <div className="flex items-center gap-2">
               <Image src={getTokenLogo(token1)} alt={token1} width={24} height={24} />
@@ -155,7 +142,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
           <div className="p-4 bg-background/50 rounded-md border space-y-2">
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>{token2}</span>
-              <span>Balance: {balances[token2 as keyof typeof balances].toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
+              <span>Balance: {token2Balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
             </div>
             <div className="flex items-center gap-2">
               <Image src={getTokenLogo(token2)} alt={token2} width={24} height={24} />

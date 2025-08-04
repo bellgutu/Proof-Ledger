@@ -13,13 +13,20 @@ import { Wallet as WalletIcon } from 'lucide-react';
 
 export default function PortfolioPage() {
   const { walletState } = useWallet();
-  const { isConnected, isMarketDataLoaded, marketData, ethBalance, wethBalance, usdcBalance } = walletState;
+  const { isConnected, isMarketDataLoaded, marketData, balances } = walletState;
 
-  const assets = [
-    { symbol: 'ETH', balance: ethBalance, name: 'Ethereum' },
-    { symbol: 'WETH', balance: wethBalance, name: 'Wrapped Ether' },
-    { symbol: 'USDC', balance: usdcBalance, name: 'USD Coin' },
-  ];
+  const assets = Object.entries(balances)
+    .map(([symbol, balance]) => ({
+      symbol,
+      balance,
+      name: marketData[symbol]?.name || symbol,
+    }))
+    .filter(asset => asset.balance > 0)
+    .sort((a, b) => {
+        const valueA = a.balance * (marketData[a.symbol]?.price || 0);
+        const valueB = b.balance * (marketData[b.symbol]?.price || 0);
+        return valueB - valueA;
+    });
 
   const AssetRow = ({ asset }: { asset: { symbol: string, balance: number, name: string }}) => {
     const price = marketData[asset.symbol]?.price ?? 0;
@@ -100,8 +107,14 @@ export default function PortfolioPage() {
                     <SkeletonRow />
                     <SkeletonRow />
                 </>
-              ) : (
+              ) : assets.length > 0 ? (
                 assets.map(asset => <AssetRow key={asset.symbol} asset={asset} />)
+              ) : (
+                 <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-16">
+                        You have no assets in this wallet.
+                    </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>

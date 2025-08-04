@@ -31,8 +31,8 @@ interface TradeHistoryItem extends Trade {
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, usdcBalance, marketData } = walletState;
-  const { setUsdcBalance } = walletActions;
+  const { isConnected, balances, marketData } = walletState;
+  const { updateBalance } = walletActions;
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeAmount, setTradeAmount] = useState('');
@@ -43,6 +43,8 @@ const TradingPageContent = () => {
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryItem[]>([]);
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH'].price);
   const [candleData, setCandleData] = useState<Candle[]>([]);
+
+  const usdcBalance = balances['USDC'] || 0;
 
   const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
     setCandleData(candles);
@@ -82,7 +84,7 @@ const TradingPageContent = () => {
         leverage,
         livePnl: '0.00',
       });
-      setUsdcBalance(prev => parseFloat((prev - amount).toFixed(4)));
+      updateBalance('USDC', -amount);
       setTradeAmount('');
       setIsPlacingTrade(false);
     }, 1500);
@@ -97,10 +99,10 @@ const TradingPageContent = () => {
 
     const newBalance = activeTrade.amount + pnl;
 
-    setUsdcBalance(prev => parseFloat((prev + newBalance).toFixed(4)));
+    updateBalance('USDC', newBalance);
     setTradeHistory(prev => [{ ...activeTrade, finalPnl: pnl.toFixed(2), closePrice: finalPrice.toFixed(4) }, ...prev]);
     setActiveTrade(null);
-  }, [activeTrade, currentPrice, setUsdcBalance]);
+  }, [activeTrade, currentPrice, updateBalance]);
 
   useEffect(() => {
     if (activeTrade) {

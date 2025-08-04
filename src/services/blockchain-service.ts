@@ -49,7 +49,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   }
   */
 
-  // Returning focused mock data. Implement WETH and USDC on your chain.
+  // Returning focused mock data for ETH, WETH, and USDC.
+  // This is the data you need to provide from your chain's API.
   // Once your API is ready, you can delete this mock return statement.
   return [
     { symbol: 'ETH', name: 'Ethereum', balance: 10 },
@@ -90,8 +91,9 @@ export async function getMarketDataFromChain(): Promise<ChainMarketData> {
         ETH: { price: 3500.45, change24h: 2.3 },
         WETH: { price: 3500.55, change24h: 2.3 }, // Should closely track ETH
         USDC: { price: 1.00, change24h: 0.0 },
-        // These other tokens are here to prevent the UI from breaking.
-        // They are not essential for your core demo loop.
+        // These other tokens are included to prevent the UI from breaking.
+        // They are not essential for your core demo loop. You can have your
+        // API return these with static values or implement them fully.
         BTC: { price: 65000.12, change24h: 1.5 },
         SOL: { price: 150.88, change24h: -1.2 },
         BNB: { price: 600.00, change24h: 0.5 },

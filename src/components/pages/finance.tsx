@@ -17,21 +17,21 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 
-interface Transaction {
+export interface Transaction {
   id: string;
   type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote';
   details: string | React.ReactNode;
   status: 'Completed' | 'Pending';
 }
 
-interface VaultStrategy {
+export interface VaultStrategy {
     name: string;
     value: number;
     asset: 'WETH' | 'USDC';
     apy: number;
 }
 
-interface Proposal {
+export interface Proposal {
   id: string;
   title: string;
   description: string;
@@ -41,19 +41,31 @@ interface Proposal {
 }
 
 
-type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH';
+type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK';
 
-const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL', 'WETH'];
+const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL', 'WETH', 'LINK'];
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, balances, marketData } = walletState;
-  const { updateBalance } = walletActions;
+  const { 
+    isConnected, 
+    balances, 
+    marketData,
+    transactions,
+    vaultWeth,
+    vaultUsdc,
+    activeStrategy,
+    proposals
+  } = walletState;
+  const { 
+    updateBalance,
+    addTransaction,
+    setVaultWeth,
+    setVaultUsdc,
+    setActiveStrategy,
+    setProposals
+  } = walletActions;
   const { toast } = useToast();
-
-  const [vaultWeth, setVaultWeth] = useState(0);
-  const [vaultUsdc, setVaultUsdc] = useState(0);
-  const [activeStrategy, setActiveStrategy] = useState<VaultStrategy | null>(null);
 
   const [vaultLoading, setVaultLoading] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
@@ -63,18 +75,7 @@ export default function FinancePage() {
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [swapping, setSwapping] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   
-  const [proposals, setProposals] = useState<Proposal[]>([
-    { id: '1', title: 'Increase LP Rewards for WETH/USDC', description: 'Boost the rewards for the WETH/USDC pool by 5% to attract more liquidity.', votesFor: 1250000, votesAgainst: 340000 },
-    { id: '2', title: 'Onboard a new collateral asset: LINK', description: 'Allow Chainlink (LINK) to be used as collateral within the protocol.', votesFor: 850000, votesAgainst: 600000 },
-    { id: '3', title: 'Adjust AI Vault Risk Parameters', description: 'Slightly increase the risk tolerance of the AI Strategy Vault to pursue higher yields.', votesFor: 450000, votesAgainst: 480000 },
-  ]);
-
-  const addTransaction = (transaction: Omit<Transaction, 'id' | 'status'>) => {
-    setTransactions(prev => [{ id: new Date().toISOString(), status: 'Completed', ...transaction }, ...prev]);
-  };
-
   const exchangeRates = useMemo(() => {
     return Object.keys(marketData).reduce((acc, key) => {
         acc[key as Token] = marketData[key].price;
@@ -279,7 +280,7 @@ export default function FinancePage() {
     } finally {
         setRebalanceLoading(false);
     }
-  }, [vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates, toast, balances, updateBalance]);
+  }, [vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates, toast, balances, updateBalance, addTransaction, setVaultWeth, setVaultUsdc, setActiveStrategy]);
 
   const hasVaultBalance = vaultTotalUsd > 0;
 

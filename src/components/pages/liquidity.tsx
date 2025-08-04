@@ -24,8 +24,8 @@ export interface Pool {
   id: string;
   name: string;
   type: 'V2' | 'V3' | 'Stable'; // V2 = Standard, V3 = Concentrated, Stable = Stable-Swap
-  token1: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP'; amount: number };
-  token2: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP'; amount: number };
+  token1: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
+  token2: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
   tvl: number;
   volume24h: number;
   apr: number;
@@ -42,21 +42,12 @@ export interface UserPosition extends Pool {
 
 export default function LiquidityPage() {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, marketData } = walletState;
-  const { updateBalance } = walletActions;
+  const { isConnected, marketData, availablePools, userPositions } = walletState;
+  const { updateBalance, setAvailablePools, setUserPositions } = walletActions;
   const { toast } = useToast();
   
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<LPStrategy[]>([]);
-
-  const [availablePools, setAvailablePools] = useState<Pool[]>([
-    { id: '1', name: 'WETH/USDC', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
-    { id: '4', name: 'USDC/USDT', type: 'Stable', token1: { symbol: 'USDC', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 250_000_000, volume24h: 55_000_000, apr: 2.8 },
-    { id: '2', name: 'WETH/USDT', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
-    { id: '3', name: 'SOL/USDC', type: 'V3', token1: { symbol: 'SOL', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 80_000_000, volume24h: 40_000_000, apr: 18.2, feeTier: 0.05, priceRange: { min: 120, max: 200 } },
-  ]);
-
-  const [userPositions, setUserPositions] = useState<UserPosition[]>([]);
 
   // State for creating a new pool
   const [newPoolType, setNewPoolType] = useState<'V2' | 'V3' | 'Stable'>('V2');

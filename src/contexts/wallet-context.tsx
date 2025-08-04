@@ -135,6 +135,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       try {
         const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,chainlink';
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
+        
+        if (!response.ok) {
+          throw new Error(`CoinGecko API request failed with status ${response.status}`);
+        }
+        
         const liveData = await response.json();
 
         setMarketData(prevData => {

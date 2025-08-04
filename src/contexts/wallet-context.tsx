@@ -2,6 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction } from 'react';
+import * as BlockchainService from '@/services/blockchain-service';
 
 type AssetSymbol = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH';
 
@@ -66,59 +67,49 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     isConnected: false,
     isConnecting: false,
     walletAddress: '',
-    ethBalance: 10,
-    usdcBalance: 25000,
-    bnbBalance: 50,
-    usdtBalance: 10000,
-    xrpBalance: 20000,
-    solBalance: 100,
-    wethBalance: 5,
+    ethBalance: 0,
+    usdcBalance: 0,
+    bnbBalance: 0,
+    usdtBalance: 0,
+    xrpBalance: 0,
+    solBalance: 0,
+    wethBalance: 0,
   });
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
   const [walletBalance, setWalletBalance] = useState('0.00');
 
+  // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
     if (!isMarketDataLoaded) return;
     const total = 
-        walletData.ethBalance * marketData.ETH.price + 
-        walletData.usdcBalance * marketData.USDC.price + 
-        walletData.bnbBalance * marketData.BNB.price + 
-        walletData.usdtBalance * marketData.USDT.price + 
-        walletData.xrpBalance * marketData.XRP.price +
-        walletData.solBalance * marketData.SOL.price +
-        walletData.wethBalance * marketData.WETH.price;
+        walletData.ethBalance * (marketData.ETH?.price || 0) + 
+        walletData.usdcBalance * (marketData.USDC?.price || 0) + 
+        walletData.bnbBalance * (marketData.BNB?.price || 0) + 
+        walletData.usdtBalance * (marketData.USDT?.price || 0) + 
+        walletData.xrpBalance * (marketData.XRP?.price || 0) +
+        walletData.solBalance * (marketData.SOL?.price || 0) +
+        walletData.wethBalance * (marketData.WETH?.price || 0);
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   }, [walletData, marketData, isMarketDataLoaded]);
 
-  // Real-time market data fetching from CoinGecko
+  // Fetch market data from our new blockchain service
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,weth';
-        const response = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch market data from CoinGecko');
-        }
-        const data = await response.json();
+        const chainData = await BlockchainService.getMarketDataFromChain();
         
         setMarketData(prevData => {
-            const newData: MarketData = { ...initialMarketData, ...prevData };
-            data.forEach((coin: any) => {
-                const symbol = coin.symbol.toUpperCase() as AssetSymbol;
-                if (newData[symbol]) {
-                    newData[symbol] = {
-                        ...newData[symbol],
-                        price: coin.current_price,
-                        change: coin.price_change_percentage_24h,
+            const newData: MarketData = { ...initialMarketData };
+            for (const symbol in chainData) {
+                if (newData[symbol as AssetSymbol]) {
+                    newData[symbol as AssetSymbol] = {
+                        ...newData[symbol as AssetSymbol],
+                        price: chainData[symbol].price,
+                        change: chainData[symbol].change24h,
                     };
                 }
-            });
-            // Ensure WETH tracks ETH price
-            if (newData.ETH) {
-                newData.WETH.price = newData.ETH.price;
-                newData.WETH.change = newData.ETH.change;
             }
             return newData;
         });
@@ -128,31 +119,51 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
 
       } catch (error) {
-        console.error("Error fetching market data:", error);
+        console.error("Error fetching market data from service:", error);
       }
     };
 
     fetchMarketData();
-    const marketUpdateInterval = setInterval(fetchMarketData, 60000); // Update every 60 seconds to be safe with public API rate limits
+    const marketUpdateInterval = setInterval(fetchMarketData, 60000); // Keep polling for fresh data
 
     return () => clearInterval(marketUpdateInterval);
   }, [isMarketDataLoaded]);
 
   const connectWallet = useCallback(() => {
     setWalletData(prev => ({ ...prev, isConnecting: true }));
-    setTimeout(() => {
+    setTimeout(async () => {
       const address = `0x${Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      
+      // Fetch initial balances from our new blockchain service
+      const assets = await BlockchainService.getWalletAssets(address);
+      const balances: { [key: string]: number } = {};
+      assets.forEach(asset => {
+        balances[`${asset.symbol.toLowerCase()}Balance`] = asset.balance;
+      });
+
       setWalletData(prev => ({
         ...prev,
         isConnected: true,
         isConnecting: false,
         walletAddress: address,
+        ...balances
       }));
     }, 1500);
   }, []);
 
   const disconnectWallet = useCallback(() => {
-    setWalletData(prev => ({ ...prev, isConnected: false, walletAddress: '' }));
+    setWalletData(prev => ({ 
+        ...prev, 
+        isConnected: false, 
+        walletAddress: '',
+        ethBalance: 0,
+        usdcBalance: 0,
+        bnbBalance: 0,
+        usdtBalance: 0,
+        xrpBalance: 0,
+        solBalance: 0,
+        wethBalance: 0,
+    }));
   }, []);
   
   const setEthBalance = (updater: SetStateAction<number>) => {

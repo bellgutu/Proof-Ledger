@@ -33,8 +33,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching assets for address: ${address}`);
   
   // TODO: Add your deployed WETH and USDC contract addresses here.
-  const WETH_CONTRACT_ADDRESS = '0x...'; // Replace with your WETH contract address
-  const USDC_CONTRACT_ADDRESS = '0x...'; // Replace with your USDC contract address
+  const WETH_CONTRACT_ADDRESS = 'YOUR_WETH_CONTRACT_ADDRESS'; // Replace with your WETH contract address
+  const USDC_CONTRACT_ADDRESS = 'YOUR_USDC_CONTRACT_ADDRESS'; // Replace with your USDC contract address
   
   // This is the standard ABI function signature for 'balanceOf(address)'
   const BALANCE_OF_SIGNATURE = '0x70a08231';
@@ -56,8 +56,9 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     const ethBalance = parseInt(ethData.result, 16) / 1e18; // Convert from Wei to ETH
 
     // --- You can uncomment the sections below once you deploy your ERC20 contracts ---
+    // --- and replace the mock return values with the real ones. ---
 
-    // 2. Fetch WETH Balance (ERC20 Token)
+    // 2. Fetch WETH Balance (ERC20 Token) - EXAMPLE
     /*
     const wethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
         method: 'POST',
@@ -77,7 +78,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     const wethBalance = parseInt(wethData.result, 16) / 1e18; // Assuming 18 decimals
     */
 
-    // 3. Fetch USDC Balance (ERC20 Token)
+    // 3. Fetch USDC Balance (ERC20 Token) - EXAMPLE
     /*
     const usdcBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
         method: 'POST',
@@ -101,8 +102,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     // Replace the mock balances with the real ones (wethBalance, usdcBalance) when ready.
     return [
         { symbol: 'ETH', name: 'Ethereum', balance: ethBalance },
-        { symbol: 'WETH', name: 'Wrapped Ether', balance: 5 }, // Using mock: replace with wethBalance
-        { symbol: 'USDC', name: 'USD Coin', balance: 25000 }, // Using mock: replace with usdcBalance
+        { symbol: 'WETH', name: 'Wrapped Ether', balance: 5 }, // TODO: Replace with real wethBalance
+        { symbol: 'USDC', name: 'USD Coin', balance: 25000 }, // TODO: Replace with real usdcBalance
     ];
 
   } catch (error) {
@@ -116,24 +117,25 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   }
 }
 
-
 /**
  * Fetches market data. For a real app, this would come from on-chain oracles.
- * For this demo, we can simulate it.
+ * NOTE: This function is no longer the primary source for price data, as that
+ * is now handled by the CoinGecko API in the WalletContext. This could be
+ * used as a fallback or for chain-specific data.
  * @returns A promise that resolves to market data for various assets.
  */
 export async function getMarketDataFromChain(): Promise<ChainMarketData> {
-    console.log(`[BlockchainService] Fetching market data.`);
+    console.log(`[BlockchainService] Fetching on-chain market data (if any).`);
     
-    // TODO: Ideally, you would have an on-chain price oracle contract to call.
-    // This would involve another `eth_call` to a `getPrice` function on your oracle contract.
-    // For now, we will use simulated data.
+    // TODO: You could implement an on-chain price oracle and call it here.
+    // For now, this function is supplemental.
     
     return {
-        ETH: { price: 3500.45, change24h: 2.3 },
-        USDC: { price: 1.00, change24h: 0.0 },
+        // This function can be left empty if all price data comes from CoinGecko.
+        // Or, it could provide prices for assets NOT on CoinGecko.
     };
 }
+
 
 /**
  * Executes a token swap on your blockchain's AMM.

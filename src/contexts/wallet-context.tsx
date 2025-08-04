@@ -94,28 +94,41 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   }, [walletData, marketData, isMarketDataLoaded]);
 
-  // Fetch market data from our new blockchain service
+  // Fetch real-time market data from CoinGecko
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const chainData = await BlockchainService.getMarketDataFromChain();
-        
+        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin';
+        const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
+        const liveData = await response.json();
+
         setMarketData(prevData => {
-            const newData: MarketData = { ...initialMarketData };
-            for (const symbol in chainData) {
-                if (newData[symbol as AssetSymbol]) {
-                    newData[symbol as AssetSymbol] = {
-                        ...newData[symbol as AssetSymbol],
-                        price: chainData[symbol].price,
-                        change: chainData[symbol].change24h,
-                    };
+            const newData: MarketData = { ...prevData };
+            
+            const mapCoinGeckoToSymbol = {
+              'bitcoin': 'BTC',
+              'ethereum': 'ETH',
+              'solana': 'SOL',
+              'binancecoin': 'BNB',
+              'ripple': 'XRP',
+              'tether': 'USDT',
+              'usd-coin': 'USDC'
+            };
+
+            for (const id in liveData) {
+                const symbol = mapCoinGeckoToSymbol[id as keyof typeof mapCoinGeckoToSymbol];
+                if (symbol && newData[symbol]) {
+                    newData[symbol].price = liveData[id].usd;
+                    newData[symbol].change = liveData[id].usd_24h_change;
                 }
             }
-             // Ensure WETH tracks ETH price
+            
+            // Ensure WETH tracks ETH price
             if (newData.ETH && newData.ETH.price > 0) {
               newData.WETH.price = newData.ETH.price;
               newData.WETH.change = newData.ETH.change;
             }
+
             return newData;
         });
 
@@ -124,12 +137,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
 
       } catch (error) {
-        console.error("Error fetching market data from service:", error);
+        console.error("Error fetching market data from CoinGecko:", error);
       }
     };
 
     fetchMarketData();
-    const marketUpdateInterval = setInterval(fetchMarketData, 60000); // Keep polling for fresh data
+    const marketUpdateInterval = setInterval(fetchMarketData, 30000); // Fetch prices every 30 seconds
 
     return () => clearInterval(marketUpdateInterval);
   }, [isMarketDataLoaded]);
@@ -137,8 +150,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const connectWallet = useCallback(() => {
     setWalletData(prev => ({ ...prev, isConnecting: true }));
     setTimeout(async () => {
-      // In a real app, this would get this from MetaMask or another wallet provider.
-      // We will use a hardcoded address from your local chain screenshot for this demo.
       const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
       
       const assets = await BlockchainService.getWalletAssets(address);

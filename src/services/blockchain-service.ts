@@ -1,12 +1,14 @@
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
- * Each function is a placeholder designed to be replaced with an actual API call (e.g., using `fetch`)
- * to your blockchain's RPC endpoint (e.g., http://localhost:8545).
+ * Each function is designed to be connected to your blockchain's RPC endpoint.
  *
- * This demonstrates a clear separation of concerns and makes the application ready
- * for true on-chain integration.
+ * THIS IS THE FINAL STEP. Replace the mock data in each function with a real `fetch` call
+ * to your running blockchain.
  */
+
+const LOCAL_CHAIN_RPC_URL = 'http://localhost:8545'; // Your blockchain's RPC endpoint
 
 export interface ChainAsset {
   symbol: 'ETH' | 'WETH' | 'USDC';
@@ -22,7 +24,7 @@ export interface ChainMarketData {
 }
 
 /**
- * Fetches a user's complete wallet balance from the blockchain.
+ * Fetches a user's asset balances from the blockchain.
  * This should be your first integration point.
  * @param address The wallet address to query.
  * @returns A promise that resolves to an array of assets with their balances.
@@ -30,19 +32,37 @@ export interface ChainMarketData {
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching assets for address: ${address}`);
   
-  // TODO: Replace the mock data below with a real API call to your blockchain.
-  // Your local blockchain should have an endpoint that returns the balances for a given address.
+  // TODO: Replace the mock data below with real API calls to your blockchain.
+  // You will need to make separate calls for ETH, WETH, and USDC balances.
+  
+  // EXAMPLE for fetching ETH balance:
   /*
-  // EXAMPLE:
   try {
-    const response = await fetch(`http://localhost:8545/wallet/${address}`); // Replace with your endpoint
-    if (!response.ok) {
-      throw new Error('Failed to fetch wallet assets from local chain');
-    }
-    const data = await response.json();
-    // Ensure the returned data matches the ChainAsset[] interface.
-    // It should be an array like: [{ symbol: 'ETH', name: 'Ethereum', balance: 10.5 }, ...]
-    return data.assets as ChainAsset[]; 
+    const ethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getBalance',
+            params: [address, 'latest'],
+            id: 1,
+        }),
+    });
+    const ethData = await ethBalanceResponse.json();
+    const ethBalance = parseInt(ethData.result, 16) / 1e18; // Convert from Wei to ETH
+
+    // EXAMPLE for fetching ERC20 balance (WETH/USDC):
+    // You'll need the contract addresses for WETH and USDC on your chain.
+    const wethContractAddress = '0x...'; // Replace with your WETH contract address
+    const usdcContractAddress = '0x...'; // Replace with your USDC contract address
+    
+    // You would then make similar 'eth_call' requests for WETH and USDC balances.
+
+    return [
+        { symbol: 'ETH', name: 'Ethereum', balance: ethBalance },
+        // ... add WETH and USDC balances here
+    ];
+
   } catch (error) {
     console.error("Error connecting to local blockchain for wallet assets:", error);
     return []; // Return empty array on error to prevent crashes.
@@ -61,44 +81,37 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
 
 
 /**
- * Fetches market data from your on-chain oracles or data feeds.
+ * Fetches market data. For a real app, this would come from on-chain oracles.
+ * For this demo, we can simulate it or use a public API as a fallback.
  * @returns A promise that resolves to market data for various assets.
  */
 export async function getMarketDataFromChain(): Promise<ChainMarketData> {
-    console.log(`[BlockchainService] Fetching market data from chain.`);
+    console.log(`[BlockchainService] Fetching market data.`);
     
-    // TODO: Replace with a call to your chain's oracle/price feed endpoint.
+    // TODO: Ideally, you would have an on-chain price oracle to call.
+    // If not, using a public API like CoinGecko is a good alternative for a demo.
+    // The current implementation simulates this.
     /*
-    // EXAMPLE:
+    // EXAMPLE with a price oracle contract:
     try {
-        const response = await fetch(`http://localhost:8545/market/prices`); // Replace with your endpoint
-        if (!response.ok) {
-          throw new Error('Failed to fetch market data from local chain');
-        }
-        const data = await response.json();
-        // The data should match the ChainMarketData interface.
-        // e.g., { ETH: { price: 3500, change24h: 2.5 }, USDC: { price: 1, ... } }
-        return data as ChainMarketData;
+        const ethPriceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
+            method: 'POST',
+            // ... body for an `eth_call` to your oracle's `getEthPrice` function
+        });
+        const ethPriceData = await ethPriceResponse.json();
+        const ethPrice = ... // process result
+
+        return { ETH: { price: ethPrice, change24h: 2.3 } };
     } catch (error) {
-        console.error("Error connecting to local blockchain for market data:", error);
-        return {}; // Return empty object on error.
+        console.error("Error fetching price from oracle:", error);
+        return {};
     }
     */
 
-    // Returning focused mock data. Your chain should be the source of truth for these prices.
-    // Delete this mock return statement after implementing your API call.
+    // Returning mock data. Your on-chain oracle should be the source of truth for these prices.
     return {
         ETH: { price: 3500.45, change24h: 2.3 },
-        WETH: { price: 3500.55, change24h: 2.3 }, // Should closely track ETH
         USDC: { price: 1.00, change24h: 0.0 },
-        // These other tokens are included to prevent the UI from breaking.
-        // They are not essential for your core demo loop. You can have your
-        // API return these with static values or implement them fully.
-        BTC: { price: 65000.12, change24h: 1.5 },
-        SOL: { price: 150.88, change24h: -1.2 },
-        BNB: { price: 600.00, change24h: 0.5 },
-        XRP: { price: 0.52, change24h: -0.8 },
-        USDT: { price: 1.00, change24h: 0.0 },
     };
 }
 
@@ -114,17 +127,27 @@ export async function executeSwap(fromToken: string, toToken: string, amount: nu
     console.log(`[BlockchainService] Executing swap: ${amount} ${fromToken} for ${toToken} from address ${address}`);
 
     // TODO: Replace with a `fetch` POST call to your blockchain's swap endpoint.
+    // This will likely involve `eth_sendTransaction` to call your AMM's swap function.
     /*
     // EXAMPLE:
     try {
-        const response = await fetch(`http://localhost:8545/dex/swap`, {
+        const response = await fetch(LOCAL_CHAIN_RPC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fromToken, toToken, amount, fromAddress: address })
+          body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_sendTransaction',
+              params: [{
+                  from: address,
+                  to: 'YOUR_AMM_CONTRACT_ADDRESS', // Replace with your AMM address
+                  data: '0x...', // The encoded function call for the swap
+              }],
+              id: 1,
+          })
         });
         if (!response.ok) throw new Error('Swap transaction failed on-chain');
         const data = await response.json();
-        return data; // e.g., { success: true, txHash: '0x...' }
+        return { success: true, txHash: data.result };
     } catch (error) {
         console.error("Error executing swap on local blockchain:", error);
         return { success: false, txHash: '' };

@@ -112,7 +112,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
              // Ensure WETH tracks ETH price
-            if (newData.ETH.price > 0) {
+            if (newData.ETH && newData.ETH.price > 0) {
               newData.WETH.price = newData.ETH.price;
               newData.WETH.change = newData.ETH.change;
             }
@@ -137,9 +137,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const connectWallet = useCallback(() => {
     setWalletData(prev => ({ ...prev, isConnecting: true }));
     setTimeout(async () => {
-      // In a real app, you would get this from MetaMask or another wallet provider.
-      // We will use a hardcoded address for the demo.
-      const address = `0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266`;
+      // In a real app, this would get this from MetaMask or another wallet provider.
+      // We will use a hardcoded address from your local chain screenshot for this demo.
+      const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
       
       const assets = await BlockchainService.getWalletAssets(address);
       

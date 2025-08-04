@@ -136,9 +136,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       
       // Fetch initial balances from our new blockchain service
       const assets = await BlockchainService.getWalletAssets(address);
-      const balances: { [key: string]: number } = {};
+      
+      const newBalances = {
+        ethBalance: 0,
+        usdcBalance: 0,
+        wethBalance: 0,
+      };
+
       assets.forEach(asset => {
-        balances[`${asset.symbol.toLowerCase()}Balance`] = asset.balance;
+        if (asset.symbol === 'ETH') newBalances.ethBalance = asset.balance;
+        if (asset.symbol === 'USDC') newBalances.usdcBalance = asset.balance;
+        if (asset.symbol === 'WETH') newBalances.wethBalance = asset.balance;
       });
 
       setWalletData(prev => ({
@@ -146,7 +154,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         isConnected: true,
         isConnecting: false,
         walletAddress: address,
-        ...balances
+        ...newBalances
       }));
     }, 1500);
   }, []);

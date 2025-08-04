@@ -9,7 +9,7 @@
  */
 
 export interface ChainAsset {
-  symbol: string;
+  symbol: 'ETH' | 'WETH' | 'USDC';
   name: string;
   balance: number;
 }
@@ -23,6 +23,7 @@ export interface ChainMarketData {
 
 /**
  * Fetches a user's complete wallet balance from the blockchain.
+ * This should be your first integration point.
  * @param address The wallet address to query.
  * @returns A promise that resolves to an array of assets with their balances.
  */
@@ -33,29 +34,24 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   /*
   // EXAMPLE:
   try {
-    const response = await fetch(`http://localhost:8545/wallet/${address}`);
+    const response = await fetch(`http://localhost:8545/wallet/${address}`); // Replace with your endpoint
     if (!response.ok) {
       throw new Error('Failed to fetch wallet assets from local chain');
     }
     const data = await response.json();
-    return data.assets as ChainAsset[];
+    // Ensure the returned data matches the ChainAsset[] interface
+    return data.assets as ChainAsset[]; 
   } catch (error) {
     console.error("Error connecting to local blockchain:", error);
-    // Return empty array or handle error appropriately
-    return [];
+    return []; // Return empty array on error
   }
   */
 
-  // Returning mock data for now. Remove this when you implement the fetch call.
+  // Returning focused mock data. Implement WETH and USDC on your chain.
   return [
     { symbol: 'ETH', name: 'Ethereum', balance: 10 },
-    { symbol: 'USDC', name: 'USD Coin', balance: 25000 },
-    { symbol: 'BNB', name: 'BNB', balance: 50 },
-    { symbol: 'USDT', name: 'Tether', balance: 10000 },
-    { symbol: 'XRP', name: 'XRP', balance: 20000 },
-    { symbol: 'SOL', name: 'Solana', balance: 100 },
     { symbol: 'WETH', name: 'Wrapped Ether', balance: 5 },
-    { symbol: 'BTC', name: 'Bitcoin', balance: 0.5 },
+    { symbol: 'USDC', name: 'USD Coin', balance: 25000 },
   ];
 }
 
@@ -67,7 +63,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
 export async function getMarketDataFromChain(): Promise<ChainMarketData> {
     console.log(`[BlockchainService] Fetching market data from chain.`);
     
-    // TODO: Replace the mock data below with a real API call to your blockchain.
+    // TODO: Replace with a call to your chain's oracle/price feed.
     /*
     // EXAMPLE:
     try {
@@ -83,17 +79,18 @@ export async function getMarketDataFromChain(): Promise<ChainMarketData> {
     }
     */
 
-    // Simulating data similar to what CoinGecko provided, but now sourced from "your" chain.
-    // Remove this when you implement the fetch call.
+    // Returning focused mock data. Your chain should be the source of truth for these prices.
     return {
-        BTC: { price: 65000.12, change24h: 1.5 },
         ETH: { price: 3500.45, change24h: 2.3 },
+        WETH: { price: 3500.55, change24h: 2.3 }, // Should closely track ETH
+        USDC: { price: 1.00, change24h: 0.0 },
+        // Keep other tokens so the UI doesn't break, but they can be zeroed out
+        // as you won't be implementing them on-chain yet.
+        BTC: { price: 65000.12, change24h: 1.5 },
         SOL: { price: 150.88, change24h: -1.2 },
         BNB: { price: 600.00, change24h: 0.5 },
         XRP: { price: 0.52, change24h: -0.8 },
         USDT: { price: 1.00, change24h: 0.0 },
-        USDC: { price: 1.00, change24h: 0.0 },
-        WETH: { price: 3500.45, change24h: 2.3 }, // Should track ETH
     };
 }
 

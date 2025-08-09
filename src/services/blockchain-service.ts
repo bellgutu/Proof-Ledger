@@ -55,11 +55,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     if (ethData.error) throw new Error(ethData.error.message);
     const ethBalance = parseInt(ethData.result, 16) / 1e18; // Convert from Wei to ETH
 
-    // --- You can uncomment the sections below once you deploy your ERC20 contracts ---
-    // --- and replace the mock return values with the real ones. ---
-
-    // 2. Fetch WETH Balance (ERC20 Token) - EXAMPLE
-    /*
+    // 2. Fetch WETH Balance (ERC20 Token)
     const wethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,10 +72,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     const wethData = await wethBalanceResponse.json();
     if (wethData.error) throw new Error(wethData.error.message);
     const wethBalance = parseInt(wethData.result, 16) / 1e18; // Assuming 18 decimals
-    */
 
-    // 3. Fetch USDC Balance (ERC20 Token) - EXAMPLE
-    /*
+    // 3. Fetch USDC Balance (ERC20 Token)
     const usdcBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,14 +90,11 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     const usdcData = await usdcBalanceResponse.json();
     if (usdcData.error) throw new Error(usdcData.error.message);
     const usdcBalance = parseInt(usdcData.result, 16) / 1e6; // Assuming 6 decimals for USDC
-    */
 
-    // For now, returning live ETH balance and mock WETH/USDC balances.
-    // Replace the mock balances with the real ones (wethBalance, usdcBalance) when ready.
     return [
         { symbol: 'ETH', name: 'Ethereum', balance: ethBalance },
-        { symbol: 'WETH', name: 'Wrapped Ether', balance: 5 }, // TODO: Replace with real wethBalance
-        { symbol: 'USDC', name: 'USD Coin', balance: 25000 }, // TODO: Replace with real usdcBalance
+        { symbol: 'WETH', name: 'Wrapped Ether', balance: wethBalance },
+        { symbol: 'USDC', name: 'USD Coin', balance: usdcBalance },
     ];
 
   } catch (error) {

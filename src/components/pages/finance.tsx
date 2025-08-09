@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp, Handshake, Vote, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp, Handshake, Vote, CheckCircle, XCircle, Loader2, Send } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 import { getRebalanceAction, type RebalanceAction } from '@/ai/flows/rebalance-narrator-flow';
 
@@ -19,7 +20,7 @@ import { Progress } from '../ui/progress';
 
 export interface Transaction {
   id: string;
-  type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote';
+  type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
   details: string | React.ReactNode;
   status: 'Completed' | 'Pending';
 }

@@ -56,7 +56,10 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     const BALANCE_OF_SIGNATURE = '0x70a08231';
     for (const symbol in ERC20_CONTRACTS) {
         const contract = ERC20_CONTRACTS[symbol];
-        if (contract.address.startsWith('YOUR_')) continue; // Skip if placeholder address
+        if (contract.address.startsWith('YOUR_')) {
+          console.log(`[BlockchainService] Skipping ${symbol} due to placeholder address.`);
+          continue; // Skip if placeholder address
+        }
 
         const paddedAddress = address.substring(2).padStart(64, '0');
         

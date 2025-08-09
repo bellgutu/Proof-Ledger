@@ -78,6 +78,18 @@ const initialMarketData: MarketData = {
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
 };
 
+const initialBalances: Balances = {
+    ETH: 10,
+    WETH: 5,
+    USDC: 25000,
+    BTC: 0.5,
+    SOL: 100,
+    USDT: 10000,
+    LINK: 500,
+    BNB: 15,
+    XRP: 5000,
+};
+
 const initialAvailablePools: Pool[] = [
     { id: '1', name: 'WETH/USDC', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
     { id: '4', name: 'USDC/USDT', type: 'Stable', token1: { symbol: 'USDC', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 250_000_000, volume24h: 55_000_000, apr: 2.8 },
@@ -95,17 +107,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
-  const [balances, setBalances] = useState<Balances>({
-    ETH: 10,
-    WETH: 5,
-    USDC: 25000,
-    BTC: 0.5,
-    SOL: 100,
-    USDT: 10000,
-    LINK: 500,
-    BNB: 15,
-    XRP: 5000,
-  });
+  const [balances, setBalances] = useState<Balances>({});
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
@@ -124,13 +126,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
-    if (!isMarketDataLoaded) return;
+    if (!isMarketDataLoaded || !isConnected) return;
     const total = Object.entries(balances).reduce((acc, [symbol, balance]) => {
       const price = marketData[symbol]?.price || 0;
       return acc + (balance * price);
     }, 0);
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [balances, marketData, isMarketDataLoaded]);
+  }, [balances, marketData, isMarketDataLoaded, isConnected]);
 
   // Fetch real-time market data from CoinGecko
   useEffect(() => {
@@ -196,6 +198,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => {
       const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
       setWalletAddress(address);
+      setBalances(initialBalances);
       setIsConnected(true);
       setIsConnecting(false);
     }, 1500);

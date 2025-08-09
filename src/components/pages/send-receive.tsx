@@ -140,7 +140,7 @@ export default function SendReceivePage() {
                             <FormControl>
                                <div>
                                  <Input type="number" placeholder="0.0" {...field} disabled={!isConnected} />
-                                 {field.value > 0 && <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[sendForm.getValues('token')] || 0).toLocaleString()}</p>}
+                                 {sendForm.watch('token') && <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[sendForm.getValues('token')] || 0).toLocaleString()}</p>}
                                </div>
                             </FormControl>
                             <FormMessage />

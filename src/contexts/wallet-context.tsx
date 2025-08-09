@@ -1,10 +1,11 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import type { Transaction, VaultStrategy, Proposal } from '@/components/pages/finance';
-import { sendTransaction, getWalletAssets } from '@/services/blockchain-service';
+import { sendTransaction, getWalletAssets, type ChainAsset } from '@/services/blockchain-service';
+import { useToast } from '@/hooks/use-toast';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
 
@@ -103,6 +104,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   // Liquidity State
   const [availablePools, setAvailablePools] = useState<Pool[]>(initialAvailablePools);
   const [userPositions, setUserPositions] = useState<UserPosition[]>([]);
+  
+  const { toast } = useToast();
+  const balancesRef = useRef(balances);
+
+  useEffect(() => {
+    balancesRef.current = balances;
+  }, [balances]);
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
@@ -172,6 +180,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(marketUpdateInterval);
   }, [isMarketDataLoaded]);
 
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>) => {
+    const newTx = { id: new Date().toISOString() + Math.random(), status: 'Completed' as const, ...transaction };
+    setTransactions(prev => [...prev, newTx]);
+  }, []);
+
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
     // Hardcoded address for demonstration on a local Anvil/Hardhat node
@@ -192,7 +205,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     setIsConnected(true);
     setIsConnecting(false);
-  }, []);
+  }, [addTransaction]);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);
@@ -205,11 +218,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         ...prev,
         [symbol]: (prev[symbol] || 0) + amount
     }));
-  }, []);
-
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>) => {
-    const newTx = { id: new Date().toISOString() + Math.random(), status: 'Completed' as const, ...transaction };
-    setTransactions(prev => [...prev, newTx]);
   }, []);
 
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
@@ -227,6 +235,45 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     return result;
   }, [isConnected, walletAddress, addTransaction, updateBalance]);
+
+  // Polling for new transactions
+  useEffect(() => {
+    if (!isConnected || !walletAddress) {
+        return;
+    }
+
+    const checkForUpdates = async () => {
+        try {
+            const newAssets = await getWalletAssets(walletAddress);
+            const currentBalances = balancesRef.current;
+            const newBalances: Balances = {};
+
+            for (const asset of newAssets) {
+                newBalances[asset.symbol] = asset.balance;
+                const oldBalance = currentBalances[asset.symbol] || 0;
+                
+                if (asset.balance > oldBalance) {
+                    const amountReceived = asset.balance - oldBalance;
+                    addTransaction({
+                        type: 'Receive',
+                        details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`
+                    });
+                    toast({
+                        title: 'Transaction Received!',
+                        description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}.`
+                    });
+                }
+            }
+            setBalances(newBalances);
+        } catch (error) {
+            console.error("Failed to check for wallet updates:", error);
+        }
+    };
+
+    const intervalId = setInterval(checkForUpdates, 15000); // Check every 15 seconds
+
+    return () => clearInterval(intervalId);
+  }, [isConnected, walletAddress, addTransaction, toast]);
 
 
   const value: WalletContextType = {
@@ -269,3 +316,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

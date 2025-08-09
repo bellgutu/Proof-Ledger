@@ -8,7 +8,7 @@
  * to your running blockchain.
  */
 
-const LOCAL_CHAIN_RPC_URL = 'http://localhost:8545'; // Your blockchain's RPC endpoint
+const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
 
 export interface ChainAsset {
   symbol: 'ETH' | 'WETH' | 'USDC';
@@ -40,7 +40,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   const BALANCE_OF_SIGNATURE = '0x70a08231';
   
   try {
-    // 1. Fetch ETH Balance (Native Asset)
+    // 1. Fetch ETH Balance (Native Asset) via HTTP POST
+    /*
     const ethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,51 +55,17 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     const ethData = await ethBalanceResponse.json();
     if (ethData.error) throw new Error(ethData.error.message);
     const ethBalance = parseInt(ethData.result, 16) / 1e18; // Convert from Wei to ETH
-
-    // 2. Fetch WETH Balance (ERC20 Token)
-    const wethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_call',
-            params: [{
-                to: WETH_CONTRACT_ADDRESS,
-                data: `${BALANCE_OF_SIGNATURE}${address.substring(2).padStart(64, '0')}`
-            }, 'latest'],
-            id: 2
-        })
-    });
-    const wethData = await wethBalanceResponse.json();
-    if (wethData.error) throw new Error(wethData.error.message);
-    const wethBalance = parseInt(wethData.result, 16) / 1e18; // Assuming 18 decimals
-
-    // 3. Fetch USDC Balance (ERC20 Token)
-    const usdcBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_call',
-            params: [{
-                to: USDC_CONTRACT_ADDRESS,
-                data: `${BALANCE_OF_SIGNATURE}${address.substring(2).padStart(64, '0')}`
-            }, 'latest'],
-            id: 3
-        })
-    });
-    const usdcData = await usdcBalanceResponse.json();
-    if (usdcData.error) throw new Error(usdcData.error.message);
-    const usdcBalance = parseInt(usdcData.result, 16) / 1e6; // Assuming 6 decimals for USDC
-
+    */
+   
+    // For now, returning mock data. Uncomment the code above and implement the rest.
     return [
-        { symbol: 'ETH', name: 'Ethereum', balance: ethBalance },
-        { symbol: 'WETH', name: 'Wrapped Ether', balance: wethBalance },
-        { symbol: 'USDC', name: 'USD Coin', balance: usdcBalance },
+        { symbol: 'ETH', name: 'Ethereum', balance: 10 },
+        { symbol: 'WETH', name: 'Wrapped Ether', balance: 5 },
+        { symbol: 'USDC', name: 'USD Coin', balance: 25000 },
     ];
 
   } catch (error) {
-    console.error("Error connecting to local blockchain for wallet assets:", error);
+    console.error("Error connecting to local blockchain via HTTP for wallet assets:", error);
     // Return mock data on error to prevent the app from crashing.
     return [
         { symbol: 'ETH', name: 'Ethereum', balance: 0 },
@@ -194,7 +161,7 @@ export async function sendTransaction(
   console.log(`[BlockchainService] Sending ${amount} ${tokenSymbol} from ${fromAddress} to ${toAddress}`);
 
   // This is a simulation. In a real application, you would use a library like ethers.js
-  // to create and sign the transaction, then send it using `eth_sendTransaction`.
+  // or viem to create and sign the transaction, then send it using `eth_sendTransaction` over HTTP.
   // For now, we just return a mock success response.
 
   await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
@@ -214,7 +181,7 @@ export async function sendTransaction(
  * @returns A promise that resolves to a simulated gas fee in ETH.
  */
 export async function getGasFee(): Promise<number> {
-    // In a real app, you would use `eth_gasPrice` and `eth_estimateGas`.
+    // In a real app, you would use `eth_gasPrice` and `eth_estimateGas` over HTTP.
     // For this simulation, we'll return a small, random ETH value.
     const gasPrice = 20e-9; // 20 Gwei
     const gasLimit = 21000; // Standard transfer

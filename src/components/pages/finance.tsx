@@ -41,9 +41,9 @@ export interface Proposal {
 }
 
 
-type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK';
+type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'BTC';
 
-const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL', 'WETH', 'LINK'];
+const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL', 'WETH', 'LINK', 'BTC'];
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
@@ -122,7 +122,7 @@ export default function FinancePage() {
   
   const handleSwap = () => {
     const amountToSwap = parseFloat(fromAmount);
-    if (!fromToken || !toToken || amountToSwap <= 0 || amountToSwap > (balances[fromToken] || 0)) {
+    if (!fromToken || !toToken || isNaN(amountToSwap) || amountToSwap <= 0 || amountToSwap > (balances[fromToken] || 0)) {
         toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
         return;
     }
@@ -292,6 +292,11 @@ export default function FinancePage() {
       </div>
     </SelectItem>
   );
+  
+  // Effect to handle switching token amounts when pair changes
+  useEffect(() => {
+    handleAmountChange(fromAmount);
+  }, [fromToken, toToken, conversionRate]);
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -500,7 +505,7 @@ export default function FinancePage() {
                 <ScrollArea className="h-[40rem]">
                     {transactions.length > 0 ? (
                         <div className="space-y-4 pr-4">
-                            {transactions.map(tx => (
+                            {transactions.slice().reverse().map(tx => (
                                 <div key={tx.id} className="p-3 bg-background rounded-md border">
                                     <div className="flex justify-between items-center">
                                         <span className={`font-semibold text-sm ${tx.type === 'AI Rebalance' ? 'text-primary' : ''}`}>{tx.type}</span>

@@ -101,7 +101,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     USDC: 25000,
     BTC: 0.5,
     SOL: 100,
-    USDT: 10000
+    USDT: 10000,
+    LINK: 500,
+    BNB: 15,
+    XRP: 5000,
   });
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
@@ -212,7 +215,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>) => {
-    setTransactions(prev => [{ id: new Date().toISOString(), status: 'Completed', ...transaction }, ...prev]);
+    setTransactions(prev => [...prev, { id: new Date().toISOString(), status: 'Completed', ...transaction }]);
   }, []);
 
   const value: WalletContextType = {

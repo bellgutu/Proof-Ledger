@@ -12,6 +12,7 @@ export const getTokenLogo = (symbol: string): string => {
     BNB: 'https://assets.coingecko.com/coins/images/825/thumb/binance-coin-logo.png',
     XRP: 'https://assets.coingecko.com/coins/images/44/thumb/xrp-symbol-white-128.png',
     WETH: 'https://assets.coingecko.com/coins/images/2518/thumb/weth.png',
+    LINK: 'https://assets.coingecko.com/coins/images/877/thumb/chainlink-new-logo.png',
   };
 
   return logos[symbolUpper] || `https://placehold.co/32x32.png`;

@@ -16,10 +16,13 @@ export interface ChainAsset {
 // TODO: Add your deployed contract addresses and metadata here.
 // The key should be the symbol and the value should be the contract address.
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
-    'WETH': { address: 'YOUR_WETH_CONTRACT_ADDRESS', name: 'Wrapped Ether', decimals: 18 },
-    'USDC': { address: 'YOUR_USDC_CONTRACT_ADDRESS', name: 'USD Coin', decimals: 6 },
-    // Add other tokens here, for example:
-    // 'LINK': { address: '0x...', name: 'Chainlink', decimals: 18 },
+    'WETH': { address: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707', name: 'Wrapped Ether', decimals: 18 },
+    'USDC': { address: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9', name: 'USD Coin', decimals: 6 },
+    'SOL': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Solana', decimals: 18 },
+    'BNB': { address: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512', name: 'BNB', decimals: 18 },
+    'XRP': { address: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', name: 'XRP', decimals: 18 },
+    'USDT': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'Tether', decimals: 18 },
+    'LINK': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Chainlink', decimals: 18 },
 };
 
 
@@ -77,9 +80,15 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
           }),
         });
 
-        if (!erc20response.ok) throw new Error(`Failed to fetch ${symbol} balance with status: ${erc20response.status}`);
+        if (!erc20response.ok) {
+            console.error(`[BlockchainService] Failed to fetch ${symbol} balance with status: ${erc20response.status}`);
+            continue;
+        };
         const erc20data = await erc20response.json();
-        if (erc20data.error) throw new Error(`${symbol} balance RPC Error: ${erc20data.error.message}`);
+        if (erc20data.error) {
+             console.error(`[BlockchainService] ${symbol} balance RPC Error: ${erc20data.error.message}`);
+             continue;
+        };
         
         const balance = parseInt(erc20data.result, 16) / (10 ** contract.decimals);
         assets.push({ symbol, name: contract.name, balance });
@@ -102,20 +111,25 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
  * @returns A promise that resolves to the gas price in wei.
  */
 export async function getGasPrice(): Promise<number> {
-    const response = await fetch(LOCAL_CHAIN_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_gasPrice',
-            params: [],
-            id: 1,
-        }),
-    });
-    if (!response.ok) throw new Error(`Failed to fetch gas price with status: ${response.status}`);
-    const data = await response.json();
-    if (data.error) throw new Error(`Gas price RPC Error: ${data.error.message}`);
-    return parseInt(data.result, 16);
+    try {
+      const response = await fetch(LOCAL_CHAIN_RPC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_gasPrice',
+              params: [],
+              id: 1,
+          }),
+      });
+      if (!response.ok) throw new Error(`Failed to fetch gas price with status: ${response.status}`);
+      const data = await response.json();
+      if (data.error) throw new Error(`Gas price RPC Error: ${data.error.message}`);
+      return parseInt(data.result, 16);
+    } catch(e) {
+      console.error("[BlockchainService] getGasPrice failed", e);
+      return 20000000000; // Return a default value
+    }
 }
 
 /**
@@ -166,8 +180,10 @@ export async function sendTransaction(
     }
     const transferSignature = '0xa9059cbb';
     const paddedToAddress = toAddress.substring(2).padStart(64, '0');
-    const valueInSmallestUnit = `0x${(amount * (10 ** contractInfo.decimals)).toString(16)}`;
-    const paddedValue = valueInSmallestUnit.substring(2).padStart(64, '0');
+    
+    // Use BigInt for precise calculation with decimals
+    const valueInSmallestUnit = BigInt(amount * (10 ** contractInfo.decimals));
+    const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     
     txParams = {
       from: fromAddress,
@@ -190,11 +206,14 @@ export async function sendTransaction(
   });
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("eth_sendTransaction error body:", errorBody);
     throw new Error(`eth_sendTransaction failed with status: ${response.status}`);
   }
 
   const data = await response.json();
   if (data.error) {
+    console.error("RPC Error details:", data.error);
     throw new Error(`Transaction RPC Error: ${data.error.message}`);
   }
 

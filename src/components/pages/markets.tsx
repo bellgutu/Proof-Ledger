@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import Link from 'next/link';
-import { generateNews, type NewsGeneratorOutput } from '@/ai/flows/news-generator';
 import { WalletHeader } from '../shared/wallet-header';
 import { useWallet } from '@/contexts/wallet-context';
 
@@ -22,12 +21,18 @@ interface Market {
   isPositive: boolean;
 }
 
-type NewsArticle = NewsGeneratorOutput['articles'][0];
+interface NewsArticle {
+  id: number;
+  title: string;
+  url: string;
+  domain: string;
+  createdAt: string;
+}
 
 const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
     return (
-        <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-105 h-full">
-            <Link href={`/markets/${symbol.toLowerCase()}`} className="block h-full">
+        <Link href={`/markets/${symbol.toLowerCase()}`} className="block h-full">
+            <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-105 h-full">
                 <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-muted-foreground">{name}</h3>
@@ -47,21 +52,25 @@ const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
                     <span>{change}</span>
                 </div>
                 </CardContent>
-            </Link>
-        </Card>
+            </Card>
+        </Link>
     );
 };
 
-const NewsCard = ({ title, content }: NewsArticle) => (
-  <Card className="bg-card text-card-foreground flex-none w-80 min-w-80 h-full p-4 hover:bg-secondary transition-colors duration-200 cursor-pointer">
-    <div className="flex flex-col h-full">
-      <h4 className="text-md font-semibold text-primary mb-2 truncate">{title}</h4>
-      <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{content}</p>
-      <div className="mt-auto flex items-center text-primary font-medium text-sm">
-        Read more <ArrowRight size={16} className="ml-1" />
+const NewsCard = ({ title, url, domain }: NewsArticle) => (
+  <a href={url} target="_blank" rel="noopener noreferrer" className="block h-full">
+    <Card className="bg-card text-card-foreground flex-none w-80 min-w-80 h-full p-4 hover:bg-secondary transition-colors duration-200 cursor-pointer">
+      <div className="flex flex-col h-full">
+        <h4 className="text-md font-semibold text-primary mb-2 line-clamp-3">{title}</h4>
+        <div className="mt-auto flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{domain}</span>
+            <div className="flex items-center text-primary font-medium">
+                Read more <ArrowRight size={16} className="ml-1" />
+            </div>
+        </div>
       </div>
-    </div>
-  </Card>
+    </Card>
+  </a>
 );
 
 export default function MarketsPage() {
@@ -77,13 +86,17 @@ export default function MarketsPage() {
     setIsLoadingNews(true);
     setNewsFetched(true);
     try {
-        const newsOutput = await generateNews();
-        setNewsFeed(newsOutput.articles);
+        const response = await fetch('/api/news');
+        if (!response.ok) {
+            throw new Error('Failed to fetch news');
+        }
+        const data = await response.json();
+        setNewsFeed(data.articles);
     } catch(e) {
-        console.error("Failed to generate news:", e);
+        console.error("Failed to fetch news:", e);
         setNewsFeed([
-             { id: 1, title: 'AI News Feed Error', content: 'Could not generate news from the AI service. Please try again later.' },
-        ]);
+             { id: 1, title: 'News Feed Error', content: 'Could not fetch news from the service. Please check the configuration.', url: '#', domain: 'System', createdAt: new Date().toISOString() },
+        ] as any);
     }
     setIsLoadingNews(false);
   }, []);
@@ -137,7 +150,7 @@ export default function MarketsPage() {
             newsFeed.map(news => <NewsCard key={news.id} {...news} />)
           ) : (
             <div className="w-full h-40 flex items-center justify-center text-muted-foreground">
-              Click the refresh button to load AI-generated news.
+              Click the refresh button to load the latest news.
             </div>
           )}
         </div>

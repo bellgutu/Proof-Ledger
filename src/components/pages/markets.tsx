@@ -26,29 +26,29 @@ type NewsArticle = NewsGeneratorOutput['articles'][0];
 
 const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
     return (
-      <Link href={`/markets/${symbol.toLowerCase()}`}>
         <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-105 h-full">
-            <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-muted-foreground">{name}</h3>
-                <Image 
-                  src={getTokenLogo(symbol)} 
-                  alt={`${name} logo`} 
-                  width={40} 
-                  height={40}
-                  className="drop-shadow-lg"
-                />
-            </div>
-            <p className="text-3xl font-bold mb-2 text-foreground">
-                ${value}
-            </p>
-            <div className={`flex items-center font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                {isPositive ? <TrendingUp className="mr-1" size={16} /> : <TrendingDown className="mr-1" size={16} />}
-                <span>{change}</span>
-            </div>
-            </CardContent>
+            <Link href={`/markets/${symbol.toLowerCase()}`} className="block h-full">
+                <CardContent className="p-6 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-muted-foreground">{name}</h3>
+                    <Image 
+                      src={getTokenLogo(symbol)} 
+                      alt={`${name} logo`} 
+                      width={40} 
+                      height={40}
+                      className="drop-shadow-lg"
+                    />
+                </div>
+                <p className="text-3xl font-bold mb-2 text-foreground">
+                    ${value}
+                </p>
+                <div className={`flex items-center font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                    {isPositive ? <TrendingUp className="mr-1" size={16} /> : <TrendingDown className="mr-1" size={16} />}
+                    <span>{change}</span>
+                </div>
+                </CardContent>
+            </Link>
         </Card>
-      </Link>
     );
 };
 

@@ -44,7 +44,7 @@ const TradingPageContent = () => {
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH'].price);
   const [candleData, setCandleData] = useState<Candle[]>([]);
 
-  const usdcBalance = balances['USDC'] || 0;
+  const usdtBalance = balances['USDT'] || 0;
 
   const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
     setCandleData(candles);
@@ -71,7 +71,7 @@ const TradingPageContent = () => {
 
   const placeTrade = () => {
     const amount = parseFloat(tradeAmount);
-    if (isNaN(amount) || amount <= 0 || amount > usdcBalance) return;
+    if (isNaN(amount) || amount <= 0 || amount > usdtBalance) return;
     
     setIsPlacingTrade(true);
     setTimeout(() => {
@@ -84,7 +84,7 @@ const TradingPageContent = () => {
         leverage,
         livePnl: '0.00',
       });
-      updateBalance('USDC', -amount);
+      updateBalance('USDT', -amount);
       setTradeAmount('');
       setIsPlacingTrade(false);
     }, 1500);
@@ -99,7 +99,7 @@ const TradingPageContent = () => {
 
     const newBalance = activeTrade.amount + pnl;
 
-    updateBalance('USDC', newBalance);
+    updateBalance('USDT', newBalance);
     setTradeHistory(prev => [{ ...activeTrade, finalPnl: pnl.toFixed(2), closePrice: finalPrice.toFixed(4) }, ...prev]);
     setActiveTrade(null);
   }, [activeTrade, currentPrice, updateBalance]);
@@ -208,7 +208,7 @@ const TradingPageContent = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label htmlFor="trade-amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount (USDC)</label>
+              <label htmlFor="trade-amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount (USDT)</label>
               <Input
                 id="trade-amount"
                 type="number"
@@ -217,7 +217,7 @@ const TradingPageContent = () => {
                 disabled={!isConnected || activeTrade !== null}
                 placeholder="0.0"
               />
-              <p className="text-xs text-muted-foreground mt-1">Balance: {usdcBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDC</p>
+              <p className="text-xs text-muted-foreground mt-1">Balance: {usdtBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDT</p>
             </div>
             <div>
               <label htmlFor="leverage-select" className="block text-sm font-medium text-muted-foreground mb-1">Leverage</label>
@@ -239,7 +239,7 @@ const TradingPageContent = () => {
               <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected || !!activeTrade}><TrendingUp size={16} className="mr-2" /> Long</Button>
               <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected || !!activeTrade}><TrendingDown size={16} className="mr-2" /> Short</Button>
             </div>
-            <Button onClick={placeTrade} disabled={!isConnected || isPlacingTrade || !tradeAmount || parseFloat(tradeAmount) > usdcBalance || !!activeTrade} className="w-full">
+            <Button onClick={placeTrade} disabled={!isConnected || isPlacingTrade || !tradeAmount || parseFloat(tradeAmount) > usdtBalance || !!activeTrade} className="w-full">
               {isPlacingTrade ? <span className="flex items-center"><RefreshCcw size={16} className="mr-2 animate-spin" /> Placing...</span> : `Place ${tradeDirection === 'long' ? 'Long' : 'Short'} Trade`}
             </Button>
           </CardContent>

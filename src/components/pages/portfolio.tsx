@@ -84,7 +84,7 @@ export default function PortfolioPage() {
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2">
             <Card>
                 <CardHeader>
                 <CardTitle className="flex items-center gap-3">

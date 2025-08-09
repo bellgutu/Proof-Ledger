@@ -41,7 +41,7 @@ type AnalyzerInput = z.infer<typeof AnalyzerInputSchema>;
 
 // Chains & Tokens for Bridge
 const supportedChains = ['Ethereum', 'Polygon', 'Arbitrum', 'Optimism', 'BNB Chain'];
-const bridgeableTokens = ['ETH', 'USDC', 'USDT'];
+const bridgeableTokens = ['ETH', 'USDT'];
 
 export default function ToolsPage() {
   const [activeTab, setActiveTab] = useState('bridge');

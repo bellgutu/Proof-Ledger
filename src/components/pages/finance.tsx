@@ -28,7 +28,7 @@ export interface Transaction {
 export interface VaultStrategy {
     name: string;
     value: number;
-    asset: 'WETH' | 'USDC';
+    asset: 'WETH';
     apy: number;
 }
 
@@ -42,9 +42,9 @@ export interface Proposal {
 }
 
 
-type Token = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'BTC';
+type Token = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'BTC';
 
-const tokenNames: Token[] = ['ETH', 'USDC', 'USDT', 'BNB', 'XRP', 'SOL', 'WETH', 'LINK', 'BTC'];
+const tokenNames: Token[] = ['ETH', 'USDT', 'BNB', 'XRP', 'SOL', 'WETH', 'LINK', 'BTC'];
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
@@ -54,7 +54,6 @@ export default function FinancePage() {
     marketData,
     transactions,
     vaultWeth,
-    vaultUsdc,
     activeStrategy,
     proposals
   } = walletState;
@@ -62,7 +61,6 @@ export default function FinancePage() {
     updateBalance,
     addTransaction,
     setVaultWeth,
-    setVaultUsdc,
     setActiveStrategy,
     setProposals
   } = walletActions;
@@ -72,7 +70,7 @@ export default function FinancePage() {
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
 
   const [fromToken, setFromToken] = useState<Token>('ETH');
-  const [toToken, setToToken] = useState<Token>('USDC');
+  const [toToken, setToToken] = useState<Token>('WETH');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [swapping, setSwapping] = useState(false);
@@ -91,14 +89,13 @@ export default function FinancePage() {
   
   const vaultTotalUsd = useMemo(() => {
     const wethValue = vaultWeth * (exchangeRates.WETH || 0);
-    const usdcValue = vaultUsdc * (exchangeRates.USDC || 0);
     let strategyValue = 0;
     if (activeStrategy) {
-      const assetPrice = activeStrategy.asset === 'WETH' ? exchangeRates.WETH : exchangeRates.USDC;
+      const assetPrice = activeStrategy.asset === 'WETH' ? exchangeRates.WETH : 0;
       strategyValue = activeStrategy.value * (assetPrice || 0);
     }
-    return wethValue + usdcValue + strategyValue;
-  }, [vaultWeth, vaultUsdc, activeStrategy, exchangeRates]);
+    return wethValue + strategyValue;
+  }, [vaultWeth, activeStrategy, exchangeRates]);
 
   const handleAmountChange = (val: string) => {
     if (val === '' || parseFloat(val) < 0) {
@@ -184,14 +181,12 @@ export default function FinancePage() {
     setVaultLoading(true);
     setTimeout(() => {
         updateBalance('WETH', vaultWeth);
-        updateBalance('USDC', vaultUsdc);
 
         if (activeStrategy) {
             updateBalance(activeStrategy.asset, activeStrategy.value);
         }
 
         setVaultWeth(0);
-        setVaultUsdc(0);
         setActiveStrategy(null);
 
         addTransaction({
@@ -208,46 +203,25 @@ export default function FinancePage() {
     try {
         const currentEth = balances['ETH'] || 0;
         // Ensure there are assets to rebalance.
-        if (vaultWeth <= 0 && vaultUsdc <= 0 && currentEth <= 0) {
-            toast({ variant: "destructive", title: "Vault is empty", description: "Deposit WETH/USDC or hold ETH to enable AI rebalancing." });
+        if (vaultWeth <= 0 && currentEth <= 0) {
+            toast({ variant: "destructive", title: "Vault is empty", description: "Deposit WETH or hold ETH to enable AI rebalancing." });
             setRebalanceLoading(false);
             return;
         }
 
-        const action = await getRebalanceAction({ currentEth: currentEth, currentWeth: vaultWeth, currentUsdc: vaultUsdc });
+        const action = await getRebalanceAction({ currentEth: currentEth, currentWeth: vaultWeth });
         
-        let amount = action.amount;
-        if (action.fromToken === 'WETH' && action.toToken === 'USDC') {
-            const wethAmount = Math.min(amount, vaultWeth);
+        if (action.fromToken === 'WETH' && action.toToken === 'WETH') {
+            const wethAmount = Math.min(action.amount, vaultWeth);
             if (wethAmount > 0) {
                 setVaultWeth(prev => prev - wethAmount);
-                const usdcAmount = wethAmount * exchangeRates.WETH / exchangeRates.USDC;
-                setVaultUsdc(prev => prev + usdcAmount);
-                setActiveStrategy({name: action.strategyName, value: usdcAmount, asset: 'USDC', apy: action.expectedApy});
+                setActiveStrategy({name: action.strategyName, value: wethAmount, asset: 'WETH', apy: action.expectedApy});
                  addTransaction({
                     type: 'AI Rebalance',
                     details: (
                         <div className="text-xs space-y-1">
                             <p><strong>Strategy:</strong> {action.strategyName}</p>
-                            <p><strong>Action:</strong> Swapped {wethAmount.toFixed(4)} WETH for {usdcAmount.toFixed(2)} USDC.</p>
-                            <p><strong>Justification:</strong> {action.justification}</p>
-                        </div>
-                    )
-                });
-            }
-        } else if (action.fromToken === 'USDC' && action.toToken === 'WETH') {
-            const usdcAmount = Math.min(amount, vaultUsdc);
-            if (usdcAmount > 0) {
-                setVaultUsdc(prev => prev - usdcAmount);
-                const wethAmount = usdcAmount * exchangeRates.USDC / exchangeRates.WETH;
-                setVaultWeth(prev => prev + wethAmount);
-                setActiveStrategy({name: action.strategyName, value: wethAmount, asset: 'WETH', apy: action.expectedApy});
-                 addTransaction({
-                    type: 'AI Rebalance',
-                    details: (
-                         <div className="text-xs space-y-1">
-                            <p><strong>Strategy:</strong> {action.strategyName}</p>
-                            <p><strong>Action:</strong> Swapped {usdcAmount.toFixed(2)} USDC for {wethAmount.toFixed(4)} WETH.</p>
+                            <p><strong>Action:</strong> Deployed {wethAmount.toFixed(4)} WETH.</p>
                             <p><strong>Justification:</strong> {action.justification}</p>
                         </div>
                     )
@@ -281,7 +255,7 @@ export default function FinancePage() {
     } finally {
         setRebalanceLoading(false);
     }
-  }, [vaultWeth, vaultUsdc, rebalanceLoading, exchangeRates, toast, balances, updateBalance, addTransaction, setVaultWeth, setVaultUsdc, setActiveStrategy]);
+  }, [vaultWeth, rebalanceLoading, toast, balances, updateBalance, addTransaction, setVaultWeth, setActiveStrategy]);
 
   const hasVaultBalance = vaultTotalUsd > 0;
 
@@ -392,7 +366,7 @@ export default function FinancePage() {
                         <span className="sr-only">Rebalance Vault</span>
                     </Button>
                     </CardTitle>
-                    <CardDescription>Deposit WETH or USDC and let the AI manage your funds.</CardDescription>
+                    <CardDescription>Deposit WETH and let the AI manage your funds.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="p-4 bg-background rounded-md border">
@@ -414,7 +388,6 @@ export default function FinancePage() {
                             )}
                             <p className="text-sm font-bold pt-2">Idle Assets:</p>
                             <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
-                            <div className="flex justify-between"><span>USDC:</span> <span className="font-mono">{vaultUsdc.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
                         </div>
                     </div>
                     
@@ -454,7 +427,7 @@ export default function FinancePage() {
        <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader>
                 <CardTitle className="text-2xl font-bold text-primary flex items-center">
-                    <Vote className="mr-3" /> Governance
+                    <Vote className="mr-2" /> Governance
                 </CardTitle>
                 <CardDescription>Use your token power to vote on protocol proposals.</CardDescription>
             </CardHeader>

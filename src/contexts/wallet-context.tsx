@@ -6,7 +6,7 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import type { Transaction, VaultStrategy, Proposal } from '@/components/pages/finance';
 import { sendTransaction, getWalletAssets } from '@/services/blockchain-service';
 
-type AssetSymbol = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
+type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
 
 interface MarketData {
   [key: string]: {
@@ -33,7 +33,6 @@ interface WalletState {
   // DeFi State
   transactions: Transaction[];
   vaultWeth: number;
-  vaultUsdc: number;
   activeStrategy: VaultStrategy | null;
   proposals: Proposal[];
 
@@ -50,7 +49,6 @@ interface WalletActions {
   // DeFi Actions
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status'>) => void;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
-  setVaultUsdc: React.Dispatch<SetStateAction<number>>;
   setActiveStrategy: React.Dispatch<SetStateAction<VaultStrategy | null>>;
   setProposals: React.Dispatch<SetStateAction<Proposal[]>>;
 
@@ -73,22 +71,17 @@ const initialMarketData: MarketData = {
     BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
     XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
-    USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '1', name: 'WETH/USDC', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
-    { id: '4', name: 'USDC/USDT', type: 'Stable', token1: { symbol: 'USDC', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 250_000_000, volume24h: 55_000_000, apr: 2.8 },
     { id: '2', name: 'WETH/USDT', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
-    { id: '3', name: 'SOL/USDC', type: 'V3', token1: { symbol: 'SOL', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 80_000_000, volume24h: 40_000_000, apr: 18.2, feeTier: 0.05, priceRange: { min: 120, max: 200 } },
 ];
 
 const initialProposals: Proposal[] = [
-    { id: '1', title: 'Increase LP Rewards for WETH/USDC', description: 'Boost the rewards for the WETH/USDC pool by 5% to attract more liquidity.', votesFor: 1250000, votesAgainst: 340000 },
+    { id: '1', title: 'Increase LP Rewards for WETH/USDT', description: 'Boost the rewards for the WETH/USDT pool by 5% to attract more liquidity.', votesFor: 1250000, votesAgainst: 340000 },
     { id: '2', title: 'Onboard a new collateral asset: LINK', description: 'Allow Chainlink (LINK) to be used as collateral within the protocol.', votesFor: 850000, votesAgainst: 600000 },
-    { id: '3', title: 'Adjust AI Vault Risk Parameters', description: 'Slightly increase the risk tolerance of the AI Strategy Vault to pursue higher yields.', votesFor: 450000, votesAgainst: 480000 },
 ];
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
@@ -104,7 +97,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   // DeFi State
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [vaultWeth, setVaultWeth] = useState(0);
-  const [vaultUsdc, setVaultUsdc] = useState(0);
   const [activeStrategy, setActiveStrategy] = useState<VaultStrategy | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals);
 
@@ -126,7 +118,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,chainlink';
+        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,chainlink';
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
         
         if (!response.ok) {
@@ -145,7 +137,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               'binancecoin': 'BNB',
               'ripple': 'XRP',
               'tether': 'USDT',
-              'usd-coin': 'USDC',
               'chainlink': 'LINK',
             };
 
@@ -227,9 +218,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
     
     if (result.success) {
-      // Intentionally not updating the balance here.
-      // A real app would listen for blockchain events or re-fetch balances.
-      // For this simulation, we'll wait for a manual refresh or reconnect.
+      updateBalance(tokenSymbol, -amount);
       addTransaction({
         type: 'Send',
         details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...`
@@ -237,7 +226,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return result;
-  }, [isConnected, walletAddress, addTransaction]);
+  }, [isConnected, walletAddress, addTransaction, updateBalance]);
 
 
   const value: WalletContextType = {
@@ -251,7 +240,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         isMarketDataLoaded,
         transactions,
         vaultWeth,
-        vaultUsdc,
         activeStrategy,
         proposals,
         availablePools,
@@ -264,7 +252,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           sendTokens,
           addTransaction,
           setVaultWeth,
-          setVaultUsdc,
           setActiveStrategy,
           setProposals,
           setAvailablePools,

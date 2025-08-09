@@ -13,8 +13,8 @@ import {z} from 'genkit';
 
 const RebalanceActionSchema = z.object({
   strategyName: z.string().describe("The name of the DeFi strategy to engage with (e.g., 'Lending on Aave', 'Providing Liquidity on Uniswap')."),
-  fromToken: z.enum(['ETH', 'WETH', 'USDC']).describe("The token being sold or moved."),
-  toToken: z.enum(['ETH', 'WETH', 'USDC']).describe("The token being bought or received."),
+  fromToken: z.enum(['ETH', 'WETH']).describe("The token being sold or moved."),
+  toToken: z.enum(['ETH', 'WETH']).describe("The token being bought or received."),
   amount: z.number().describe("The amount of the 'fromToken' being used in the action."),
   justification: z.string().describe("A detailed, 2-sentence explanation for why this specific action is being taken now, based on simulated market conditions."),
   riskAnalysis: z.string().describe("A brief analysis of the potential risks associated with this strategy (e.g., impermanent loss, smart contract risk)."),
@@ -25,7 +25,6 @@ export type RebalanceAction = z.infer<typeof RebalanceActionSchema>;
 const RebalanceInputSchema = z.object({
     currentEth: z.number(),
     currentWeth: z.number(),
-    currentUsdc: z.number(),
 });
 
 export async function getRebalanceAction(input: z.infer<typeof RebalanceInputSchema>): Promise<RebalanceAction> {
@@ -36,11 +35,10 @@ const prompt = ai.definePrompt({
   name: 'rebalanceNarratorPrompt',
   input: { schema: RebalanceInputSchema },
   output: { schema: RebalanceActionSchema },
-  prompt: `You are a DeFi strategist AI. Your goal is to rebalance a portfolio for optimal yield. The current vault holdings are {{currentWeth}} WETH and {{currentUsdc}} USDC.
+  prompt: `You are a DeFi strategist AI. Your goal is to rebalance a portfolio for optimal yield. The current vault holdings are {{currentWeth}} WETH.
 
-Generate a single, plausible rebalancing action. The action should be a swap between WETH and USDC to enter a specific DeFi strategy.
-- If WETH is high and USDC is low, suggest swapping WETH for USDC to provide liquidity in a stable pair.
-- If USDC is high and WETH is low, suggest swapping USDC for WETH to lend it on a platform like Aave.
+Generate a single, plausible rebalancing action.
+- Suggest lending WETH on a platform like Aave.
 - The amount should be a realistic portion of the available balance.
 
 Provide a clear justification for the action, a risk analysis, and an expected APY.
@@ -57,7 +55,7 @@ const rebalanceNarratorFlow = ai.defineFlow(
   },
   async (input) => {
     // If the user has ETH but nothing in the vault, the first step is to wrap ETH.
-    if (input.currentEth > 0 && input.currentWeth === 0 && input.currentUsdc === 0) {
+    if (input.currentEth > 0 && input.currentWeth === 0) {
         return {
             fromToken: 'ETH',
             toToken: 'WETH',

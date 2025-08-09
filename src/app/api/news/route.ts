@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-  const apiKey = process.env.CRYPTOPANIC_API_KEY;
+  const apiKey = process.env.CRYTOPANIC_API_KEY;
 
   if (!apiKey) {
     return NextResponse.json({ message: 'CryptoPanic API key is not configured.' }, { status: 500 });
@@ -14,6 +14,8 @@ export async function GET(request: Request) {
 
     if (!response.ok) {
       console.error(`CryptoPanic API request failed with status ${response.status}`);
+      const errorBody = await response.text();
+      console.error('Error body:', errorBody);
       return NextResponse.json({ message: `CryptoPanic API request failed` }, { status: response.status });
     }
 

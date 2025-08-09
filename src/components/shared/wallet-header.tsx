@@ -1,11 +1,13 @@
+
 "use client";
 
 import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Wallet, RefreshCcw, Orbit } from 'lucide-react';
+import { Wallet, RefreshCcw, Orbit, Send } from 'lucide-react';
 import Image from 'next/image';
+import { WalletActionSheet } from './wallet-action-sheet';
 
 export function WalletHeader() {
   const { walletState, walletActions } = useWallet();
@@ -27,12 +29,19 @@ export function WalletHeader() {
           )}
         </div>
         {isConnected ? (
-          <div className="flex flex-col items-center md:items-end space-y-2">
-            <div className="text-2xl font-bold text-foreground">${walletBalance}</div>
-            <p className="text-sm text-muted-foreground">Total Balance</p>
-            <Button onClick={disconnectWallet} variant="secondary">
-              Disconnect
-            </Button>
+          <div className="flex items-center gap-4">
+             <div className="flex flex-col items-end">
+                <div className="text-2xl font-bold text-foreground">${walletBalance}</div>
+                <p className="text-sm text-muted-foreground">Total Balance</p>
+            </div>
+            <div className="flex flex-col gap-2">
+                 <WalletActionSheet>
+                    <Button><Send /> Send / Receive</Button>
+                 </WalletActionSheet>
+                 <Button onClick={disconnectWallet} variant="secondary" size="sm">
+                    Disconnect
+                </Button>
+            </div>
           </div>
         ) : (
            <Dialog>

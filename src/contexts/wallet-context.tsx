@@ -66,7 +66,7 @@ interface WalletActions {
   disconnectWallet: () => void;
   updateBalance: (symbol: string, amount: number) => void;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'status'>) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'status'>, status?: Transaction['status']) => string;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
   setActiveStrategy: React.Dispatch<SetStateAction<VaultStrategy | null>>;
   setProposals: React.Dispatch<SetStateAction<Proposal[]>>;
@@ -197,15 +197,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const getTxHistoryStorageKey = (address: string) => `tx_history_${address}`;
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>) => {
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>, status: Transaction['status'] = 'Completed') => {
+    const newTxId = new Date().toISOString() + Math.random();
     setTransactions(prevTxs => {
-      const newTx = { id: new Date().toISOString() + Math.random(), status: 'Completed' as const, ...transaction };
+      const newTx = { id: newTxId, status, ...transaction };
       const newTxs = [...prevTxs, newTx];
       if (walletAddress) {
         localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(newTxs));
       }
       return newTxs;
     });
+    return newTxId;
   }, [walletAddress]);
 
   const connectWallet = useCallback(async () => {
@@ -258,13 +260,37 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!isConnected) throw new Error("Wallet not connected");
 
+    const pendingTxId = addTransaction({
+      type: 'Send',
+      details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`
+    }, 'Pending');
+
     const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
     
     if (result.success) {
       updateBalance(tokenSymbol, -amount);
-      addTransaction({
-        type: 'Send',
-        details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...`
+      setTransactions(prevTxs => {
+          const newTxs = prevTxs.map(tx => 
+            tx.id === pendingTxId 
+            ? { ...tx, status: 'Completed' as const, details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...` } 
+            : tx
+          );
+          if (walletAddress) {
+            localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(newTxs));
+          }
+          return newTxs;
+      });
+    } else {
+       setTransactions(prevTxs => {
+          const newTxs = prevTxs.map(tx => 
+            tx.id === pendingTxId 
+            ? { ...tx, status: 'Completed' as const, details: `Failed to send ${amount} ${tokenSymbol}` } // Or a 'Failed' status
+            : tx
+          );
+          if (walletAddress) {
+            localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(newTxs));
+          }
+          return newTxs;
       });
     }
 

@@ -83,7 +83,7 @@ export function WalletActionSheet({ children }: { children: React.ReactNode }) {
     try {
       const result = await sendTokens(txDetails.recipient, txDetails.token, txDetails.amount);
       if (result.success) {
-        toast({ title: 'Transaction Sent!', description: `You sent ${txDetails.amount} ${txDetails.token}. Tx: ${result.txHash.slice(0,10)}...` });
+        toast({ title: 'Transaction Submitted!', description: `Your transaction is being processed. Tx: ${result.txHash.slice(0,10)}...` });
         sendForm.reset();
       } else {
         throw new Error('Transaction failed on-chain.');

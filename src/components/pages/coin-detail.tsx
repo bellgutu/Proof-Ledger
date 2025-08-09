@@ -4,13 +4,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, BarChart2, TrendingUp, TrendingDown, Clock, Layers, CircleDollarSign } from 'lucide-react';
+import { ArrowLeft, BarChart2, TrendingUp, TrendingDown, Layers, CircleDollarSign, Bot, BrainCircuit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TradingChart, type Candle } from '@/components/trading/trading-chart';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Skeleton } from '../ui/skeleton';
 import { useWallet } from '@/contexts/wallet-context';
+import { getWatchlistBriefing, type WatchlistBriefing } from '@/ai/flows/watchlist-flow';
 
 interface CoinData {
   id: string;
@@ -32,6 +33,8 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
   const [coinData, setCoinData] = useState<CoinData | null>(null);
   const [timeframe, setTimeframe] = useState<'24h' | '12h' | '6h'>('24h');
   const [currentPrice, setCurrentPrice] = useState(0);
+  const [briefing, setBriefing] = useState<WatchlistBriefing | null>(null);
+  const [isBriefingLoading, setIsBriefingLoading] = useState(true);
 
   const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
     // We can use this for AI analysis in the future
@@ -42,8 +45,6 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
       const upperSymbol = symbol.toUpperCase();
       const priceData = marketData[upperSymbol];
 
-      if (!priceData) return; // Guard clause to prevent error
-
       if (priceData) {
         setCurrentPrice(priceData.price);
         setCoinData({
@@ -51,16 +52,33 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
           name: priceData.name,
           symbol: upperSymbol,
           price: priceData.price,
-          marketCap: Math.random() * 1e12, // These can remain random for detail view
+          marketCap: Math.random() * 1e12,
           volume: Math.random() * 1e10,
           circulatingSupply: Math.random() * 1e9,
-          change24h: (Math.random() * 10 - 5), // Change can also be random for now
+          change24h: (Math.random() * 10 - 5),
           change12h: (Math.random() * 5 - 2.5),
           change6h: (Math.random() * 2 - 1),
         });
       }
     }
   }, [symbol, marketData, isMarketDataLoaded]);
+
+  useEffect(() => {
+    const fetchBriefing = async () => {
+      if (!symbol) return;
+      setIsBriefingLoading(true);
+      try {
+        const result = await getWatchlistBriefing(symbol.toUpperCase());
+        setBriefing(result);
+      } catch (e) {
+        console.error(`Failed to fetch briefing for ${symbol}:`, e);
+        setBriefing({ symbol: symbol.toUpperCase(), briefing: "Failed to load AI briefing. The service may be unavailable." });
+      } finally {
+        setIsBriefingLoading(false);
+      }
+    };
+    fetchBriefing();
+  }, [symbol]);
 
   const getChange = () => {
     if (!coinData) return 0;
@@ -90,6 +108,7 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
           <Skeleton className="h-28 w-full" />
         </div>
         <Skeleton className="h-96 w-full" />
+         <Skeleton className="h-48 w-full" />
       </div>
     );
   }
@@ -178,6 +197,30 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
           </div>
         </CardContent>
       </Card>
+      
+      <Card>
+          <CardHeader>
+              <CardTitle className="flex items-center text-2xl font-bold text-primary">
+                  <BrainCircuit size={24} className="mr-3" />
+                  AI Intelligence Briefing
+              </CardTitle>
+          </CardHeader>
+          <CardContent>
+              {isBriefingLoading ? (
+                  <div className="space-y-3">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-5 w-full" />
+                      <Skeleton className="h-5 w-5/6" />
+                  </div>
+              ) : (
+                  <div className="flex items-start gap-4">
+                      <Bot size={32} className="text-primary flex-shrink-0 mt-1" />
+                      <p className="text-muted-foreground">{briefing?.briefing}</p>
+                  </div>
+              )}
+          </CardContent>
+      </Card>
+
     </div>
   );
 }

@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import type { Transaction, VaultStrategy, Proposal } from '@/components/pages/finance';
-import { sendTransaction } from '@/services/blockchain-service';
+import { sendTransaction, getWalletAssets } from '@/services/blockchain-service';
 
 type AssetSymbol = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
 
@@ -76,18 +76,6 @@ const initialMarketData: MarketData = {
     USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
-};
-
-const initialBalances: Balances = {
-    ETH: 10,
-    WETH: 5,
-    USDC: 25000,
-    BTC: 0.5,
-    SOL: 100,
-    USDT: 10000,
-    LINK: 500,
-    BNB: 15,
-    XRP: 5000,
 };
 
 const initialAvailablePools: Pool[] = [
@@ -193,15 +181,25 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(marketUpdateInterval);
   }, [isMarketDataLoaded]);
 
-  const connectWallet = useCallback(() => {
+  const connectWallet = useCallback(async () => {
     setIsConnecting(true);
-    setTimeout(() => {
-      const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-      setWalletAddress(address);
-      setBalances(initialBalances);
-      setIsConnected(true);
-      setIsConnecting(false);
-    }, 1500);
+    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+    setWalletAddress(address);
+    
+    try {
+        const assets = await getWalletAssets(address);
+        const newBalances = assets.reduce((acc, asset) => {
+            acc[asset.symbol] = asset.balance;
+            return acc;
+        }, {} as Balances);
+        setBalances(newBalances);
+    } catch (e) {
+        console.error("Failed to get wallet assets:", e);
+        setBalances({}); // Set to empty on error
+    }
+
+    setIsConnected(true);
+    setIsConnecting(false);
   }, []);
 
   const disconnectWallet = useCallback(() => {

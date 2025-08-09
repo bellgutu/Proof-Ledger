@@ -18,7 +18,6 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { getGasFee } from '@/services/blockchain-service';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 const SendSchema = z.object({
   recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Please enter a valid Ethereum address."),
@@ -37,9 +36,7 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
   const [txDetails, setTxDetails] = useState<SendInput | null>(null);
   const [gasFee, setGasFee] = useState<string>('');
 
-  const pathname = usePathname();
-  const symbol = pathname.split('/').pop()?.toUpperCase() || '';
-
+  const symbol = params.symbol.toUpperCase();
   const tokenName = marketData[symbol]?.name || 'Token';
   const tokenBalance = balances[symbol] || 0;
   const tokenPrice = marketData[symbol]?.price || 0;
@@ -52,16 +49,22 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
     return (amount * tokenPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
-  }, [sendForm, tokenPrice])
+  }, [sendForm, tokenPrice]);
 
   useEffect(() => {
     const fetchGas = async () => {
-      const fee = await getGasFee();
-      const feeUSD = fee * (marketData['ETH']?.price || 0);
-      setGasFee(`${fee.toFixed(6)} ETH (~$${feeUSD.toFixed(2)})`);
+      if(!isConnected) return;
+      try {
+        const fee = await getGasFee();
+        const feeUSD = fee * (marketData['ETH']?.price || 0);
+        setGasFee(`${fee.toFixed(6)} ETH (~$${feeUSD.toFixed(2)})`);
+      } catch (e) {
+          console.error("Failed to fetch gas fee", e);
+          setGasFee("Unavailable");
+      }
     };
     fetchGas();
-  }, [marketData]);
+  }, [marketData, isConnected]);
 
   const handleSendSubmit = (values: SendInput) => {
     if (values.amount > tokenBalance) {
@@ -73,7 +76,7 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
   };
 
   const executeSend = async () => {
-    if (!txDetails) return;
+    if (!txDetails || !walletAddress) return;
     setShowConfirm(false);
     setSending(true);
 
@@ -82,12 +85,13 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
       if (result.success) {
         toast({ title: 'Transaction Sent!', description: `You sent ${txDetails.amount} ${symbol}. Tx: ${result.txHash.slice(0,10)}...` });
         sendForm.reset();
+        // Wallet balance will be updated via context polling, but you could force a refresh here
       } else {
         throw new Error('Transaction failed on-chain.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast({ variant: 'destructive', title: 'Transaction Failed', description: 'Something went wrong while sending your transaction.'});
+      toast({ variant: 'destructive', title: 'Transaction Failed', description: e.message || 'Something went wrong while sending your transaction.'});
     } finally {
       setSending(false);
     }

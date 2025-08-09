@@ -98,18 +98,40 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
 
 
 /**
- * Simulates fetching a gas fee. In a real app, this would use eth_gasPrice.
+ * Fetches the current gas price from the blockchain.
+ * @returns A promise that resolves to the gas price in wei.
+ */
+export async function getGasPrice(): Promise<number> {
+    const response = await fetch(LOCAL_CHAIN_RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_gasPrice',
+            params: [],
+            id: 1,
+        }),
+    });
+    if (!response.ok) throw new Error(`Failed to fetch gas price with status: ${response.status}`);
+    const data = await response.json();
+    if (data.error) throw new Error(`Gas price RPC Error: ${data.error.message}`);
+    return parseInt(data.result, 16);
+}
+
+/**
+ * Calculates a gas fee estimate.
  * @returns A promise that resolves to a simulated gas fee in ETH.
  */
 export async function getGasFee(): Promise<number> {
-    const gasPrice = 20e-9; // 20 Gwei
-    const gasLimit = 21000; 
-    return gasPrice * gasLimit;
+    const gasPrice = await getGasPrice();
+    const gasLimit = 21000; // Standard gas limit for a simple ETH transfer
+    const feeInWei = gasPrice * gasLimit;
+    return feeInWei / 1e18; // Convert to ETH
 }
 
 /**
  * Sends a transaction for ETH or an ERC20 token.
- * This is a placeholder function. You will need to implement the actual `eth_sendTransaction` call.
+ * This function now constructs and sends a real transaction.
  * @param fromAddress The sender's wallet address.
  * @param toAddress The recipient's wallet address.
  * @param tokenSymbol The symbol of the token to send.
@@ -122,16 +144,62 @@ export async function sendTransaction(
   tokenSymbol: string,
   amount: number,
 ): Promise<{ success: boolean; txHash: string }> {
-  console.log(`[BlockchainService] Simulating send of ${amount} ${tokenSymbol} from ${fromAddress} to ${toAddress}`);
+  console.log(`[BlockchainService] Sending ${amount} ${tokenSymbol} from ${fromAddress} to ${toAddress}`);
 
-  // In a real application, you would use a library like ethers.js or viem
-  // to construct the correct transaction data (e.g., for an ERC20 transfer)
-  // and then use eth_sendTransaction. This is a placeholder.
+  let txParams;
+  const gasPrice = await getGasPrice();
 
-  await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+  if (tokenSymbol === 'ETH') {
+    const valueInWei = `0x${(amount * 1e18).toString(16)}`;
+    txParams = {
+        from: fromAddress,
+        to: toAddress,
+        value: valueInWei,
+        gas: `0x${(21000).toString(16)}`, // Gas limit for ETH transfer
+        gasPrice: `0x${gasPrice.toString(16)}`,
+    };
+  } else {
+    // For ERC20 tokens
+    const contractInfo = ERC20_CONTRACTS[tokenSymbol];
+    if (!contractInfo || contractInfo.address.startsWith('YOUR_')) {
+      throw new Error(`Contract for ${tokenSymbol} is not configured.`);
+    }
+    const transferSignature = '0xa9059cbb';
+    const paddedToAddress = toAddress.substring(2).padStart(64, '0');
+    const valueInSmallestUnit = `0x${(amount * (10 ** contractInfo.decimals)).toString(16)}`;
+    const paddedValue = valueInSmallestUnit.substring(2).padStart(64, '0');
+    
+    txParams = {
+      from: fromAddress,
+      to: contractInfo.address,
+      data: `${transferSignature}${paddedToAddress}${paddedValue}`,
+      gas: `0x${(60000).toString(16)}`, // Typical gas limit for ERC20 transfer
+      gasPrice: `0x${gasPrice.toString(16)}`,
+    };
+  }
+  
+  const response = await fetch(LOCAL_CHAIN_RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_sendTransaction',
+          params: [txParams],
+          id: 1,
+      }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`eth_sendTransaction failed with status: ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (data.error) {
+    throw new Error(`Transaction RPC Error: ${data.error.message}`);
+  }
 
   return {
     success: true,
-    txHash: `0x_simulated_${Array(54).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`
+    txHash: data.result,
   };
 }

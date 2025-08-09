@@ -18,6 +18,7 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { getGasFee } from '@/services/blockchain-service';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 const SendSchema = z.object({
   recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Please enter a valid Ethereum address."),
@@ -36,7 +37,9 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
   const [txDetails, setTxDetails] = useState<SendInput | null>(null);
   const [gasFee, setGasFee] = useState<string>('');
 
-  const symbol = params.symbol.toUpperCase();
+  const pathname = usePathname();
+  const symbol = pathname.split('/').pop()?.toUpperCase() || '';
+
   const tokenName = marketData[symbol]?.name || 'Token';
   const tokenBalance = balances[symbol] || 0;
   const tokenPrice = marketData[symbol]?.price || 0;
@@ -49,7 +52,7 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
     return (amount * tokenPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
-  }, [sendForm.watch('amount'), tokenPrice])
+  }, [sendForm, tokenPrice])
 
   useEffect(() => {
     const fetchGas = async () => {
@@ -91,8 +94,13 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
   };
   
   const handleCopyAddress = () => {
+    if(!walletAddress) return;
     navigator.clipboard.writeText(walletAddress);
     toast({ title: 'Address Copied!'});
+  }
+
+  if(!symbol) {
+    return null;
   }
 
   return (
@@ -142,7 +150,7 @@ export default function TokenActionPage({ params }: { params: { symbol: string }
                         <FormItem>
                         <FormLabel>Amount</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0.0" {...field} disabled={!isConnected} />
+                            <Input type="number" placeholder="0.0" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} disabled={!isConnected} />
                         </FormControl>
                         <div className="flex justify-between text-xs text-muted-foreground mt-1">
                             <span>~{amountUSD}</span>

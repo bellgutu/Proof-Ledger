@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -58,7 +59,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     // 2. Fetch ERC20 Token Balances
     const BALANCE_OF_SIGNATURE = '0x70a08231';
     for (const symbol in ERC20_CONTRACTS) {
-        const contract = ERC20_CONTRACTS[symbol];
+        const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
         if (contract.address.startsWith('YOUR_')) {
           console.log(`[BlockchainService] Skipping ${symbol} due to placeholder address.`);
           continue; // Skip if placeholder address
@@ -174,7 +175,7 @@ export async function sendTransaction(
     };
   } else {
     // For ERC20 tokens
-    const contractInfo = ERC20_CONTRACTS[tokenSymbol];
+    const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
     if (!contractInfo || contractInfo.address.startsWith('YOUR_')) {
       throw new Error(`Contract for ${tokenSymbol} is not configured.`);
     }
@@ -182,7 +183,7 @@ export async function sendTransaction(
     const paddedToAddress = toAddress.substring(2).padStart(64, '0');
     
     // Use BigInt for precise calculation with decimals
-    const valueInSmallestUnit = BigInt(amount * (10 ** contractInfo.decimals));
+    const valueInSmallestUnit = BigInt(Math.floor(amount * (10 ** contractInfo.decimals)));
     const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     
     txParams = {

@@ -3,11 +3,34 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import type { Transaction, VaultStrategy, Proposal } from '@/components/pages/finance';
 import { sendTransaction, getWalletAssets, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
+
+export interface Transaction {
+  id: string;
+  type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
+  details: string | React.ReactNode;
+  status: 'Completed' | 'Pending';
+}
+
+export interface VaultStrategy {
+    name: string;
+    value: number;
+    asset: 'WETH';
+    apy: number;
+}
+
+export interface Proposal {
+  id: string;
+  title: string;
+  description: string;
+  votesFor: number;
+  votesAgainst: number;
+  userVote?: 'for' | 'against';
+}
+
 
 interface MarketData {
   [key: string]: {
@@ -30,14 +53,10 @@ interface WalletState {
   walletBalance: string;
   marketData: MarketData;
   isMarketDataLoaded: boolean;
-
-  // DeFi State
   transactions: Transaction[];
   vaultWeth: number;
   activeStrategy: VaultStrategy | null;
   proposals: Proposal[];
-
-  // Liquidity State
   availablePools: Pool[];
   userPositions: UserPosition[];
 }
@@ -47,13 +66,10 @@ interface WalletActions {
   disconnectWallet: () => void;
   updateBalance: (symbol: string, amount: number) => void;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
-  // DeFi Actions
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status'>) => void;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
   setActiveStrategy: React.Dispatch<SetStateAction<VaultStrategy | null>>;
   setProposals: React.Dispatch<SetStateAction<Proposal[]>>;
-
-  // Liquidity Actions
   setAvailablePools: React.Dispatch<SetStateAction<Pool[]>>;
   setUserPositions: React.Dispatch<SetStateAction<UserPosition[]>>;
 }
@@ -156,7 +172,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
             
-            // Ensure WETH tracks ETH price
             if (newData.ETH && newData.ETH.price > 0) {
               newData.WETH.price = newData.ETH.price;
               newData.WETH.change = newData.ETH.change;
@@ -175,19 +190,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     };
 
     fetchMarketData();
-    const marketUpdateInterval = setInterval(fetchMarketData, 30000); // Fetch prices every 30 seconds
+    const marketUpdateInterval = setInterval(fetchMarketData, 30000);
 
     return () => clearInterval(marketUpdateInterval);
   }, [isMarketDataLoaded]);
+  
+  const getTxHistoryStorageKey = (address: string) => `tx_history_${address}`;
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>) => {
-    const newTx = { id: new Date().toISOString() + Math.random(), status: 'Completed' as const, ...transaction };
-    setTransactions(prev => [...prev, newTx]);
-  }, []);
+    setTransactions(prevTxs => {
+      const newTx = { id: new Date().toISOString() + Math.random(), status: 'Completed' as const, ...transaction };
+      const newTxs = [...prevTxs, newTx];
+      if (walletAddress) {
+        localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(newTxs));
+      }
+      return newTxs;
+    });
+  }, [walletAddress]);
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
-    // Hardcoded address for demonstration on a local Anvil/Hardhat node
     const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
     setWalletAddress(address);
     
@@ -200,17 +222,30 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         setBalances(newBalances);
     } catch (e) {
         console.error("Failed to get wallet assets:", e);
-        setBalances({}); // Set to empty on error
+        setBalances({});
+    }
+
+    try {
+        const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
+        if(storedHistory) {
+            setTransactions(JSON.parse(storedHistory));
+        } else {
+            setTransactions([]);
+        }
+    } catch (e) {
+        console.error("Failed to load transaction history:", e);
+        setTransactions([]);
     }
 
     setIsConnected(true);
     setIsConnecting(false);
-  }, [addTransaction]);
+  }, []);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);
     setWalletAddress('');
     setBalances({});
+    setTransactions([]);
   }, []);
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
@@ -236,7 +271,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return result;
   }, [isConnected, walletAddress, addTransaction, updateBalance]);
 
-  // Polling for new transactions
   useEffect(() => {
     if (!isConnected || !walletAddress) {
         return;
@@ -270,7 +304,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const intervalId = setInterval(checkForUpdates, 15000); // Check every 15 seconds
+    const intervalId = setInterval(checkForUpdates, 15000);
 
     return () => clearInterval(intervalId);
   }, [isConnected, walletAddress, addTransaction, toast]);
@@ -316,5 +350,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

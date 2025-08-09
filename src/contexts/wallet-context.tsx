@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
@@ -13,7 +14,11 @@ export interface Transaction {
   type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
   details: string | React.ReactNode;
   status: 'Completed' | 'Pending';
+  token?: string;
+  amount?: number;
 }
+
+export type { ChainAsset };
 
 export interface VaultStrategy {
     name: string;
@@ -203,7 +208,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const newTx = { id: newTxId, status, ...transaction };
       const newTxs = [...prevTxs, newTx];
       if (walletAddress) {
-        localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(newTxs));
+        // Store serializable part of transaction
+        const storableTxs = newTxs.map(tx => ({...tx, details: typeof tx.details === 'string' ? tx.details : 'React Component'}));
+        localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(storableTxs));
       }
       return newTxs;
     });
@@ -262,37 +269,30 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     const pendingTxId = addTransaction({
       type: 'Send',
-      details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`
+      details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
+      token: tokenSymbol,
+      amount,
     }, 'Pending');
 
     const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
     
-    if (result.success) {
-      updateBalance(tokenSymbol, -amount);
-      setTransactions(prevTxs => {
-          const newTxs = prevTxs.map(tx => 
-            tx.id === pendingTxId 
-            ? { ...tx, status: 'Completed' as const, details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...` } 
-            : tx
-          );
-          if (walletAddress) {
-            localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(newTxs));
-          }
-          return newTxs;
-      });
-    } else {
-       setTransactions(prevTxs => {
-          const newTxs = prevTxs.map(tx => 
-            tx.id === pendingTxId 
-            ? { ...tx, status: 'Completed' as const, details: `Failed to send ${amount} ${tokenSymbol}` } // Or a 'Failed' status
-            : tx
-          );
-          if (walletAddress) {
-            localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(newTxs));
-          }
-          return newTxs;
-      });
-    }
+    setTransactions(prevTxs => {
+        const newTxs = prevTxs.map(tx => {
+            if (tx.id === pendingTxId) {
+                if(result.success) {
+                    updateBalance(tokenSymbol, -amount);
+                    return { ...tx, status: 'Completed' as const, details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...` };
+                }
+                return { ...tx, status: 'Completed' as const, details: `Failed to send ${amount} ${tokenSymbol}` };
+            }
+            return tx;
+        });
+        if (walletAddress) {
+             const storableTxs = newTxs.map(tx => ({...tx, details: typeof tx.details === 'string' ? tx.details : 'React Component'}));
+             localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(storableTxs));
+        }
+        return newTxs;
+    });
 
     return result;
   }, [isConnected, walletAddress, addTransaction, updateBalance]);
@@ -316,7 +316,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     const amountReceived = asset.balance - oldBalance;
                     addTransaction({
                         type: 'Receive',
-                        details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`
+                        details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`,
+                        token: asset.symbol,
+                        amount: amountReceived,
                     });
                     toast({
                         title: 'Transaction Received!',

@@ -1,7 +1,8 @@
 
+
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,13 +12,18 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { Skeleton } from '../ui/skeleton';
 import { Wallet as WalletIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { TokenActionDialog } from '../shared/token-action-dialog';
+import type { ChainAsset } from '@/contexts/wallet-context';
 
 export default function PortfolioPage() {
   const { walletState } = useWallet();
   const { isConnected, isMarketDataLoaded, marketData, balances } = walletState;
   const router = useRouter();
 
-  const assets = Object.entries(balances)
+  const [selectedAsset, setSelectedAsset] = useState<ChainAsset | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const assets: ChainAsset[] = Object.entries(balances)
     .map(([symbol, balance]) => ({
       symbol,
       balance,
@@ -30,12 +36,17 @@ export default function PortfolioPage() {
         return valueB - valueA;
     });
 
-  const AssetRow = ({ asset }: { asset: { symbol: string, balance: number, name: string }}) => {
+  const handleAssetClick = (asset: ChainAsset) => {
+    setSelectedAsset(asset);
+    setIsDialogOpen(true);
+  };
+  
+  const AssetRow = ({ asset }: { asset: ChainAsset }) => {
     const price = marketData[asset.symbol]?.price ?? 0;
     const value = asset.balance * price;
 
     return (
-      <TableRow>
+      <TableRow onClick={() => handleAssetClick(asset)} className="cursor-pointer">
         <TableCell>
           <div className="flex items-center gap-4">
             <Image src={getTokenLogo(asset.symbol)} alt={asset.name} width={32} height={32} />
@@ -79,49 +90,57 @@ export default function PortfolioPage() {
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
       <Card>
-          <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-              <WalletIcon size={28} className="text-primary"/>
-              <span className="text-2xl">Asset Holdings</span>
-          </CardTitle>
-          <CardDescription>A detailed view of your wallet's assets.</CardDescription>
-          </CardHeader>
-          <CardContent>
-          <Table>
-              <TableHeader>
-              <TableRow>
-                  <TableHead>Asset</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-              </TableRow>
-              </TableHeader>
-              <TableBody>
-              {!isConnected ? (
-                  <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-16">
-                          Connect your wallet to see your assets.
-                      </TableCell>
-                  </TableRow>
-              ) : !isMarketDataLoaded ? (
-                  <>
-                      <SkeletonRow />
-                      <SkeletonRow />
-                      <SkeletonRow />
-                  </>
-              ) : assets.length > 0 ? (
-                  assets.map(asset => <AssetRow key={asset.symbol} asset={asset} />)
-              ) : (
-                  <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-16">
-                          You have no assets in this wallet.
-                      </TableCell>
-                  </TableRow>
-              )}
-              </TableBody>
-          </Table>
-          </CardContent>
-      </Card>
+        <CardHeader>
+        <CardTitle className="flex items-center gap-3">
+            <WalletIcon size={28} className="text-primary"/>
+            <span className="text-2xl">Asset Holdings</span>
+        </CardTitle>
+        <CardDescription>A detailed view of your wallet's assets. Click an asset to interact.</CardDescription>
+        </CardHeader>
+        <CardContent>
+        <Table>
+            <TableHeader>
+            <TableRow>
+                <TableHead>Asset</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
+                <TableHead className="text-right">Price</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+            </TableRow>
+            </TableHeader>
+            <TableBody>
+            {!isConnected ? (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-16">
+                        Connect your wallet to see your assets.
+                    </TableCell>
+                </TableRow>
+            ) : !isMarketDataLoaded ? (
+                <>
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                </>
+            ) : assets.length > 0 ? (
+                assets.map(asset => <AssetRow key={asset.symbol} asset={asset} />)
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-16">
+                        You have no assets in this wallet.
+                    </TableCell>
+                </TableRow>
+            )}
+            </TableBody>
+        </Table>
+        </CardContent>
+    </Card>
+      
+      {selectedAsset && (
+        <TokenActionDialog 
+            isOpen={isDialogOpen}
+            setIsOpen={setIsDialogOpen}
+            asset={selectedAsset}
+        />
+      )}
     </div>
   );
 }

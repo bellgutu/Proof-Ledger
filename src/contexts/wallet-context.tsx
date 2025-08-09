@@ -183,6 +183,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
+    // Hardcoded address for demonstration on a local Anvil/Hardhat node
     const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
     setWalletAddress(address);
     
@@ -216,7 +217,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>) => {
-    setTransactions(prev => [...prev, { id: new Date().toISOString(), status: 'Completed', ...transaction }]);
+    const newTx = { id: new Date().toISOString() + Math.random(), status: 'Completed' as const, ...transaction };
+    setTransactions(prev => [...prev, newTx]);
   }, []);
 
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
@@ -225,15 +227,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
     
     if (result.success) {
-      updateBalance(tokenSymbol, -amount);
+      // Intentionally not updating the balance here.
+      // A real app would listen for blockchain events or re-fetch balances.
+      // For this simulation, we'll wait for a manual refresh or reconnect.
       addTransaction({
         type: 'Send',
-        details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 6)}...${toAddress.slice(-4)}`
+        details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...`
       });
     }
 
     return result;
-  }, [isConnected, walletAddress, updateBalance, addTransaction]);
+  }, [isConnected, walletAddress, addTransaction]);
 
 
   const value: WalletContextType = {

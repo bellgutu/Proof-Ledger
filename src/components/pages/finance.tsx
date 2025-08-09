@@ -303,228 +303,199 @@ export default function FinancePage() {
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-primary">Token Swap</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col space-y-2">
-                    <div className="p-4 bg-background rounded-md border space-y-2">
-                      <div className="flex justify-between items-center">
-                         <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
-                         <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[fromToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                            id="from-token"
-                            type="number"
-                            value={fromAmount}
-                            onChange={(e) => handleAmountChange(e.target.value)}
-                            disabled={!isConnected}
-                            placeholder="0.0"
-                        />
-                         <Select value={fromToken} onValueChange={(v) => setFromToken(v as Token)}>
-                            <SelectTrigger className="w-[150px]">
-                               <SelectValue placeholder="Select Token" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
-                            </SelectContent>
-                          </Select>
-                      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+            <CardHeader>
+                <CardTitle className="text-2xl font-bold text-primary">Token Swap</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col space-y-2">
+                <div className="p-4 bg-background rounded-md border space-y-2">
+                    <div className="flex justify-between items-center">
+                        <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
+                        <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[fromToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                     </div>
-
-                    <div className="flex justify-center my-2">
-                      <Button variant="ghost" size="icon" onClick={handleSwapTokens} disabled={!isConnected}>
-                        <ChevronsUpDown size={20} className="text-muted-foreground" />
-                      </Button>
-                    </div>
-
-                    <div className="p-4 bg-background rounded-md border space-y-2">
-                      <div className="flex justify-between items-center">
-                        <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
-                        <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[toToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                            id="to-token"
-                            type="number"
-                            value={toAmount}
-                            readOnly
-                            disabled={!isConnected}
-                            placeholder="0.0"
-                        />
-                        <Select value={toToken} onValueChange={(v) => setToToken(v as Token)}>
-                          <SelectTrigger className="w-[150px]">
+                    <div className="flex gap-2">
+                    <Input
+                        id="from-token"
+                        type="number"
+                        value={fromAmount}
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        disabled={!isConnected}
+                        placeholder="0.0"
+                    />
+                        <Select value={fromToken} onValueChange={(v) => setFromToken(v as Token)}>
+                        <SelectTrigger className="w-[150px]">
                             <SelectValue placeholder="Select Token" />
-                          </SelectTrigger>
-                          <SelectContent>
+                        </SelectTrigger>
+                        <SelectContent>
                             {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
-                          </SelectContent>
+                        </SelectContent>
                         </Select>
-                      </div>
                     </div>
-                    <Button
-                    onClick={handleSwap}
-                    disabled={!isConnected || swapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
-                    className="w-full mt-6"
-                    variant="default"
-                    >
-                    {swapping ? (
-                        <span className="flex items-center">
-                        <RefreshCcw size={16} className="mr-2 animate-spin" /> Swapping...
-                        </span>
-                    ) : (
-                        'Swap Tokens'
-                    )}
-                    </Button>
-                </CardContent>
-                </Card>
+                </div>
 
-                <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-                    <CardHeader>
-                      <CardTitle className="text-2xl font-bold text-primary flex items-center justify-between">
-                        <div className="flex items-center">
-                          <BrainCircuit className="mr-2" /> AI Strategy Vault
-                        </div>
-                        <Button onClick={handleAiRebalance} disabled={rebalanceLoading || vaultLoading} size="icon" variant="ghost">
-                          {rebalanceLoading ? <RefreshCcw className="animate-spin"/> :<BrainCircuit />}
-                          <span className="sr-only">Rebalance Vault</span>
-                        </Button>
-                      </CardTitle>
-                       <CardDescription>Deposit WETH or USDC and let the AI manage your funds.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="p-4 bg-background rounded-md border">
-                            <div className="flex justify-between items-center">
-                                <p className="text-sm text-muted-foreground">Total Vault Value:</p>
-                            </div>
-                            <p className="text-2xl font-bold text-foreground">${vaultTotalUsd.toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
-                             <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                                {activeStrategy ? (
-                                    <div className="p-3 bg-primary/10 rounded-md">
-                                        <p className="font-bold text-primary">{activeStrategy.name}</p>
-                                        <div className="flex justify-between items-center">
-                                            <span>{activeStrategy.value.toLocaleString('en-US', {maximumFractionDigits: 4})} {activeStrategy.asset}</span>
-                                            <span className="text-green-400 font-semibold">{activeStrategy.apy}% APY</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="text-center text-xs py-2">No active strategy. Click the AI button to deploy funds.</p>
-                                )}
-                                <p className="text-sm font-bold pt-2">Idle Assets:</p>
-                                <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
-                                <div className="flex justify-between"><span>USDC:</span> <span className="font-mono">{vaultUsdc.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            <Button
-                              onClick={handleDepositToVault}
-                              disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) <= 0}
-                              className="w-full bg-green-600 text-white hover:bg-green-700"
-                            >
-                              {vaultLoading ? (
-                                  <span className="flex items-center">
-                                  <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
-                                  </span>
-                              ) : (
-                                  <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit WETH</span>
-                              )}
-                            </Button>
-                             <Button
-                              onClick={handleWithdrawFromVault}
-                              disabled={!isConnected || vaultLoading || !hasVaultBalance}
-                              className="w-full"
-                              variant="destructive"
-                            >
-                              {vaultLoading ? (
-                                  <span className="flex items-center">
-                                  <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
-                                  </span>
-                              ) : (
-                                  <span className="flex items-center"><ArrowUp size={16} className="mr-2" />Withdraw All</span>
-                              )}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                <div className="flex justify-center my-2">
+                    <Button variant="ghost" size="icon" onClick={handleSwapTokens} disabled={!isConnected}>
+                    <ChevronsUpDown size={20} className="text-muted-foreground" />
+                    </Button>
+                </div>
+
+                <div className="p-4 bg-background rounded-md border space-y-2">
+                    <div className="flex justify-between items-center">
+                    <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
+                    <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[toToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                    </div>
+                    <div className="flex gap-2">
+                    <Input
+                        id="to-token"
+                        type="number"
+                        value={toAmount}
+                        readOnly
+                        disabled={!isConnected}
+                        placeholder="0.0"
+                    />
+                    <Select value={toToken} onValueChange={(v) => setToToken(v as Token)}>
+                        <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Select Token" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
+                        </SelectContent>
+                    </Select>
+                    </div>
+                </div>
+                <Button
+                onClick={handleSwap}
+                disabled={!isConnected || swapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
+                className="w-full mt-6"
+                variant="default"
+                >
+                {swapping ? (
+                    <span className="flex items-center">
+                    <RefreshCcw size={16} className="mr-2 animate-spin" /> Swapping...
+                    </span>
+                ) : (
+                    'Swap Tokens'
+                )}
+                </Button>
+            </CardContent>
+            </Card>
+
             <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-primary flex items-center">
-                        <Vote className="mr-3" /> Governance
+                    <CardTitle className="text-2xl font-bold text-primary flex items-center justify-between">
+                    <div className="flex items-center">
+                        <BrainCircuit className="mr-2" /> AI Strategy Vault
+                    </div>
+                    <Button onClick={handleAiRebalance} disabled={rebalanceLoading || vaultLoading} size="icon" variant="ghost">
+                        {rebalanceLoading ? <RefreshCcw className="animate-spin"/> :<BrainCircuit />}
+                        <span className="sr-only">Rebalance Vault</span>
+                    </Button>
                     </CardTitle>
-                    <CardDescription>Use your token power to vote on protocol proposals.</CardDescription>
+                    <CardDescription>Deposit WETH or USDC and let the AI manage your funds.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {proposals.map(p => {
-                        const totalVotes = p.votesFor + p.votesAgainst;
-                        const forPercentage = totalVotes > 0 ? (p.votesFor / totalVotes) * 100 : 0;
-                        const againstPercentage = totalVotes > 0 ? (p.votesAgainst / totalVotes) * 100 : 0;
-                        
-                        return (
-                            <div key={p.id} className="p-4 border rounded-lg bg-background">
-                                <h4 className="font-semibold text-foreground">{p.title}</h4>
-                                <p className="text-sm text-muted-foreground mt-1 mb-3">{p.description}</p>
-                                <Progress value={forPercentage} className="h-2" />
-                                <div className="flex justify-between text-xs mt-2 text-muted-foreground">
-                                    <span className="text-green-400">For: {forPercentage.toFixed(1)}%</span>
-                                    <span className="text-red-400">Against: {againstPercentage.toFixed(1)}%</span>
+                    <div className="p-4 bg-background rounded-md border">
+                        <div className="flex justify-between items-center">
+                            <p className="text-sm text-muted-foreground">Total Vault Value:</p>
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">${vaultTotalUsd.toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
+                            <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                            {activeStrategy ? (
+                                <div className="p-3 bg-primary/10 rounded-md">
+                                    <p className="font-bold text-primary">{activeStrategy.name}</p>
+                                    <div className="flex justify-between items-center">
+                                        <span>{activeStrategy.value.toLocaleString('en-US', {maximumFractionDigits: 4})} {activeStrategy.asset}</span>
+                                        <span className="text-green-400 font-semibold">{activeStrategy.apy}% APY</span>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2 mt-3">
-                                    <Button 
-                                        onClick={() => handleVote(p.id, 'for')}
-                                        disabled={!!p.userVote}
-                                        variant={p.userVote === 'for' ? 'default' : 'outline'}
-                                        className="w-full"
-                                    >
-                                        <CheckCircle className="mr-2" /> Vote For
-                                    </Button>
-                                    <Button 
-                                        onClick={() => handleVote(p.id, 'against')}
-                                        disabled={!!p.userVote}
-                                         variant={p.userVote === 'against' ? 'destructive' : 'outline'}
-                                        className="w-full"
-                                    >
-                                        <XCircle className="mr-2" /> Vote Against
-                                    </Button>
-                                </div>
-                            </div>
-                        )
-                    })}
+                            ) : (
+                                <p className="text-center text-xs py-2">No active strategy. Click the AI button to deploy funds.</p>
+                            )}
+                            <p className="text-sm font-bold pt-2">Idle Assets:</p>
+                            <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
+                            <div className="flex justify-between"><span>USDC:</span> <span className="font-mono">{vaultUsdc.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                            onClick={handleDepositToVault}
+                            disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) <= 0}
+                            className="w-full bg-green-600 text-white hover:bg-green-700"
+                        >
+                            {vaultLoading ? (
+                                <span className="flex items-center">
+                                <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                                </span>
+                            ) : (
+                                <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit WETH</span>
+                            )}
+                        </Button>
+                            <Button
+                            onClick={handleWithdrawFromVault}
+                            disabled={!isConnected || vaultLoading || !hasVaultBalance}
+                            className="w-full"
+                            variant="destructive"
+                        >
+                            {vaultLoading ? (
+                                <span className="flex items-center">
+                                <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                                </span>
+                            ) : (
+                                <span className="flex items-center"><ArrowUp size={16} className="mr-2" />Withdraw All</span>
+                            )}
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
-        </div>
-        <Card className="transform transition-transform duration-300 hover:scale-[1.01] lg:col-span-1">
+      </div>
+
+       <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader>
-                <CardTitle className="flex items-center text-2xl font-bold text-primary"><History className="mr-2" /> Transaction History</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary flex items-center">
+                    <Vote className="mr-3" /> Governance
+                </CardTitle>
+                <CardDescription>Use your token power to vote on protocol proposals.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <ScrollArea className="h-[40rem]">
-                    {transactions.length > 0 ? (
-                        <div className="space-y-4 pr-4">
-                            {transactions.slice().reverse().map(tx => (
-                                <div key={tx.id} className="p-3 bg-background rounded-md border">
-                                    <div className="flex justify-between items-center">
-                                        <span className={`font-semibold text-sm ${tx.type === 'AI Rebalance' ? 'text-primary' : ''}`}>{tx.type}</span>
-                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${tx.status === 'Completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                                            {tx.status}
-                                        </span>
-                                    </div>
-                                    <div className="text-muted-foreground text-xs mt-1">{tx.details}</div>
-                                </div>
-                            ))}
+            <CardContent className="space-y-4">
+                {proposals.map(p => {
+                    const totalVotes = p.votesFor + p.votesAgainst;
+                    const forPercentage = totalVotes > 0 ? (p.votesFor / totalVotes) * 100 : 0;
+                    const againstPercentage = totalVotes > 0 ? (p.votesAgainst / totalVotes) * 100 : 0;
+                    
+                    return (
+                        <div key={p.id} className="p-4 border rounded-lg bg-background">
+                            <h4 className="font-semibold text-foreground">{p.title}</h4>
+                            <p className="text-sm text-muted-foreground mt-1 mb-3">{p.description}</p>
+                            <Progress value={forPercentage} className="h-2" />
+                            <div className="flex justify-between text-xs mt-2 text-muted-foreground">
+                                <span className="text-green-400">For: {forPercentage.toFixed(1)}%</span>
+                                <span className="text-red-400">Against: {againstPercentage.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                                <Button 
+                                    onClick={() => handleVote(p.id, 'for')}
+                                    disabled={!!p.userVote}
+                                    variant={p.userVote === 'for' ? 'default' : 'outline'}
+                                    className="w-full"
+                                >
+                                    <CheckCircle className="mr-2" /> Vote For
+                                </Button>
+                                <Button 
+                                    onClick={() => handleVote(p.id, 'against')}
+                                    disabled={!!p.userVote}
+                                        variant={p.userVote === 'against' ? 'destructive' : 'outline'}
+                                    className="w-full"
+                                >
+                                    <XCircle className="mr-2" /> Vote Against
+                                </Button>
+                            </div>
                         </div>
-                    ) : (
-                        <p className="text-muted-foreground text-center text-sm py-16">No transactions yet.</p>
-                    )}
-                </ScrollArea>
+                    )
+                })}
             </CardContent>
         </Card>
-      </div>
     </div>
   );
 };

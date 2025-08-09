@@ -182,3 +182,50 @@ export async function executeSwap(fromToken: string, toToken: string, amount: nu
         txHash: `0x${Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`
     }
 }
+
+/**
+ * Sends a transaction for ETH or an ERC20 token.
+ * This is a placeholder function. You will need to implement the actual `eth_sendTransaction` call.
+ * @param fromAddress The sender's wallet address.
+ * @param toAddress The recipient's wallet address.
+ * @param tokenSymbol The symbol of the token to send.
+ * @param amount The amount of the token to send.
+ * @param tokenContractAddress The address of the ERC20 token contract (optional, for ERC20 transfers).
+ * @returns A promise that resolves to an object indicating success and a transaction hash.
+ */
+export async function sendTransaction(
+  fromAddress: string,
+  toAddress: string,
+  tokenSymbol: string,
+  amount: number,
+  tokenContractAddress?: string
+): Promise<{ success: boolean; txHash: string }> {
+  console.log(`[BlockchainService] Sending ${amount} ${tokenSymbol} from ${fromAddress} to ${toAddress}`);
+
+  // This is a simulation. In a real application, you would use a library like ethers.js
+  // to create and sign the transaction, then send it using `eth_sendTransaction`.
+  // For now, we just return a mock success response.
+
+  await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+
+  // On success:
+  return {
+    success: true,
+    txHash: `0x_simulated_${Array(54).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`
+  };
+
+  // On failure:
+  // return { success: false, txHash: '' };
+}
+
+/**
+ * Simulates fetching a gas fee.
+ * @returns A promise that resolves to a simulated gas fee in ETH.
+ */
+export async function getGasFee(): Promise<number> {
+    // In a real app, you would use `eth_gasPrice` and `eth_estimateGas`.
+    // For this simulation, we'll return a small, random ETH value.
+    const gasPrice = 20e-9; // 20 Gwei
+    const gasLimit = 21000; // Standard transfer
+    return gasPrice * gasLimit;
+}

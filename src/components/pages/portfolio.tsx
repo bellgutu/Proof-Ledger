@@ -10,10 +10,12 @@ import { WalletHeader } from '@/components/shared/wallet-header';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Skeleton } from '../ui/skeleton';
 import { Wallet as WalletIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function PortfolioPage() {
   const { walletState } = useWallet();
   const { isConnected, isMarketDataLoaded, marketData, balances } = walletState;
+  const router = useRouter();
 
   const assets = Object.entries(balances)
     .map(([symbol, balance]) => ({
@@ -28,12 +30,16 @@ export default function PortfolioPage() {
         return valueB - valueA;
     });
 
+  const handleRowClick = (symbol: string) => {
+    router.push(`/portfolio/${symbol.toLowerCase()}`);
+  };
+
   const AssetRow = ({ asset }: { asset: { symbol: string, balance: number, name: string }}) => {
     const price = marketData[asset.symbol]?.price ?? 0;
     const value = asset.balance * price;
 
     return (
-      <TableRow className="hover:bg-secondary/50">
+      <TableRow className="hover:bg-secondary/50 cursor-pointer" onClick={() => handleRowClick(asset.symbol)}>
         <TableCell>
           <div className="flex items-center gap-4">
             <Image src={getTokenLogo(asset.symbol)} alt={asset.name} width={32} height={32} />
@@ -82,7 +88,7 @@ export default function PortfolioPage() {
              <WalletIcon size={28} className="text-primary"/>
             <span className="text-2xl">Asset Holdings</span>
           </CardTitle>
-          <CardDescription>A detailed view of your wallet's assets.</CardDescription>
+          <CardDescription>A detailed view of your wallet's assets. Click an asset to send or receive.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>

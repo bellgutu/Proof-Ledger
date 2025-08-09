@@ -44,7 +44,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
-    { id: 'send-receive', label: 'Send/Receive', icon: <Send size={20} />, path: '/send-receive'},
     { id: 'liquidity', label: 'Liquidity Pro', icon: <Droplets size={20} />, path: '/liquidity' },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} />, path: '/finance' },
     { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },

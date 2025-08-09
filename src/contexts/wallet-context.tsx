@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import type { Transaction, VaultStrategy, Proposal } from '@/components/pages/finance';
-
+import { sendTransaction } from '@/services/blockchain-service';
 
 type AssetSymbol = 'ETH' | 'USDC' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
 
@@ -46,7 +46,7 @@ interface WalletActions {
   connectWallet: () => void;
   disconnectWallet: () => void;
   updateBalance: (symbol: string, amount: number) => void;
-
+  sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
   // DeFi Actions
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status'>) => void;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
@@ -221,6 +221,23 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setTransactions(prev => [...prev, { id: new Date().toISOString(), status: 'Completed', ...transaction }]);
   }, []);
 
+  const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
+    if (!isConnected) throw new Error("Wallet not connected");
+
+    const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
+    
+    if (result.success) {
+      updateBalance(tokenSymbol, -amount);
+      addTransaction({
+        type: 'Send',
+        details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 6)}...${toAddress.slice(-4)}`
+      });
+    }
+
+    return result;
+  }, [isConnected, walletAddress, updateBalance, addTransaction]);
+
+
   const value: WalletContextType = {
       walletState: { 
         isConnected, 
@@ -242,6 +259,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           connectWallet,
           disconnectWallet,
           updateBalance,
+          sendTokens,
           addTransaction,
           setVaultWeth,
           setVaultUsdc,

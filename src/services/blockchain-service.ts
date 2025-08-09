@@ -49,19 +49,29 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             id: 1,
         }),
     });
-    if (!ethBalanceResponse.ok) throw new Error(`Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
-    const ethData = await ethBalanceResponse.json();
-    if (ethData.error) throw new Error(`ETH balance RPC Error: ${ethData.error.message}`);
-    const ethBalance = parseInt(ethData.result, 16) / 1e18; // Convert from Wei to ETH
-    assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
-
-    // 2. Fetch ERC20 Token Balances
-    const BALANCE_OF_SIGNATURE = '0x70a08231';
-    for (const symbol in ERC20_CONTRACTS) {
+    if (ethBalanceResponse.ok) {
+        const ethData = await ethBalanceResponse.json();
+        if (ethData.result) {
+            const ethBalance = parseInt(ethData.result, 16) / 1e18;
+            assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
+        } else if (ethData.error) {
+             console.error(`ETH balance RPC Error: ${ethData.error.message}`);
+        }
+    } else {
+         console.error(`Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
+    }
+  } catch (error) {
+    console.error("Error connecting to local blockchain for ETH balance:", error);
+  }
+  
+  // 2. Fetch ERC20 Token Balances
+  const BALANCE_OF_SIGNATURE = '0x70a08231';
+  for (const symbol in ERC20_CONTRACTS) {
+      try {
         const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
         if (contract.address.startsWith('YOUR_')) {
           console.log(`[BlockchainService] Skipping ${symbol} due to placeholder address.`);
-          continue; // Skip if placeholder address
+          continue; 
         }
 
         const paddedAddress = address.substring(2).padStart(64, '0');
@@ -80,27 +90,22 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
           }),
         });
 
-        if (!erc20response.ok) {
+        if (erc20response.ok) {
+            const erc20data = await erc20response.json();
+             if (erc20data.result) {
+                const balance = parseInt(erc20data.result, 16) / (10 ** contract.decimals);
+                assets.push({ symbol, name: contract.name, balance });
+             } else if (erc20data.error) {
+                console.error(`[BlockchainService] ${symbol} balance RPC Error: ${erc20data.error.message}`);
+             }
+        } else {
             console.error(`[BlockchainService] Failed to fetch ${symbol} balance with status: ${erc20response.status}`);
-            continue;
-        };
-        const erc20data = await erc20response.json();
-        if (erc20data.error) {
-             console.error(`[BlockchainService] ${symbol} balance RPC Error: ${erc20data.error.message}`);
-             continue;
-        };
-        
-        const balance = parseInt(erc20data.result, 16) / (10 ** contract.decimals);
-        assets.push({ symbol, name: contract.name, balance });
-    }
-
-  } catch (error) {
-    console.error("Error connecting to local blockchain for wallet assets:", error);
-    // Return an empty array or minimal data on error to prevent app crash
-    if (assets.length === 0) { // If we failed before getting any balance
-        return [{ symbol: 'ETH', name: 'Ethereum', balance: 0 }];
-    }
+        }
+      } catch(e) {
+          console.error(`[BlockchainService] Error fetching balance for ${symbol}:`, e)
+      }
   }
+
 
   return assets;
 }

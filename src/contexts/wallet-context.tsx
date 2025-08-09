@@ -135,7 +135,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
-    if (!isMarketDataLoaded || !isConnected) return;
+    if (!isMarketDataLoaded || !isConnected) {
+      setWalletBalance('0.00');
+      return;
+    };
     const total = Object.entries(balances).reduce((acc, [symbol, balance]) => {
       const price = marketData[symbol]?.price || 0;
       return acc + (balance * price);
@@ -217,46 +220,47 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return newTxId;
   }, [walletAddress]);
 
-  const connectWallet = useCallback(async () => {
+  const connectWallet = useCallback(() => {
     setIsConnecting(true);
-    
-    // Ensure market data is loaded before fetching balances
-    if (!isMarketDataLoaded) {
-        console.log("Waiting for market data before connecting wallet...");
-        setTimeout(connectWallet, 500); // Retry after a short delay
-        return;
-    }
+  }, []);
 
-    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-    setWalletAddress(address);
-    
-    try {
-        const assets = await getWalletAssets(address);
-        const newBalances = assets.reduce((acc, asset) => {
-            acc[asset.symbol] = asset.balance;
-            return acc;
-        }, {} as Balances);
-        setBalances(newBalances);
-    } catch (e) {
-        console.error("Failed to get wallet assets:", e);
-        setBalances({});
-    }
+  useEffect(() => {
+    const fetchAssets = async () => {
+      const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+      setWalletAddress(address);
+      
+      try {
+          const assets = await getWalletAssets(address);
+          const newBalances = assets.reduce((acc, asset) => {
+              acc[asset.symbol] = asset.balance;
+              return acc;
+          }, {} as Balances);
+          setBalances(newBalances);
+      } catch (e) {
+          console.error("Failed to get wallet assets:", e);
+          setBalances({});
+      }
+  
+      try {
+          const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
+          if(storedHistory) {
+              setTransactions(JSON.parse(storedHistory));
+          } else {
+              setTransactions([]);
+          }
+      } catch (e) {
+          console.error("Failed to load transaction history:", e);
+          setTransactions([]);
+      }
+  
+      setIsConnected(true);
+      setIsConnecting(false);
+    };
 
-    try {
-        const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
-        if(storedHistory) {
-            setTransactions(JSON.parse(storedHistory));
-        } else {
-            setTransactions([]);
-        }
-    } catch (e) {
-        console.error("Failed to load transaction history:", e);
-        setTransactions([]);
+    if (isConnecting && isMarketDataLoaded) {
+      fetchAssets();
     }
-
-    setIsConnected(true);
-    setIsConnecting(false);
-  }, [isMarketDataLoaded]);
+  }, [isConnecting, isMarketDataLoaded]);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);
@@ -376,7 +380,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
   }
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+  return (
+    <WalletContext.Provider value={value}>
+        {children}
+    </WalletContext.Provider>
+  );
 };
 
 export const useWallet = (): WalletContextType => {

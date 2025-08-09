@@ -219,6 +219,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
+    
+    // Ensure market data is loaded before fetching balances
+    if (!isMarketDataLoaded) {
+        console.log("Waiting for market data before connecting wallet...");
+        setTimeout(connectWallet, 500); // Retry after a short delay
+        return;
+    }
+
     const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
     setWalletAddress(address);
     
@@ -248,7 +256,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     setIsConnected(true);
     setIsConnecting(false);
-  }, []);
+  }, [isMarketDataLoaded]);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);

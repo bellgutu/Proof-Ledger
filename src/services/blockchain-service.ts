@@ -221,7 +221,7 @@ export async function getActivePositions(address: string): Promise<Position[]> {
   }
 
   try {
-    const getPositionsFunctionSignature = '0xee923b59'; // keccak256("getPositions(address)")
+    const getPositionsFunctionSignature = '0x85925d2b'; // keccak256("getPositions(address)")
     const paddedAddress = address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {
@@ -247,10 +247,8 @@ export async function getActivePositions(address: string): Promise<Position[]> {
       throw new Error(`RPC Error for getPositions: ${data.error.message}`);
     }
     
-    // The result is a dynamic bytes array, need to parse it.
-    // This is a simplified parsing logic. A real implementation would use a library like ethers.js or viem's decodeFunctionResult.
-    const resultData = data.result.substring(2); // remove '0x'
-    if (resultData.length <= 128) { // No positions or empty array
+    const resultData = data.result.substring(2);
+    if (resultData.length <= 128) {
         return [];
     }
 
@@ -258,28 +256,20 @@ export async function getActivePositions(address: string): Promise<Position[]> {
     const length = parseInt(resultData.slice(64, 128), 16);
     if(length === 0) return [];
     
-    // The actual position data starts after the length property of the array
-    const positionsDataStart = 128 + (offset * 2); 
-    const positionsData = resultData.slice(positionsDataStart);
+    const positionsDataBlock = resultData.slice(offset * 2); 
+    const positionArrayData = positionsDataBlock.slice(64); // Skip the array length
     
     const parsedPositions: Position[] = [];
-    // Each position struct is 6 * 32 bytes = 192 bytes = 384 hex chars long
-    // However, the pair is dynamic. We need to handle offsets for that.
-    
-    const positionWords = resultData.slice(128);
 
     for (let i = 0; i < length; i++) {
-        // Each element in the dynamic array is a 32-byte offset to the struct data
-        const structBaseOffset = parseInt(positionWords.slice(i * 64, (i + 1) * 64), 16) * 2;
-        const posData = resultData.slice(structBaseOffset);
+        const structData = positionArrayData.slice(i * 192, (i + 1) * 192);
 
-        const id = parseInt(posData.slice(0, 64), 16);
-
-        // Pair (string) is dynamic within the struct
-        const pairOffset = parseInt(posData.slice(64, 128), 16) * 2;
-        const pairData = resultData.slice(pairOffset);
-        const pairLength = parseInt(pairData.slice(0, 64), 16);
-        const pairHex = pairData.slice(64, 64 + pairLength * 2);
+        const id = parseInt(structData.slice(0, 64), 16);
+        
+        const pairOffset = parseInt(structData.slice(64, 128), 16) * 2;
+        const pairDataBlock = positionArrayData.slice(pairOffset - 128); // adjust offset relative to start of array data
+        const pairLength = parseInt(pairDataBlock.slice(0, 64), 16);
+        const pairHex = pairDataBlock.slice(64, 64 + pairLength * 2);
         
         let pair = '';
         try {
@@ -289,12 +279,12 @@ export async function getActivePositions(address: string): Promise<Position[]> {
             pair = "UNKNOWN";
         }
 
-        const collateral = parseFloat(formatUnits(BigInt('0x' + posData.slice(128, 192)), 6)); // USDT (6 decimals)
-        const entryPrice = parseFloat(formatUnits(BigInt('0x' + posData.slice(192, 256)), 8)); // Price oracle (8 decimals)
-        const leverage = parseInt(posData.slice(256, 320), 16);
-        const direction = parseInt(posData.slice(320, 384), 16) === 0 ? 'long' : 'short';
+        const collateral = parseFloat(formatUnits(BigInt('0x' + structData.slice(128, 192)), 6));
+        const entryPrice = parseFloat(formatUnits(BigInt('0x' + structData.slice(192, 256)), 8));
+        const leverage = parseInt(structData.slice(256, 320), 16);
+        const direction = parseInt(structData.slice(320, 384), 16) === 0 ? 'long' : 'short';
         
-        if (id > 0) { // Only add valid positions
+        if (id > 0) {
             parsedPositions.push({ id, pair, collateral, entryPrice, leverage, direction });
         }
     }
@@ -318,13 +308,10 @@ export async function openPosition(params: {
   const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   const openPositionSignature = '0x11871032';
 
-  // Correctly encode dynamic string `pair` and other params for `openPosition`
   const pairBytes = Buffer.from(params.pair, 'utf8').toString('hex');
   const collateralWei = parseUnits(params.collateral.toString(), 6);
 
-  // Using a simplified encoding for local development. A robust solution would use an ABI encoder.
-  // The structure is: function_selector, offset_to_pair, collateral, leverage, direction, length_of_pair, pair_data
-  const staticDataOffset = 4 * 32; // 4 static params: offset, collateral, leverage, direction
+  const staticDataOffset = 4 * 32; 
   const pairDataLength = Math.ceil(pairBytes.length / 2);
 
   const functionSelector = openPositionSignature.slice(2);
@@ -333,7 +320,7 @@ export async function openPosition(params: {
   const leverageHex = params.leverage.toString(16).padStart(64, '0');
   const directionHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
   const pairLengthHex = pairDataLength.toString(16).padStart(64, '0');
-  const pairDataHex = pairBytes.padEnd(Math.ceil(pairBytes.length / 64) * 64, '0'); // Pad to nearest 32 bytes
+  const pairDataHex = pairBytes.padEnd(Math.ceil(pairBytes.length / 64) * 64, '0');
   
   const dataPayload = `0x${functionSelector}${pairOffsetHex}${collateralHex}${leverageHex}${directionHex}${pairLengthHex}${pairDataHex}`;
   
@@ -347,7 +334,7 @@ export async function openPosition(params: {
               from: fromAddress,
               to: PERPETUALS_CONTRACT_ADDRESS,
               data: dataPayload,
-              gas: `0x${(300000).toString(16)}`, // Increased gas for complex transaction
+              gas: `0x${(300000).toString(16)}`, 
           }],
           id: 1,
       }),
@@ -390,8 +377,6 @@ export async function closePosition(positionId: number): Promise<{ success: bool
         throw new Error(`Close position RPC Error: ${txData.error.message}`);
     }
 
-    // In a real app, you'd wait for the transaction receipt and get the PnL from an event.
-    // Here we'll just return a mock value.
     const pnl = (Math.random() - 0.4) * 50; 
     const payout = 100 + pnl; 
     

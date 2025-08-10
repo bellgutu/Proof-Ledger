@@ -211,7 +211,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const newTx = { id: newTxId, status, ...transaction };
       const newTxs = [...prevTxs, newTx];
       if (walletAddress) {
-        // Store serializable part of transaction
         const storableTxs = newTxs.map(tx => ({...tx, details: typeof tx.details === 'string' ? tx.details : 'React Component'}));
         localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(storableTxs));
       }
@@ -220,47 +219,38 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return newTxId;
   }, [walletAddress]);
 
-  const connectWallet = useCallback(() => {
+ const connectWallet = useCallback(async () => {
     setIsConnecting(true);
-  }, []);
+    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+    setWalletAddress(address);
 
-  useEffect(() => {
-    const fetchAssets = async () => {
-      const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-      setWalletAddress(address);
-      
-      try {
-          const assets = await getWalletAssets(address);
-          const newBalances = assets.reduce((acc, asset) => {
-              acc[asset.symbol] = asset.balance;
-              return acc;
-          }, {} as Balances);
-          setBalances(newBalances);
-      } catch (e) {
-          console.error("Failed to get wallet assets:", e);
-          setBalances({});
-      }
-  
-      try {
-          const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
-          if(storedHistory) {
-              setTransactions(JSON.parse(storedHistory));
-          } else {
-              setTransactions([]);
-          }
-      } catch (e) {
-          console.error("Failed to load transaction history:", e);
-          setTransactions([]);
-      }
-  
-      setIsConnected(true);
-      setIsConnecting(false);
-    };
-
-    if (isConnecting && isMarketDataLoaded) {
-      fetchAssets();
+    try {
+        const assets = await getWalletAssets(address);
+        const newBalances = assets.reduce((acc, asset) => {
+            acc[asset.symbol] = asset.balance;
+            return acc;
+        }, {} as Balances);
+        setBalances(newBalances);
+    } catch (e) {
+        console.error("Failed to get wallet assets:", e);
+        setBalances({});
     }
-  }, [isConnecting, isMarketDataLoaded]);
+
+    try {
+        const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
+        if (storedHistory) {
+            setTransactions(JSON.parse(storedHistory));
+        } else {
+            setTransactions([]);
+        }
+    } catch (e) {
+        console.error("Failed to load transaction history:", e);
+        setTransactions([]);
+    }
+
+    setIsConnected(true);
+    setIsConnecting(false);
+  }, []);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);
@@ -326,16 +316,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 
                 if (asset.balance > oldBalance) {
                     const amountReceived = asset.balance - oldBalance;
-                    addTransaction({
-                        type: 'Receive',
-                        details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`,
-                        token: asset.symbol,
-                        amount: amountReceived,
-                    });
-                    toast({
-                        title: 'Transaction Received!',
-                        description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}.`
-                    });
+                    // Check if there is a recent pending 'Send' tx for a similar amount to avoid the loop
+                    const isLikelySelfTx = transactions.some(tx => 
+                        tx.type === 'Send' &&
+                        tx.status === 'Pending' &&
+                        tx.token === asset.symbol &&
+                        Math.abs(tx.amount! - amountReceived) < 0.0001
+                    );
+                    
+                    if (!isLikelySelfTx) {
+                        addTransaction({
+                            type: 'Receive',
+                            details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`,
+                            token: asset.symbol,
+                            amount: amountReceived,
+                        });
+                        toast({
+                            title: 'Transaction Received!',
+                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}.`
+                        });
+                    }
                 }
             }
             setBalances(newBalances);
@@ -347,7 +347,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const intervalId = setInterval(checkForUpdates, 15000);
 
     return () => clearInterval(intervalId);
-  }, [isConnected, walletAddress, addTransaction, toast]);
+  }, [isConnected, walletAddress, addTransaction, toast, transactions]);
 
 
   const value: WalletContextType = {

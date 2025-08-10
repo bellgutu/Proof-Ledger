@@ -97,7 +97,9 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         if (erc20response.ok) {
             const erc20data = await erc20response.json();
              if (erc20data.result && erc20data.result !== '0x') {
-                const balance = parseInt(erc20data.result, 16) / (10 ** contract.decimals);
+                const balanceWei = BigInt(erc20data.result);
+                const decimals = BigInt(10 ** contract.decimals);
+                const balance = Number(balanceWei) / Number(decimals);
                 assets.push({ symbol, name: contract.name, balance });
              } else if (erc20data.error) {
                 console.error(`[BlockchainService] ${symbol} balance RPC Error: ${erc20data.error.message}`);

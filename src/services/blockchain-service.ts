@@ -84,12 +84,15 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         if (erc20response.ok) {
             const erc20data = await erc20response.json();
              if (erc20data.result && erc20data.result !== '0x') {
-                const balanceWei = BigInt(erc20data.result);
-                const balance = parseFloat(formatUnits(balanceWei, contract.decimals));
+                const rawBalance = BigInt(erc20data.result);
+                // Correctly use formatUnits to handle decimals
+                const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
                 if (balance > 0) {
                   assets.push({ symbol, name: contract.name, balance });
                 }
              } else if (erc20data.error) {
+                // This is a normal scenario if a contract call reverts (e.g. token doesn't exist on chain)
+                // We log it as a warning but don't throw an error to allow other balances to be fetched.
                 console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${erc20data.error.message}`);
              }
         } else {
@@ -340,3 +343,6 @@ export async function closePosition(): Promise<{ success: boolean, txHash: strin
 
     return { success: true, txHash: txData.result };
 }
+
+
+    

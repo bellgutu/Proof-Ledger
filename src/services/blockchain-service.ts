@@ -208,7 +208,6 @@ export interface Position {
   collateral: number;
   entryPrice: number;
   active: boolean;
-  // Note: 'pair' and 'leverage' are part of the UI state but not the contract's Position struct
 }
 
 export async function getActivePosition(address: string): Promise<Position | null> {
@@ -219,7 +218,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
   }
 
   try {
-    const getPositionFunctionSignature = '0x7598379a'; // keccak256("getUserPosition(address)")
+    const getPositionFunctionSignature = '0x48694038'; // keccak256("getUserPosition(address)")
     const paddedAddress = address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {
@@ -246,7 +245,8 @@ export async function getActivePosition(address: string): Promise<Position | nul
     }
     
     const resultData = data.result.substring(2);
-    if (resultData.length === 0) {
+    if (resultData.length < 320) { // 5 fields * 64 chars/field
+      console.warn("[BlockchainService] getUserPosition returned insufficient data, likely no position.");
       return null;
     }
     
@@ -278,11 +278,12 @@ export async function openPosition(params: {
   console.log('[BlockchainService] Opening position with params:', params);
   
   const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
-  const openPositionSignature = '0x5806b727'; // keccak256("openPosition(uint8,uint256,uint256)")
+  // The signature is for `openPosition(uint8,uint256,uint256)` not `openPosition(PositionSide,uint256,uint256)`
+  const openPositionSignature = '0x5806b727'; 
 
   const sideHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
   const sizeHex = parseUnits(params.size.toString(), 8).toString(16).padStart(64, '0');
-  const leverageHex = params.leverage.toString(16).padStart(64, '0');
+  const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
   
   const dataPayload = `0x${openPositionSignature.slice(2)}${sideHex}${sizeHex}${leverageHex}`;
   

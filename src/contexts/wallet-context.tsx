@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { sendTransaction, getWalletAssets, type ChainAsset } from '@/services/blockchain-service';
+import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
@@ -13,7 +12,7 @@ export interface Transaction {
   id: string;
   type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
   details: string | React.ReactNode;
-  status: 'Completed' | 'Pending';
+  status: 'Completed' | 'Pending' | 'Failed';
   token?: string;
   amount?: number;
 }
@@ -93,6 +92,7 @@ const initialMarketData: MarketData = {
     BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
     XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
+    USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
 };
@@ -128,10 +128,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const { toast } = useToast();
   const balancesRef = useRef(balances);
+  const transactionsRef = useRef(transactions);
 
   useEffect(() => {
     balancesRef.current = balances;
   }, [balances]);
+
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
+
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
@@ -150,7 +156,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,chainlink';
+        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,chainlink';
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
         
         if (!response.ok) {
@@ -169,6 +175,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               'binancecoin': 'BNB',
               'ripple': 'XRP',
               'tether': 'USDT',
+              'usd-coin': 'USDC',
               'chainlink': 'LINK',
             };
 
@@ -205,37 +212,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const getTxHistoryStorageKey = (address: string) => `tx_history_${address}`;
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>, status: Transaction['status'] = 'Completed') => {
-    const newTxId = new Date().toISOString() + Math.random();
-    setTransactions(prevTxs => {
-      const newTx = { id: newTxId, status, ...transaction };
-      const newTxs = [...prevTxs, newTx];
-      if (walletAddress) {
-        const storableTxs = newTxs.map(tx => ({...tx, details: typeof tx.details === 'string' ? tx.details : 'React Component'}));
-        localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(storableTxs));
-      }
-      return newTxs;
-    });
-    return newTxId;
-  }, [walletAddress]);
-
- const connectWallet = useCallback(async () => {
-    setIsConnecting(true);
-    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-    setWalletAddress(address);
-
-    try {
-        const assets = await getWalletAssets(address);
-        const newBalances = assets.reduce((acc, asset) => {
-            acc[asset.symbol] = asset.balance;
-            return acc;
-        }, {} as Balances);
-        setBalances(newBalances);
-    } catch (e) {
-        console.error("Failed to get wallet assets:", e);
-        setBalances({});
-    }
-
+  const loadTransactions = useCallback((address: string) => {
     try {
         const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
         if (storedHistory) {
@@ -247,10 +224,59 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         console.error("Failed to load transaction history:", e);
         setTransactions([]);
     }
-
-    setIsConnected(true);
-    setIsConnecting(false);
   }, []);
+
+  const persistTransactions = useCallback((txs: Transaction[], address: string) => {
+      if (!address) return;
+       try {
+        // Remove react components before storing
+        const storableTxs = txs.map(tx => {
+            if (typeof tx.details !== 'string') {
+                return {...tx, details: 'React Component'};
+            }
+            return tx;
+        });
+        localStorage.setItem(getTxHistoryStorageKey(address), JSON.stringify(storableTxs));
+       } catch (e) {
+        console.error("Failed to persist transaction history:", e);
+       }
+  }, []);
+
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status'>, status: Transaction['status'] = 'Completed') => {
+    const newTxId = new Date().toISOString() + Math.random();
+    setTransactions(prevTxs => {
+      const newTx = { id: newTxId, status, ...transaction };
+      const newTxs = [...prevTxs, newTx];
+      if (walletAddress) {
+        persistTransactions(newTxs, walletAddress);
+      }
+      return newTxs;
+    });
+    return newTxId;
+  }, [walletAddress, persistTransactions]);
+
+  const connectWallet = useCallback(async () => {
+    setIsConnecting(true);
+    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+    setWalletAddress(address);
+
+    try {
+        const assets = await getWalletAssets(address);
+        const newBalances = assets.reduce((acc, asset) => {
+            acc[asset.symbol] = asset.balance;
+            return acc;
+        }, {} as Balances);
+        setBalances(newBalances);
+        loadTransactions(address);
+        setIsConnected(true);
+    } catch (e) {
+        console.error("Failed to get wallet assets:", e);
+        setBalances({});
+        setIsConnected(false);
+    } finally {
+        setIsConnecting(false);
+    }
+  }, [loadTransactions]);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);
@@ -267,7 +293,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
-    if (!isConnected) throw new Error("Wallet not connected");
+    if (!isConnected || !walletAddress) throw new Error("Wallet not connected");
 
     const pendingTxId = addTransaction({
       type: 'Send',
@@ -276,28 +302,36 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       amount,
     }, 'Pending');
 
-    const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
-    
-    setTransactions(prevTxs => {
-        const newTxs = prevTxs.map(tx => {
-            if (tx.id === pendingTxId) {
-                if(result.success) {
+    try {
+        const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
+        
+        setTransactions(prevTxs => {
+            const newTxs = prevTxs.map(tx => {
+                if (tx.id === pendingTxId) {
                     updateBalance(tokenSymbol, -amount);
                     return { ...tx, status: 'Completed' as const, details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...` };
                 }
-                return { ...tx, status: 'Completed' as const, details: `Failed to send ${amount} ${tokenSymbol}` };
-            }
-            return tx;
+                return tx;
+            });
+            persistTransactions(newTxs, walletAddress);
+            return newTxs;
         });
-        if (walletAddress) {
-             const storableTxs = newTxs.map(tx => ({...tx, details: typeof tx.details === 'string' ? tx.details : 'React Component'}));
-             localStorage.setItem(getTxHistoryStorageKey(walletAddress), JSON.stringify(storableTxs));
-        }
-        return newTxs;
-    });
+        return result;
 
-    return result;
-  }, [isConnected, walletAddress, addTransaction, updateBalance]);
+    } catch(e) {
+        console.error('Send token transaction failed:', e);
+        setTransactions(prevTxs => {
+            const newTxs = prevTxs.map(tx => 
+                tx.id === pendingTxId ? { ...tx, status: 'Failed' as const, details: `Failed to send ${amount} ${tokenSymbol}` } : tx
+            );
+            persistTransactions(newTxs, walletAddress);
+            return newTxs;
+        });
+        // Re-throw to be caught by the UI component
+        throw e;
+    }
+
+  }, [isConnected, walletAddress, addTransaction, updateBalance, persistTransactions]);
 
   useEffect(() => {
     if (!isConnected || !walletAddress) {
@@ -316,15 +350,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 
                 if (asset.balance > oldBalance) {
                     const amountReceived = asset.balance - oldBalance;
-                    // Check if there is a recent pending 'Send' tx for a similar amount to avoid the loop
-                    const isLikelySelfTx = transactions.some(tx => 
+                    
+                    const isLikelySelfSend = transactionsRef.current.some(tx => 
                         tx.type === 'Send' &&
                         tx.status === 'Pending' &&
                         tx.token === asset.symbol &&
                         Math.abs(tx.amount! - amountReceived) < 0.0001
                     );
                     
-                    if (!isLikelySelfTx) {
+                    if (!isLikelySelfSend) {
                         addTransaction({
                             type: 'Receive',
                             details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`,
@@ -347,7 +381,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const intervalId = setInterval(checkForUpdates, 15000);
 
     return () => clearInterval(intervalId);
-  }, [isConnected, walletAddress, addTransaction, toast, transactions]);
+  }, [isConnected, walletAddress, addTransaction, toast]);
 
 
   const value: WalletContextType = {
@@ -394,3 +428,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

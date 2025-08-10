@@ -17,17 +17,20 @@ export interface ChainAsset {
 // TODO: Add your deployed contract addresses and metadata here.
 // The key should be the symbol and the value should be the contract address.
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
-    'WETH': { address: '0x0b306bf915c4d645ff596e518faf3f9669b97016', name: 'Wrapped Ether', decimals: 18 },
-    'USDT': { address: '0x9a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae', name: 'Tether', decimals: 6 },
-    'SOL': { address: '0x3aa5ebb10dc797cac828524e59a333d0a371443c', name: 'Solana', decimals: 9 },
-    'BNB': { address: '0x59b670e9fa9d0a427751af201d676719a970857b', name: 'BNB', decimals: 18 },
-    'XRP': { address: '0x322813fd9a801c5507c9de605d63cea4f2ce6c44', name: 'XRP', decimals: 6 },
-    'LINK': { address: '0x4a679253410272dd5232b3ff7cf5dbb88f295319', name: 'Chainlink', decimals: 18 },
-    'BTC': { address: '0x09635f643e140090a9a8dcd712ed6285858cebef', name: 'Wrapped Bitcoin', decimals: 8 },
+    'USDT': { address: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1', name: 'Tether', decimals: 6 },
+    'USDC': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'USD Coin', decimals: 6 },
+    'WETH': { address: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1', name: 'Wrapped Ether', decimals: 18 },
+    'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
+    'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
+    'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
+    // Note: The new deployment script did not include XRP or BTC, so they are removed for now.
+    // We can add them back if you deploy corresponding mock contracts.
 };
 
 // TODO: Add your perpetuals protocol contract addresses
-const PERPETUALS_CONTRACT_ADDRESS = 'YOUR_PERPETUALS_CONTRACT_ADDRESS';
+const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf';
+const VAULT_CONTRACT_ADDRESS = '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF';
+const PRICE_ORACLE_ADDRESS = '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf';
 
 
 /**
@@ -99,7 +102,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
              if (erc20data.result && erc20data.result !== '0x') {
                 const balanceWei = BigInt(erc20data.result);
                 const decimals = BigInt(10 ** contract.decimals);
-                const balance = Number(balanceWei) / Number(decimals);
+                const balance = Number(balanceWei * 1000000n / decimals) / 1000000;
                 assets.push({ symbol, name: contract.name, balance });
              } else if (erc20data.error) {
                 console.error(`[BlockchainService] ${symbol} balance RPC Error: ${erc20data.error.message}`);

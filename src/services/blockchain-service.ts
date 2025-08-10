@@ -29,32 +29,6 @@ const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf'
 const VAULT_CONTRACT_ADDRESS = '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF';
 const PRICE_ORACLE_ADDRESS = '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf';
 
-const PERPETUALS_ABI: Abi = [
-  {
-    "inputs": [
-      { "internalType": "address", "name": "_user", "type": "address" }
-    ],
-    "name": "getPositions",
-    "outputs": [
-      {
-        "components": [
-          { "internalType": "uint256", "name": "id", "type": "uint256" },
-          { "internalType": "string", "name": "pair", "type": "string" },
-          { "internalType": "uint256", "name": "collateral", "type": "uint256" },
-          { "internalType": "uint256", "name": "entryPrice", "type": "uint256" },
-          { "internalType": "uint256", "name": "leverage", "type": "uint256" },
-          { "internalType": "enum PerpetualProtocol.PositionDirection", "name": "direction", "type": "uint8" }
-        ],
-        "internalType": "struct PerpetualProtocol.Position[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
-
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching assets for address: ${address}`);
   
@@ -74,7 +48,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     if (ethBalanceResponse.ok) {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
-            const ethBalance = parseInt(ethData.result, 16) / 1e18;
+            const ethBalance = parseFloat(formatUnits(BigInt(ethData.result), 18));
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
              console.error(`ETH balance RPC Error: ${ethData.error.message}`);
@@ -114,7 +88,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                 const balance = parseFloat(formatUnits(balanceWei, contract.decimals));
                 assets.push({ symbol, name: contract.name, balance });
              } else if (erc20data.error) {
-                console.error(`[BlockchainService] ${symbol} balance RPC Error: ${erc20data.error.message}`);
+                // This is expected if a token contract exists but the call reverts (e.g. not a valid ERC20)
+                console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${erc20data.error.message}`);
              }
         } else {
             console.error(`[BlockchainService] Failed to fetch ${symbol} balance with status: ${erc20response.status}`);
@@ -272,28 +247,34 @@ export async function getActivePositions(address: string): Promise<Position[]> {
     // The result is a dynamic bytes array, need to parse it.
     // This is a simplified parsing logic. A real implementation would use a library like ethers.js or viem's decodeFunctionResult.
     const resultData = data.result.substring(2); // remove '0x'
+    if (resultData.length <= 128) { // No positions or empty array
+        return [];
+    }
+
     const offset = parseInt(resultData.slice(0, 64), 16);
     const length = parseInt(resultData.slice(64, 128), 16);
     const positionsData = resultData.slice(128);
     
     const parsedPositions: Position[] = [];
     for (let i = 0; i < length; i++) {
-        // Each position struct takes 6 * 32 bytes = 192 bytes = 384 hex chars
         const posData = positionsData.slice(i * 384, (i + 1) * 384);
         
         const id = parseInt(posData.slice(0, 64), 16);
-        // String parsing is complex, for this simulation we'll hardcode it.
-        const pairData = posData.slice(64, 128); // This is an offset to the string data
-        const collateral = parseFloat(formatUnits(BigInt('0x' + posData.slice(128, 192)), 6)); // Assuming USDT (6 decimals)
-        const entryPrice = parseFloat(formatUnits(BigInt('0x' + posData.slice(192, 256)), 8)); // Assuming price oracle has 8 decimals
+        const pairOffset = parseInt(posData.slice(64, 128), 16) * 2;
+        const pairLength = parseInt(resultData.slice(pairOffset, pairOffset + 64), 16);
+        const pairHex = resultData.slice(pairOffset + 64, pairOffset + 64 + pairLength * 2);
+        
+        let pair = '';
+        for (let j = 0; j < pairHex.length; j += 2) {
+            pair += String.fromCharCode(parseInt(pairHex.substring(j, j + 2), 16));
+        }
+
+        const collateral = parseFloat(formatUnits(BigInt('0x' + posData.slice(128, 192)), 6)); // USDT (6 decimals)
+        const entryPrice = parseFloat(formatUnits(BigInt('0x' + posData.slice(192, 256)), 8)); // Price oracle (8 decimals)
         const leverage = parseInt(posData.slice(256, 320), 16);
         const direction = parseInt(posData.slice(320, 384), 16) === 0 ? 'long' : 'short';
-
-        // NOTE: A proper string decoding from dynamic bytes array is omitted for brevity.
-        // We will mock the pair name based on a simple heuristic.
-        const mockPair = entryPrice > 10000 ? 'BTC/USDT' : 'ETH/USDT';
-
-        parsedPositions.push({ id, pair: mockPair, collateral, entryPrice, leverage, direction });
+        
+        parsedPositions.push({ id, pair, collateral, entryPrice, leverage, direction });
     }
     
     return parsedPositions;
@@ -311,27 +292,73 @@ export async function openPosition(params: {
   leverage: number;
 }): Promise<{ success: boolean; txHash: string }> {
   console.log('[BlockchainService] Opening position with params:', params);
-  if (PERPETUALS_CONTRACT_ADDRESS.startsWith('YOUR_')) {
-    throw new Error("Perpetuals contract address not set. Cannot open position.");
+  
+  const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  const openPositionSignature = '0x11871032';
+  const pairBytes = Buffer.from(params.pair, 'utf8').toString('hex').padEnd(64, '0');
+  const collateralWei = parseUnits(params.collateral.toString(), 6).toString(16).padStart(64, '0');
+  const leverageHex = params.leverage.toString(16).padStart(64, '0');
+  const directionHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
+  
+  const dataPayload = `${openPositionSignature}${pairBytes}${collateralWei}${leverageHex}${directionHex}`;
+  
+  const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_sendTransaction',
+          params: [{
+              from: fromAddress,
+              to: PERPETUALS_CONTRACT_ADDRESS,
+              data: dataPayload,
+              gas: `0x${(200000).toString(16)}`,
+          }],
+          id: 1,
+      }),
+  });
+
+  const txData = await txResponse.json();
+  if (txData.error) {
+    throw new Error(`Open position RPC Error: ${txData.error.message}`);
   }
 
-  return new Promise(resolve => setTimeout(() => resolve({
-    success: true,
-    txHash: '0x' + Array(64).fill(0).map(() => Math.floor(Math.random()*16).toString(16)).join('')
-  }), 1500));
+  return { success: true, txHash: txData.result };
 }
 
-export async function closePosition(positionId: number): Promise<{ success: boolean, pnl: number, payout: number }> {
+export async function closePosition(positionId: number): Promise<{ success: boolean, pnl: number, payout: number, txHash: string }> {
     console.log(`[BlockchainService] Closing position with ID: ${positionId}`);
-    if (PERPETUALS_CONTRACT_ADDRESS.startsWith('YOUR_')) {
-        throw new Error("Perpetuals contract address not set. Cannot close position.");
-    }
     
+    const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+    const closePositionSignature = '0x8f32e3d2';
+    const positionIdHex = positionId.toString(16).padStart(64, '0');
+    const dataPayload = `${closePositionSignature}${positionIdHex}`;
+    
+    const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_sendTransaction',
+          params: [{
+              from: fromAddress,
+              to: PERPETUALS_CONTRACT_ADDRESS,
+              data: dataPayload,
+              gas: `0x${(200000).toString(16)}`,
+          }],
+          id: 1,
+      }),
+    });
+
+    const txData = await txResponse.json();
+    if (txData.error) {
+        throw new Error(`Close position RPC Error: ${txData.error.message}`);
+    }
+
+    // In a real app, you'd wait for the transaction receipt and get the PnL from an event.
+    // Here we'll just return a mock value.
     const pnl = (Math.random() - 0.4) * 50; 
     const payout = 100 + pnl; 
-    return new Promise(resolve => setTimeout(() => resolve({
-        success: true,
-        pnl,
-        payout
-    }), 1500));
+    
+    return { success: true, pnl, payout, txHash: txData.result };
 }

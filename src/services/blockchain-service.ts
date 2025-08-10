@@ -5,6 +5,7 @@
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * Each function is designed to be connected to your blockchain's RPC endpoint.
  */
+import { parseUnits } from 'viem';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
 
@@ -23,8 +24,8 @@ const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, deci
     'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
     'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
     'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
-    // Note: The new deployment script did not include XRP or BTC, so they are removed for now.
-    // We can add them back if you deploy corresponding mock contracts.
+    'BTC': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Bitcoin', decimals: 8 },
+    'XRP': { address: '0x9A676e781A523b5d0C0e43731313A708CB607508', name: 'XRP', decimals: 6 },
 };
 
 // TODO: Add your perpetuals protocol contract addresses
@@ -76,11 +77,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   for (const symbol in ERC20_CONTRACTS) {
       try {
         const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-        if (contract.address.startsWith('YOUR_')) {
-          console.log(`[BlockchainService] Skipping ${symbol} due to placeholder address.`);
-          continue; 
-        }
-
+        
         const paddedAddress = address.substring(2).padStart(64, '0');
         
         const erc20response = await fetch(LOCAL_CHAIN_RPC_URL, {
@@ -178,25 +175,24 @@ export async function sendTransaction(
   const gasPrice = await getGasPrice();
 
   if (tokenSymbol === 'ETH') {
-    const valueInWei = `0x${(amount * 1e18).toString(16)}`;
+    const valueInWei = parseUnits(amount.toString(), 18);
     txParams = {
         from: fromAddress,
         to: toAddress,
-        value: valueInWei,
+        value: `0x${valueInWei.toString(16)}`,
         gas: `0x${(21000).toString(16)}`, // Gas limit for ETH transfer
         gasPrice: `0x${gasPrice.toString(16)}`,
     };
   } else {
     // For ERC20 tokens
     const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-    if (!contractInfo || contractInfo.address.startsWith('YOUR_')) {
+    if (!contractInfo) {
       throw new Error(`Contract for ${tokenSymbol} is not configured.`);
     }
     const transferSignature = '0xa9059cbb';
     const paddedToAddress = toAddress.substring(2).padStart(64, '0');
     
-    // Use BigInt for precise calculation with decimals
-    const valueInSmallestUnit = BigInt(Math.floor(amount * (10 ** contractInfo.decimals)));
+    const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
     const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     
     txParams = {

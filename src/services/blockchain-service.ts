@@ -18,13 +18,16 @@ export interface ChainAsset {
 // The key should be the symbol and the value should be the contract address.
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
     'WETH': { address: '0x0b306bf915c4d645ff596e518faf3f9669b97016', name: 'Wrapped Ether', decimals: 18 },
-    'USDT': { address: '0x9a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae', name: 'Tether', decimals: 18 },
-    'SOL': { address: '0x3aa5ebb10dc797cac828524e59a333d0a371443c', name: 'Solana', decimals: 18 },
+    'USDT': { address: '0x9a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae', name: 'Tether', decimals: 6 },
+    'SOL': { address: '0x3aa5ebb10dc797cac828524e59a333d0a371443c', name: 'Solana', decimals: 9 },
     'BNB': { address: '0x59b670e9fa9d0a427751af201d676719a970857b', name: 'BNB', decimals: 18 },
-    'XRP': { address: '0x322813fd9a801c5507c9de605d63cea4f2ce6c44', name: 'XRP', decimals: 18 },
+    'XRP': { address: '0x322813fd9a801c5507c9de605d63cea4f2ce6c44', name: 'XRP', decimals: 6 },
     'LINK': { address: '0x4a679253410272dd5232b3ff7cf5dbb88f295319', name: 'Chainlink', decimals: 18 },
-    'BTC': { address: '0x09635f643e140090a9a8dcd712ed6285858cebef', name: 'Wrapped Bitcoin', decimals: 18 },
+    'BTC': { address: '0x09635f643e140090a9a8dcd712ed6285858cebef', name: 'Wrapped Bitcoin', decimals: 8 },
 };
+
+// TODO: Add your perpetuals protocol contract addresses
+const PERPETUALS_CONTRACT_ADDRESS = 'YOUR_PERPETUALS_CONTRACT_ADDRESS';
 
 
 /**
@@ -93,7 +96,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
 
         if (erc20response.ok) {
             const erc20data = await erc20response.json();
-             if (erc20data.result) {
+             if (erc20data.result && erc20data.result !== '0x') {
                 const balance = parseInt(erc20data.result, 16) / (10 ** contract.decimals);
                 assets.push({ symbol, name: contract.name, balance });
              } else if (erc20data.error) {
@@ -228,3 +231,70 @@ export async function sendTransaction(
     txHash: data.result,
   };
 }
+
+
+// --- Live Trading Functions ---
+
+export interface Position {
+  id: number;
+  pair: string;
+  collateral: number;
+  entryPrice: number;
+  leverage: number;
+  direction: 'long' | 'short';
+}
+
+export async function getActivePositions(address: string): Promise<Position[]> {
+  // TODO: Implement the logic to call your smart contract's `getPositions` function.
+  // This is a placeholder that returns an empty array.
+  console.log(`[BlockchainService] Fetching active positions for ${address}...`);
+  if (PERPETUALS_CONTRACT_ADDRESS.startsWith('YOUR_')) {
+    console.warn("[BlockchainService] Perpetuals contract address not set. Returning empty positions.");
+    return [];
+  }
+  
+  // Example of what the implementation might look like:
+  // const response = await fetch(LOCAL_CHAIN_RPC_URL, { ... });
+  // const data = await response.json();
+  // return parsePositions(data.result);
+
+  return [];
+}
+
+export async function openPosition(params: {
+  pair: string;
+  collateral: number;
+  direction: 'long' | 'short';
+  leverage: number;
+}): Promise<{ success: boolean; txHash: string }> {
+  // TODO: Implement the logic to call your smart contract's `openPosition` function.
+  console.log('[BlockchainService] Opening position with params:', params);
+  if (PERPETUALS_CONTRACT_ADDRESS.startsWith('YOUR_')) {
+    throw new Error("Perpetuals contract address not set. Cannot open position.");
+  }
+
+  // This is a placeholder response.
+  return new Promise(resolve => setTimeout(() => resolve({
+    success: true,
+    txHash: '0x' + Array(64).fill(0).map(() => Math.floor(Math.random()*16).toString(16)).join('')
+  }), 1500));
+}
+
+export async function closePosition(positionId: number): Promise<{ success: boolean, pnl: number, payout: number }> {
+    // TODO: Implement the logic to call your smart contract's `closePosition` function.
+    console.log(`[BlockchainService] Closing position with ID: ${positionId}`);
+    if (PERPETUALS_CONTRACT_ADDRESS.startsWith('YOUR_')) {
+        throw new Error("Perpetuals contract address not set. Cannot close position.");
+    }
+    
+    // This is a placeholder response.
+    const pnl = (Math.random() - 0.4) * 50; // Simulate some profit or loss
+    const payout = 100 + pnl; // Placeholder payout
+    return new Promise(resolve => setTimeout(() => resolve({
+        success: true,
+        pnl,
+        payout
+    }), 1500));
+}
+
+    

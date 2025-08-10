@@ -14,34 +14,24 @@ import { TradingChart, type Candle } from '@/components/trading/trading-chart';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-
-interface Trade {
-  amount: number;
-  direction: 'long' | 'short';
-  entryPrice: string;
-  leverage: number;
-  livePnl: string;
-  pair: string;
-}
-
-interface TradeHistoryItem extends Trade {
-  finalPnl: string;
-  closePrice: string;
-}
+import { getActivePositions, openPosition, closePosition, type Position } from '@/services/blockchain-service';
+import { useToast } from '@/hooks/use-toast';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, balances, marketData } = walletState;
+  const { isConnected, balances, marketData, walletAddress } = walletState;
   const { updateBalance } = walletActions;
+  const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeAmount, setTradeAmount] = useState('');
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
   const [leverage, setLeverage] = useState(1);
-  const [isPlacingTrade, setIsPlacingTrade] = useState(false);
-  const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
-  const [tradeHistory, setTradeHistory] = useState<TradeHistoryItem[]>([]);
-  const [currentPrice, setCurrentPrice] = useState(marketData['ETH'].price);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [activePositions, setActivePositions] = useState<Position[]>([]);
+  const [isLoadingPositions, setIsLoadingPositions] = useState(true);
+  
+  const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
   const [candleData, setCandleData] = useState<Candle[]>([]);
 
   const usdtBalance = balances['USDT'] || 0;
@@ -49,7 +39,7 @@ const TradingPageContent = () => {
   const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
     setCandleData(candles);
   }, []);
-
+  
   const asset = selectedPair.split('/')[0];
   
   useEffect(() => {
@@ -59,8 +49,28 @@ const TradingPageContent = () => {
     }
   }, [marketData, selectedPair]);
 
+  const fetchPositions = useCallback(async () => {
+    if (!isConnected || !walletAddress) return;
+    setIsLoadingPositions(true);
+    try {
+      const positions = await getActivePositions(walletAddress);
+      setActivePositions(positions);
+    } catch (e) {
+      console.error("Failed to fetch active positions:", e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch trading positions.' });
+    }
+    setIsLoadingPositions(false);
+  }, [isConnected, walletAddress, toast]);
+
+  useEffect(() => {
+    fetchPositions();
+  }, [fetchPositions]);
+
   const handlePairChange = (pair: string) => {
-    if(activeTrade) return; // Prevent changing pair with an active trade
+    if(activePositions.length > 0) {
+      toast({ title: "Action blocked", description: "Close all active positions before changing pairs."});
+      return;
+    }
     setSelectedPair(pair);
     const pairAsset = pair.split('/')[0];
     if (marketData[pairAsset]) {
@@ -69,50 +79,57 @@ const TradingPageContent = () => {
     setTradeAmount('');
   };
 
-  const placeTrade = () => {
+  const handlePlaceTrade = async () => {
     const amount = parseFloat(tradeAmount);
-    if (isNaN(amount) || amount <= 0 || amount > usdtBalance) return;
+    if (isNaN(amount) || amount <= 0 || amount > usdtBalance) {
+        toast({ variant: 'destructive', title: 'Invalid amount' });
+        return;
+    };
     
-    setIsPlacingTrade(true);
-    setTimeout(() => {
-      const entryPrice = currentPrice;
-      setActiveTrade({
-        pair: selectedPair,
-        amount,
-        direction: tradeDirection,
-        entryPrice: entryPrice.toFixed(4),
-        leverage,
-        livePnl: '0.00',
+    setIsProcessing(true);
+    try {
+      await openPosition({
+          pair: selectedPair,
+          collateral: amount,
+          direction: tradeDirection,
+          leverage,
       });
       updateBalance('USDT', -amount);
+      toast({ title: 'Position Opened', description: `Your ${tradeDirection} position for ${selectedPair} is now active.`});
       setTradeAmount('');
-      setIsPlacingTrade(false);
-    }, 1500);
+      fetchPositions(); // Refresh positions
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Trade Failed', description: e.message });
+    } finally {
+        setIsProcessing(false);
+    }
   };
 
-  const closeTrade = useCallback(() => {
-    if (!activeTrade) return;
-    const finalPrice = currentPrice + (Math.random() - 0.5) * (currentPrice * 0.01);
-    const pnl = activeTrade.direction === 'long'
-      ? ((finalPrice - parseFloat(activeTrade.entryPrice)) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage
-      : ((parseFloat(activeTrade.entryPrice) - finalPrice) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage;
-
-    const newBalance = activeTrade.amount + pnl;
-
-    updateBalance('USDT', newBalance);
-    setTradeHistory(prev => [{ ...activeTrade, finalPnl: pnl.toFixed(2), closePrice: finalPrice.toFixed(4) }, ...prev]);
-    setActiveTrade(null);
-  }, [activeTrade, currentPrice, updateBalance]);
-
-  useEffect(() => {
-    if (activeTrade) {
-      const pnl = activeTrade.direction === 'long'
-        ? ((currentPrice - parseFloat(activeTrade.entryPrice)) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage
-        : ((parseFloat(activeTrade.entryPrice) - currentPrice) / parseFloat(activeTrade.entryPrice)) * activeTrade.amount * activeTrade.leverage;
-
-      setActiveTrade(prev => prev ? ({ ...prev, livePnl: pnl.toFixed(2) }) : null);
+  const handleCloseTrade = async (positionId: number) => {
+    setIsProcessing(true);
+    try {
+        const result = await closePosition(positionId);
+        updateBalance('USDT', result.payout);
+        toast({
+            title: 'Position Closed',
+            description: `PnL: $${result.pnl.toFixed(2)}. You received ${result.payout.toFixed(2)} USDT.`
+        });
+        fetchPositions();
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Failed to Close', description: e.message });
+    } finally {
+        setIsProcessing(false);
     }
-  }, [currentPrice, activeTrade]);
+  };
+
+  const calculatePnl = (position: Position) => {
+      const entryPrice = position.entryPrice;
+      if (position.direction === 'long') {
+          return ((currentPrice - entryPrice) / entryPrice) * position.collateral * position.leverage;
+      } else {
+          return ((entryPrice - currentPrice) / entryPrice) * position.collateral * position.leverage;
+      }
+  };
   
   const tradeablePairs = ['ETH/USDT', 'BTC/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
@@ -130,7 +147,7 @@ const TradingPageContent = () => {
           <CardHeader>
               <div className="flex items-center gap-4">
                   <h2 className="text-xl font-bold text-foreground">Futures</h2>
-                  <Select value={selectedPair} onValueChange={handlePairChange} disabled={!!activeTrade}>
+                  <Select value={selectedPair} onValueChange={handlePairChange} disabled={activePositions.length > 0}>
                       <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select Pair" />
                       </SelectTrigger>
@@ -156,48 +173,42 @@ const TradingPageContent = () => {
         </Card>
         
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-primary">Positions & History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activeTrade && (
-              <div className="p-4 bg-background rounded-md mb-4 border">
-                <p className="text-sm text-muted-foreground">Active Position:</p>
-                <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
-                  <span className={`text-lg font-bold ${activeTrade.direction === 'long' ? 'text-green-400' : 'text-red-400'}`}>
-                    {activeTrade.direction.toUpperCase()} ${activeTrade.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
-                   <span className="text-foreground font-semibold">{activeTrade.pair}</span>
-                  <span className="text-foreground font-semibold">Entry: ${parseFloat(activeTrade.entryPrice).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
-                  <span className="text-foreground font-semibold">Leverage: {activeTrade.leverage}x</span>
-                </div>
-                <div className="mt-2 text-2xl font-bold">
-                  P&L: <span className={parseFloat(activeTrade.livePnl) >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    ${parseFloat(activeTrade.livePnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
-                </div>
-                <Button onClick={closeTrade} className="w-full mt-4" variant="destructive">Close Position</Button>
-              </div>
-            )}
-            <h3 className="text-lg font-semibold mb-2 text-foreground">Trade History</h3>
-            {tradeHistory.length > 0 ? (
-              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                {tradeHistory.map((trade, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-background rounded-md border">
-                    <div>
-                      <span className={`font-bold ${trade.direction === 'long' ? 'text-green-400' : 'text-red-400'}`}>
-                        {trade.direction.toUpperCase()} ${trade.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} {trade.pair}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-2">({trade.leverage}x)</span>
+            <CardHeader>
+                <CardTitle className="text-2xl font-bold text-primary">Active Positions</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {isLoadingPositions ? (
+                    <Skeleton className="h-24 w-full"/>
+                ) : activePositions.length > 0 ? (
+                    <div className="space-y-4">
+                    {activePositions.map(pos => {
+                        const pnl = calculatePnl(pos);
+                        return (
+                            <div key={pos.id} className="p-4 bg-background rounded-md border">
+                                <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
+                                <span className={`text-lg font-bold ${pos.direction === 'long' ? 'text-green-400' : 'text-red-400'}`}>
+                                    {pos.direction.toUpperCase()} ${pos.collateral.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </span>
+                                <span className="text-foreground font-semibold">{pos.pair}</span>
+                                <span className="text-foreground font-semibold">Entry: ${pos.entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
+                                <span className="text-foreground font-semibold">Leverage: {pos.leverage}x</span>
+                                </div>
+                                <div className="mt-2 text-2xl font-bold">
+                                P&L: <span className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                    ${pnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </span>
+                                </div>
+                                <Button onClick={() => handleCloseTrade(pos.id)} className="w-full mt-4" variant="destructive" disabled={isProcessing}>
+                                    {isProcessing ? <Loader2 className="animate-spin"/> : 'Close Position'}
+                                </Button>
+                            </div>
+                        );
+                    })}
                     </div>
-                    <p className="text-sm">PnL: <span className={parseFloat(trade.finalPnl) >= 0 ? 'text-green-400' : 'text-red-400'}>${parseFloat(trade.finalPnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No trades closed yet.</p>
-            )}
-          </CardContent>
+                ) : (
+                    <p className="text-muted-foreground text-center py-8">No active positions.</p>
+                )}
+            </CardContent>
         </Card>
       </div>
 
@@ -214,7 +225,7 @@ const TradingPageContent = () => {
                 type="number"
                 value={tradeAmount}
                 onChange={(e) => setTradeAmount(e.target.value)}
-                disabled={!isConnected || activeTrade !== null}
+                disabled={!isConnected}
                 placeholder="0.0"
               />
               <p className="text-xs text-muted-foreground mt-1">Balance: {usdtBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDT</p>
@@ -224,23 +235,20 @@ const TradingPageContent = () => {
               <Select
                 value={String(leverage)}
                 onValueChange={(val) => setLeverage(parseInt(val))}
-                disabled={!isConnected || activeTrade !== null}
+                disabled={!isConnected}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">1x</SelectItem>
-                  <SelectItem value="2">2x</SelectItem>
-                  <SelectItem value="5">5x</SelectItem>
-                  <SelectItem value="10">10x</SelectItem>
+                  {[1, 2, 5, 10, 20, 50].map(l => <SelectItem key={l} value={String(l)}>{l}x</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex space-x-2">
-              <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected || !!activeTrade}><TrendingUp size={16} className="mr-2" /> Long</Button>
-              <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected || !!activeTrade}><TrendingDown size={16} className="mr-2" /> Short</Button>
+              <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected}><TrendingUp size={16} className="mr-2" /> Long</Button>
+              <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected}><TrendingDown size={16} className="mr-2" /> Short</Button>
             </div>
-            <Button onClick={placeTrade} disabled={!isConnected || isPlacingTrade || !tradeAmount || parseFloat(tradeAmount) > usdtBalance || !!activeTrade} className="w-full">
-              {isPlacingTrade ? <span className="flex items-center"><RefreshCcw size={16} className="mr-2 animate-spin" /> Placing...</span> : `Place ${tradeDirection === 'long' ? 'Long' : 'Short'} Trade`}
+            <Button onClick={handlePlaceTrade} disabled={!isConnected || isProcessing || !tradeAmount || parseFloat(tradeAmount) > usdtBalance} className="w-full">
+              {isProcessing ? <span className="flex items-center"><RefreshCcw size={16} className="mr-2 animate-spin" /> Placing...</span> : `Place ${tradeDirection === 'long' ? 'Long' : 'Short'} Trade`}
             </Button>
           </CardContent>
         </Card>
@@ -281,3 +289,5 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
+
+    

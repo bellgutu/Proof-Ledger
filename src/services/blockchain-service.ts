@@ -23,7 +23,6 @@ const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, deci
     'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
     'BNB':  { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
     'SOL':  { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
-    'XRP':  { address: '0x9A676e781A523b5d0C0e43731313A708CB607508', name: 'XRP', decimals: 6 },
 };
 
 const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf';

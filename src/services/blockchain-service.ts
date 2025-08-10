@@ -51,13 +51,13 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             const ethBalance = parseFloat(formatUnits(BigInt(ethData.result), 18));
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
-             console.error(`ETH balance RPC Error: ${ethData.error.message}`);
+             console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
         }
     } else {
-         console.error(`Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
+         console.error(`[BlockchainService] Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
     }
   } catch (error) {
-    console.error("Error connecting to local blockchain for ETH balance:", error);
+    console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
   }
   
   const BALANCE_OF_SIGNATURE = '0x70a08231';
@@ -85,8 +85,11 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             const erc20data = await erc20response.json();
              if (erc20data.result && erc20data.result !== '0x') {
                 const balanceWei = BigInt(erc20data.result);
+                // The definitive fix: Use viem's formatUnits to correctly handle all token decimals
                 const balance = parseFloat(formatUnits(balanceWei, contract.decimals));
-                assets.push({ symbol, name: contract.name, balance });
+                if (balance > 0) {
+                  assets.push({ symbol, name: contract.name, balance });
+                }
              } else if (erc20data.error) {
                 // This is expected if a token contract exists but the call reverts (e.g. not a valid ERC20)
                 console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${erc20data.error.message}`);
@@ -253,20 +256,37 @@ export async function getActivePositions(address: string): Promise<Position[]> {
 
     const offset = parseInt(resultData.slice(0, 64), 16);
     const length = parseInt(resultData.slice(64, 128), 16);
-    const positionsData = resultData.slice(128);
+    if(length === 0) return [];
+    
+    // The actual position data starts after the length property of the array
+    const positionsDataStart = 128 + (offset * 2); 
+    const positionsData = resultData.slice(positionsDataStart);
     
     const parsedPositions: Position[] = [];
+    // Each position struct is 6 * 32 bytes = 192 bytes = 384 hex chars long
+    // However, the pair is dynamic. We need to handle offsets for that.
+    
+    const positionWords = resultData.slice(128);
+
     for (let i = 0; i < length; i++) {
-        const posData = positionsData.slice(i * 384, (i + 1) * 384);
-        
+        // Each element in the dynamic array is a 32-byte offset to the struct data
+        const structBaseOffset = parseInt(positionWords.slice(i * 64, (i + 1) * 64), 16) * 2;
+        const posData = resultData.slice(structBaseOffset);
+
         const id = parseInt(posData.slice(0, 64), 16);
+
+        // Pair (string) is dynamic within the struct
         const pairOffset = parseInt(posData.slice(64, 128), 16) * 2;
-        const pairLength = parseInt(resultData.slice(pairOffset, pairOffset + 64), 16);
-        const pairHex = resultData.slice(pairOffset + 64, pairOffset + 64 + pairLength * 2);
+        const pairData = resultData.slice(pairOffset);
+        const pairLength = parseInt(pairData.slice(0, 64), 16);
+        const pairHex = pairData.slice(64, 64 + pairLength * 2);
         
         let pair = '';
-        for (let j = 0; j < pairHex.length; j += 2) {
-            pair += String.fromCharCode(parseInt(pairHex.substring(j, j + 2), 16));
+        try {
+            pair = Buffer.from(pairHex, 'hex').toString('utf8');
+        } catch (e) {
+            console.error("Error decoding pair string:", e);
+            pair = "UNKNOWN";
         }
 
         const collateral = parseFloat(formatUnits(BigInt('0x' + posData.slice(128, 192)), 6)); // USDT (6 decimals)
@@ -274,7 +294,9 @@ export async function getActivePositions(address: string): Promise<Position[]> {
         const leverage = parseInt(posData.slice(256, 320), 16);
         const direction = parseInt(posData.slice(320, 384), 16) === 0 ? 'long' : 'short';
         
-        parsedPositions.push({ id, pair, collateral, entryPrice, leverage, direction });
+        if (id > 0) { // Only add valid positions
+            parsedPositions.push({ id, pair, collateral, entryPrice, leverage, direction });
+        }
     }
     
     return parsedPositions;
@@ -295,12 +317,25 @@ export async function openPosition(params: {
   
   const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   const openPositionSignature = '0x11871032';
-  const pairBytes = Buffer.from(params.pair, 'utf8').toString('hex').padEnd(64, '0');
-  const collateralWei = parseUnits(params.collateral.toString(), 6).toString(16).padStart(64, '0');
+
+  // Correctly encode dynamic string `pair` and other params for `openPosition`
+  const pairBytes = Buffer.from(params.pair, 'utf8').toString('hex');
+  const collateralWei = parseUnits(params.collateral.toString(), 6);
+
+  // Using a simplified encoding for local development. A robust solution would use an ABI encoder.
+  // The structure is: function_selector, offset_to_pair, collateral, leverage, direction, length_of_pair, pair_data
+  const staticDataOffset = 4 * 32; // 4 static params: offset, collateral, leverage, direction
+  const pairDataLength = Math.ceil(pairBytes.length / 2);
+
+  const functionSelector = openPositionSignature.slice(2);
+  const pairOffsetHex = (staticDataOffset).toString(16).padStart(64, '0');
+  const collateralHex = collateralWei.toString(16).padStart(64, '0');
   const leverageHex = params.leverage.toString(16).padStart(64, '0');
   const directionHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
+  const pairLengthHex = pairDataLength.toString(16).padStart(64, '0');
+  const pairDataHex = pairBytes.padEnd(Math.ceil(pairBytes.length / 64) * 64, '0'); // Pad to nearest 32 bytes
   
-  const dataPayload = `${openPositionSignature}${pairBytes}${collateralWei}${leverageHex}${directionHex}`;
+  const dataPayload = `0x${functionSelector}${pairOffsetHex}${collateralHex}${leverageHex}${directionHex}${pairLengthHex}${pairDataHex}`;
   
   const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',
@@ -312,7 +347,7 @@ export async function openPosition(params: {
               from: fromAddress,
               to: PERPETUALS_CONTRACT_ADDRESS,
               data: dataPayload,
-              gas: `0x${(200000).toString(16)}`,
+              gas: `0x${(300000).toString(16)}`, // Increased gas for complex transaction
           }],
           id: 1,
       }),

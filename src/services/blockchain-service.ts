@@ -18,11 +18,11 @@ export interface ChainAsset {
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
     'USDT': { address: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1', name: 'Tether', decimals: 6 },
     'USDC': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'USD Coin', decimals: 6 },
-    'BTC':  { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Bitcoin', decimals: 8 },
+    'BTC': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Bitcoin', decimals: 8 },
     'WETH': { address: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1', name: 'Wrapped Ether', decimals: 18 },
     'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
-    'BNB':  { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
-    'SOL':  { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
+    'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
+    'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
 };
 
 const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf';
@@ -85,13 +85,11 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             const erc20data = await erc20response.json();
              if (erc20data.result && erc20data.result !== '0x') {
                 const balanceWei = BigInt(erc20data.result);
-                // The definitive fix: Use viem's formatUnits to correctly handle all token decimals
                 const balance = parseFloat(formatUnits(balanceWei, contract.decimals));
                 if (balance > 0) {
                   assets.push({ symbol, name: contract.name, balance });
                 }
              } else if (erc20data.error) {
-                // This is expected if a token contract exists but the call reverts (e.g. not a valid ERC20)
                 console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${erc20data.error.message}`);
              }
         } else {
@@ -205,23 +203,23 @@ export async function sendTransaction(
 
 
 export interface Position {
-  id: number;
-  pair: string;
+  side: 'long' | 'short';
+  size: number;
   collateral: number;
   entryPrice: number;
-  leverage: number;
-  direction: 'long' | 'short';
+  active: boolean;
+  // Note: 'pair' and 'leverage' are part of the UI state but not the contract's Position struct
 }
 
-export async function getActivePositions(address: string): Promise<Position[]> {
-  console.log(`[BlockchainService] Fetching active positions for ${address}...`);
+export async function getActivePosition(address: string): Promise<Position | null> {
+  console.log(`[BlockchainService] Fetching active position for ${address}...`);
   if (!PERPETUALS_CONTRACT_ADDRESS) {
-    console.warn("[BlockchainService] Perpetuals contract address not set. Returning empty positions.");
-    return [];
+    console.warn("[BlockchainService] Perpetuals contract address not set. Returning null.");
+    return null;
   }
 
   try {
-    const getPositionsFunctionSignature = '0x85925d2b'; // keccak256("getPositions(address)")
+    const getPositionFunctionSignature = '0x7598379a'; // keccak256("getUserPosition(address)")
     const paddedAddress = address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {
@@ -232,97 +230,61 @@ export async function getActivePositions(address: string): Promise<Position[]> {
         method: 'eth_call',
         params: [{
           to: PERPETUALS_CONTRACT_ADDRESS,
-          data: `${getPositionsFunctionSignature}${paddedAddress}`
+          data: `${getPositionFunctionSignature}${paddedAddress}`
         }, 'latest'],
         id: 1,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`eth_call to getPositions failed with status ${response.status}`);
+      throw new Error(`eth_call to getUserPosition failed with status ${response.status}`);
     }
 
     const data = await response.json();
     if (data.error) {
-      throw new Error(`RPC Error for getPositions: ${data.error.message}`);
+      throw new Error(`RPC Error for getUserPosition: ${data.error.message}`);
     }
     
     const resultData = data.result.substring(2);
-    if (resultData.length <= 128) {
-        return [];
-    }
-
-    const offset = parseInt(resultData.slice(0, 64), 16);
-    const length = parseInt(resultData.slice(64, 128), 16);
-    if(length === 0) return [];
-    
-    const positionsDataBlock = resultData.slice(offset * 2); 
-    const positionArrayData = positionsDataBlock.slice(64); // Skip the array length
-    
-    const parsedPositions: Position[] = [];
-
-    for (let i = 0; i < length; i++) {
-        const structData = positionArrayData.slice(i * 192, (i + 1) * 192);
-
-        const id = parseInt(structData.slice(0, 64), 16);
-        
-        const pairOffset = parseInt(structData.slice(64, 128), 16) * 2;
-        const pairDataBlock = positionArrayData.slice(pairOffset - 128); // adjust offset relative to start of array data
-        const pairLength = parseInt(pairDataBlock.slice(0, 64), 16);
-        const pairHex = pairDataBlock.slice(64, 64 + pairLength * 2);
-        
-        let pair = '';
-        try {
-            pair = Buffer.from(pairHex, 'hex').toString('utf8');
-        } catch (e) {
-            console.error("Error decoding pair string:", e);
-            pair = "UNKNOWN";
-        }
-
-        const collateral = parseFloat(formatUnits(BigInt('0x' + structData.slice(128, 192)), 6));
-        const entryPrice = parseFloat(formatUnits(BigInt('0x' + structData.slice(192, 256)), 8));
-        const leverage = parseInt(structData.slice(256, 320), 16);
-        const direction = parseInt(structData.slice(320, 384), 16) === 0 ? 'long' : 'short';
-        
-        if (id > 0) {
-            parsedPositions.push({ id, pair, collateral, entryPrice, leverage, direction });
-        }
+    if (resultData.length === 0) {
+      return null;
     }
     
-    return parsedPositions;
+    // Decode the struct fields
+    const side = parseInt(resultData.slice(0, 64), 16) === 0 ? 'long' : 'short';
+    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(64, 128)), 8));
+    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(128, 192)), 6));
+    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(192, 256)), 8));
+    const active = parseInt(resultData.slice(256, 320), 16) === 1;
+
+    if (!active) {
+        return null; // Don't return inactive positions
+    }
+
+    return { side, size, collateral, entryPrice, active };
 
   } catch (error) {
-    console.error("[BlockchainService] getActivePositions failed:", error);
-    return [];
+    console.error("[BlockchainService] getActivePosition failed:", error);
+    return null;
   }
 }
 
+
 export async function openPosition(params: {
-  pair: string;
-  collateral: number;
+  size: number;
   direction: 'long' | 'short';
   leverage: number;
 }): Promise<{ success: boolean; txHash: string }> {
   console.log('[BlockchainService] Opening position with params:', params);
   
   const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
-  const openPositionSignature = '0x11871032';
+  const openPositionSignature = '0x5806b727'; // keccak256("openPosition(uint8,uint256,uint256)")
 
-  const pairBytes = Buffer.from(params.pair, 'utf8').toString('hex');
-  const collateralWei = parseUnits(params.collateral.toString(), 6);
-
-  const staticDataOffset = 4 * 32; 
-  const pairDataLength = Math.ceil(pairBytes.length / 2);
-
-  const functionSelector = openPositionSignature.slice(2);
-  const pairOffsetHex = (staticDataOffset).toString(16).padStart(64, '0');
-  const collateralHex = collateralWei.toString(16).padStart(64, '0');
+  const sideHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
+  const sizeHex = parseUnits(params.size.toString(), 8).toString(16).padStart(64, '0');
   const leverageHex = params.leverage.toString(16).padStart(64, '0');
-  const directionHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
-  const pairLengthHex = pairDataLength.toString(16).padStart(64, '0');
-  const pairDataHex = pairBytes.padEnd(Math.ceil(pairBytes.length / 64) * 64, '0');
   
-  const dataPayload = `0x${functionSelector}${pairOffsetHex}${collateralHex}${leverageHex}${directionHex}${pairLengthHex}${pairDataHex}`;
+  const dataPayload = `0x${openPositionSignature.slice(2)}${sideHex}${sizeHex}${leverageHex}`;
   
   const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',
@@ -334,7 +296,7 @@ export async function openPosition(params: {
               from: fromAddress,
               to: PERPETUALS_CONTRACT_ADDRESS,
               data: dataPayload,
-              gas: `0x${(300000).toString(16)}`, 
+              gas: `0x${(500000).toString(16)}`, 
           }],
           id: 1,
       }),
@@ -348,13 +310,11 @@ export async function openPosition(params: {
   return { success: true, txHash: txData.result };
 }
 
-export async function closePosition(positionId: number): Promise<{ success: boolean, pnl: number, payout: number, txHash: string }> {
-    console.log(`[BlockchainService] Closing position with ID: ${positionId}`);
+export async function closePosition(): Promise<{ success: boolean, txHash: string }> {
+    console.log(`[BlockchainService] Closing active position`);
     
     const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
-    const closePositionSignature = '0x8f32e3d2';
-    const positionIdHex = positionId.toString(16).padStart(64, '0');
-    const dataPayload = `${closePositionSignature}${positionIdHex}`;
+    const closePositionSignature = '0x43d726d6'; // keccak256("closePosition()")
     
     const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',
@@ -365,8 +325,8 @@ export async function closePosition(positionId: number): Promise<{ success: bool
           params: [{
               from: fromAddress,
               to: PERPETUALS_CONTRACT_ADDRESS,
-              data: dataPayload,
-              gas: `0x${(200000).toString(16)}`,
+              data: closePositionSignature,
+              gas: `0x${(300000).toString(16)}`,
           }],
           id: 1,
       }),
@@ -377,8 +337,5 @@ export async function closePosition(positionId: number): Promise<{ success: bool
         throw new Error(`Close position RPC Error: ${txData.error.message}`);
     }
 
-    const pnl = (Math.random() - 0.4) * 50; 
-    const payout = 100 + pnl; 
-    
-    return { success: true, pnl, payout, txHash: txData.result };
+    return { success: true, txHash: txData.result };
 }

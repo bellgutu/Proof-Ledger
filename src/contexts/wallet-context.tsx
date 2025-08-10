@@ -6,7 +6,7 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
-type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
+type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK' | 'USDC';
 
 export interface Transaction {
   id: string;
@@ -69,6 +69,7 @@ interface WalletActions {
   connectWallet: () => void;
   disconnectWallet: () => void;
   updateBalance: (symbol: string, amount: number) => void;
+  setBalances: React.Dispatch<SetStateAction<Balances>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status'>, status?: Transaction['status']) => string;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
@@ -404,6 +405,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           connectWallet,
           disconnectWallet,
           updateBalance,
+          setBalances,
           sendTokens,
           addTransaction,
           setVaultWeth,
@@ -428,5 +430,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

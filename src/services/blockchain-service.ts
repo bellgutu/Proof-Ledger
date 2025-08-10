@@ -20,11 +20,11 @@ export interface ChainAsset {
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
     'USDT': { address: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1', name: 'Tether', decimals: 6 },
     'USDC': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'USD Coin', decimals: 6 },
-    'WETH': { address: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1', name: 'Wrapped Ether', decimals: 18 },
-    'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
-    'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
-    'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
     'BTC': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Bitcoin', decimals: 8 },
+    'WETH': { address: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1', name: 'Wrapped Ether', decimals: 18 },
+    'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
+    'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
+    'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
     'XRP': { address: '0x9A676e781A523b5d0C0e43731313A708CB607508', name: 'XRP', decimals: 6 },
 };
 
@@ -98,8 +98,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             const erc20data = await erc20response.json();
              if (erc20data.result && erc20data.result !== '0x') {
                 const balanceWei = BigInt(erc20data.result);
-                const decimals = BigInt(10 ** contract.decimals);
-                const balance = Number(balanceWei * 1000000n / decimals) / 1000000;
+                const divisor = 10n ** BigInt(contract.decimals);
+                const balance = Number(balanceWei) / Number(divisor);
                 assets.push({ symbol, name: contract.name, balance });
              } else if (erc20data.error) {
                 console.error(`[BlockchainService] ${symbol} balance RPC Error: ${erc20data.error.message}`);
@@ -297,5 +297,7 @@ export async function closePosition(positionId: number): Promise<{ success: bool
         payout
     }), 1500));
 }
+
+    
 
     

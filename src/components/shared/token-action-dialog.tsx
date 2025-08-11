@@ -45,14 +45,14 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   
   const sendForm = useForm<SendInput>({
     resolver: zodResolver(SendSchema),
-    defaultValues: { recipient: '', amount: undefined },
+    defaultValues: { recipient: '', amount: '' as any },
   });
 
   const assetPrice = marketData[asset.symbol]?.price || 0;
   
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
-    return ((amount || 0) * assetPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
+    return ((Number(amount) || 0) * assetPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
   }, [sendForm, assetPrice]);
   
   const tokenTransactions = useMemo(() => {
@@ -124,7 +124,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   
   useEffect(() => {
     if (!isOpen) {
-        sendForm.reset({ recipient: '', amount: undefined });
+        sendForm.reset({ recipient: '', amount: '' as any });
     }
   }, [isOpen, sendForm]);
 

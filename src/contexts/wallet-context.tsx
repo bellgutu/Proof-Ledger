@@ -130,6 +130,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const balancesRef = useRef(balances);
   const transactionsRef = useRef(transactions);
+  const isSendingRef = useRef(false);
 
   useEffect(() => {
     balancesRef.current = balances;
@@ -296,6 +297,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!isConnected || !walletAddress) throw new Error("Wallet not connected");
 
+    isSendingRef.current = true;
     const pendingTxId = addTransaction({
       type: 'Send',
       details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
@@ -306,10 +308,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     try {
         const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
         
+        // Optimistically update balance immediately
+        updateBalance(tokenSymbol, -amount);
+
         setTransactions(prevTxs => {
             const newTxs = prevTxs.map(tx => {
                 if (tx.id === pendingTxId) {
-                    updateBalance(tokenSymbol, -amount);
                     return { ...tx, status: 'Completed' as const, details: `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}... Tx: ${result.txHash.slice(0,10)}...` };
                 }
                 return tx;
@@ -330,6 +334,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         });
         // Re-throw to be caught by the UI component
         throw e;
+    } finally {
+        setTimeout(() => { isSendingRef.current = false; }, 5000); // Reset after 5s
     }
 
   }, [isConnected, walletAddress, addTransaction, updateBalance, persistTransactions]);
@@ -340,40 +346,36 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const checkForUpdates = async () => {
+        // If a send was just initiated, wait before polling to avoid race conditions.
+        if (isSendingRef.current) return;
+
         try {
             const newAssets = await getWalletAssets(walletAddress);
             const currentBalances = balancesRef.current;
-            const newBalances: Balances = {};
+            const newBalancesState: Balances = {};
 
             for (const asset of newAssets) {
-                newBalances[asset.symbol] = asset.balance;
+                newBalancesState[asset.symbol] = asset.balance;
                 const oldBalance = currentBalances[asset.symbol] || 0;
                 
-                if (asset.balance > oldBalance) {
+                // Check for new incoming transactions (balance increased)
+                if (asset.balance > oldBalance + 0.000001) { // Use a small tolerance
                     const amountReceived = asset.balance - oldBalance;
                     
-                    const isLikelySelfSend = transactionsRef.current.some(tx => 
-                        tx.type === 'Send' &&
-                        tx.status === 'Pending' &&
-                        tx.token === asset.symbol &&
-                        Math.abs(tx.amount! - amountReceived) < 0.0001
-                    );
-                    
-                    if (!isLikelySelfSend) {
-                        addTransaction({
-                            type: 'Receive',
-                            details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`,
-                            token: asset.symbol,
-                            amount: amountReceived,
-                        });
-                        toast({
-                            title: 'Transaction Received!',
-                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}.`
-                        });
-                    }
+                    addTransaction({
+                        type: 'Receive',
+                        details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`,
+                        token: asset.symbol,
+                        amount: amountReceived,
+                    });
+                    toast({
+                        title: 'Transaction Received!',
+                        description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}.`
+                    });
                 }
             }
-            setBalances(newBalances);
+            // Update the main balances state with the fetched data
+            setBalances(newBalancesState);
         } catch (error) {
             console.error("Failed to check for wallet updates:", error);
         }
@@ -430,3 +432,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

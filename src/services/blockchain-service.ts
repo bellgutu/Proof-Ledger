@@ -16,9 +16,8 @@ export interface ChainAsset {
 }
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
-    'USDT': { address: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1', name: 'Tether', decimals: 6 },
+    'WETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Wrapped Ether', decimals: 18 },
     'BTC': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Bitcoin', decimals: 8 },
-    'WETH': { address: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1', name: 'Wrapped Ether', decimals: 18 },
     'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
     'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
     'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
@@ -350,3 +349,4 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
+

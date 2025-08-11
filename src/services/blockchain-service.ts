@@ -17,6 +17,7 @@ export interface ChainAsset {
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
     'WETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Wrapped Ether', decimals: 18 },
+    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 6 },
     'BTC': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Bitcoin', decimals: 8 },
     'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
     'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
@@ -31,6 +32,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching all assets for address: ${address}`);
   
   const assets: ChainAsset[] = [];
+  const BALANCE_OF_SIGNATURE = '0x70a08231';
   
   // --- 1. Fetch ETH Balance ---
   try {
@@ -64,7 +66,6 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   }
   
   // --- 2. Fetch WETH Balance ---
-  const BALANCE_OF_SIGNATURE = '0x70a08231';
   try {
     const symbol = 'WETH';
     const contract = ERC20_CONTRACTS[symbol];
@@ -96,9 +97,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
             console.log(`[BlockchainService] Formatted ${symbol} balance: ${balance}`);
 
-            if (balance > 0) {
-              assets.push({ symbol, name: contract.name, balance });
-            }
+            assets.push({ symbol, name: contract.name, balance });
+            
          } else if (wethData.error) {
             console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${wethData.error.message}`);
          }
@@ -107,6 +107,47 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     }
   } catch(e) {
       console.error(`[BlockchainService] Error fetching balance for WETH:`, e)
+  }
+
+  // --- 3. Fetch USDT Balance ---
+  try {
+    const symbol = 'USDT';
+    const contract = ERC20_CONTRACTS[symbol];
+    console.log(`\n[BlockchainService] Checking balance for ${symbol}...`);
+
+    const paddedAddress = address.substring(2).padStart(64, '0');
+
+    const usdtResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_call',
+            params: [{ to: contract.address, data: `${BALANCE_OF_SIGNATURE}${paddedAddress}` }, 'latest'],
+            id: 1,
+        }),
+    });
+
+    if (usdtResponse.ok) {
+        const usdtData = await usdtResponse.json();
+        if (usdtData.result && usdtData.result !== '0x') {
+            const rawBalance = BigInt(usdtData.result);
+            console.log(`[BlockchainService] Raw ${symbol} balance: ${rawBalance}`);
+            console.log(`[BlockchainService] Using ${contract.decimals} decimals for ${symbol}`);
+
+            const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
+            console.log(`[BlockchainService] Formatted ${symbol} balance: ${balance}`);
+            
+            assets.push({ symbol, name: contract.name, balance });
+
+        } else if (usdtData.error) {
+            console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${usdtData.error.message}`);
+        }
+    } else {
+        console.error(`[BlockchainService] Failed to fetch ${symbol} balance with status: ${usdtResponse.status}`);
+    }
+  } catch(e) {
+      console.error(`[BlockchainService] Error fetching balance for ${'USDT'}:`, e)
   }
   
 
@@ -349,4 +390,3 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
-

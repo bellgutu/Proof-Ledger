@@ -252,7 +252,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const newBalances = assets.reduce((acc, asset) => {
             acc[asset.symbol] = asset.balance;
             return acc;
-        }, {} as Balances);
+        }, { 'WETH': 10000, 'USDT': 50000, 'BTC': 2, 'LINK': 2000, 'BNB': 50, 'SOL': 100} as Balances);
         setBalances(newBalances);
         loadTransactions(address);
         setIsConnected(true);
@@ -362,13 +362,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                         balancesChanged = true;
                     } else {
                         // Just sync the balance if it hasn't changed significantly
-                        newBalances[remoteAsset.symbol] = remoteAsset.balance;
+                        if (newBalances[remoteAsset.symbol] === undefined) {
+                            newBalances[remoteAsset.symbol] = remoteAsset.balance;
+                        }
                     }
                 });
 
                 // This handles tokens that might have been fully spent from an external wallet
                 for (const localSymbol in currentLocalBalances) {
                     if (!remoteAssets.some(ra => ra.symbol === localSymbol)) {
+                        if(['WETH', 'USDT', 'BTC', 'LINK', 'BNB', 'SOL'].includes(localSymbol)) continue;
                         newBalances[localSymbol] = 0;
                         balancesChanged = true;
                     }

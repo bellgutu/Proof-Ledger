@@ -6,7 +6,7 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
-type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK' | 'USDC';
+type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
 
 export interface Transaction {
   id: string;
@@ -92,7 +92,6 @@ const initialMarketData: MarketData = {
     SOL: { name: 'Solana', symbol: 'SOL', price: 0, change: 0 },
     BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
-    USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
 };
@@ -146,7 +145,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,chainlink';
+        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,chainlink';
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
         
         if (!response.ok) {
@@ -164,7 +163,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               'solana': 'SOL',
               'binancecoin': 'BNB',
               'tether': 'USDT',
-              'usd-coin': 'USDC',
               'chainlink': 'LINK',
             };
 

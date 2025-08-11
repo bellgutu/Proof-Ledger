@@ -24,8 +24,8 @@ export interface Pool {
   id: string;
   name: string;
   type: 'V2' | 'V3' | 'Stable'; // V2 = Standard, V3 = Concentrated, Stable = Stable-Swap
-  token1: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
-  token2: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDC' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
+  token1: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
+  token2: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
   tvl: number;
   volume24h: number;
   apr: number;
@@ -81,7 +81,7 @@ export default function LiquidityPage() {
   };
 
   const handleClaimRewards = (positionId: string, rewards: number) => {
-    updateBalance('USDC', rewards); // Assuming rewards are in USDC
+    updateBalance('USDT', rewards); // Assuming rewards are in USDT
     setUserPositions(prev => prev.map(p => {
       if (p.id === positionId) {
         return { ...p, unclaimedRewards: 0 };

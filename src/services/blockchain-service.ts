@@ -1,5 +1,6 @@
 
 
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -85,14 +86,11 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             const erc20data = await erc20response.json();
              if (erc20data.result && erc20data.result !== '0x') {
                 const rawBalance = BigInt(erc20data.result);
-                // Correctly use formatUnits to handle decimals
                 const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
                 if (balance > 0) {
                   assets.push({ symbol, name: contract.name, balance });
                 }
              } else if (erc20data.error) {
-                // This is a normal scenario if a contract call reverts (e.g. token doesn't exist on chain)
-                // We log it as a warning but don't throw an error to allow other balances to be fetched.
                 console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${erc20data.error.message}`);
              }
         } else {
@@ -273,14 +271,13 @@ export async function getActivePosition(address: string): Promise<Position | nul
 }
 
 
-export async function openPosition(params: {
+export async function openPosition(fromAddress: string, params: {
   size: number;
   direction: 'long' | 'short';
   leverage: number;
 }): Promise<{ success: boolean; txHash: string }> {
   console.log('[BlockchainService] Opening position with params:', params);
   
-  const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   // The signature is for `openPosition(uint8,uint256,uint256)` not `openPosition(PositionSide,uint256,uint256)`
   const openPositionSignature = '0x5806b727'; 
 
@@ -314,10 +311,9 @@ export async function openPosition(params: {
   return { success: true, txHash: txData.result };
 }
 
-export async function closePosition(): Promise<{ success: boolean, txHash: string }> {
-    console.log(`[BlockchainService] Closing active position`);
+export async function closePosition(fromAddress: string): Promise<{ success: boolean, txHash: string }> {
+    console.log(`[BlockchainService] Closing active position for ${fromAddress}`);
     
-    const fromAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
     const closePositionSignature = '0x43d726d6'; // keccak256("closePosition()")
     
     const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
@@ -343,8 +339,3 @@ export async function closePosition(): Promise<{ success: boolean, txHash: strin
 
     return { success: true, txHash: txData.result };
 }
-
-
-    
-
-    

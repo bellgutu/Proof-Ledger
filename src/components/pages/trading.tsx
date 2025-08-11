@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -14,8 +15,9 @@ import { TradingChart, type Candle } from '@/components/trading/trading-chart';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, openPosition, closePosition, type Position } from '@/services/blockchain-service';
+import { getActivePosition, openPosition, closePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
+import type { Position } from '@/services/blockchain-service';
 
 // We need to store some UI state that's not on the contract
 interface PositionWithUI extends Position {
@@ -27,7 +29,7 @@ interface PositionWithUI extends Position {
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress } = walletState;
-  const { updateBalance } = walletActions;
+  const { updateBalance, setBalances } = walletActions;
   const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
@@ -97,13 +99,16 @@ const TradingPageContent = () => {
   };
 
   const handlePlaceTrade = async () => {
+    if (!walletAddress) {
+        toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address not found.' });
+        return;
+    }
     const size = parseFloat(tradeAmount);
     if (isNaN(size) || size <= 0) {
         toast({ variant: 'destructive', title: 'Invalid trade size' });
         return;
     };
     
-    // Simplified collateral check
     const positionValue = size * currentPrice;
     const requiredCollateral = positionValue / leverage;
     if (requiredCollateral > usdtBalance) {
@@ -113,18 +118,19 @@ const TradingPageContent = () => {
     
     setIsProcessing(true);
     try {
-      // Store UI state before making the call
       localStorage.setItem(`leverage_${walletAddress}`, leverage.toString());
       localStorage.setItem(`pair_${walletAddress}`, selectedPair);
 
-      await openPosition({
+      await openPosition(walletAddress, {
           size,
           direction: tradeDirection,
           leverage,
       });
       toast({ title: 'Position Opened', description: `Your ${tradeDirection} position for ${selectedPair} is now active.`});
       setTradeAmount('');
-      await fetchPosition(); // Refresh position
+      // Manually deduct collateral from UI for immediate feedback
+      updateBalance('USDT', -requiredCollateral);
+      await fetchPosition();
     } catch(e: any) {
         toast({ variant: 'destructive', title: 'Trade Failed', description: e.message });
     } finally {
@@ -133,25 +139,19 @@ const TradingPageContent = () => {
   };
 
   const handleCloseTrade = async () => {
+    if (!walletAddress) {
+        toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address not found.' });
+        return;
+    }
     setIsProcessing(true);
     try {
-        await closePosition();
+        await closePosition(walletAddress);
         toast({ title: 'Position Closed', description: `Your trade has been settled.` });
         
-        // Clear stored UI state
         localStorage.removeItem(`leverage_${walletAddress}`);
         localStorage.removeItem(`pair_${walletAddress}`);
 
-        await fetchPosition(); // This should now return null
-        
-        // Manually trigger a wallet balance update
-        const assets = await getWalletAssets(walletAddress!);
-        const newBalances = assets.reduce((acc, asset) => {
-            acc[asset.symbol] = asset.balance;
-            return acc;
-        }, {} as any);
-        walletActions.setBalances(newBalances);
-
+        await fetchPosition();
     } catch(e: any) {
         toast({ variant: 'destructive', title: 'Failed to Close', description: e.message });
     } finally {

@@ -354,9 +354,4 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
     return { success: true, txHash: txData.result };
 }
 
-
-
-
-
-
-
+    

@@ -8,7 +8,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useWallet } from '@/contexts/wallet-context';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -129,16 +129,16 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   }, [isOpen, sendForm]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="w-full md:w-[450px] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetContent className="w-full md:w-[450px] flex flex-col p-0">
+        <SheetHeader className="p-6">
+          <SheetTitle className="flex items-center gap-3">
              <Image src={getTokenLogo(asset.symbol)} alt={asset.symbol} width={32} height={32}/>
              {asset.name} ({asset.symbol})
-          </DialogTitle>
-          <DialogDescription>Send, receive, or view history for this asset.</DialogDescription>
-        </DialogHeader>
-        <div className="flex-grow overflow-hidden">
+          </SheetTitle>
+          <SheetDescription>Send, receive, or view history for this asset.</SheetDescription>
+        </SheetHeader>
+        <div className="flex-grow overflow-hidden px-6 pb-6">
         <Tabs defaultValue="send" className="w-full h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="send"><Send />Send</TabsTrigger>
@@ -190,7 +190,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
           </TabsContent>
           
           <TabsContent value="receive" className="mt-6 text-center space-y-4">
-              <DialogDescription>Share your address to receive {asset.symbol}.</DialogDescription>
+              <SheetDescription>Share your address to receive {asset.symbol}.</SheetDescription>
               <div className="p-4 bg-background rounded-md border flex flex-col items-center justify-center">
                   <QrCode size={128} className="mb-4 text-foreground p-2 bg-white rounded-md"/>
                   <p className="font-mono text-sm break-all">{walletAddress || "Connect your wallet first"}</p>
@@ -201,7 +201,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
           </TabsContent>
 
           <TabsContent value="history" className="mt-6 flex-grow overflow-hidden">
-             <ScrollArea className="h-full pr-4 max-h-80">
+             <ScrollArea className="h-full pr-4 max-h-[25rem]">
                   {tokenTransactions.length > 0 ? (
                       <div className="space-y-4">
                           {tokenTransactions.slice().reverse().map(tx => (
@@ -252,7 +252,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
             </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

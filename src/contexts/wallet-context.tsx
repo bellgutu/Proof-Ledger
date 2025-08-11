@@ -249,10 +249,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     try {
         const assets = await getWalletAssets(address);
+        
+        // --- THIS IS THE FIX ---
+        // Create the new balances object directly from the fetched assets
         const newBalances = assets.reduce((acc, asset) => {
             acc[asset.symbol] = asset.balance;
             return acc;
-        }, { 'WETH': 10000, 'BTC': 2, 'LINK': 2000, 'BNB': 50, 'SOL': 100} as Balances);
+        }, {} as Balances); // <-- Initial value is an empty object
+
         setBalances(newBalances);
         loadTransactions(address);
         setIsConnected(true);

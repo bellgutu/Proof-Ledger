@@ -16,18 +16,18 @@ export interface ChainAsset {
 }
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
-    'WETH': { address: '0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3', name: 'Wrapped Ether', decimals: 18 },
-    'USDT': { address: '0x4c5859f0F772848b2D91F1D83E2Fe57935348029', name: 'Tether', decimals: 6 },
-    'USDC': { address: '0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154', name: 'USD Coin', decimals: 6 },
-    'BTC': { address: '0xCD8a1C3ba11CF5ECfa6267617243239504a98d90', name: 'Bitcoin', decimals: 8 }, // Note: Address from user log was labeled ETH
-    'LINK': { address: '0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650', name: 'Chainlink', decimals: 18 },
-    'BNB': { address: '0xFD471836031dc5108809D173A067e8486B9047A3', name: 'BNB', decimals: 18 },
-    'SOL': { address: '0x1429859428C0aBc9C2C47C8Ee9FBaf82cFA0F20f', name: 'Solana', decimals: 9 },
+    'WETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Wrapped Ether', decimals: 18 },
+    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 6 },
+    'USDC': { address: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', name: 'USD Coin', decimals: 6 },
+    'BTC': { address: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9', name: 'Bitcoin', decimals: 8 },
+    'LINK': { address: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6', name: 'Chainlink', decimals: 18 },
+    'BNB': { address: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788', name: 'BNB', decimals: 18 },
+    'SOL': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Solana', decimals: 9 },
 };
 
-const PERPETUALS_CONTRACT_ADDRESS = '0x0355B7B8cb128fA5692729Ab3AAa199C1753f726';
-const VAULT_CONTRACT_ADDRESS = '0x8198f5d8F8CfFE8f9C413d98a0A55aEB8ab9FbB7';
-const PRICE_ORACLE_ADDRESS = '0x36b58F5C1969B7b6591D752ea6F5486D069010AB';
+const PERPETUALS_CONTRACT_ADDRESS = '0xc5a5C42992dECbae36851359345FE25997F5C42d';
+const VAULT_CONTRACT_ADDRESS = '0x09635F643e140090A9A8Dcd712eD6285858ceBef';
+const PRICE_ORACLE_ADDRESS = '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F';
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching all assets for address: ${address}`);
@@ -353,6 +353,7 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
+
 
 
 

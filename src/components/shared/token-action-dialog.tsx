@@ -45,14 +45,14 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   
   const sendForm = useForm<SendInput>({
     resolver: zodResolver(SendSchema),
-    defaultValues: { recipient: '', amount: 0 },
+    defaultValues: { recipient: '', amount: undefined },
   });
 
   const assetPrice = marketData[asset.symbol]?.price || 0;
   
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
-    return (amount * assetPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
+    return ((amount || 0) * assetPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
   }, [sendForm, assetPrice]);
   
   const tokenTransactions = useMemo(() => {
@@ -124,7 +124,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   
   useEffect(() => {
     if (!isOpen) {
-        sendForm.reset();
+        sendForm.reset({ recipient: '', amount: undefined });
     }
   }, [isOpen, sendForm]);
 
@@ -170,7 +170,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
                     <FormLabel>Amount</FormLabel>
                     <FormControl>
                         <div>
-                            <Input type="number" placeholder="0.0" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} disabled={!isConnected} />
+                            <Input type="number" placeholder="0.0" {...field} onChange={field.onChange} disabled={!isConnected} />
                         </div>
                     </FormControl>
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">

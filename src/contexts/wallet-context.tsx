@@ -91,7 +91,6 @@ const initialMarketData: MarketData = {
     ETH: { name: 'Ethereum', symbol: 'ETH', price: 0, change: 0 },
     SOL: { name: 'Solana', symbol: 'SOL', price: 0, change: 0 },
     BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
-    XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
     USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
@@ -128,18 +127,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [userPositions, setUserPositions] = useState<UserPosition[]>([]);
   
   const { toast } = useToast();
-  const balancesRef = useRef(balances);
-  const transactionsRef = useRef(transactions);
   const isSendingRef = useRef(false);
-
-  useEffect(() => {
-    balancesRef.current = balances;
-  }, [balances]);
-
-  useEffect(() => {
-    transactionsRef.current = transactions;
-  }, [transactions]);
-
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
@@ -175,7 +163,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               'ethereum': 'ETH',
               'solana': 'SOL',
               'binancecoin': 'BNB',
-              'ripple': 'XRP',
               'tether': 'USDT',
               'usd-coin': 'USDC',
               'chainlink': 'LINK',
@@ -335,54 +322,69 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         // Re-throw to be caught by the UI component
         throw e;
     } finally {
-        setTimeout(() => { isSendingRef.current = false; }, 5000); // Reset after 5s
+        // Reset the flag after a delay to allow the blockchain state to settle
+        setTimeout(() => { isSendingRef.current = false; }, 5000);
     }
 
   }, [isConnected, walletAddress, addTransaction, updateBalance, persistTransactions]);
 
-  useEffect(() => {
-    if (!isConnected || !walletAddress) {
-        return;
-    }
 
-    const checkForUpdates = async () => {
-        // If a send was just initiated, wait before polling to avoid race conditions.
+  // Effect for polling for external wallet updates
+  useEffect(() => {
+    if (!isConnected || !walletAddress) return;
+
+    const pollForUpdates = async () => {
+        // If a send was just initiated by this app, skip this poll cycle
         if (isSendingRef.current) return;
 
         try {
-            const newAssets = await getWalletAssets(walletAddress);
-            const currentBalances = balancesRef.current;
-            const newBalancesState: Balances = {};
+            const remoteAssets = await getWalletAssets(walletAddress);
+            
+            setBalances(currentLocalBalances => {
+                const newBalances: Balances = { ...currentLocalBalances };
+                let balancesChanged = false;
 
-            for (const asset of newAssets) {
-                newBalancesState[asset.symbol] = asset.balance;
-                const oldBalance = currentBalances[asset.symbol] || 0;
-                
-                // Check for new incoming transactions (balance increased)
-                if (asset.balance > oldBalance + 0.000001) { // Use a small tolerance
-                    const amountReceived = asset.balance - oldBalance;
+                remoteAssets.forEach(remoteAsset => {
+                    const localBalance = currentLocalBalances[remoteAsset.symbol] || 0;
                     
-                    addTransaction({
-                        type: 'Receive',
-                        details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}`,
-                        token: asset.symbol,
-                        amount: amountReceived,
-                    });
-                    toast({
-                        title: 'Transaction Received!',
-                        description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${asset.symbol}.`
-                    });
+                    // Detect an incoming transaction
+                    if (remoteAsset.balance > localBalance + 0.000001) { // use tolerance
+                        const amountReceived = remoteAsset.balance - localBalance;
+                        addTransaction({
+                            type: 'Receive',
+                            details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}`,
+                            token: remoteAsset.symbol,
+                            amount: amountReceived,
+                        });
+                        toast({
+                            title: 'Transaction Received!',
+                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
+                        });
+                        newBalances[remoteAsset.symbol] = remoteAsset.balance;
+                        balancesChanged = true;
+                    } else {
+                        // Just sync the balance if it hasn't changed significantly
+                        newBalances[remoteAsset.symbol] = remoteAsset.balance;
+                    }
+                });
+
+                // This handles tokens that might have been fully spent from an external wallet
+                for (const localSymbol in currentLocalBalances) {
+                    if (!remoteAssets.some(ra => ra.symbol === localSymbol)) {
+                        newBalances[localSymbol] = 0;
+                        balancesChanged = true;
+                    }
                 }
-            }
-            // Update the main balances state with the fetched data
-            setBalances(newBalancesState);
+                
+                return balancesChanged ? newBalances : currentLocalBalances;
+            });
+
         } catch (error) {
-            console.error("Failed to check for wallet updates:", error);
+            console.error("Failed to poll for wallet updates:", error);
         }
     };
 
-    const intervalId = setInterval(checkForUpdates, 15000);
-
+    const intervalId = setInterval(pollForUpdates, 15000);
     return () => clearInterval(intervalId);
   }, [isConnected, walletAddress, addTransaction, toast]);
 
@@ -432,5 +434,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

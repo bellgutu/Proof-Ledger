@@ -64,52 +64,52 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
   }
   
-  // --- 2. Fetch ERC-20 Token Balances Individually ---
+  // --- 2. Fetch WETH Balance ---
   const BALANCE_OF_SIGNATURE = '0x70a08231';
-  for (const symbol in ERC20_CONTRACTS) {
-      try {
-        const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-        console.log(`\n[BlockchainService] Checking balance for ${symbol}...`);
-        
-        const paddedAddress = address.substring(2).padStart(64, '0');
-        
-        const erc20response = await fetch(LOCAL_CHAIN_RPC_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'eth_call',
-              params: [{
-                  to: contract.address,
-                  data: `${BALANCE_OF_SIGNATURE}${paddedAddress}`
-              }, 'latest'],
-              id: 1,
-          }),
-        });
+  try {
+    const symbol = 'WETH';
+    const contract = ERC20_CONTRACTS[symbol];
+    console.log(`\n[BlockchainService] Checking balance for ${symbol}...`);
+    
+    const paddedAddress = address.substring(2).padStart(64, '0');
+    
+    const wethResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [{
+              to: contract.address,
+              data: `${BALANCE_OF_SIGNATURE}${paddedAddress}`
+          }, 'latest'],
+          id: 1,
+      }),
+    });
 
-        if (erc20response.ok) {
-            const erc20data = await erc20response.json();
-             if (erc20data.result && erc20data.result !== '0x') {
-                const rawBalance = BigInt(erc20data.result);
-                console.log(`[BlockchainService] Raw ${symbol} balance: ${rawBalance}`);
-                console.log(`[BlockchainService] Using ${contract.decimals} decimals for ${symbol}`);
-                
-                const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
-                console.log(`[BlockchainService] Formatted ${symbol} balance: ${balance}`);
+    if (wethResponse.ok) {
+        const wethData = await wethResponse.json();
+         if (wethData.result && wethData.result !== '0x') {
+            const rawBalance = BigInt(wethData.result);
+            console.log(`[BlockchainService] Raw ${symbol} balance: ${rawBalance}`);
+            console.log(`[BlockchainService] Using ${contract.decimals} decimals for ${symbol}`);
+            
+            const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
+            console.log(`[BlockchainService] Formatted ${symbol} balance: ${balance}`);
 
-                if (balance > 0) {
-                  assets.push({ symbol, name: contract.name, balance });
-                }
-             } else if (erc20data.error) {
-                console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${erc20data.error.message}`);
-             }
-        } else {
-            console.error(`[BlockchainService] Failed to fetch ${symbol} balance with status: ${erc20response.status}`);
-        }
-      } catch(e) {
-          console.error(`[BlockchainService] Error fetching balance for ${symbol}:`, e)
-      }
+            if (balance > 0) {
+              assets.push({ symbol, name: contract.name, balance });
+            }
+         } else if (wethData.error) {
+            console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${wethData.error.message}`);
+         }
+    } else {
+        console.error(`[BlockchainService] Failed to fetch ${symbol} balance with status: ${wethResponse.status}`);
+    }
+  } catch(e) {
+      console.error(`[BlockchainService] Error fetching balance for WETH:`, e)
   }
+  
 
   console.log('\n[BlockchainService] Finished fetching all assets. Final result:', assets);
   return assets;

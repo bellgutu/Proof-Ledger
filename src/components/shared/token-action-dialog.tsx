@@ -83,6 +83,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
 
   const executeSend = async () => {
     if (!txDetails || !walletAddress) return;
+    
     setShowConfirm(false);
     setSending(true);
 
@@ -93,6 +94,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
         sendForm.reset();
         setIsOpen(false);
       } else {
+        // This case might not be hit if sendTokens throws, but is good for robustness
         throw new Error('Transaction failed on-chain.');
       }
     } catch (e: any) {
@@ -119,6 +121,12 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
         return <ContractIcon className="text-blue-500" />;
     }
   };
+  
+  useEffect(() => {
+    if (!isOpen) {
+        sendForm.reset();
+    }
+  }, [isOpen, sendForm]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -201,8 +209,8 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
                                   <div className="mt-1">{getTxIcon(tx.type)}</div>
                                   <div className="flex-grow">
                                     <div className="flex justify-between items-center">
-                                        <span className={`font-semibold text-sm`}>{tx.type} {tx.amount?.toLocaleString()} {tx.token}</span>
-                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${tx.status === 'Completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                        <span className={`font-semibold text-sm`}>{tx.type} {tx.amount?.toLocaleString(undefined, { maximumFractionDigits: 6 })} {tx.token}</span>
+                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${tx.status === 'Completed' ? 'bg-green-500/20 text-green-400' : tx.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
                                             {tx.status}
                                         </span>
                                     </div>

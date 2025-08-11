@@ -1,6 +1,5 @@
 
 
-
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -161,6 +160,7 @@ export async function sendTransaction(
     const transferSignature = '0xa9059cbb';
     const paddedToAddress = toAddress.substring(2).padStart(64, '0');
     
+    // Correctly parse the amount using the token's specific decimals
     const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
     const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     
@@ -278,8 +278,7 @@ export async function openPosition(fromAddress: string, params: {
 }): Promise<{ success: boolean; txHash: string }> {
   console.log('[BlockchainService] Opening position with params:', params);
   
-  // The signature is for `openPosition(uint8,uint256,uint256)` not `openPosition(PositionSide,uint256,uint256)`
-  const openPositionSignature = '0x5806b727'; 
+  const openPositionSignature = '0x5806b727'; // openPosition(uint8,uint256,uint256)
 
   const sideHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
   const sizeHex = parseUnits(params.size.toString(), 8).toString(16).padStart(64, '0');

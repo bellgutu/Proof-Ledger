@@ -18,15 +18,15 @@ export interface ChainAsset {
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
     'WETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Wrapped Ether', decimals: 18 },
     'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 6 },
-    'BTC': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Bitcoin', decimals: 8 },
-    'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
-    'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
-    'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
+    'BTC': { address: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9', name: 'Bitcoin', decimals: 8 },
+    'LINK': { address: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6', name: 'Chainlink', decimals: 18 },
+    'BNB': { address: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788', name: 'BNB', decimals: 18 },
+    'SOL': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Solana', decimals: 9 },
 };
 
-const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf';
-const VAULT_CONTRACT_ADDRESS = '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF';
-const PRICE_ORACLE_ADDRESS = '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf';
+const PERPETUALS_CONTRACT_ADDRESS = '0xc5a5C42992dECbae36851359345FE25997F5C42d';
+const VAULT_CONTRACT_ADDRESS = '0x09635F643e140090A9A8Dcd712eD6285858ceBef';
+const PRICE_ORACLE_ADDRESS = '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F';
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching all assets for address: ${address}`);
@@ -390,5 +390,6 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
+
 
 

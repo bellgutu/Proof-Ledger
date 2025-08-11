@@ -29,11 +29,13 @@ const VAULT_CONTRACT_ADDRESS = '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF';
 const PRICE_ORACLE_ADDRESS = '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf';
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
-  console.log(`[BlockchainService] Fetching assets for address: ${address}`);
+  console.log(`[BlockchainService] Fetching all assets for address: ${address}`);
   
   const assets: ChainAsset[] = [];
   
+  // --- 1. Fetch ETH Balance ---
   try {
+    console.log("[BlockchainService] Fetching ETH balance...");
     const ethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,7 +49,10 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     if (ethBalanceResponse.ok) {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
-            const ethBalance = parseFloat(formatUnits(BigInt(ethData.result), 18));
+            const rawBalance = BigInt(ethData.result);
+            console.log(`[BlockchainService] Raw ETH balance: ${rawBalance}`);
+            const ethBalance = parseFloat(formatUnits(rawBalance, 18));
+            console.log(`[BlockchainService] Formatted ETH balance: ${ethBalance}`);
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
              console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
@@ -59,10 +64,12 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
   }
   
+  // --- 2. Fetch ERC-20 Token Balances Individually ---
   const BALANCE_OF_SIGNATURE = '0x70a08231';
   for (const symbol in ERC20_CONTRACTS) {
       try {
         const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
+        console.log(`\n[BlockchainService] Checking balance for ${symbol}...`);
         
         const paddedAddress = address.substring(2).padStart(64, '0');
         
@@ -84,7 +91,12 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             const erc20data = await erc20response.json();
              if (erc20data.result && erc20data.result !== '0x') {
                 const rawBalance = BigInt(erc20data.result);
+                console.log(`[BlockchainService] Raw ${symbol} balance: ${rawBalance}`);
+                console.log(`[BlockchainService] Using ${contract.decimals} decimals for ${symbol}`);
+                
                 const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
+                console.log(`[BlockchainService] Formatted ${symbol} balance: ${balance}`);
+
                 if (balance > 0) {
                   assets.push({ symbol, name: contract.name, balance });
                 }
@@ -99,6 +111,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
       }
   }
 
+  console.log('\n[BlockchainService] Finished fetching all assets. Final result:', assets);
   return assets;
 }
 

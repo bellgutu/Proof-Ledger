@@ -207,7 +207,8 @@ export async function sendTransaction(
   const data = await response.json();
   if (data.error) {
     console.error("RPC Error details:", data.error);
-    throw new Error(`Transaction RPC Error: ${data.error.message}`);
+    const errorMessage = data.error.message || JSON.stringify(data.error);
+    throw new Error(`Transaction RPC Error: ${errorMessage}`);
   }
 
   return {
@@ -352,6 +353,8 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
+
+    
 
     
 

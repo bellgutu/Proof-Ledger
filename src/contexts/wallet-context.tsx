@@ -335,14 +335,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isConnected || !walletAddress) return;
 
+    let toastQueue: { title: string; description: string }[] = [];
+
     const pollForUpdates = async () => {
         // If a send was just initiated by this app, skip this poll cycle
         if (isSendingRef.current) return;
 
         try {
             const remoteAssets = await getWalletAssets(walletAddress);
-            const notifications: { title: string; description: string }[] = [];
-
+            
             setBalances(currentLocalBalances => {
                 const newBalances: Balances = { ...currentLocalBalances };
                 let balancesChanged = false;
@@ -359,7 +360,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                             token: remoteAsset.symbol,
                             amount: amountReceived,
                         });
-                        notifications.push({
+                        toastQueue.push({
                            title: 'Transaction Received!',
                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
                         });
@@ -384,16 +385,19 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 
                 return balancesChanged ? newBalances : currentLocalBalances;
             });
-            
-            // Fire all collected notifications after the state update
-            notifications.forEach(n => toast(n));
 
         } catch (error) {
             console.error("Failed to poll for wallet updates:", error);
         }
     };
 
-    const intervalId = setInterval(pollForUpdates, 15000);
+    const intervalId = setInterval(async () => {
+      await pollForUpdates();
+      // Fire all collected notifications after the state update
+      toastQueue.forEach(n => toast(n));
+      toastQueue = [];
+    }, 15000);
+
     return () => clearInterval(intervalId);
   }, [isConnected, walletAddress, addTransaction, toast]);
 

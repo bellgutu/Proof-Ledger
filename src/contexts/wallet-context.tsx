@@ -341,7 +341,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
         try {
             const remoteAssets = await getWalletAssets(walletAddress);
-            
+            const notifications: { title: string; description: string }[] = [];
+
             setBalances(currentLocalBalances => {
                 const newBalances: Balances = { ...currentLocalBalances };
                 let balancesChanged = false;
@@ -358,9 +359,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                             token: remoteAsset.symbol,
                             amount: amountReceived,
                         });
-                        toast({
-                            title: 'Transaction Received!',
-                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
+                        notifications.push({
+                           title: 'Transaction Received!',
+                           description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
                         });
                         newBalances[remoteAsset.symbol] = remoteAsset.balance;
                         balancesChanged = true;
@@ -383,6 +384,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 
                 return balancesChanged ? newBalances : currentLocalBalances;
             });
+            
+            // Fire all collected notifications after the state update
+            notifications.forEach(n => toast(n));
 
         } catch (error) {
             console.error("Failed to poll for wallet updates:", error);

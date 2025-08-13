@@ -62,7 +62,8 @@ export default function FinancePage() {
     addTransaction,
     setVaultWeth,
     setActiveStrategy,
-    setProposals
+    setProposals,
+    sendTokens
   } = walletActions;
   const { toast } = useToast();
 
@@ -70,7 +71,7 @@ export default function FinancePage() {
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
 
   const [fromToken, setFromToken] = useState<Token>('ETH');
-  const [toToken, setToToken] = useState<Token>('WETH');
+  const [toToken, setToToken] = useState<Token>('USDT');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [swapping, setSwapping] = useState(false);
@@ -118,7 +119,7 @@ export default function FinancePage() {
     setToAmount(tempAmount);
   };
   
-  const handleSwap = () => {
+  const handleSwap = async () => {
     const amountToSwap = parseFloat(fromAmount);
     if (!fromToken || !toToken || isNaN(amountToSwap) || amountToSwap <= 0 || amountToSwap > (balances[fromToken] || 0)) {
         toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
@@ -126,19 +127,31 @@ export default function FinancePage() {
     }
     
     setSwapping(true);
-    setTimeout(() => {
+    // This is a simulated swap. For a real app, this would involve complex interactions
+    // with a DEX router contract. Here, we simulate it by 'sending' the fromToken
+    // to a dummy address (simulating a contract) and then manually updating the 'toToken' balance.
+    try {
+      // Step 1: Send the `fromToken` to a simulated contract/burner address
+      await sendTokens('0x0000000000000000000000000000000000000001', fromToken, amountToSwap);
+      
+      // Step 2: 'Receive' the `toToken`
       const amountReceived = parseFloat(toAmount);
-      updateBalance(fromToken, -amountToSwap);
       updateBalance(toToken, amountReceived);
       
+      // Step 3: Add a transaction record for the swap
       addTransaction({
         type: 'Swap',
         details: `Swapped ${amountToSwap.toLocaleString('en-US', {maximumFractionDigits: 4})} ${fromToken} for ${amountReceived.toLocaleString('en-US', {maximumFractionDigits: 2})} ${toToken}`
       });
+
       setFromAmount('');
       setToAmount('');
+      toast({ title: "Swap Successful!", description: `You received ${amountReceived.toLocaleString()} ${toToken}.`})
+    } catch(e: any) {
+      toast({ variant: "destructive", title: "Swap Failed", description: e.message || "The transaction could not be completed." });
+    } finally {
       setSwapping(false);
-    }, 1500);
+    }
   };
   
   const handleVote = (proposalId: string, vote: 'for' | 'against') => {

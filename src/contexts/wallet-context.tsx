@@ -6,7 +6,7 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
-type AssetSymbol = 'ETH' | 'USDT' | 'USDC' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK';
+type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
 
 export interface Transaction {
   id: string;
@@ -145,7 +145,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,chainlink';
+        const coinIds = 'ethereum,solana,binancecoin,tether,usd-coin,chainlink';
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
         
         if (!response.ok) {
@@ -337,7 +337,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         // If a send was just initiated by this app, skip this poll cycle
         if (isSendingRef.current) return;
         
-        let newNotifications: { title: string; description: string }[] = [];
+        const notificationsToShow: { title: string; description: string }[] = [];
 
         try {
             const remoteAssets = await getWalletAssets(walletAddress);
@@ -358,7 +358,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                             token: remoteAsset.symbol,
                             amount: amountReceived,
                         });
-                        newNotifications.push({
+                        notificationsToShow.push({
                            title: 'Transaction Received!',
                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
                         });
@@ -368,6 +368,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                         // Just sync the balance if it hasn't changed significantly
                         if (newBalances[remoteAsset.symbol] === undefined) {
                             newBalances[remoteAsset.symbol] = remoteAsset.balance;
+                            balancesChanged = true;
                         }
                     }
                 });
@@ -388,7 +389,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             });
 
             // Fire all collected notifications after the state update
-            newNotifications.forEach(n => toast(n));
+            notificationsToShow.forEach(n => toast(n));
 
         } catch (error) {
             console.error("Failed to poll for wallet updates:", error);

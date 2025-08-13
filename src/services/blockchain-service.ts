@@ -1,5 +1,3 @@
-
-
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -16,17 +14,19 @@ export interface ChainAsset {
 }
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
-    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 6 },
-    'USDC': { address: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9', name: 'USD Coin', decimals: 6 },
-    'WETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Wrapped Ether', decimals: 18 },
-    'LINK': { address: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6', name: 'Chainlink', decimals: 18 },
-    'BNB': { address: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788', name: 'BNB', decimals: 18 },
-    'SOL': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Solana', decimals: 9 },
+    // --- UPDATED CONTRACT ADDRESSES FROM YOUR LATEST DEPLOYMENT ---
+    'USDT': { address: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1', name: 'Tether', decimals: 6 },
+    'USDC': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'USDC', decimals: 6 },
+    'WETH': { address: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1', name: 'Wrapped Ether', decimals: 18 },
+    'ETH': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Ethereum', decimals: 18 },
+    'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
+    'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
+    'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
 };
 
-const PERPETUALS_CONTRACT_ADDRESS = '0xc5a5C42992dECbae36851359345FE25997F5C42d';
-const VAULT_CONTRACT_ADDRESS = '0x09635F643e140090A9A8Dcd712eD6285858ceBef';
-const PRICE_ORACLE_ADDRESS = '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F';
+const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf';
+const VAULT_CONTRACT_ADDRESS = '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF';
+const PRICE_ORACLE_ADDRESS = '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf';
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching all assets for address: ${address}`);
@@ -51,9 +51,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
             const rawBalance = BigInt(ethData.result);
-            console.log(`[BlockchainService] Raw ETH balance: ${rawBalance}`);
             const ethBalance = parseFloat(formatUnits(rawBalance, 18));
-            console.log(`[BlockchainService] Formatted ETH balance: ${ethBalance}`);
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
              console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
@@ -93,12 +91,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
-                  console.log(`[BlockchainService] Raw ${symbol} balance: ${rawBalance}`);
-                  console.log(`[BlockchainService] Using ${contract.decimals} decimals for ${symbol}`);
-                  
                   const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
-                  console.log(`[BlockchainService] Formatted ${symbol} balance: ${balance}`);
-
                   assets.push({ symbol, name: contract.name, balance });
                   
                } else if (data.error) {
@@ -112,7 +105,6 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
       }
   }
   
-
   console.log('\n[BlockchainService] Finished fetching all assets. Final result:', assets);
   return assets;
 }
@@ -353,9 +345,3 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
-
-    
-
-    
-
-    

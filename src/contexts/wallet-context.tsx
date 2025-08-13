@@ -6,7 +6,7 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
-type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'BTC' | 'WETH' | 'LINK';
+type AssetSymbol = 'ETH' | 'USDT' | 'USDC' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK';
 
 export interface Transaction {
   id: string;
@@ -87,11 +87,11 @@ interface WalletContextType {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const initialMarketData: MarketData = {
-    BTC: { name: 'Bitcoin', symbol: 'BTC', price: 0, change: 0 },
     ETH: { name: 'Ethereum', symbol: 'ETH', price: 0, change: 0 },
     SOL: { name: 'Solana', symbol: 'SOL', price: 0, change: 0 },
     BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
+    USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
 };
@@ -145,7 +145,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,chainlink';
+        const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,tether,usd-coin,chainlink';
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
         
         if (!response.ok) {
@@ -158,11 +158,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             const newData: MarketData = { ...prevData };
             
             const mapCoinGeckoToSymbol: { [key: string]: AssetSymbol } = {
-              'bitcoin': 'BTC',
               'ethereum': 'ETH',
               'solana': 'SOL',
               'binancecoin': 'BNB',
               'tether': 'USDT',
+              'usd-coin': 'USDC',
               'chainlink': 'LINK',
             };
 
@@ -250,12 +250,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     try {
         const assets = await getWalletAssets(address);
         
-        // --- THIS IS THE FIX ---
-        // Create the new balances object directly from the fetched assets
         const newBalances = assets.reduce((acc, asset) => {
             acc[asset.symbol] = asset.balance;
             return acc;
-        }, {} as Balances); // <-- Initial value is an empty object
+        }, {} as Balances);
 
         setBalances(newBalances);
         loadTransactions(address);
@@ -335,11 +333,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isConnected || !walletAddress) return;
 
-    let toastQueue: { title: string; description: string }[] = [];
-
     const pollForUpdates = async () => {
         // If a send was just initiated by this app, skip this poll cycle
         if (isSendingRef.current) return;
+        
+        let newNotifications: { title: string; description: string }[] = [];
 
         try {
             const remoteAssets = await getWalletAssets(walletAddress);
@@ -360,7 +358,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                             token: remoteAsset.symbol,
                             amount: amountReceived,
                         });
-                        toastQueue.push({
+                        newNotifications.push({
                            title: 'Transaction Received!',
                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
                         });
@@ -377,26 +375,27 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 // This handles tokens that might have been fully spent from an external wallet
                 for (const localSymbol in currentLocalBalances) {
                     if (!remoteAssets.some(ra => ra.symbol === localSymbol)) {
-                        if(['WETH', 'USDT', 'BTC', 'LINK', 'BNB', 'SOL'].includes(localSymbol)) continue;
+                        if(['WETH', 'USDT', 'LINK', 'BNB', 'SOL', 'USDC'].includes(localSymbol)) continue;
                         newBalances[localSymbol] = 0;
                         balancesChanged = true;
                     }
                 }
                 
-                return balancesChanged ? newBalances : currentLocalBalances;
+                if (balancesChanged) {
+                    return newBalances;
+                }
+                return currentLocalBalances;
             });
+
+            // Fire all collected notifications after the state update
+            newNotifications.forEach(n => toast(n));
 
         } catch (error) {
             console.error("Failed to poll for wallet updates:", error);
         }
     };
 
-    const intervalId = setInterval(async () => {
-      await pollForUpdates();
-      // Fire all collected notifications after the state update
-      toastQueue.forEach(n => toast(n));
-      toastQueue = [];
-    }, 15000);
+    const intervalId = setInterval(pollForUpdates, 15000);
 
     return () => clearInterval(intervalId);
   }, [isConnected, walletAddress, addTransaction, toast]);

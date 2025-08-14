@@ -288,7 +288,7 @@ export async function openPosition(fromAddress: string, params: {
   const openPositionSignature = '0x5806b727'; // openPosition(uint8,uint256,uint256)
 
   const sideHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
-  const sizeHex = parseUnits(params.size.toString(), 8).toString(16).padStart(64, '0');
+  const sizeHex = parseUnits(params.size.toString(), ERC20_CONTRACTS['WETH'].decimals).toString(16).padStart(64, '0');
   const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
   
   const dataPayload = `0x${openPositionSignature.slice(2)}${sideHex}${sizeHex}${leverageHex}`;

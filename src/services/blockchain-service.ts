@@ -15,16 +15,16 @@ export interface ChainAsset {
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
     // --- UPDATED CONTRACT ADDRESSES FROM YOUR LATEST DEPLOYMENT ---
-    'USDT': { address: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1', name: 'Tether', decimals: 6 },
-    'USDC': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'USDC', decimals: 6 },
-    'WETH': { address: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1', name: 'Wrapped Ether', decimals: 18 },
-    'ETH': { address: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d', name: 'Ethereum', decimals: 18 },
-    'LINK': { address: '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f', name: 'Chainlink', decimals: 18 },
-    'BNB': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'BNB', decimals: 18 },
-    'SOL': { address: '0xc5a5C42992dECbae36851359345FE25997F5C42d', name: 'Solana', decimals: 9 },
+    'USDT': { address: '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44', name: 'Tether', decimals: 6 },
+    'USDC': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'USDC', decimals: 6 },
+    'WETH': { address: '0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB', name: 'Wrapped Ether', decimals: 18 },
+    'ETH': { address: '0x67d269191c92Caf3cD7723F116c85e6E9bf55933', name: 'Ethereum', decimals: 18 },
+    'LINK': { address: '0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8', name: 'Chainlink', decimals: 18 },
+    'BNB': { address: '0x95401dc811bb5740090279Ba06cfA8fcF6113778', name: 'BNB', decimals: 18 },
+    'SOL': { address: '0x4826533B4897376654Bb4d4AD88B7faFD0C98528', name: 'Solana', decimals: 9 },
 };
 
-const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf';
+const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf'; // Also the ProtocolTreasury contract
 const VAULT_CONTRACT_ADDRESS = '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF';
 const PRICE_ORACLE_ADDRESS = '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf';
 
@@ -338,7 +338,7 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
       }),
     });
 
-    const txData = await txResponse.json();
+    const txData = await txData.json();
     if (txData.error) {
         throw new Error(`Close position RPC Error: ${txData.error.message}`);
     }

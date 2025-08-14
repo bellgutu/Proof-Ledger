@@ -18,9 +18,9 @@ const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, deci
     'USDT': { address: '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44', name: 'Tether', decimals: 6 },
     'USDC': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'USDC', decimals: 6 },
     'WETH': { address: '0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB', name: 'Wrapped Ether', decimals: 18 },
-    'LINK': { address: '0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8', name: 'Chainlink', decimals: 18 },
+    'LINK': { address: '0x4826533B4897376654Bb4d4AD88B7faFD0C98528', name: 'Chainlink', decimals: 18 },
     'BNB': { address: '0x95401dc811bb5740090279Ba06cfA8fcF6113778', name: 'BNB', decimals: 18 },
-    'SOL': { address: '0x4826533B4897376654Bb4d4AD88B7faFD0C98528', name: 'Solana', decimals: 9 },
+    'SOL': { address: '0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8', name: 'Solana', decimals: 9 },
 };
 
 const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf'; // Also the ProtocolTreasury contract

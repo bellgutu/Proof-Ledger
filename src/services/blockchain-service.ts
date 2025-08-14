@@ -92,6 +92,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
                   const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
+                  
                   assets.push({ symbol, name: contract.name, balance });
                   
                } else if (data.error) {
@@ -338,7 +339,7 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
       }),
     });
 
-    const txData = await txData.json();
+    const txData = await txResponse.json();
     if (txData.error) {
         throw new Error(`Close position RPC Error: ${txData.error.message}`);
     }

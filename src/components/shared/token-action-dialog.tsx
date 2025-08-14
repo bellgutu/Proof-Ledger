@@ -13,12 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Send, ArrowDown, QrCode, Copy, Loader2, Fuel, History, ArrowUpCircle, ArrowDownCircle, FileText as ContractIcon } from 'lucide-react';
+import { Send, ArrowDown, QrCode, Copy, Loader2, Fuel, History } from 'lucide-react';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { getGasFee } from '@/services/blockchain-service';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ScrollArea } from '../ui/scroll-area';
-import type { ChainAsset, Transaction } from '@/contexts/wallet-context';
+import type { ChainAsset } from '@/contexts/wallet-context';
+import { useRouter } from 'next/navigation';
 
 const SendSchema = z.object({
   recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Please enter a valid Ethereum address."),
@@ -34,9 +34,10 @@ interface TokenActionDialogProps {
 
 export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialogProps) {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, balances, marketData, walletAddress, transactions } = walletState;
+  const { isConnected, balances, marketData, walletAddress } = walletState;
   const { sendTokens } = walletActions;
   const { toast } = useToast();
+  const router = useRouter();
   
   const [sending, setSending] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -55,10 +56,6 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
     return ((Number(amount) || 0) * assetPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
   }, [sendForm, assetPrice]);
   
-  const tokenTransactions = useMemo(() => {
-    return transactions.filter(tx => tx.token === asset.symbol);
-  }, [transactions, asset.symbol]);
-
   const fetchGas = async () => {
     if(!isConnected) return;
     try {
@@ -94,7 +91,6 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
         sendForm.reset();
         setIsOpen(false);
       } else {
-        // This case might not be hit if sendTokens throws, but is good for robustness
         throw new Error('Transaction failed on-chain.');
       }
     } catch (e: any) {
@@ -110,17 +106,6 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
     navigator.clipboard.writeText(walletAddress);
     toast({ title: 'Address Copied!'});
   }
-
-  const getTxIcon = (type: Transaction['type']) => {
-    switch (type) {
-      case 'Send':
-        return <ArrowUpCircle className="text-red-500" />;
-      case 'Receive':
-        return <ArrowDownCircle className="text-green-500" />;
-      default:
-        return <ContractIcon className="text-blue-500" />;
-    }
-  };
   
   useEffect(() => {
     if (!isOpen) {
@@ -200,29 +185,12 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
               </div>
           </TabsContent>
 
-          <TabsContent value="history" className="mt-6 flex-grow overflow-hidden">
-             <ScrollArea className="h-full pr-4 max-h-[25rem]">
-                  {tokenTransactions.length > 0 ? (
-                      <div className="space-y-4">
-                          {tokenTransactions.slice().reverse().map(tx => (
-                              <div key={tx.id} className="flex items-start gap-3 p-3 bg-background rounded-md border">
-                                  <div className="mt-1">{getTxIcon(tx.type)}</div>
-                                  <div className="flex-grow">
-                                    <div className="flex justify-between items-center">
-                                        <span className={`font-semibold text-sm`}>{tx.type} {tx.amount?.toLocaleString(undefined, { maximumFractionDigits: 6 })} {tx.token}</span>
-                                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${tx.status === 'Completed' ? 'bg-green-500/20 text-green-400' : tx.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-                                            {tx.status}
-                                        </span>
-                                    </div>
-                                    <div className="text-muted-foreground text-xs mt-1">{typeof tx.details === 'string' ? <p className="truncate">{tx.details}</p> : tx.details}</div>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-                  ) : (
-                      <p className="text-muted-foreground text-center text-sm py-16">No transactions for {asset.symbol} yet.</p>
-                  )}
-              </ScrollArea>
+          <TabsContent value="history" className="mt-6 flex-grow overflow-hidden flex flex-col items-center justify-center text-center">
+                <p className="text-muted-foreground text-sm">Token-specific history is coming soon.</p>
+                <Button variant="link" onClick={() => {
+                    setIsOpen(false);
+                    router.push('/portfolio/history');
+                }}>View Full History</Button>
           </TabsContent>
         </Tabs>
         </div>

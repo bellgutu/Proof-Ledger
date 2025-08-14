@@ -78,7 +78,7 @@ interface WalletActions {
   updateBalance: (symbol: string, amount: number) => void;
   setBalances: React.Dispatch<SetStateAction<Balances>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from'>) => string;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to' | 'txHash'> & { to: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode) => void;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
   setActiveStrategy: React.Dispatch<SetStateAction<VaultStrategy | null>>;
@@ -207,20 +207,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const getTxHistoryStorageKey = (address: string) => `tx_history_${address}`;
 
-  const loadTransactions = useCallback((address: string) => {
-    try {
-        const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
-        if (storedHistory) {
-            setTransactions(JSON.parse(storedHistory));
-        } else {
-            setTransactions([]);
-        }
-    } catch (e) {
-        console.error("Failed to load transaction history:", e);
-        setTransactions([]);
-    }
-  }, []);
-
   const persistTransactions = useCallback((txs: Transaction[], address: string) => {
       if (!address) return;
        try {
@@ -235,30 +221,47 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         console.error("Failed to persist transaction history:", e);
        }
   }, []);
+  
+  const loadTransactions = useCallback((address: string) => {
+    try {
+        const storedHistory = localStorage.getItem(getTxHistoryStorageKey(address));
+        if (storedHistory) {
+            setTransactions(JSON.parse(storedHistory));
+        } else {
+            setTransactions([]);
+        }
+    } catch (e) {
+        console.error("Failed to load transaction history:", e);
+        setTransactions([]);
+    }
+  }, []);
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from'>) => {
     if(!walletAddress) return '';
     const newTxId = Date.now().toString() + Math.random().toString();
+    const newTx: Transaction = { 
+        id: newTxId, 
+        status: 'Pending', 
+        from: walletAddress,
+        timestamp: Date.now(),
+        txHash: '',
+        ...transaction 
+    };
+
     setTransactions(prevTxs => {
-      const newTx: Transaction = { 
-          id: newTxId, 
-          status: 'Pending', 
-          from: walletAddress,
-          timestamp: Date.now(),
-          ...transaction 
-      };
       const newTxs = [newTx, ...prevTxs];
       persistTransactions(newTxs, walletAddress);
       return newTxs;
     });
+
     return newTxId;
   }, [walletAddress, persistTransactions]);
   
-  const updateTransactionStatus = useCallback((id: string, status: TransactionStatus, details?: string | React.ReactNode) => {
+  const updateTransactionStatus = useCallback((id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => {
     setTransactions(prev => {
         const newTxs = prev.map(tx => {
             if (tx.id === id) {
-                return { ...tx, status, ...(details && { details }) };
+                return { ...tx, status, ...(details && { details }), ...(txHash && { txHash }) };
             }
             return tx;
         });
@@ -275,13 +278,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     try {
         const assets = await getWalletAssets(address);
         
-        const newBalancesWithEth = assets.reduce((acc, asset) => {
+        const newBalances = assets.reduce((acc, asset) => {
           acc[asset.symbol] = asset.balance;
           return acc;
         }, {} as Balances);
 
-
-        setBalances(newBalancesWithEth);
+        setBalances(newBalances);
         loadTransactions(address);
         setIsConnected(true);
     } catch (e) {
@@ -313,7 +315,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     isSendingRef.current = true;
     const pendingTxId = addTransaction({
       type: 'Send',
-      txHash: '',
       to: toAddress,
       details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
       token: tokenSymbol,
@@ -325,10 +326,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         updateBalance(tokenSymbol, -amount);
 
-        updateTransactionStatus(pendingTxId, 'Completed', `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`);
-
-        setTransactions(prev => prev.map(tx => tx.id === pendingTxId ? {...tx, txHash: result.txHash} : tx));
-
+        updateTransactionStatus(pendingTxId, 'Completed', `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`, result.txHash);
+        
         return result;
 
     } catch(e) {

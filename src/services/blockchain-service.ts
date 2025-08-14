@@ -18,7 +18,6 @@ const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, deci
     'USDT': { address: '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44', name: 'Tether', decimals: 6 },
     'USDC': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'USDC', decimals: 6 },
     'WETH': { address: '0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB', name: 'Wrapped Ether', decimals: 18 },
-    'ETH': { address: '0x67d269191c92Caf3cD7723F116c85e6E9bf55933', name: 'Ethereum', decimals: 18 },
     'LINK': { address: '0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8', name: 'Chainlink', decimals: 18 },
     'BNB': { address: '0x95401dc811bb5740090279Ba06cfA8fcF6113778', name: 'BNB', decimals: 18 },
     'SOL': { address: '0x4826533B4897376654Bb4d4AD88B7faFD0C98528', name: 'Solana', decimals: 9 },
@@ -261,9 +260,9 @@ export async function getActivePosition(address: string): Promise<Position | nul
     
     // Decode the struct fields
     const side = parseInt(resultData.slice(0, 64), 16) === 0 ? 'long' : 'short';
-    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(64, 128)), 8));
-    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(128, 192)), 6));
-    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(192, 256)), 8));
+    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(64, 128)), ERC20_CONTRACTS['WETH'].decimals));
+    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(128, 192)), ERC20_CONTRACTS['USDT'].decimals));
+    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(192, 256)), ERC20_CONTRACTS['USDT'].decimals));
     const active = parseInt(resultData.slice(256, 320), 16) === 1;
 
     if (!active) {

@@ -10,10 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { WalletHeader } from '@/components/shared/wallet-header';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Skeleton } from '../ui/skeleton';
-import { Wallet as WalletIcon } from 'lucide-react';
+import { Wallet as WalletIcon, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TokenActionDialog } from '../shared/token-action-dialog';
 import type { ChainAsset } from '@/contexts/wallet-context';
+import { Button } from '../ui/button';
 
 export default function PortfolioPage() {
   const { walletState } = useWallet();
@@ -90,12 +91,18 @@ export default function PortfolioPage() {
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
       <Card>
-        <CardHeader>
-        <CardTitle className="flex items-center gap-3">
-            <WalletIcon size={28} className="text-primary"/>
-            <span className="text-2xl">Asset Holdings</span>
-        </CardTitle>
-        <CardDescription>A detailed view of your wallet's assets. Click an asset to interact.</CardDescription>
+        <CardHeader className="flex flex-row justify-between items-center">
+            <div>
+                <CardTitle className="flex items-center gap-3">
+                    <WalletIcon size={28} className="text-primary"/>
+                    <span className="text-2xl">Asset Holdings</span>
+                </CardTitle>
+                <CardDescription>A detailed view of your wallet's assets. Click an asset to interact.</CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => router.push('/portfolio/history')}>
+                <History className="mr-2"/>
+                View History
+            </Button>
         </CardHeader>
         <CardContent>
         <Table>

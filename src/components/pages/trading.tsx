@@ -166,7 +166,7 @@ const TradingPageContent = () => {
       return position.side === 'long' ? pnl : -pnl;
   };
   
-  const tradeablePairs = ['ETH/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT'];
+  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'LINK/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
   
   if (!initialPriceForChart) {

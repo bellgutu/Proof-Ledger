@@ -44,7 +44,7 @@ export interface Proposal {
 
 type Token = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
 
-const tokenNames: Token[] = ['ETH', 'USDT', 'USDC', 'BNB', 'XRP', 'SOL', 'WETH', 'LINK'];
+const tokenNames: Token[] = ['ETH', 'USDT', 'USDC', 'WETH', 'LINK'];
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();

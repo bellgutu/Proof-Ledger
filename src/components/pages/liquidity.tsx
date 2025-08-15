@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from 'react';
@@ -40,6 +41,8 @@ export interface UserPosition extends Pool {
   impermanentLoss: number; // Added for IL tracking
 }
 
+const configuredTokens = ['ETH', 'USDT', 'USDC', 'WETH', 'LINK'];
+
 export default function LiquidityPage() {
   const { walletState, walletActions } = useWallet();
   const { isConnected, marketData, availablePools, userPositions } = walletState;
@@ -56,7 +59,7 @@ export default function LiquidityPage() {
   const [newFeeTier, setNewFeeTier] = useState<number | undefined>(0.3);
   const [newPriceRange, setNewPriceRange] = useState({ min: '', max: '' });
   
-  const tokenOptions = Object.keys(walletState.marketData) as (keyof typeof walletState.marketData)[];
+  const tokenOptions = configuredTokens;
 
   const handleAddPosition = (pool: Pool, lpTokens: number, share: number) => {
     setUserPositions(prev => {

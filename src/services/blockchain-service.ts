@@ -15,15 +15,15 @@ export interface ChainAsset {
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
     // --- UPDATED CONTRACT ADDRESSES FROM YOUR LATEST DEPLOYMENT ---
-    'USDT': { address: '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44', name: 'Tether', decimals: 6 },
-    'USDC': { address: '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F', name: 'USD Coin', decimals: 6 },
-    'WETH': { address: '0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB', name: 'Wrapped Ether', decimals: 18 },
-    'LINK': { address: '0x4826533B4897376654Bb4d4AD88B7faFD0C98528', name: 'Chainlink', decimals: 18 },
+    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 6 },
+    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin', decimals: 6 },
+    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether', decimals: 18 },
+    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink', decimals: 18 },
 };
 
-const PERPETUALS_CONTRACT_ADDRESS = '0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf'; // Also the ProtocolTreasury contract
-const VAULT_CONTRACT_ADDRESS = '0x0E801D84Fa97b50751Dbf25036d067dCf18858bF';
-const PRICE_ORACLE_ADDRESS = '0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf';
+const PERPETUALS_CONTRACT_ADDRESS = '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F'; // Also the ProtocolTreasury contract
+const VAULT_CONTRACT_ADDRESS = '0x4A679253410272dd5232B3Ff7cF5dbB88f295319';
+const PRICE_ORACLE_ADDRESS = '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f';
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   console.log(`[BlockchainService] Fetching all assets for address: ${address}`);

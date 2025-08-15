@@ -93,9 +93,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                   
                   // SAFEGUARD: If the contract has fewer than 18 decimals and the balance is huge,
                   // it was likely minted with 18-decimal logic. Adjust it.
-                  const eighteenDecimals = 18;
-                  if (contract.decimals < eighteenDecimals && rawBalance.toString().length > 20) {
-                      const difference = BigInt(eighteenDecimals - contract.decimals);
+                  if (contract.decimals < 18 && rawBalance.toString().length > 20) {
+                      const difference = BigInt(18 - contract.decimals);
                       rawBalance = rawBalance / (10n ** difference);
                   }
 
@@ -235,7 +234,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
   }
 
   try {
-    const getPositionFunctionSignature = '0x48694038'; // keccak256("getUserPosition(address)")
+    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)")
     const paddedAddress = address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {

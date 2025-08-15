@@ -106,11 +106,14 @@ const initialMarketData: MarketData = {
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '2', name: 'WETH/USDT', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
+    { id: '1', name: 'ETH/USDT', type: 'V2', token1: { symbol: 'ETH', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '2', name: 'WETH/USDC', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
+    { id: '3', name: 'USDT/USDC', type: 'Stable', token1: { symbol: 'USDT', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '4', name: 'ETH/LINK', type: 'V3', token1: { symbol: 'ETH', amount: 0 }, token2: { symbol: 'LINK', amount: 0 }, tvl: 80_000_000, volume24h: 15_000_000, apr: 18.2, feeTier: 1.0, priceRange: { min: 150, max: 250 } },
 ];
 
 const initialProposals: Proposal[] = [
-    { id: '1', title: 'Increase LP Rewards for WETH/USDT', description: 'Boost the rewards for the WETH/USDT pool by 5% to attract more liquidity.', votesFor: 1250000, votesAgainst: 340000 },
+    { id: '1', title: 'Increase LP Rewards for WETH/USDC', description: 'Boost the rewards for the WETH/USDC pool by 5% to attract more liquidity.', votesFor: 1250000, votesAgainst: 340000 },
     { id: '2', title: 'Onboard a new collateral asset: LINK', description: 'Allow Chainlink (LINK) to be used as collateral within the protocol.', votesFor: 850000, votesAgainst: 600000 },
 ];
 
@@ -275,10 +278,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
-    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+    // This is a simulated connection. We avoid direct interaction with browser wallets.
+    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'; // Default hardhat address
     setWalletAddress(address);
 
     try {
+        console.log("Simulating connection for address:", address);
         const assets = await getWalletAssets(address);
         
         const newBalances = assets.reduce((acc, asset) => {
@@ -290,7 +295,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         loadTransactions(address);
         setIsConnected(true);
     } catch (e) {
-        console.error("Failed to get wallet assets:", e);
+        console.error("Failed to get wallet assets during simulated connection:", e);
         setBalances({});
         setIsConnected(false);
     } finally {

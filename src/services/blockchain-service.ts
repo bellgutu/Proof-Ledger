@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -88,10 +89,15 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
           if (response.ok) {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
-                  const rawBalance = BigInt(data.result);
+                  let rawBalance = BigInt(data.result);
                   
-                  // ADDED DEBUG LOG
-                  console.log(`[Formatting] Symbol: ${symbol}, Decimals Used: ${contract.decimals}, Raw Balance: ${rawBalance.toString()}, Formatted: ${formatUnits(rawBalance, contract.decimals)}`);
+                  // SAFEGUARD: If the contract has fewer than 18 decimals and the balance is huge,
+                  // it was likely minted with 18-decimal logic. Adjust it.
+                  const eighteenDecimals = 18;
+                  if (contract.decimals < eighteenDecimals && rawBalance.toString().length > 20) {
+                      const difference = BigInt(eighteenDecimals - contract.decimals);
+                      rawBalance = rawBalance / (10n ** difference);
+                  }
 
                   const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
                   

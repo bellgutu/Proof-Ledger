@@ -89,6 +89,10 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
+                  
+                  // ADDED DEBUG LOG
+                  console.log(`[Formatting] Symbol: ${symbol}, Decimals Used: ${contract.decimals}, Raw Balance: ${rawBalance.toString()}, Formatted: ${formatUnits(rawBalance, contract.decimals)}`);
+
                   const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
                   
                   assets.push({ symbol, name: contract.name, balance });

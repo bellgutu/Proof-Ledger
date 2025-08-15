@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseAuthHandler } from '@/components/firebase-auth-handler';
 import { WalletProvider } from '@/contexts/wallet-context';
 import AppShell from '@/components/app-shell';
+import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
 
 export const metadata: Metadata = {
   title: 'ProfitForge',
@@ -31,6 +32,7 @@ export default function RootLayout({
           <AppShell>
             {children}
           </AppShell>
+          <TransactionStatusDialogController />
         </WalletProvider>
         <Toaster />
       </body>

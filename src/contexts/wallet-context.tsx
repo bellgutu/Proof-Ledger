@@ -24,6 +24,14 @@ export interface Transaction {
   amount?: number;
 }
 
+export interface TxStatusDialogInfo {
+  isOpen: boolean;
+  state: 'processing' | 'success' | 'error';
+  transaction: Partial<Transaction>;
+  error?: string;
+}
+
+
 export type { ChainAsset };
 
 export interface VaultStrategy {
@@ -70,6 +78,7 @@ interface WalletState {
   proposals: Proposal[];
   availablePools: Pool[];
   userPositions: UserPosition[];
+  txStatusDialog: TxStatusDialogInfo;
 }
 
 interface WalletActions {
@@ -85,6 +94,7 @@ interface WalletActions {
   setProposals: React.Dispatch<SetStateAction<Proposal[]>>;
   setAvailablePools: React.Dispatch<SetStateAction<Pool[]>>;
   setUserPositions: React.Dispatch<SetStateAction<UserPosition[]>>;
+  setTxStatusDialog: React.Dispatch<SetStateAction<TxStatusDialogInfo>>;
 }
 
 interface WalletContextType {
@@ -136,6 +146,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   // Liquidity State
   const [availablePools, setAvailablePools] = useState<Pool[]>(initialAvailablePools);
   const [userPositions, setUserPositions] = useState<UserPosition[]>([]);
+  
+  // Tx Status Dialog State
+  const [txStatusDialog, setTxStatusDialog] = useState<TxStatusDialogInfo>({
+    isOpen: false,
+    state: 'processing',
+    transaction: {}
+  });
   
   const { toast } = useToast();
   const isSendingRef = useRef(false);
@@ -321,6 +338,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (!isConnected || !walletAddress) throw new Error("Wallet not connected");
 
     isSendingRef.current = true;
+    
+    setTxStatusDialog({
+      isOpen: true,
+      state: 'processing',
+      transaction: { amount, token: tokenSymbol, to: toAddress }
+    });
+
     const pendingTxId = addTransaction({
       type: 'Send',
       to: toAddress,
@@ -333,14 +357,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
         
         updateBalance(tokenSymbol, -amount);
-
         updateTransactionStatus(pendingTxId, 'Completed', `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`, result.txHash);
+        
+        setTxStatusDialog(prev => ({
+          ...prev,
+          state: 'success',
+          transaction: { ...prev.transaction, txHash: result.txHash }
+        }));
         
         return result;
 
-    } catch(e) {
+    } catch(e: any) {
         console.error('Send token transaction failed:', e);
         updateTransactionStatus(pendingTxId, 'Failed', `Failed to send ${amount} ${tokenSymbol}`);
+        
+        setTxStatusDialog(prev => ({
+          ...prev,
+          state: 'error',
+          error: e.message || 'An unknown error occurred.'
+        }));
+        
         throw e;
     } finally {
         setTimeout(() => { isSendingRef.current = false; }, 5000);
@@ -428,6 +464,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         proposals,
         availablePools,
         userPositions,
+        txStatusDialog,
       },
       walletActions: {
           connectWallet,
@@ -442,6 +479,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           setProposals,
           setAvailablePools,
           setUserPositions,
+          setTxStatusDialog
       }
   }
 

@@ -87,17 +87,12 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
     setSending(true);
 
     try {
-      const result = await sendTokens(txDetails.recipient, asset.symbol, txDetails.amount);
-      if (result.success) {
-        toast({ title: 'Transaction Submitted!', description: `Your transaction is being processed. Tx: ${result.txHash.slice(0,10)}...` });
-        sendForm.reset();
-        setIsOpen(false);
-      } else {
-        throw new Error('Transaction failed on-chain.');
-      }
+      await sendTokens(txDetails.recipient, asset.symbol, txDetails.amount);
+      sendForm.reset();
+      setIsOpen(false);
     } catch (e: any) {
+      // Error is handled in the context by the txStatusDialog
       console.error(e);
-      toast({ variant: 'destructive', title: 'Transaction Failed', description: e.message || 'Something went wrong while sending your transaction.'});
     } finally {
       setSending(false);
     }
@@ -183,7 +178,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
               <div className="p-4 bg-background rounded-md border flex flex-col items-center justify-center">
                   <QrCode size={128} className="mb-4 text-foreground p-2 bg-white rounded-md"/>
                   <p className="font-mono text-sm break-all">{walletAddress || "Connect your wallet first"}</p>
-                  <Button variant="ghost" size="sm" onClick={() => handleCopy(walletAddress, 'Your address')}>
+                  <Button variant="ghost" size="sm" onClick={() => handleCopy(walletAddress || '', 'Your address')}>
                       <Copy className="mr-2"/> Copy Address
                   </Button>
               </div>

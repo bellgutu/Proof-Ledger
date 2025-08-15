@@ -17,6 +17,7 @@ import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
+import { useRouter } from 'next/navigation';
 
 export interface Transaction {
   id: string;
@@ -42,7 +43,7 @@ export interface Proposal {
 }
 
 
-type Token = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
+type Token = 'ETH' | 'USDT' | 'WETH' | 'LINK' | 'USDC';
 
 const tokenNames: Token[] = ['ETH', 'USDT', 'USDC', 'WETH', 'LINK'];
 
@@ -66,6 +67,7 @@ export default function FinancePage() {
     sendTokens
   } = walletActions;
   const { toast } = useToast();
+  const router = useRouter();
 
   const [vaultLoading, setVaultLoading] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
@@ -292,8 +294,12 @@ export default function FinancePage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-            <CardHeader>
+            <CardHeader className="flex flex-row justify-between items-center">
                 <CardTitle className="text-2xl font-bold text-primary">Token Swap</CardTitle>
+                <Button variant="outline" onClick={() => router.push('/portfolio/history')}>
+                  <History className="mr-2"/>
+                  History
+                </Button>
             </CardHeader>
             <CardContent className="flex flex-col space-y-2">
                 <div className="p-4 bg-background rounded-md border space-y-2">

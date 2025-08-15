@@ -9,12 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { WalletHeader } from '@/components/shared/wallet-header';
 import { getTokenLogo } from '@/lib/tokenLogos';
-import { Skeleton } from '../ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Wallet as WalletIcon, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { TokenActionDialog } from '../shared/token-action-dialog';
+import { TokenActionDialog } from '@/components/shared/token-action-dialog';
 import type { ChainAsset } from '@/contexts/wallet-context';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 
 export default function PortfolioPage() {
   const { walletState } = useWallet();

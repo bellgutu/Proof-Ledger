@@ -35,6 +35,13 @@ export default function HistoryPage() {
     }
   };
 
+  const formatDate = (timestamp: number) => {
+    if (!timestamp || isNaN(timestamp)) {
+      return "Invalid date";
+    }
+    return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+  }
+
   return (
     <div className="container mx-auto p-0 space-y-8">
        <Button variant="ghost" onClick={() => router.push('/portfolio')} className="mb-4">
@@ -71,7 +78,7 @@ export default function HistoryPage() {
                     </TableCell>
                     <TableCell>{tx.amount ? `${tx.amount.toLocaleString()} ${tx.token}` : 'N/A'}</TableCell>
                     <TableCell>{getStatusBadge(tx.status)}</TableCell>
-                    <TableCell className="text-right">{formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true })}</TableCell>
+                    <TableCell className="text-right">{formatDate(tx.timestamp)}</TableCell>
                   </TableRow>
                 ))
               ) : (

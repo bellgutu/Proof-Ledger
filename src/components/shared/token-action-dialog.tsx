@@ -160,7 +160,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
                     </FormControl>
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
                         <span>~{amountUSD}</span>
-                        <button type="button" onClick={() => sendForm.setValue('amount', balances[asset.symbol] || 0)}>Max: {balances[asset.symbol].toLocaleString()}</button>
+                        <button type="button" onClick={() => sendForm.setValue('amount', balances[asset.symbol] || 0)}>Max: {(balances[asset.symbol] || 0).toLocaleString('en-US', { maximumFractionDigits: 6 })}</button>
                     </div>
                     <FormMessage />
                   </FormItem>

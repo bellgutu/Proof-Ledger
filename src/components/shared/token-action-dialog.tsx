@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Send, ArrowDown, QrCode, Copy, Loader2, Fuel, History } from 'lucide-react';
+import { Send, ArrowDown, QrCode, Copy, Loader2, Fuel, History, Wallet, ArrowDownCircle, Check, ShieldCheck } from 'lucide-react';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { getGasFee } from '@/services/blockchain-service';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -44,6 +44,8 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   const [txDetails, setTxDetails] = useState<SendInput | null>(null);
   const [gasFee, setGasFee] = useState<string>('');
   
+  const [copied, setCopied] = useState<string | null>(null);
+
   const sendForm = useForm<SendInput>({
     resolver: zodResolver(SendSchema),
     defaultValues: { recipient: '', amount: '' as any },
@@ -54,7 +56,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
     return ((Number(amount) || 0) * assetPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
-  }, [sendForm, assetPrice]);
+  }, [sendForm, assetPrice, asset.symbol]);
   
   const fetchGas = async () => {
     if(!isConnected) return;
@@ -101,11 +103,13 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
     }
   };
   
-  const handleCopyAddress = () => {
-    if(!walletAddress) return;
-    navigator.clipboard.writeText(walletAddress);
-    toast({ title: 'Address Copied!'});
-  }
+  const handleCopy = (text: string, field: string) => {
+    if(!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(field);
+    toast({ title: `${field} copied!`});
+    setTimeout(() => setCopied(null), 2000);
+  };
   
   useEffect(() => {
     if (!isOpen) {
@@ -179,7 +183,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
               <div className="p-4 bg-background rounded-md border flex flex-col items-center justify-center">
                   <QrCode size={128} className="mb-4 text-foreground p-2 bg-white rounded-md"/>
                   <p className="font-mono text-sm break-all">{walletAddress || "Connect your wallet first"}</p>
-                  <Button variant="ghost" size="sm" onClick={handleCopyAddress} disabled={!isConnected}>
+                  <Button variant="ghost" size="sm" onClick={() => handleCopy(walletAddress, 'Your address')}>
                       <Copy className="mr-2"/> Copy Address
                   </Button>
               </div>
@@ -196,33 +200,69 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
         </div>
 
         <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Transaction</AlertDialogTitle>
-                <AlertDialogDescription>Please review the details below before confirming.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="flex justify-between items-center p-3 rounded-md bg-muted">
-                    <span className="font-bold text-3xl">{txDetails?.amount.toLocaleString()} {asset.symbol}</span>
-                    <Image src={getTokenLogo(asset.symbol || '')} alt={asset.symbol || ''} width={32} height={32}/>
-                </div>
-                <div className="text-sm space-y-2">
-                    <p className="flex justify-between"><span>To:</span> <span className="font-mono truncate">{txDetails?.recipient}</span></p>
-                    <p className="flex justify-between items-center">
-                        <span><Fuel className="inline mr-2"/>Est. Gas Fee:</span> 
+            <AlertDialogContent className="sm:max-w-md">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-center text-2xl">Confirm Transaction</AlertDialogTitle>
+                    <AlertDialogDescription className="text-center">
+                        You are about to send {asset.symbol}. Please review the details carefully.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <div className="py-4 space-y-6">
+                    <div className="flex flex-col items-center justify-center text-center space-y-2">
+                        <Image src={getTokenLogo(asset.symbol || '')} alt={asset.symbol || ''} width={48} height={48} className="rounded-full"/>
+                        <p className="text-4xl font-bold">
+                          {txDetails?.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })} {asset.symbol}
+                        </p>
+                        <p className="text-muted-foreground">
+                            ~{( (txDetails?.amount || 0) * assetPrice).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="p-3 bg-muted rounded-md text-sm space-y-2">
+                            <span className="text-xs text-muted-foreground font-semibold">FROM</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Wallet size={16}/> <span>Your Wallet</span>
+                                </div>
+                                <span className="font-mono text-xs">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center text-muted-foreground">
+                            <ArrowDownCircle size={24} className="animate-pulse"/>
+                        </div>
+
+                        <div className="p-3 bg-muted rounded-md text-sm space-y-2">
+                            <span className="text-xs text-muted-foreground font-semibold">TO</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <ShieldCheck size={16}/> <span>Recipient</span>
+                                </div>
+                                 <button onClick={() => handleCopy(txDetails?.recipient || '', 'Recipient')} className="flex items-center gap-1 font-mono text-xs hover:text-primary">
+                                    {txDetails?.recipient.slice(0, 6)}...{txDetails?.recipient.slice(-4)}
+                                    {copied === 'Recipient' ? <Check size={12}/> : <Copy size={12}/>}
+                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-sm p-3 border rounded-md">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Fuel size={16}/> Est. Gas Fee
+                        </div>
                         <span className="font-mono">{gasFee}</span>
-                    </p>
+                    </div>
                 </div>
-            </div>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={executeSend}>Confirm & Send</AlertDialogAction>
-            </AlertDialogFooter>
+
+                <AlertDialogFooter className="grid grid-cols-2 gap-2">
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={executeSend} className="animate-pulse-strong">Confirm & Send</AlertDialogAction>
+                </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
       </SheetContent>
     </Sheet>
   );
 }
-
-    

@@ -241,7 +241,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string }) => {
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to' | 'txHash'> & { to?: string; txHash?: string }) => {
     if(!walletAddress) return '';
     const newTxId = Date.now().toString() + Math.random().toString();
     const newTx: Transaction = { 
@@ -250,7 +250,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         from: walletAddress,
         to: transaction.to || '0x0000000000000000000000000000000000000000', // Default to address
         timestamp: Date.now(),
-        txHash: '',
+        txHash: transaction.txHash || '',
         ...transaction 
     };
 

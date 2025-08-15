@@ -78,8 +78,8 @@ interface WalletActions {
   updateBalance: (symbol: string, amount: number) => void;
   setBalances: React.Dispatch<SetStateAction<Balances>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to' | 'txHash'> & { to: string; txHash?: string }) => string;
-  updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to' | 'txHash'> & { to?: string; txHash?: string }) => string;
+  updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
   setActiveStrategy: React.Dispatch<SetStateAction<VaultStrategy | null>>;
   setProposals: React.Dispatch<SetStateAction<Proposal[]>>;
@@ -102,6 +102,7 @@ const initialMarketData: MarketData = {
     USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
+    XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0},
 };
 
 const initialAvailablePools: Pool[] = [
@@ -153,7 +154,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'ethereum,solana,binancecoin,tether,usd-coin,chainlink';
+        const coinIds = 'ethereum,solana,binancecoin,tether,usd-coin,chainlink,ripple';
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
         
         if (!response.ok) {
@@ -172,6 +173,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               'tether': 'USDT',
               'usd-coin': 'USDC',
               'chainlink': 'LINK',
+              'ripple': 'XRP',
             };
 
             for (const id in liveData) {
@@ -236,13 +238,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from'>) => {
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string }) => {
     if(!walletAddress) return '';
     const newTxId = Date.now().toString() + Math.random().toString();
     const newTx: Transaction = { 
         id: newTxId, 
         status: 'Pending', 
         from: walletAddress,
+        to: transaction.to || '0x0000000000000000000000000000000000000000', // Default to address
         timestamp: Date.now(),
         txHash: '',
         ...transaction 
@@ -354,17 +357,19 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             const remoteAssets = await getWalletAssets(walletAddress);
             
             setBalances(currentLocalBalances => {
-                const newBalances: Balances = { ...currentLocalBalances };
-                let balancesChanged = false;
+                const newBalancesFromRemote = remoteAssets.reduce((acc, asset) => {
+                  acc[asset.symbol] = asset.balance;
+                  return acc;
+                }, {} as Balances);
 
-                remoteAssets.forEach(remoteAsset => {
+                // Check for received transactions
+                for (const remoteAsset of remoteAssets) {
                     const localBalance = currentLocalBalances[remoteAsset.symbol] || 0;
-                    
-                    if (remoteAsset.balance > localBalance + 0.000001) {
-                        const amountReceived = remoteAsset.balance - localBalance;
-                        addTransaction({
+                    if (remoteAsset.balance > localBalance) {
+                         const amountReceived = remoteAsset.balance - localBalance;
+                         addTransaction({
                             type: 'Receive',
-                            txHash: `external_${Date.now()}`,
+                            txHash: `external_${Date.now()}_${remoteAsset.symbol}`,
                             to: walletAddress,
                             details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}`,
                             token: remoteAsset.symbol,
@@ -374,28 +379,20 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                            title: 'Transaction Received!',
                            description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
                         });
-                        newBalances[remoteAsset.symbol] = remoteAsset.balance;
-                        balancesChanged = true;
-                    } else {
-                        if (newBalances[remoteAsset.symbol] === undefined) {
-                            newBalances[remoteAsset.symbol] = remoteAsset.balance;
-                            balancesChanged = true;
-                        }
-                    }
-                });
-
-                for (const localSymbol in currentLocalBalances) {
-                    if (!remoteAssets.some(ra => ra.symbol === localSymbol)) {
-                        if(['WETH', 'USDT', 'LINK', 'BNB', 'SOL', 'USDC'].includes(localSymbol)) continue;
-                        newBalances[localSymbol] = 0;
-                        balancesChanged = true;
                     }
                 }
                 
-                if (balancesChanged) {
-                    return newBalances;
+                // We trust the remote source, so we set the balances directly.
+                // We keep local-only tokens if they have a balance > 0
+                for (const symbol in currentLocalBalances) {
+                    if (!(symbol in newBalancesFromRemote)) {
+                        if (currentLocalBalances[symbol] > 0) {
+                            newBalancesFromRemote[symbol] = currentLocalBalances[symbol];
+                        }
+                    }
                 }
-                return currentLocalBalances;
+                
+                return newBalancesFromRemote;
             });
 
             notificationsToShow.forEach(n => toast(n));

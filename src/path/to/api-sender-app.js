@@ -114,7 +114,7 @@ const App = () => {
   const [highPoint, setHighPoint] = useState(50);
   const [lowPoint, setLowPoint] = useState(25);
   const [timeFrame, setTimeFrame] = useState(10);
-  const [scenarioType, setScenarioType] = useState('mixed');
+  const [scenarioType, setScenarioType] = useState('uptrend');
 
   // State to hold the generated request body as a string
   const [requestBody, setRequestBody] = useState('');
@@ -124,12 +124,8 @@ const App = () => {
     let payload;
     if (scenarioType === 'mixed') {
       payload = generateMixedGradualMovement(highPoint, lowPoint, timeFrame);
-    } else if (scenarioType === 'normal') {
-      payload = { command: 'normal' };
-    } else if (scenarioType === 'uptrend') {
-      payload = { command: 'uptrend' };
-    } else if (scenarioType === 'downtrend') {
-      payload = { command: 'downtrend' };
+    } else if (['uptrend', 'downtrend', 'normal'].includes(scenarioType)) {
+      payload = { command: scenarioType };
     }
     else {
       payload = generateSlowMovement(highPoint, lowPoint, timeFrame);
@@ -216,6 +212,23 @@ const App = () => {
         {/* Input Controls */}
         <div className="bg-gray-700 rounded-lg p-6 space-y-4">
           <h2 className="text-xl font-semibold text-gray-200">Scenario Builder</h2>
+          <div className="flex flex-col space-y-2">
+            <label htmlFor="scenario-type" className="block text-sm font-medium text-gray-300">
+              Scenario Type
+            </label>
+            <select
+              id="scenario-type"
+              className="w-full bg-gray-600 border border-gray-500 rounded-lg py-2 px-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={scenarioType}
+              onChange={(e) => setScenarioType(e.target.value)}
+            >
+              <option value="uptrend">Simple Uptrend</option>
+              <option value="downtrend">Simple Downtrend</option>
+              <option value="normal">Normal (Reset)</option>
+              <option value="mixed">Mixed Gradual Movement</option>
+              <option value="slow">Slow Movement</option>
+            </select>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex flex-col space-y-2">
               <label htmlFor="high-point" className="block text-sm font-medium text-gray-300">
@@ -256,23 +269,6 @@ const App = () => {
                 disabled={['normal', 'uptrend', 'downtrend'].includes(scenarioType)}
               />
             </div>
-          </div>
-          <div className="flex flex-col space-y-2">
-            <label htmlFor="scenario-type" className="block text-sm font-medium text-gray-300">
-              Scenario Type
-            </label>
-            <select
-              id="scenario-type"
-              className="w-full bg-gray-600 border border-gray-500 rounded-lg py-2 px-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={scenarioType}
-              onChange={(e) => setScenarioType(e.target.value)}
-            >
-              <option value="mixed">Mixed Gradual Movement</option>
-              <option value="slow">Slow Movement</option>
-              <option value="uptrend">Simple Uptrend</option>
-              <option value="downtrend">Simple Downtrend</option>
-              <option value="normal">Normal (Reset)</option>
-            </select>
           </div>
         </div>
 

@@ -79,6 +79,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                 jsonrpc: '2.0',
                 method: 'eth_call',
                 params: [{
+                    from: address,
                     to: contract.address,
                     data: `${BALANCE_OF_SIGNATURE}${paddedAddress}`
                 }, 'latest'],
@@ -244,6 +245,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
         jsonrpc: '2.0',
         method: 'eth_call',
         params: [{
+          from: address,
           to: PERPETUALS_CONTRACT_ADDRESS,
           data: `${getPositionFunctionSignature}${paddedAddress}`
         }, 'latest'],

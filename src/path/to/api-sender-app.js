@@ -105,7 +105,7 @@ const generateSlowMovement = (highPoint, lowPoint, timeFrame) => {
 // Main App component
 const App = () => {
   // State variables for managing the app's UI and data
-  const [apiURL, setApiURL] = useState('http://localhost:9002/api/log');
+  const [apiURL, setApiURL] = useState('http://localhost:8545/api/log');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);

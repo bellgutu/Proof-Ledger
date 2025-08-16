@@ -170,15 +170,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   }, [balances, marketData, isMarketDataLoaded, isConnected]);
 
-  // Fetch real-time market data from CoinGecko
+  // Fetch real-time market data from our API route
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'ethereum,solana,binancecoin,tether,usd-coin,chainlink,ripple';
-        const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`);
+        const response = await fetch('/api/prices');
         
         if (!response.ok) {
-          throw new Error(`CoinGecko API request failed with status ${response.status}`);
+          throw new Error(`API price route failed with status ${response.status}`);
         }
         
         const liveData = await response.json();
@@ -217,7 +216,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
 
       } catch (error) {
-        console.error("Error fetching market data from CoinGecko:", error);
+        console.error("Error fetching market data from API route:", error);
       }
     };
 

@@ -45,7 +45,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
             const rawBalance = BigInt(ethData.result);
-            const ethBalance = parseFloat(formatUnits(rawBalance, 18));
+            const ethBalance = Number(formatUnits(rawBalance, 18));
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
              console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
@@ -90,15 +90,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
           if (response.ok) {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
-                  let rawBalance = BigInt(data.result);
-                  
-                  if (contract.decimals < 18 && rawBalance.toString().length > 20) {
-                      const difference = BigInt(18 - contract.decimals);
-                      rawBalance = rawBalance / (10n ** difference);
-                  }
-
-                  const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
-                  
+                  const rawBalance = BigInt(data.result);
+                  const balance = Number(formatUnits(rawBalance, contract.decimals));
                   assets.push({ symbol, name: contract.name, balance });
                   
                } else if (data.error) {
@@ -231,7 +224,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
   }
 
   try {
-    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)") -> Corrected from previous errors
+    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)")
     const paddedAddress = address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {
@@ -255,25 +248,20 @@ export async function getActivePosition(address: string): Promise<Position | nul
 
     const data = await response.json();
     if (data.error) {
-      // This is where the "function selector" error would be caught.
       throw new Error(`RPC Error for getActivePosition: ${data.error.message}`);
     }
     
     const resultData = data.result.substring(2);
-    // Expected length: 7 fields * 64 chars/field. Add a check for safety.
     if (resultData.length < 448) { 
       console.warn(`[BlockchainService] getActivePosition returned unexpected data length: ${resultData.length}. Assuming no active position.`);
       return null;
     }
     
-    let offset = 0;
-
-    // Check if position is active *first* to prevent decoding invalid data
-    offset = 4 * 64; // Active flag is the 5th returned value (index 4)
+    let offset = 4 * 64; // Active flag is the 5th returned value (index 4)
     const active = parseInt(resultData.slice(offset, offset + 64), 16) === 1;
 
     if (!active) {
-        return null; // No active position, no need to decode further.
+        return null;
     }
     
     const positionAssetInfo = ERC20_CONTRACTS['WETH'];
@@ -286,11 +274,11 @@ export async function getActivePosition(address: string): Promise<Position | nul
     offset = 0;
     const side = parseInt(resultData.slice(offset, offset + 64), 16) === 0 ? 'long' : 'short';
     offset += 64;
-    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), positionAssetInfo.decimals));
+    const size = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), positionAssetInfo.decimals));
     offset += 64;
-    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
+    const collateral = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
     offset += 64;
-    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
+    const entryPrice = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
     offset += 64;
     // 'active' is already decoded
     offset += 64; 
@@ -299,14 +287,13 @@ export async function getActivePosition(address: string): Promise<Position | nul
     offset += 64;
     const rawStopLoss = BigInt('0x' + resultData.slice(offset, offset + 64));
 
-    const takeProfit = rawTakeProfit > 0 ? parseFloat(formatUnits(rawTakeProfit, collateralAssetInfo.decimals)) : undefined;
-    const stopLoss = rawStopLoss > 0 ? parseFloat(formatUnits(rawStopLoss, collateralAssetInfo.decimals)) : undefined;
+    const takeProfit = rawTakeProfit > 0 ? Number(formatUnits(rawTakeProfit, collateralAssetInfo.decimals)) : undefined;
+    const stopLoss = rawStopLoss > 0 ? Number(formatUnits(rawStopLoss, collateralAssetInfo.decimals)) : undefined;
 
     return { side, size, collateral, entryPrice, active, takeProfit, stopLoss };
 
   } catch (error) {
     console.error("[BlockchainService] getActivePosition failed:", error);
-    // Return null to prevent the UI from crashing on an error.
     return null;
   }
 }
@@ -331,17 +318,16 @@ export async function openPosition(fromAddress: string, params: {
       throw new Error(`Asset info for ${params.asset} or collateral info for USDT not available for encoding openPosition call.`);
   }
 
-  // keccak256("openPosition(bool,uint256,uint256)")
-  const openPositionSignature = '0x187a34cd';
+  // keccak256("openPosition(bool,uint256,uint256,uint256,uint256)")
+  const openPositionSignature = '0x153c1374';
 
   const isLongHex = (params.direction === 'long' ? 1 : 0).toString(16).padStart(64, '0');
   const sizeHex = parseUnits(params.size.toString(), assetInfo.decimals).toString(16).padStart(64, '0');
   const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
+  const takeProfitHex = params.takeProfit ? parseUnits(params.takeProfit.toString(), collateralInfo.decimals).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
+  const stopLossHex = params.stopLoss ? parseUnits(params.stopLoss.toString(), collateralInfo.decimals).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
   
-  // NOTE: We are simplifying to a 3-parameter function call.
-  // The UI for takeProfit/stopLoss is there, but the call will ignore them for now
-  // to match the likely contract function.
-  const dataPayload = `${openPositionSignature}${isLongHex}${sizeHex}${leverageHex}`;
+  const dataPayload = `${openPositionSignature}${isLongHex}${sizeHex}${leverageHex}${takeProfitHex}${stopLossHex}`;
   
   const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',

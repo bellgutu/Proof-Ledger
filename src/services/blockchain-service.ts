@@ -1,5 +1,3 @@
-
-
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -15,27 +13,23 @@ export interface ChainAsset {
   balance: number;
 }
 
-const ERC20_CONTRACTS: { [symbol: string]: { address: string, name: string, decimals: number } } = {
-    // --- UPDATED CONTRACT ADDRESSES FROM YOUR LATEST DEPLOYMENT ---
-    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 6 },
-    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin', decimals: 6 },
-    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether', decimals: 18 },
-    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink', decimals: 18 },
+const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, name: string, decimals: number } } = {
+    'USDT': { address: process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS, name: 'Tether', decimals: 6 },
+    'USDC': { address: process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS, name: 'USD Coin', decimals: 6 },
+    'WETH': { address: process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS, name: 'Wrapped Ether', decimals: 18 },
+    'LINK': { address: process.env.NEXT_PUBLIC_LINK_CONTRACT_ADDRESS, name: 'Chainlink', decimals: 18 },
 };
 
-const PERPETUALS_CONTRACT_ADDRESS = '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F'; // Also the ProtocolTreasury contract
-const VAULT_CONTRACT_ADDRESS = '0x4A679253410272dd5232B3Ff7cF5dbB88f295319';
-const PRICE_ORACLE_ADDRESS = '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f';
+const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS;
+const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS;
+const PRICE_ORACLE_ADDRESS = process.env.NEXT_PUBLIC_PRICE_ORACLE_ADDRESS;
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
-  console.log(`[BlockchainService] Fetching all assets for address: ${address}`);
-  
   const assets: ChainAsset[] = [];
   const BALANCE_OF_SIGNATURE = '0x70a08231';
   
   // --- 1. Fetch ETH Balance ---
   try {
-    console.log("[BlockchainService] Fetching ETH balance...");
     const ethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,9 +60,10 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   for (const symbol in ERC20_CONTRACTS) {
       try {
           const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-          if (!contract || !contract.address) continue;
-          
-          console.log(`\n[BlockchainService] Checking balance for ${symbol}...`);
+          if (!contract || !contract.address) {
+              console.warn(`[BlockchainService] Skipping ${symbol}: address not found in .env file.`);
+              continue;
+          };
           
           const paddedAddress = address.substring(2).padStart(64, '0');
           
@@ -92,8 +87,6 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                if (data.result && data.result !== '0x') {
                   let rawBalance = BigInt(data.result);
                   
-                  // SAFEGUARD: If the contract has fewer than 18 decimals and the balance is huge,
-                  // it was likely minted with 18-decimal logic. Adjust it.
                   if (contract.decimals < 18 && rawBalance.toString().length > 20) {
                       const difference = BigInt(18 - contract.decimals);
                       rawBalance = rawBalance / (10n ** difference);
@@ -114,7 +107,6 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
       }
   }
   
-  console.log('\n[BlockchainService] Finished fetching all assets. Final result:', assets);
   return assets;
 }
 
@@ -153,7 +145,6 @@ export async function sendTransaction(
   tokenSymbol: string,
   amount: number,
 ): Promise<{ success: boolean; txHash: string }> {
-  console.log(`[BlockchainService] Sending ${amount} ${tokenSymbol} from ${fromAddress} to ${toAddress}`);
 
   let txParams;
   const gasPrice = await getGasPrice();
@@ -169,13 +160,12 @@ export async function sendTransaction(
     };
   } else {
     const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-    if (!contractInfo) {
-      throw new Error(`Contract for ${tokenSymbol} is not configured.`);
+    if (!contractInfo || !contractInfo.address) {
+      throw new Error(`Contract for ${tokenSymbol} is not configured in .env file.`);
     }
     const transferSignature = '0xa9059cbb';
     const paddedToAddress = toAddress.substring(2).padStart(64, '0');
     
-    // Correctly parse the amount using the token's specific decimals
     const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
     const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     
@@ -228,9 +218,8 @@ export interface Position {
 }
 
 export async function getActivePosition(address: string): Promise<Position | null> {
-  console.log(`[BlockchainService] Fetching active position for ${address}...`);
   if (!PERPETUALS_CONTRACT_ADDRESS) {
-    console.warn("[BlockchainService] Perpetuals contract address not set. Returning null.");
+    console.warn("[BlockchainService] Perpetuals contract address not set in .env. Returning null.");
     return null;
   }
 
@@ -254,7 +243,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
     });
 
     if (!response.ok) {
-      throw new Error(`eth_call to getUserPosition failed with status ${response.status}`);
+      throw new Error(`eth_call to getActivePosition failed with status ${response.status}`);
     }
 
     const data = await response.json();
@@ -264,19 +253,24 @@ export async function getActivePosition(address: string): Promise<Position | nul
     
     const resultData = data.result.substring(2);
     if (resultData.length < 320) { // 5 fields * 64 chars/field
-      console.warn("[BlockchainService] getUserPosition returned insufficient data, likely no position.");
       return null;
     }
     
-    // Decode the struct fields
+    const wethInfo = ERC20_CONTRACTS['WETH'];
+    const usdtInfo = ERC20_CONTRACTS['USDT'];
+
+    if (!wethInfo || !usdtInfo) {
+        throw new Error("WETH or USDT contract info not available for decoding position.");
+    }
+
     const side = parseInt(resultData.slice(0, 64), 16) === 0 ? 'long' : 'short';
-    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(64, 128)), ERC20_CONTRACTS['WETH'].decimals));
-    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(128, 192)), ERC20_CONTRACTS['USDT'].decimals));
-    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(192, 256)), ERC20_CONTRACTS['USDT'].decimals));
+    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(64, 128)), wethInfo.decimals));
+    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(128, 192)), usdtInfo.decimals));
+    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(192, 256)), usdtInfo.decimals));
     const active = parseInt(resultData.slice(256, 320), 16) === 1;
 
     if (!active) {
-        return null; // Don't return inactive positions
+        return null;
     }
 
     return { side, size, collateral, entryPrice, active };
@@ -293,12 +287,19 @@ export async function openPosition(fromAddress: string, params: {
   direction: 'long' | 'short';
   leverage: number;
 }): Promise<{ success: boolean; txHash: string }> {
-  console.log('[BlockchainService] Opening position with params:', params);
+  if (!PERPETUALS_CONTRACT_ADDRESS) {
+    throw new Error("Perpetuals contract address not set in .env file.");
+  }
   
+  const wethInfo = ERC20_CONTRACTS['WETH'];
+  if (!wethInfo) {
+      throw new Error("WETH contract info not available for encoding openPosition call.");
+  }
+
   const openPositionSignature = '0x5806b727'; // openPosition(uint8,uint256,uint256)
 
   const sideHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
-  const sizeHex = parseUnits(params.size.toString(), ERC20_CONTRACTS['WETH'].decimals).toString(16).padStart(64, '0');
+  const sizeHex = parseUnits(params.size.toString(), wethInfo.decimals).toString(16).padStart(64, '0');
   const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
   
   const dataPayload = `0x${openPositionSignature.slice(2)}${sideHex}${sizeHex}${leverageHex}`;
@@ -328,7 +329,9 @@ export async function openPosition(fromAddress: string, params: {
 }
 
 export async function closePosition(fromAddress: string): Promise<{ success: boolean, txHash: string }> {
-    console.log(`[BlockchainService] Closing active position for ${fromAddress}`);
+    if (!PERPETUALS_CONTRACT_ADDRESS) {
+      throw new Error("Perpetuals contract address not set in .env file.");
+    }
     
     const closePositionSignature = '0x43d726d6'; // keccak256("closePosition()")
     

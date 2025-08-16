@@ -48,9 +48,11 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
              console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
+             throw new Error(`ETH balance RPC Error: ${ethData.error.message}`);
         }
     } else {
          console.error(`[BlockchainService] Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
+         throw new Error(`Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
     }
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);

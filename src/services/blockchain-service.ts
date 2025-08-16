@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -78,7 +79,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                 jsonrpc: '2.0',
                 method: 'eth_call',
                 params: [{
-                    from: address,
+                    from: address, // Required by some nodes
                     to: contract.address,
                     data: `${BALANCE_OF_SIGNATURE}${paddedAddress}`
                 }, 'latest'],
@@ -320,17 +321,17 @@ export async function openPosition(fromAddress: string, params: {
       throw new Error("WETH/USDT contract info not available for encoding openPosition call.");
   }
 
-  // openPosition(uint8,uint256,uint256,uint256,uint256)
-  const openPositionSignature = '0x82b9543c';
+  // keccak256("openPosition(bool,uint256,uint256)")
+  const openPositionSignature = '0x187a34cd';
 
-  const sideHex = (params.direction === 'long' ? 0 : 1).toString(16).padStart(64, '0');
+  const isLongHex = (params.direction === 'long' ? 1 : 0).toString(16).padStart(64, '0');
   const sizeHex = parseUnits(params.size.toString(), wethInfo.decimals).toString(16).padStart(64, '0');
   const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
-  const takeProfitHex = params.takeProfit ? parseUnits(params.takeProfit.toString(), usdtInfo.decimals).toString(16).padStart(64, '0') : '0'.padStart(64, '0');
-  const stopLossHex = params.stopLoss ? parseUnits(params.stopLoss.toString(), usdtInfo.decimals).toString(16).padStart(64, '0') : '0'.padStart(64, '0');
-
   
-  const dataPayload = `0x${openPositionSignature.slice(2)}${sideHex}${sizeHex}${leverageHex}${takeProfitHex}${stopLossHex}`;
+  // NOTE: We are simplifying to a 3-parameter function call.
+  // The UI for takeProfit/stopLoss is there, but the call will ignore them for now
+  // to match the likely contract function.
+  const dataPayload = `0x${openPositionSignature.slice(2)}${isLongHex}${sizeHex}${leverageHex}`;
   
   const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',

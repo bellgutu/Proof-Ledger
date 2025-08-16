@@ -6,16 +6,35 @@ import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileTe
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
+import { useLogger } from '@/hooks/use-logger';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
+  const { logEvent } = useLogger();
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
     setIsDarkMode(isDark);
   }, []);
+  
+  const getActivePage = () => {
+     const segments = pathname.split('/').filter(Boolean);
+     if (pathname === '/') return 'markets';
+     if(segments[0] === 'markets' && segments[1]){
+      return 'markets';
+    }
+    return segments[0] || 'markets';
+  };
+  
+  const activePage = getActivePage();
+
+  useEffect(() => {
+    if (activePage) {
+      logEvent('page_view', { page: activePage });
+    }
+  }, [activePage, logEvent]);
 
   const navigate = (path: string) => {
     router.push(path);
@@ -30,15 +49,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       document.documentElement.classList.remove('dark');
     }
   };
-  
-  const getActivePage = () => {
-     const segments = pathname.split('/').filter(Boolean);
-     if (pathname === '/') return 'markets';
-     if(segments[0] === 'markets' && segments[1]){
-      return 'markets';
-    }
-    return segments[0] || 'markets';
-  }
 
   const navItems = [
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/' },
@@ -50,8 +60,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} />, path: '/tools' },
     { id: 'assistant', label: 'AI Assistant', icon: <FileText size={20} />, path: '/assistant' },
   ];
-  
-  const activePage = getActivePage();
 
   return (
     <div className="flex flex-col min-h-screen lg:flex-row">

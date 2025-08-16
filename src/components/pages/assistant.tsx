@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { getTradingStrategy, type TradingStrategyInput, type TradingStrategyOutput } from "@/ai/flows/trading-strategy-assistant";
+import { useLogger } from "@/hooks/use-logger";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ export default function AssistantPage() {
   const [strategyOutput, setStrategyOutput] = useState<TradingStrategyOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { logEvent } = useLogger();
 
   const form = useForm<TradingStrategyInput>({
     resolver: zodResolver(TradingStrategyInputSchema),
@@ -36,6 +38,7 @@ export default function AssistantPage() {
     setError(null);
     setStrategyOutput(null);
     try {
+      logEvent('generate_strategy', { riskProfile: values.riskProfile, trendLength: values.marketTrends.length });
       const result = await getTradingStrategy(values);
       setStrategyOutput(result);
     } catch (e) {

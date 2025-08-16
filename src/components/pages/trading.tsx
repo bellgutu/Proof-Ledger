@@ -18,6 +18,8 @@ import { Skeleton } from '../ui/skeleton';
 import { getActivePosition, openPosition, closePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
+import { Label } from '../ui/label';
+
 
 // We need to store some UI state that's not on the contract
 interface PositionWithUI extends Position {
@@ -38,6 +40,9 @@ const TradingPageContent = () => {
   const [tradeAmount, setTradeAmount] = useState(''); // This is now 'size' of the asset
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
   const [leverage, setLeverage] = useState(1);
+  const [takeProfit, setTakeProfit] = useState('');
+  const [stopLoss, setStopLoss] = useState('');
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePosition, setActivePosition] = useState<PositionWithUI | null>(null);
   const [isLoadingPosition, setIsLoadingPosition] = useState(true);
@@ -88,25 +93,24 @@ const TradingPageContent = () => {
     setIsLoadingPosition(true);
     try {
       const position = await getActivePosition(walletAddress);
-      if (position) {
+      if (position && position.active) {
         // Since contract doesn't store UI state, we add it back here
         const leverageUsed = localStorage.getItem(`leverage_${walletAddress}`) || '1';
         const pairUsed = localStorage.getItem(`pair_${walletAddress}`) || 'ETH/USDT';
-
         setActivePosition({ ...position, leverage: parseInt(leverageUsed), pair: pairUsed });
       } else {
         setActivePosition(null);
       }
     } catch (e) {
       console.error("Failed to fetch active position:", e);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch trading position.' });
+      // Don't toast on poll errors, only on direct actions
     }
     setIsLoadingPosition(false);
-  }, [isConnected, walletAddress, toast]);
+  }, [isConnected, walletAddress]);
 
   useEffect(() => {
     fetchPosition();
-    const interval = setInterval(fetchPosition, 10000); // Poll for updates
+    const interval = setInterval(fetchPosition, 5000); // Poll for updates every 5s
     return () => clearInterval(interval);
   }, [fetchPosition]);
 
@@ -143,6 +147,7 @@ const TradingPageContent = () => {
     
     setIsProcessing(true);
     try {
+      // Store UI-related state in localStorage, since contract doesn't hold it
       localStorage.setItem(`leverage_${walletAddress}`, leverage.toString());
       localStorage.setItem(`pair_${walletAddress}`, selectedPair);
 
@@ -150,12 +155,16 @@ const TradingPageContent = () => {
           size,
           direction: tradeDirection,
           leverage,
+          takeProfit: takeProfit ? parseFloat(takeProfit) : undefined,
+          stopLoss: stopLoss ? parseFloat(stopLoss) : undefined,
       });
       toast({ title: 'Position Opened', description: `Your ${tradeDirection} position for ${selectedPair} is now active.`});
       setTradeAmount('');
+      setTakeProfit('');
+      setStopLoss('');
       // Manually deduct collateral from UI for immediate feedback
       updateBalance('USDT', -requiredCollateral);
-      await fetchPosition();
+      await fetchPosition(); // Re-fetch immediately after opening
     } catch(e: any) {
         toast({ variant: 'destructive', title: 'Trade Failed', description: e.message });
     } finally {
@@ -173,10 +182,12 @@ const TradingPageContent = () => {
         await closePosition(walletAddress);
         toast({ title: 'Position Closed', description: `Your trade has been settled.` });
         
+        // Remove localStorage items on close
         localStorage.removeItem(`leverage_${walletAddress}`);
         localStorage.removeItem(`pair_${walletAddress}`);
-
-        await fetchPosition();
+        
+        setActivePosition(null); // Clear position immediately from UI
+        await fetchPosition(); // Fetch to confirm closure
     } catch(e: any) {
         toast({ variant: 'destructive', title: 'Failed to Close', description: e.message });
     } finally {
@@ -228,6 +239,7 @@ const TradingPageContent = () => {
                   onPriceChange={setCurrentPrice} 
                   onCandleDataUpdate={handleCandleDataUpdate}
                   priceScenario={priceScenario}
+                  position={activePosition}
               />
             </div>
           </CardContent>
@@ -246,17 +258,20 @@ const TradingPageContent = () => {
                         const pnl = calculatePnl(pos);
                         return (
                             <div key={pos.entryPrice} className="p-4 bg-background rounded-md border">
-                                <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
+                                <div className="flex flex-wrap items-center justify-between mt-1 gap-4">
                                 <span className={`text-lg font-bold ${pos.side === 'long' ? 'text-green-400' : 'text-red-400'}`}>
                                     {pos.side.toUpperCase()} {pos.size.toLocaleString('en-US', {maximumFractionDigits: 4})} {pos.pair.split('/')[0]}
                                 </span>
-                                <span className="text-foreground font-semibold">{pos.pair}</span>
-                                <span className="text-foreground font-semibold">Entry: ${pos.entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
-                                <span className="text-foreground font-semibold">Leverage: {pos.leverage}x</span>
+                                <div className="flex items-center gap-4">
+                                  <span className="text-foreground font-semibold">Entry: ${pos.entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
+                                  <span className="text-foreground font-semibold">Leverage: {pos.leverage}x</span>
+                                </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
                                   <div><span className="text-muted-foreground">Collateral: </span><span className="font-mono">${pos.collateral.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
                                   <div className="text-right"><span className="text-muted-foreground">Value: </span><span className="font-mono">${(pos.size * currentPrice).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+                                   <div><span className="text-muted-foreground">Stop Loss: </span><span className="font-mono">{pos.stopLoss ? `$${pos.stopLoss}` : 'N/A'}</span></div>
+                                   <div className="text-right"><span className="text-muted-foreground">Take Profit: </span><span className="font-mono">{pos.takeProfit ? `$${pos.takeProfit}` : 'N/A'}</span></div>
                                 </div>
                                 <div className="mt-2 text-2xl font-bold">
                                 P&L: <span className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
@@ -284,7 +299,7 @@ const TradingPageContent = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label htmlFor="trade-amount" className="block text-sm font-medium text-muted-foreground mb-1">Trade Size ({asset})</label>
+              <Label htmlFor="trade-amount">Trade Size ({asset})</Label>
               <Input
                 id="trade-amount"
                 type="number"
@@ -292,21 +307,32 @@ const TradingPageContent = () => {
                 onChange={(e) => setTradeAmount(e.target.value)}
                 disabled={!isConnected || !!activePosition}
                 placeholder="0.0"
+                className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">Collateral (USDT) Balance: {usdtBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
             <div>
-              <label htmlFor="leverage-select" className="block text-sm font-medium text-muted-foreground mb-1">Leverage</label>
+              <Label htmlFor="leverage-select">Leverage</Label>
               <Select
                 value={String(leverage)}
                 onValueChange={(val) => setLeverage(parseInt(val))}
                 disabled={!isConnected || !!activePosition}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="leverage-select" className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {[1, 2, 5, 10].map(l => <SelectItem key={l} value={String(l)}>{l}x</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="take-profit">Take Profit ($)</Label>
+                    <Input id="take-profit" type="number" placeholder="Optional" value={takeProfit} onChange={e => setTakeProfit(e.target.value)} disabled={!!activePosition}/>
+                </div>
+                <div>
+                    <Label htmlFor="stop-loss">Stop Loss ($)</Label>
+                    <Input id="stop-loss" type="number" placeholder="Optional" value={stopLoss} onChange={e => setStopLoss(e.target.value)} disabled={!!activePosition}/>
+                </div>
             </div>
             <div className="flex space-x-2">
               <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingUp size={16} className="mr-2" /> Long</Button>

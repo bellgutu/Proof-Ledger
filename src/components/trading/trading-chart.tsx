@@ -1,7 +1,9 @@
 
+
 "use client";
 
 import React, { useRef, useEffect, useCallback } from 'react';
+import type { Position } from '@/services/blockchain-service';
 
 // Define the Candle data structure
 export interface Candle {
@@ -14,15 +16,22 @@ export interface Candle {
 
 type PriceScenario = 'uptrend' | 'downtrend' | 'normal';
 
+// We pass the whole position object to get all necessary details
+interface PositionWithUI extends Position {
+  pair: string;
+  leverage: number;
+}
+
 // Props for the TradingChart component
 interface TradingChartProps {
   initialPrice: number;
   onPriceChange: (price: number) => void;
   onCandleDataUpdate: (candles: Candle[]) => void;
   priceScenario: PriceScenario | null;
+  position: PositionWithUI | null;
 }
 
-export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, priceScenario }: TradingChartProps) {
+export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, priceScenario, position }: TradingChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const candleDataRef = useRef<Candle[]>([]);
   const currentPriceRef = useRef(initialPrice);
@@ -33,7 +42,9 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
         return {
             background: '#0f172a', text: '#94a3b8', grid: '#334155',
             upCandle: '#22c55e', downCandle: '#ef4444', priceLine: '#3b82f6',
-            priceLabelBackground: '#3b82f6', priceLabelText: '#ffffff'
+            priceLabelBackground: '#3b82f6', priceLabelText: '#ffffff',
+            entryLine: '#a855f7', slLine: '#f59e0b', tpLine: '#14b8a6',
+            positionText: '#ffffff'
         };
     }
     const styles = getComputedStyle(document.documentElement);
@@ -46,6 +57,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
         priceLine: `hsl(${styles.getPropertyValue('--primary').trim()})`,
         priceLabelBackground: `hsl(${styles.getPropertyValue('--primary').trim()})`,
         priceLabelText: `hsl(${styles.getPropertyValue('--primary-foreground').trim()})`,
+        entryLine: '#a855f7', // Purple
+        slLine: '#f59e0b',    // Amber
+        tpLine: '#14b8a6',    // Teal
+        positionText: '#ffffff'
     };
   }, []);
 
@@ -83,10 +98,16 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
     if (visibleCandles.length === 0) return;
 
     const buffer = 0.05; 
-    const maxPrice = Math.max(...visibleCandles.map(c => c.high));
-    const minPrice = Math.min(...visibleCandles.map(c => c.low));
-    const priceRange = maxPrice - minPrice;
+    let maxPrice = Math.max(...visibleCandles.map(c => c.high));
+    let minPrice = Math.min(...visibleCandles.map(c => c.low));
 
+    // Include position lines in price range calculation
+    if (position) {
+        maxPrice = Math.max(maxPrice, position.entryPrice, position.takeProfit || -Infinity);
+        minPrice = Math.min(minPrice, position.entryPrice, position.stopLoss || Infinity);
+    }
+
+    const priceRange = maxPrice - minPrice;
     const paddedMax = maxPrice + priceRange * buffer;
     const paddedMin = minPrice - priceRange * buffer;
     const paddedPriceRange = paddedMax - paddedMin > 0 ? paddedMax - paddedMin : 1;
@@ -146,6 +167,33 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       ctx.fillRect(x, bodyY, candleWidth, bodyHeight);
     });
 
+    const drawPositionLine = (price: number, color: string, text: string, dash: number[] = []) => {
+        const y = scaleY(price);
+        if (y > 0 && y < chartHeight) {
+            ctx.setLineDash(dash);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(chartWidth, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = color;
+            ctx.fillRect(chartWidth, y - 10, yAxisWidth, 20);
+            ctx.fillStyle = theme.positionText;
+            ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, chartWidth + yAxisWidth / 2, y + 3);
+        }
+    };
+
+    if (position && position.active) {
+        drawPositionLine(position.entryPrice, theme.entryLine, 'Entry');
+        if (position.stopLoss) drawPositionLine(position.stopLoss, theme.slLine, 'SL', [5, 5]);
+        if (position.takeProfit) drawPositionLine(position.takeProfit, theme.tpLine, 'TP', [5, 5]);
+    }
+
     const currentPrice = currentPriceRef.current;
     const priceY = scaleY(currentPrice);
 
@@ -166,12 +214,12 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.fillText(currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), chartWidth + yAxisWidth / 2, priceY + 4);
     }
-  }, [getThemeColors]);
+  }, [getThemeColors, position]);
 
   // Effect for generating candle data and simulating price
   useEffect(() => {
     const candleInterval = 2000;
-    const volatility = 0.000005; // Drastically reduced volatility for smoother, more realistic price action
+    const volatility = 0.0000005; // Extremely reduced volatility for basis point movements
 
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
@@ -185,21 +233,21 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       switch (priceScenario) {
         case 'uptrend':
           // Mostly positive changes with some small dips
-          change = (Math.random() - 0.45) * (open * volatility * 10); // More gentle uptrend
+          change = (Math.random() - 0.45) * (open * volatility * 100); 
           break;
         case 'downtrend':
           // Mostly negative changes with some small rallies
-          change = (Math.random() - 0.55) * (open * volatility * 10); // More gentle downtrend
+          change = (Math.random() - 0.55) * (open * volatility * 100);
           break;
         default: // 'normal' or null
-          change = (Math.random() - 0.5) * (open * volatility * 10);
+          change = (Math.random() - 0.5) * (open * volatility * 100);
           break;
       }
       // --- End Scenario Logic ---
 
       const close = open + change;
-      const high = Math.max(open, close) + Math.random() * (open * volatility * 2);
-      const low = Math.min(open, close) - Math.random() * (open * volatility * 2);
+      const high = Math.max(open, close) + Math.random() * (open * volatility * 20);
+      const low = Math.min(open, close) - Math.random() * (open * volatility * 20);
       const time = lastCandle.time + candleInterval;
 
       const newCandle = { open, high, low, close, time };
@@ -218,7 +266,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
         let price = initialPrice;
         for (let i = 0; i < 100; i++) {
             const open = price;
-            const change = (Math.random() - 0.5) * (open * volatility * 10);
+            const change = (Math.random() - 0.5) * (open * volatility * 100);
             const close = open + change;
             const high = Math.max(open, close) + Math.random() * (open * volatility);
             const low = Math.min(open, close) - Math.random() * (open * volatility);

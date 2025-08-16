@@ -257,7 +257,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
 
     const data = await response.json();
     if (data.error) {
-      throw new Error(`RPC Error for getUserPosition: ${data.error.message}`);
+      throw new Error(`RPC Error for getActivePosition: ${data.error.message}`);
     }
     
     const resultData = data.result.substring(2);
@@ -353,5 +353,3 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
-
-    

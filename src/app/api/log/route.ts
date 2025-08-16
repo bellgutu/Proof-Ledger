@@ -4,20 +4,12 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Check for a 'command' field for scenario control
-    if (body.command && ['uptrend', 'downtrend', 'normal'].includes(body.command)) {
-      // This is a simple but effective way to communicate between tabs/apps on the same browser.
-      // The frontend will listen for this storage event.
-      // NOTE: We return the command so the calling app knows it was received, but the actual
-      // "broadcast" happens via the client-side localStorage listener.
-      return NextResponse.json({ 
-        message: 'Command received and will be broadcasted via localStorage.',
-        command: body.command 
-      }, { status: 200 });
-    }
+    // The command is now handled by the client-side listener in trading.tsx
+    // which should be triggered by the sender app after this API call succeeds.
+    console.log('API Log/Command Received:', body);
 
-    console.log('API Log:', body);
-    return NextResponse.json({ message: 'Log received' }, { status: 200 });
+    // Acknowledge receipt. The sender app can now trigger the localStorage change.
+    return NextResponse.json({ message: 'Log received', receivedBody: body }, { status: 200 });
 
   } catch (error) {
     console.error('Failed to parse log request:', error);

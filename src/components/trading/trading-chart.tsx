@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback } from 'react';
+import type { PriceScenario } from './price-scenario-controls';
 
 // Define the Candle data structure
 export interface Candle {
@@ -17,9 +18,10 @@ interface TradingChartProps {
   initialPrice: number;
   onPriceChange: (price: number) => void;
   onCandleDataUpdate: (candles: Candle[]) => void;
+  priceScenario: PriceScenario | null;
 }
 
-export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }: TradingChartProps) {
+export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, priceScenario }: TradingChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const candleDataRef = useRef<Candle[]>([]);
   const currentPriceRef = useRef(initialPrice);
@@ -167,8 +169,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
 
   // Effect for generating candle data and simulating price
   useEffect(() => {
-    const candleInterval = 10000;
-    const volatility = 0.0001;
+    const candleInterval = 2000; // Faster updates for smoother scenarios
+    const volatility = 0.0005;
 
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
@@ -176,7 +178,24 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
         : { close: initialPrice, time: Date.now() - candleInterval };
       
       const open = lastCandle.close;
-      const change = (Math.random() - 0.5) * (open * volatility * 10);
+      let change;
+
+      // --- Scenario Logic ---
+      switch (priceScenario) {
+        case 'uptrend':
+          // Mostly positive changes with some small dips
+          change = (Math.random() - 0.4) * (open * volatility * 10);
+          break;
+        case 'downtrend':
+          // Mostly negative changes with some small rallies
+          change = (Math.random() - 0.6) * (open * volatility * 10);
+          break;
+        default: // 'normal' or null
+          change = (Math.random() - 0.5) * (open * volatility * 10);
+          break;
+      }
+      // --- End Scenario Logic ---
+
       const close = open + change;
       const high = Math.max(open, close) + Math.random() * (open * volatility);
       const low = Math.min(open, close) - Math.random() * (open * volatility);
@@ -192,29 +211,31 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate }
       onCandleDataUpdate([...candleDataRef.current]);
     };
     
-    // Generate initial set of candles
-    candleDataRef.current = [];
-    let startTime = Date.now() - 100 * candleInterval;
-    let price = initialPrice;
-    for (let i = 0; i < 100; i++) {
-        const open = price;
-        const change = (Math.random() - 0.5) * (open * volatility * 10);
-        const close = open + change;
-        const high = Math.max(open, close) + Math.random() * (open * volatility);
-        const low = Math.min(open, close) - Math.random() * (open * volatility);
-        const time = startTime + i * candleInterval;
-        candleDataRef.current.push({ open, high, low, close, time });
-        price = close;
+    // Generate initial set of candles if empty
+    if (candleDataRef.current.length === 0) {
+        let startTime = Date.now() - 100 * candleInterval;
+        let price = initialPrice;
+        for (let i = 0; i < 100; i++) {
+            const open = price;
+            const change = (Math.random() - 0.5) * (open * volatility * 10);
+            const close = open + change;
+            const high = Math.max(open, close) + Math.random() * (open * volatility);
+            const low = Math.min(open, close) - Math.random() * (open * volatility);
+            const time = startTime + i * candleInterval;
+            candleDataRef.current.push({ open, high, low, close, time });
+            price = close;
+        }
+        
+        currentPriceRef.current = price;
+        onPriceChange(price);
+        onCandleDataUpdate([...candleDataRef.current]);
     }
-    
-    currentPriceRef.current = price;
-    onPriceChange(price);
-    onCandleDataUpdate([...candleDataRef.current]);
+
 
     const candleTimer = setInterval(generateNewCandle, candleInterval);
 
     return () => clearInterval(candleTimer);
-  }, [initialPrice, onPriceChange, onCandleDataUpdate]);
+  }, [initialPrice, onPriceChange, onCandleDataUpdate, priceScenario]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

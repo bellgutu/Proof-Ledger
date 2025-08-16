@@ -18,6 +18,7 @@ import { Skeleton } from '../ui/skeleton';
 import { getActivePosition, openPosition, closePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
+import { PriceScenarioControls, type PriceScenario } from '../trading/price-scenario-controls';
 
 // We need to store some UI state that's not on the contract
 interface PositionWithUI extends Position {
@@ -42,6 +43,7 @@ const TradingPageContent = () => {
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
   const [candleData, setCandleData] = useState<Candle[]>([]);
+  const [priceScenario, setPriceScenario] = useState<PriceScenario | null>(null);
 
   const usdtBalance = balances['USDT'] || 0;
 
@@ -202,6 +204,7 @@ const TradingPageContent = () => {
                   initialPrice={initialPriceForChart} 
                   onPriceChange={setCurrentPrice} 
                   onCandleDataUpdate={handleCandleDataUpdate}
+                  priceScenario={priceScenario}
               />
             </div>
           </CardContent>
@@ -291,6 +294,8 @@ const TradingPageContent = () => {
             </Button>
           </CardContent>
         </Card>
+        
+        <PriceScenarioControls onScenarioChange={setPriceScenario} />
 
         <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
         

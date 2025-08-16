@@ -91,7 +91,15 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
-                  const balance = Number(formatUnits(rawBalance, contract.decimals));
+                  let balance;
+                  // ** THE CORRECT FIX **
+                  // For low-decimal tokens, format to a string with fixed decimal places first
+                  // to avoid floating point errors, then convert to a number.
+                  if (contract.decimals < 18) {
+                    balance = Number(Number(formatUnits(rawBalance, contract.decimals)).toFixed(contract.decimals));
+                  } else {
+                    balance = Number(formatUnits(rawBalance, contract.decimals));
+                  }
                   assets.push({ symbol, name: contract.name, balance });
                   
                } else if (data.error) {

@@ -8,6 +8,8 @@ export async function POST(request: Request) {
     if (body.command && ['uptrend', 'downtrend', 'normal'].includes(body.command)) {
       // This is a simple but effective way to communicate between tabs/apps on the same browser.
       // The frontend will listen for this storage event.
+      // NOTE: We return the command so the calling app knows it was received, but the actual
+      // "broadcast" happens via the client-side localStorage listener.
       return NextResponse.json({ 
         message: 'Command received and will be broadcasted via localStorage.',
         command: body.command 

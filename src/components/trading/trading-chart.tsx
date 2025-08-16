@@ -219,7 +219,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
   // Effect for generating candle data and simulating price
   useEffect(() => {
     const candleInterval = 2000;
-    const volatility = 0.0000005; // Extremely reduced volatility for basis point movements
+    const volatility = 0.00005; // Reduced volatility for more stable simulation
 
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
@@ -233,21 +233,21 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       switch (priceScenario) {
         case 'uptrend':
           // Mostly positive changes with some small dips
-          change = (Math.random() - 0.45) * (open * volatility * 100); 
+          change = (Math.random() - 0.45) * (open * volatility * 10); 
           break;
         case 'downtrend':
           // Mostly negative changes with some small rallies
-          change = (Math.random() - 0.55) * (open * volatility * 100);
+          change = (Math.random() - 0.55) * (open * volatility * 10);
           break;
         default: // 'normal' or null
-          change = (Math.random() - 0.5) * (open * volatility * 100);
+          change = (Math.random() - 0.5) * (open * volatility * 10);
           break;
       }
       // --- End Scenario Logic ---
 
       const close = open + change;
-      const high = Math.max(open, close) + Math.random() * (open * volatility * 20);
-      const low = Math.min(open, close) - Math.random() * (open * volatility * 20);
+      const high = Math.max(open, close) + Math.random() * (open * volatility * 2);
+      const low = Math.min(open, close) - Math.random() * (open * volatility * 2);
       const time = lastCandle.time + candleInterval;
 
       const newCandle = { open, high, low, close, time };
@@ -266,7 +266,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
         let price = initialPrice;
         for (let i = 0; i < 100; i++) {
             const open = price;
-            const change = (Math.random() - 0.5) * (open * volatility * 100);
+            const change = (Math.random() - 0.5) * (open * volatility * 10);
             const close = open + change;
             const high = Math.max(open, close) + Math.random() * (open * volatility);
             const low = Math.min(open, close) - Math.random() * (open * volatility);

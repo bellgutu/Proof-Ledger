@@ -80,6 +80,9 @@ const TradingPageContent = () => {
       }
     };
     
+    // This allows an external application to control the chart scenario
+    // by setting a value in localStorage.
+    // Example: localStorage.setItem('price_scenario_command', 'uptrend')
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
@@ -197,10 +200,25 @@ const TradingPageContent = () => {
   };
 
   const calculatePnl = (position: Position) => {
-      if (!position.active) return 0;
-      const priceDifference = currentPrice - position.entryPrice;
-      const pnl = position.size * priceDifference;
-      return position.side === 'long' ? pnl : -pnl;
+    if (!position.active) return 0;
+    
+    // Replicate the contract's integer math to avoid floating point errors.
+    const scaler = 10n ** 8n; // Use 8 for price precision as in the contract
+    const currentPriceBigInt = BigInt(Math.round(currentPrice * 10**8));
+    const entryPriceBigInt = BigInt(Math.round(position.entryPrice * 10**8));
+    const sizeBigInt = BigInt(Math.round(position.size * 10**8)); // Use 8 for size precision for consistency
+
+    const priceDifference = currentPriceBigInt - entryPriceBigInt;
+    
+    // (size * priceDifference) / (scaler * scaler) -> simplifies to size * priceDifference / scaler
+    // We scale size up, then scale the whole result down.
+    let pnl = (sizeBigInt * priceDifference) / scaler;
+
+    if (position.side === 'short') {
+        pnl = -pnl;
+    }
+    
+    return Number(pnl) / 10**8;
   };
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'LINK/USDT', 'USDT/USDC'];

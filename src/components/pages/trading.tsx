@@ -152,6 +152,7 @@ const TradingPageContent = () => {
       localStorage.setItem(`pair_${walletAddress}`, selectedPair);
 
       await openPosition(walletAddress, {
+          asset: selectedPair.split('/')[0],
           size,
           direction: tradeDirection,
           leverage,
@@ -202,7 +203,7 @@ const TradingPageContent = () => {
       return position.side === 'long' ? pnl : -pnl;
   };
   
-  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'LINK/USDT'];
+  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'LINK/USDT', 'USDT/USDC'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
   
   if (!initialPriceForChart) {

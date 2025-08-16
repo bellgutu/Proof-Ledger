@@ -264,21 +264,22 @@ export async function getActivePosition(address: string): Promise<Position | nul
       return null;
     }
     
-    const wethInfo = ERC20_CONTRACTS['WETH'];
-    const usdtInfo = ERC20_CONTRACTS['USDT'];
+    // We assume the position asset is WETH for decoding size
+    const positionAssetInfo = ERC20_CONTRACTS['WETH'];
+    const collateralAssetInfo = ERC20_CONTRACTS['USDT'];
 
-    if (!wethInfo || !usdtInfo) {
+    if (!positionAssetInfo || !collateralAssetInfo) {
         throw new Error("WETH or USDT contract info not available for decoding position.");
     }
     
     let offset = 0;
     const side = parseInt(resultData.slice(offset, offset + 64), 16) === 0 ? 'long' : 'short';
     offset += 64;
-    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), wethInfo.decimals));
+    const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), positionAssetInfo.decimals));
     offset += 64;
-    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), usdtInfo.decimals));
+    const collateral = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
     offset += 64;
-    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), usdtInfo.decimals));
+    const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
     offset += 64;
     const active = parseInt(resultData.slice(offset, offset + 64), 16) === 1;
     offset += 64;
@@ -287,8 +288,8 @@ export async function getActivePosition(address: string): Promise<Position | nul
     offset += 64;
     const rawStopLoss = BigInt('0x' + resultData.slice(offset, offset + 64));
 
-    const takeProfit = rawTakeProfit > 0 ? parseFloat(formatUnits(rawTakeProfit, usdtInfo.decimals)) : undefined;
-    const stopLoss = rawStopLoss > 0 ? parseFloat(formatUnits(rawStopLoss, usdtInfo.decimals)) : undefined;
+    const takeProfit = rawTakeProfit > 0 ? parseFloat(formatUnits(rawTakeProfit, collateralAssetInfo.decimals)) : undefined;
+    const stopLoss = rawStopLoss > 0 ? parseFloat(formatUnits(rawStopLoss, collateralAssetInfo.decimals)) : undefined;
 
 
     if (!active) {
@@ -305,6 +306,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
 
 
 export async function openPosition(fromAddress: string, params: {
+  asset: string;
   size: number;
   direction: 'long' | 'short';
   leverage: number;
@@ -315,23 +317,24 @@ export async function openPosition(fromAddress: string, params: {
     throw new Error("Perpetuals contract address not set in .env file.");
   }
   
-  const wethInfo = ERC20_CONTRACTS['WETH'];
-  const usdtInfo = ERC20_CONTRACTS['USDT'];
-  if (!wethInfo || !usdtInfo) {
-      throw new Error("WETH/USDT contract info not available for encoding openPosition call.");
+  const assetInfo = ERC20_CONTRACTS[params.asset as keyof typeof ERC20_CONTRACTS];
+  const collateralInfo = ERC20_CONTRACTS['USDT'];
+
+  if (!assetInfo || !collateralInfo) {
+      throw new Error(`Asset info for ${params.asset} or collateral info for USDT not available for encoding openPosition call.`);
   }
 
   // keccak256("openPosition(bool,uint256,uint256)")
   const openPositionSignature = '0x187a34cd';
 
   const isLongHex = (params.direction === 'long' ? 1 : 0).toString(16).padStart(64, '0');
-  const sizeHex = parseUnits(params.size.toString(), wethInfo.decimals).toString(16).padStart(64, '0');
+  const sizeHex = parseUnits(params.size.toString(), assetInfo.decimals).toString(16).padStart(64, '0');
   const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
   
   // NOTE: We are simplifying to a 3-parameter function call.
   // The UI for takeProfit/stopLoss is there, but the call will ignore them for now
   // to match the likely contract function.
-  const dataPayload = `0x${openPositionSignature.slice(2)}${isLongHex}${sizeHex}${leverageHex}`;
+  const dataPayload = `${openPositionSignature}${isLongHex}${sizeHex}${leverageHex}`;
   
   const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',

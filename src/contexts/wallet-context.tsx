@@ -298,9 +298,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     // This is a simulated connection. We avoid direct interaction with browser wallets.
     const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'; // Default hardhat address
     
-
     try {
-        console.log("Simulating connection for address:", address);
         const assets = await getWalletAssets(address);
         
         const newBalances = assets.reduce((acc, asset) => {

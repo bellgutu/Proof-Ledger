@@ -54,6 +54,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     }
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
+    // Throw an error to be caught by the caller, so it knows the connection failed.
+    throw new Error("Could not connect to the local blockchain to fetch ETH balance. Is the node running?");
   }
 
   // --- 2. Fetch ERC20 Balances ---

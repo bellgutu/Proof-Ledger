@@ -297,7 +297,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setIsConnecting(true);
     // This is a simulated connection. We avoid direct interaction with browser wallets.
     const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'; // Default hardhat address
-    setWalletAddress(address);
+    
 
     try {
         console.log("Simulating connection for address:", address);
@@ -308,17 +308,23 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return acc;
         }, {} as Balances);
 
+        setWalletAddress(address);
         setBalances(newBalances);
         loadTransactions(address);
         setIsConnected(true);
-    } catch (e) {
+    } catch (e: any) {
         console.error("Failed to get wallet assets during simulated connection:", e);
+        toast({
+            variant: "destructive",
+            title: "Connection Failed",
+            description: e.message || "Could not connect to the local blockchain. Please ensure it's running.",
+        });
         setBalances({});
         setIsConnected(false);
     } finally {
         setIsConnecting(false);
     }
-  }, [loadTransactions]);
+  }, [loadTransactions, toast]);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);

@@ -171,7 +171,7 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
   // Effect for generating candle data and simulating price
   useEffect(() => {
     const candleInterval = 2000;
-    const volatility = 0.00005; // Reduced volatility for smoother, more realistic price action
+    const volatility = 0.000005; // Drastically reduced volatility for smoother, more realistic price action
 
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0

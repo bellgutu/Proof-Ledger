@@ -169,8 +169,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
 
   // Effect for generating candle data and simulating price
   useEffect(() => {
-    const candleInterval = 2000; // Faster updates for smoother scenarios
-    const volatility = 0.0005;
+    const candleInterval = 2000;
+    const volatility = 0.00005; // Reduced volatility for smoother, more realistic price action
 
     const generateNewCandle = () => {
       const lastCandle = candleDataRef.current.length > 0
@@ -184,11 +184,11 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       switch (priceScenario) {
         case 'uptrend':
           // Mostly positive changes with some small dips
-          change = (Math.random() - 0.4) * (open * volatility * 10);
+          change = (Math.random() - 0.45) * (open * volatility * 10); // More gentle uptrend
           break;
         case 'downtrend':
           // Mostly negative changes with some small rallies
-          change = (Math.random() - 0.6) * (open * volatility * 10);
+          change = (Math.random() - 0.55) * (open * volatility * 10); // More gentle downtrend
           break;
         default: // 'normal' or null
           change = (Math.random() - 0.5) * (open * volatility * 10);
@@ -197,8 +197,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       // --- End Scenario Logic ---
 
       const close = open + change;
-      const high = Math.max(open, close) + Math.random() * (open * volatility);
-      const low = Math.min(open, close) - Math.random() * (open * volatility);
+      const high = Math.max(open, close) + Math.random() * (open * volatility * 2);
+      const low = Math.min(open, close) - Math.random() * (open * volatility * 2);
       const time = lastCandle.time + candleInterval;
 
       const newCandle = { open, high, low, close, time };

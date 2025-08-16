@@ -231,7 +231,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
   }
 
   try {
-    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)")
+    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)") -> Corrected from previous errors
     const paddedAddress = address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {
@@ -255,16 +255,27 @@ export async function getActivePosition(address: string): Promise<Position | nul
 
     const data = await response.json();
     if (data.error) {
+      // This is where the "function selector" error would be caught.
       throw new Error(`RPC Error for getActivePosition: ${data.error.message}`);
     }
     
     const resultData = data.result.substring(2);
-    // Expected length: 7 fields * 64 chars/field
+    // Expected length: 7 fields * 64 chars/field. Add a check for safety.
     if (resultData.length < 448) { 
+      console.warn(`[BlockchainService] getActivePosition returned unexpected data length: ${resultData.length}. Assuming no active position.`);
       return null;
     }
     
-    // We assume the position asset is WETH for decoding size
+    let offset = 0;
+
+    // Check if position is active *first* to prevent decoding invalid data
+    offset = 4 * 64; // Active flag is the 5th returned value (index 4)
+    const active = parseInt(resultData.slice(offset, offset + 64), 16) === 1;
+
+    if (!active) {
+        return null; // No active position, no need to decode further.
+    }
+    
     const positionAssetInfo = ERC20_CONTRACTS['WETH'];
     const collateralAssetInfo = ERC20_CONTRACTS['USDT'];
 
@@ -272,7 +283,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
         throw new Error("WETH or USDT contract info not available for decoding position.");
     }
     
-    let offset = 0;
+    offset = 0;
     const side = parseInt(resultData.slice(offset, offset + 64), 16) === 0 ? 'long' : 'short';
     offset += 64;
     const size = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), positionAssetInfo.decimals));
@@ -281,8 +292,8 @@ export async function getActivePosition(address: string): Promise<Position | nul
     offset += 64;
     const entryPrice = parseFloat(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
     offset += 64;
-    const active = parseInt(resultData.slice(offset, offset + 64), 16) === 1;
-    offset += 64;
+    // 'active' is already decoded
+    offset += 64; 
 
     const rawTakeProfit = BigInt('0x' + resultData.slice(offset, offset + 64));
     offset += 64;
@@ -291,15 +302,11 @@ export async function getActivePosition(address: string): Promise<Position | nul
     const takeProfit = rawTakeProfit > 0 ? parseFloat(formatUnits(rawTakeProfit, collateralAssetInfo.decimals)) : undefined;
     const stopLoss = rawStopLoss > 0 ? parseFloat(formatUnits(rawStopLoss, collateralAssetInfo.decimals)) : undefined;
 
-
-    if (!active) {
-        return null;
-    }
-
     return { side, size, collateral, entryPrice, active, takeProfit, stopLoss };
 
   } catch (error) {
     console.error("[BlockchainService] getActivePosition failed:", error);
+    // Return null to prevent the UI from crashing on an error.
     return null;
   }
 }

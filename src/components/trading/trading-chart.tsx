@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback } from 'react';
-import type { PriceScenario } from './price-scenario-controls';
 
 // Define the Candle data structure
 export interface Candle {
@@ -12,6 +11,8 @@ export interface Candle {
   close: number;
   time: number;
 }
+
+type PriceScenario = 'uptrend' | 'downtrend' | 'normal';
 
 // Props for the TradingChart component
 interface TradingChartProps {

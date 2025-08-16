@@ -18,13 +18,14 @@ import { Skeleton } from '../ui/skeleton';
 import { getActivePosition, openPosition, closePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
-import { PriceScenarioControls, type PriceScenario } from '../trading/price-scenario-controls';
 
 // We need to store some UI state that's not on the contract
 interface PositionWithUI extends Position {
   pair: string;
   leverage: number;
 }
+
+type PriceScenario = 'uptrend' | 'downtrend' | 'normal';
 
 
 const TradingPageContent = () => {
@@ -66,22 +67,15 @@ const TradingPageContent = () => {
       if (event.key === 'price_scenario_command' && event.newValue) {
         const command = event.newValue as PriceScenario;
         console.log(`Received external command: ${command}`);
-        setPriceScenario(command);
+        if (command === 'normal') {
+            setPriceScenario(null);
+        } else {
+            setPriceScenario(command);
+        }
       }
     };
     
-    // Add event listener
     window.addEventListener('storage', handleStorageChange);
-    
-    // This effect needs to be triggered from the API route now
-    const handleApiCommand = async (command: PriceScenario) => {
-        // Set the scenario in local storage to trigger the event listener
-        localStorage.setItem('price_scenario_command', command);
-    };
-
-    // Example of how you might hook this up if the API route was on the same origin
-    // but the actual trigger is an external POST request.
-    // For now, the listener is sufficient.
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -323,8 +317,6 @@ const TradingPageContent = () => {
             </Button>
           </CardContent>
         </Card>
-        
-        <PriceScenarioControls onScenarioChange={setPriceScenario} />
 
         <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
         

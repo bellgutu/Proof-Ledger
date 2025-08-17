@@ -176,9 +176,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const response = await fetch('/api/prices', {
-          next: { revalidate: 60 } // Revalidate every 60 seconds
-        });
+        const response = await fetch('/api/prices');
         
         if (!response.ok) {
           throw new Error(`API price route failed with status ${response.status}`);

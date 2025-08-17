@@ -41,7 +41,7 @@ const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
                       alt={`${name} logo`} 
                       width={40} 
                       height={40}
-                      className="drop-shadow-lg"
+                      className="h-10 w-10 drop-shadow-lg"
                     />
                 </div>
                 <p className="text-3xl font-bold mb-2 text-foreground">
@@ -95,7 +95,7 @@ export default function MarketsPage() {
     } catch(e) {
         console.error("Failed to fetch news:", e);
         setNewsFeed([
-             { id: 1, title: 'News Feed Error', content: 'Could not fetch news from the service. Please check the configuration.', url: '#', domain: 'System', createdAt: new Date().toISOString() },
+             { id: 1, title: 'News Feed Error', url: '#', domain: 'System', createdAt: new Date().toISOString() },
         ] as any);
     }
     setIsLoadingNews(false);
@@ -107,9 +107,9 @@ export default function MarketsPage() {
             id: data.symbol,
             name: data.name,
             symbol: data.symbol,
-            value: data.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: data.price > 1 ? 2 : 4}),
-            change: data.change.toFixed(2) + '%',
-            isPositive: data.change >= 0,
+            value: parseFloat(data.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: parseFloat(data.price) > 1 ? 2 : 4}),
+            change: parseFloat(data.change).toFixed(2) + '%',
+            isPositive: parseFloat(data.change) >= 0,
         }));
         setMarkets(newMarkets);
     }

@@ -5,7 +5,7 @@
 import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Wallet, RefreshCcw, Orbit, Send } from 'lucide-react';
 import Image from 'next/image';
 
@@ -56,6 +56,9 @@ export function WalletHeader() {
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle className="text-center text-2xl">Connect a Wallet</DialogTitle>
+                  <DialogDescription className="text-center text-muted-foreground">
+                    Select a provider to connect your Web3 wallet.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
@@ -63,7 +66,7 @@ export function WalletHeader() {
                     Browser Wallet
                   </Button>
                    <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
-                    <Image src="https://explorer.walletconnect.com/logo.svg" alt="WalletConnect" width={28} height={28} className="mr-4"/>
+                    <Image src="https://explorer.walletconnect.com/logo.svg" alt="WalletConnect" width={28} height={28} className="mr-4 h-auto"/>
                     WalletConnect
                   </Button>
                 </div>

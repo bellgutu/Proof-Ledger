@@ -4,8 +4,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, sendTransaction, type ChainAsset as ServiceChainAsset } from '@/services/blockchain-service';
+import { getWalletAssets, sendTransaction, ERC20_CONTRACTS } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
+import { parseUnits, formatUnits } from 'viem';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
 
@@ -169,12 +170,19 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       return;
     };
     const total = Object.entries(balances).reduce((acc, [symbol, balanceStr]) => {
-      const balance = parseFloat(balanceStr) || 0;
+      // Use the same BigInt math for better precision
+      const tokenDecimals = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS]?.decimals || 18;
+      const balanceBI = parseUnits(balanceStr || '0', tokenDecimals);
       const price = marketData[symbol]?.price || 0;
+
+      // We can parseFloat here as it's just for display, but the balance is now precise
+      const balance = parseFloat(formatUnits(balanceBI, tokenDecimals));
+      
       return acc + (balance * price);
     }, 0);
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   }, [balances, marketData, isMarketDataLoaded, isConnected]);
+
 
   // Fetch real-time market data from our API route
   useEffect(() => {
@@ -338,12 +346,25 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
     setBalances(prev => {
-        const currentBalance = parseFloat(prev[symbol] || '0');
-        const newBalance = currentBalance + amount;
+        // Find the decimals for the token, default to 18
+        const tokenDecimals = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS]?.decimals || 18;
+
+        // Convert string balance to a BigInt
+        const currentBalanceBI = parseUnits(prev[symbol] || '0', tokenDecimals);
+
+        // Convert the amount to add/subtract to a BigInt
+        const amountBI = parseUnits(amount.toString(), tokenDecimals);
+
+        // Perform math with perfect precision using BigInt
+        const newBalanceBI = currentBalanceBI + amountBI;
+
+        // Format the result back to a string
+        const newBalanceStr = formatUnits(newBalanceBI, tokenDecimals);
+
         return {
             ...prev,
-            [symbol]: newBalance.toString()
-        }
+            [symbol]: newBalanceStr
+        };
     });
   }, []);
 
@@ -356,7 +377,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setTxStatusDialog({
       isOpen: true,
       state: 'processing',
-      transaction: { amount, token: tokenSymbol, to: toAddress }
+      transaction: { amount: amount, token: tokenSymbol, to: toAddress }
     });
 
     const pendingTxId = addTransaction({

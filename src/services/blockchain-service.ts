@@ -15,11 +15,12 @@ export interface ChainAsset {
   balance: string; // Use string to maintain precision and prevent floating point errors
 }
 
-const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, name: string, decimals: number } } = {
+export const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, name: string, decimals: number } } = {
     'USDT': { address: process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS, name: 'Tether', decimals: 6 },
     'USDC': { address: process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS, name: 'USD Coin', decimals: 6 },
     'WETH': { address: process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS, name: 'Wrapped Ether', decimals: 18 },
     'LINK': { address: process.env.NEXT_PUBLIC_LINK_CONTRACT_ADDRESS, name: 'Chainlink', decimals: 18 },
+    'ETH': { address: undefined, name: 'Ethereum', decimals: 18 }, // Add ETH for decimal consistency
 };
 
 const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS;
@@ -66,6 +67,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   // --- 2. Fetch ERC20 Balances ---
   for (const symbol in ERC20_CONTRACTS) {
       try {
+          if (symbol === 'ETH') continue; // Already handled
           const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
           if (!contract || !contract.address) {
               console.warn(`[BlockchainService] Skipping ${symbol}: address not found in .env file.`);
@@ -148,6 +150,11 @@ export async function sendTransaction(
   let txParams;
   const gasPrice = await getGasPrice();
 
+  const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+  if (!contractInfo) {
+    throw new Error(`Token info for ${tokenSymbol} not found.`);
+  }
+
   if (tokenSymbol === 'ETH') {
     const valueInWei = parseUnits(amount.toString(), 18);
     txParams = {
@@ -158,8 +165,7 @@ export async function sendTransaction(
         gasPrice: `0x${gasPrice.toString(16)}`,
     };
   } else {
-    const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-    if (!contractInfo || !contractInfo.address) {
+    if (!contractInfo.address) {
       throw new Error(`Contract for ${tokenSymbol} is not configured in .env file.`);
     }
     const transferSignature = '0xa9059cbb';

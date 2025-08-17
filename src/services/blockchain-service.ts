@@ -24,6 +24,8 @@ const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, name: 
 const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS;
 const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS;
 const PRICE_ORACLE_ADDRESS = process.env.NEXT_PUBLIC_PRICE_ORACLE_ADDRESS;
+const DEX_ROUTER_ADDRESS = process.env.NEXT_PUBLIC_DEX_ROUTER_ADDRESS;
+
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   const assets: ChainAsset[] = [];

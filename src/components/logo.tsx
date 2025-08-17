@@ -48,7 +48,7 @@ export function Logo() {
           <rect className="bar3" x="19" y="9" width="4" height="12" fill="hsl(var(--primary-foreground))" rx="1" style={{transform: 'scaleY(1)'}} />
         </g>
       </svg>
-      <span className="text-2xl font-extrabold tracking-tight animated-searchlight">
+      <span className="text-2xl font-extrabold tracking-tight">
         ProfitForge<sup className="text-xs font-light">&reg;</sup>
       </span>
     </div>

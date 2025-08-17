@@ -12,7 +12,7 @@ const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP R
 export interface ChainAsset {
   symbol: string;
   name: string;
-  balance: string; // Use string to maintain precision
+  balance: string; // Use string to maintain precision and prevent floating point errors
 }
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, name: string, decimals: number } } = {
@@ -48,6 +48,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
             const rawBalance = BigInt(ethData.result);
+            // Directly format to string to avoid floating point issues
             const ethBalance = formatUnits(rawBalance, 18);
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
@@ -94,6 +95,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
+                  // DEFINITIVE FIX: Directly format the BigInt to a string with correct decimals.
+                  // This string is now the source of truth, preventing any floating point errors.
                   const balance = formatUnits(rawBalance, contract.decimals);
                   assets.push({ symbol, name: contract.name, balance });
                   

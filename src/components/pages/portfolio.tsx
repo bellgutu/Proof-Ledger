@@ -27,7 +27,7 @@ export default function PortfolioPage() {
   const assets: ChainAsset[] = Object.entries(balances)
     .map(([symbol, balance]) => ({
       symbol,
-      balance,
+      balance, // balance is a string
       name: marketData[symbol]?.name || symbol,
     }))
     .filter(asset => parseFloat(asset.balance) > 0)

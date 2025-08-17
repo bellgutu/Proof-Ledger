@@ -139,6 +139,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [walletAddress, setWalletAddress] = useState('');
   const [balances, setBalances] = useState<Balances>({});
   
+  // --- ADD THIS ENTIRE useEffect BLOCK ---
+  useEffect(() => {
+    console.log('[3. CONTEXT] Balances state was updated:', balances);
+  }, [balances]);
+
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
   const [walletBalance, setWalletBalance] = useState('0.00');

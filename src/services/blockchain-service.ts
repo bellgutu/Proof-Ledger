@@ -94,8 +94,15 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
           if (response.ok) {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
+                  // --- ADD FIRST LOG HERE ---
+                  console.log(`[1. SERVICE] Raw data for ${symbol}:`, data.result);
+
                   const rawBalance = BigInt(data.result);
                   const balance = formatUnits(rawBalance, contract.decimals);
+
+                  // --- ADD SECOND LOG HERE ---
+                  console.log(`[2. SERVICE] Formatted data for ${symbol}:`, balance);
+
                   assets.push({ symbol, name: contract.name, balance });
                } else if (data.error) {
                   console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${data.error.message}`);
@@ -271,7 +278,6 @@ export async function getActivePosition(address: string, assetSymbol: string): P
         return null;
     }
     
-    // FIX: Use the correct decimals for each part of the position.
     const positionAssetInfo = ERC20_CONTRACTS[assetSymbol as keyof typeof ERC20_CONTRACTS];
     const collateralAssetInfo = ERC20_CONTRACTS['USDT'];
     const priceDecimal = 18; // Oracles often use 18 decimals for price feeds.

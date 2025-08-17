@@ -25,11 +25,15 @@ export default function PortfolioPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const assets: ChainAsset[] = Object.entries(balances)
-    .map(([symbol, balance]) => ({
-      symbol,
-      balance, // balance is a string
-      name: marketData[symbol]?.name || symbol,
-    }))
+    .map(([symbol, balance]) => {
+      // --- ADD THIS LOG HERE ---
+      console.log(`[4. DISPLAY] Rendering ${symbol} with value:`, balance);
+      return {
+        symbol,
+        balance, // balance is a string
+        name: marketData[symbol]?.name || symbol,
+      };
+    })
     .filter(asset => parseFloat(asset.balance) > 0)
     .sort((a, b) => {
         const valueA = parseFloat(a.balance) * (marketData[a.symbol]?.price || 0);

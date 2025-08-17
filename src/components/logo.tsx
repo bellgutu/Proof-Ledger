@@ -32,24 +32,6 @@ export function Logo() {
                 100% { transform: scale(1); opacity: 1; }
               }
               .forge-icon { animation: pulse 3s ease-in-out infinite; }
-
-              @keyframes searchlight {
-                0% { background-position: -200% center; }
-                100% { background-position: 200% center; }
-              }
-              .animated-searchlight {
-                background-image: linear-gradient(
-                  to right,
-                  hsl(var(--foreground)) 20%,
-                  hsl(var(--primary-foreground)) 50%,
-                  hsl(var(--foreground)) 80%
-                );
-                background-size: 200% auto;
-                color: transparent;
-                background-clip: text;
-                -webkit-background-clip: text;
-                animation: searchlight 4s linear infinite;
-              }
             `}
           </style>
         </defs>

@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, type ChainAsset } from '@/services/blockchain-service';
+import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
@@ -176,7 +176,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const response = await fetch('/api/prices');
+        const response = await fetch('/api/prices', {
+          next: { revalidate: 60 } // Revalidate every 60 seconds
+        });
         
         if (!response.ok) {
           throw new Error(`API price route failed with status ${response.status}`);
@@ -363,11 +365,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
 
     try {
-        // Since this is a local hardhat node, we don't need a real send function.
-        // We'll just simulate success and update the balance.
+        // Restore the REAL blockchain call. No more simulation.
+        const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
+        
+        // Update UI immediately for responsiveness, but the poller will provide the final source of truth.
         updateBalance(tokenSymbol, -amount);
-        const mockTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-        const result = { success: true, txHash: mockTxHash };
         
         updateTransactionStatus(pendingTxId, 'Completed', `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`, result.txHash);
         
@@ -391,6 +393,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         throw e;
     } finally {
+        // Give the poller a moment to catch up before re-enabling it
         setTimeout(() => { isSendingRef.current = false; }, 5000);
     }
 
@@ -422,7 +425,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               return acc;
             }, {} as Balances);
             
-            // The remote data is the source of truth. Simply update the local state to match.
+            // The remote data is the source of truth. Simply update the local state to match it.
             setBalances(newBalances);
 
         } catch (error) {
@@ -494,5 +497,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

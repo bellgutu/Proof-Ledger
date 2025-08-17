@@ -58,7 +58,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
     return ((Number(amount) || 0) * assetPrice).toLocaleString('en-us', {style: 'currency', currency: 'USD'});
-  }, [sendForm, assetPrice, asset.symbol]);
+  }, [sendForm, assetPrice]);
   
   const fetchGas = async () => {
     if(!isConnected) return;

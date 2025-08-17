@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
+import { getWalletAssets, sendTransaction, type ChainAsset as ServiceChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
@@ -33,7 +33,11 @@ export interface TxStatusDialogInfo {
 }
 
 
-export type { ChainAsset };
+export interface ChainAsset {
+  symbol: string;
+  name: string;
+  balance: string; // Use string to maintain precision
+}
 
 export interface VaultStrategy {
     name: string;

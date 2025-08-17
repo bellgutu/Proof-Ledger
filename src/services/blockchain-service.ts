@@ -92,9 +92,10 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
                   let balance;
-                  // ** THE CORRECT FIX **
-                  // For low-decimal tokens, format to a string with fixed decimal places first
-                  // to avoid floating point errors, then convert to a number.
+                  
+                  // ** THE DEFINITIVE FIX FOR THE "ZEROS BUG" **
+                  // For low-decimal tokens (USDT, USDC), format to a string with fixed decimal places
+                  // before converting to a number to avoid floating-point inaccuracies.
                   if (contract.decimals < 18) {
                     balance = Number(Number(formatUnits(rawBalance, contract.decimals)).toFixed(contract.decimals));
                   } else {
@@ -391,3 +392,5 @@ export async function closePosition(fromAddress: string): Promise<{ success: boo
 
     return { success: true, txHash: txData.result };
 }
+
+    

@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, sendTransaction, type ChainAsset } from '@/services/blockchain-service';
+import { getWalletAssets, type ChainAsset } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
@@ -393,13 +393,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (!isConnected || !walletAddress) return;
 
     let isCancelled = false;
+    let intervalId: NodeJS.Timeout;
 
     const pollForUpdates = async () => {
         if (isSendingRef.current || isCancelled) return;
         
         try {
             const remoteAssets = await getWalletAssets(walletAddress);
-            if (isCancelled) return;
+            if (isCancelled || !Array.isArray(remoteAssets) || remoteAssets.length === 0) {
+              return; // Do not update state if the poll fails or returns invalid data
+            }
             
             const newBalances = remoteAssets.reduce((acc, asset) => {
               acc[asset.symbol] = asset.balance;
@@ -442,10 +445,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             });
             // Stop polling on error to prevent corrupted state
             isCancelled = true; 
+            clearInterval(intervalId); // Stop the interval
         }
     };
 
-    const intervalId = setInterval(pollForUpdates, 15000);
+    intervalId = setInterval(pollForUpdates, 15000);
 
     return () => {
         isCancelled = true;

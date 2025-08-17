@@ -2,7 +2,7 @@ import React from 'react';
 
 export function Logo() {
   return (
-    <div className="flex items-center gap-2" aria-label="ProfitForge logo">
+    <div className="flex items-center gap-3" aria-label="ProfitForge logo">
       <svg
         width="32"
         height="32"
@@ -32,6 +32,24 @@ export function Logo() {
                 100% { transform: scale(1); opacity: 1; }
               }
               .forge-icon { animation: pulse 3s ease-in-out infinite; }
+
+              @keyframes searchlight {
+                0% { background-position: -200% center; }
+                100% { background-position: 200% center; }
+              }
+              .animated-searchlight {
+                background-image: linear-gradient(
+                  to right,
+                  hsl(var(--foreground)) 20%,
+                  hsl(var(--primary-foreground)) 50%,
+                  hsl(var(--foreground)) 80%
+                );
+                background-size: 200% auto;
+                color: transparent;
+                background-clip: text;
+                -webkit-background-clip: text;
+                animation: searchlight 4s linear infinite;
+              }
             `}
           </style>
         </defs>
@@ -48,7 +66,9 @@ export function Logo() {
           <rect className="bar3" x="19" y="9" width="4" height="12" fill="hsl(var(--primary-foreground))" rx="1" style={{transform: 'scaleY(1)'}} />
         </g>
       </svg>
-      <span className="text-xl font-extrabold text-foreground tracking-tight">ProfitForge</span>
+      <span className="text-2xl font-extrabold tracking-tight animated-searchlight">
+        ProfitForge<sup className="text-xs font-light">&reg;</sup>
+      </span>
     </div>
   );
 }

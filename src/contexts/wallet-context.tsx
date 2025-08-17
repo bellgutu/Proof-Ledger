@@ -365,10 +365,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     try {
         // Since this is a local hardhat node, we don't need a real send function.
         // We'll just simulate success and update the balance.
+        updateBalance(tokenSymbol, -amount);
         const mockTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
         const result = { success: true, txHash: mockTxHash };
         
-        updateBalance(tokenSymbol, -amount);
         updateTransactionStatus(pendingTxId, 'Completed', `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`, result.txHash);
         
         setTxStatusDialog(prev => ({
@@ -409,51 +409,29 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         try {
             const remoteAssets = await getWalletAssets(walletAddress);
-            if (isCancelled || !Array.isArray(remoteAssets)) {
-              return; 
-            }
-             if (remoteAssets.length === 0 && Object.keys(balances).length > 0) {
-              // This is a likely sign of a transient RPC error. Do not wipe out the balances.
-              console.warn("Polling returned empty assets, but local state has balances. Ignoring update to prevent state wipe.");
+            if (isCancelled) return;
+            
+            // This is a simple guard to prevent state wipes from transient RPC errors.
+            if (!remoteAssets || remoteAssets.length === 0 && Object.keys(balances).length > 0) {
+              console.warn("Polling returned no assets, but local state has balances. Ignoring update to prevent state wipe.");
               return;
             }
-            
+
             const newBalances = remoteAssets.reduce((acc, asset) => {
               acc[asset.symbol] = asset.balance;
               return acc;
             }, {} as Balances);
-
-            setBalances(currentLocalBalances => {
-                const notificationsToShow: { title: string; description: string }[] = [];
-                // Check for received transactions
-                for (const remoteAsset of remoteAssets) {
-                    const localBalance = parseFloat(currentLocalBalances[remoteAsset.symbol] || '0');
-                    const remoteBalance = parseFloat(remoteAsset.balance);
-                    if (remoteBalance > localBalance) {
-                         const amountReceived = remoteBalance - localBalance;
-                         addTransaction({
-                            type: 'Receive',
-                            txHash: `external_${Date.now()}_${remoteAsset.symbol}`,
-                            to: walletAddress,
-                            details: `Received ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}`,
-                            token: remoteAsset.symbol,
-                            amount: amountReceived,
-                        });
-                        notificationsToShow.push({
-                           title: 'Transaction Received!',
-                           description: `Your balance has been updated with ${amountReceived.toLocaleString(undefined, {maximumFractionDigits: 6})} ${remoteAsset.symbol}.`
-                        });
-                    }
-                }
-                notificationsToShow.forEach(n => toast(n));
-                
-                // Trust the remote source as the source of truth for balances
-                return newBalances;
-            });
+            
+            // The remote data is the source of truth. Simply update the local state to match.
+            setBalances(newBalances);
 
         } catch (error) {
             console.error("Failed to poll for wallet updates. Stopping polling.", error);
-            // Don't toast on poll errors as they can be noisy. Just stop polling.
+            toast({
+                variant: 'destructive',
+                title: 'Connection Lost',
+                description: 'Could not refresh wallet balance. Please check your connection.',
+            });
             isCancelled = true; 
             clearInterval(intervalId); // Stop the interval
         }
@@ -465,7 +443,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         isCancelled = true;
         clearInterval(intervalId);
     };
-  }, [isConnected, walletAddress, addTransaction, toast, balances]);
+  }, [isConnected, walletAddress, balances, toast]);
 
 
   const value: WalletContextType = {
@@ -517,23 +495,4 @@ export const useWallet = (): WalletContextType => {
   return context;
 };
 
-// Replace the real sendTransaction with a mock for local development
-async function sendTransaction(
-  fromAddress: string,
-  toAddress: string,
-  tokenSymbol: string,
-  amount: number
-): Promise<{ success: boolean; txHash: string }> {
-  console.log(`[Mock Send] From: ${fromAddress}, To: ${toAddress}, Token: ${tokenSymbol}, Amount: ${amount}`);
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  const mockTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-
-  // In a real app, you would check for errors here.
-  // For the mock, we'll always assume success.
-  return {
-    success: true,
-    txHash: mockTxHash,
-  };
-}
+    

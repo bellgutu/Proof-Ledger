@@ -224,7 +224,7 @@ export interface Position {
   stopLoss?: number;
 }
 
-export async function getActivePosition(address: string): Promise<Position | null> {
+export async function getActivePosition(address: string, assetSymbol: string): Promise<Position | null> {
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     console.warn("[BlockchainService] Perpetuals contract address not set in .env. Returning null.");
     return null;
@@ -271,11 +271,13 @@ export async function getActivePosition(address: string): Promise<Position | nul
         return null;
     }
     
-    const positionAssetInfo = ERC20_CONTRACTS['WETH'];
+    // FIX: Use the correct decimals for each part of the position.
+    const positionAssetInfo = ERC20_CONTRACTS[assetSymbol as keyof typeof ERC20_CONTRACTS];
     const collateralAssetInfo = ERC20_CONTRACTS['USDT'];
+    const priceDecimal = 18; // Oracles often use 18 decimals for price feeds.
 
     if (!positionAssetInfo || !collateralAssetInfo) {
-        throw new Error("WETH or USDT contract info not available for decoding position.");
+        throw new Error(`Asset info for ${assetSymbol} or collateral info for USDT not available for decoding position.`);
     }
     
     offset = 0;
@@ -285,7 +287,7 @@ export async function getActivePosition(address: string): Promise<Position | nul
     offset += 64;
     const collateral = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
     offset += 64;
-    const entryPrice = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
+    const entryPrice = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), priceDecimal));
     offset += 64;
     // 'active' is already decoded
     offset += 64; 
@@ -294,8 +296,8 @@ export async function getActivePosition(address: string): Promise<Position | nul
     offset += 64;
     const rawStopLoss = BigInt('0x' + resultData.slice(offset, offset + 64));
 
-    const takeProfit = rawTakeProfit > 0 ? Number(formatUnits(rawTakeProfit, collateralAssetInfo.decimals)) : undefined;
-    const stopLoss = rawStopLoss > 0 ? Number(formatUnits(rawStopLoss, collateralAssetInfo.decimals)) : undefined;
+    const takeProfit = rawTakeProfit > 0 ? Number(formatUnits(rawTakeProfit, priceDecimal)) : undefined;
+    const stopLoss = rawStopLoss > 0 ? Number(formatUnits(rawStopLoss, priceDecimal)) : undefined;
 
     return { side, size, collateral, entryPrice, active, takeProfit, stopLoss };
 
@@ -320,6 +322,7 @@ export async function openPosition(fromAddress: string, params: {
   
   const assetInfo = ERC20_CONTRACTS[params.asset as keyof typeof ERC20_CONTRACTS];
   const collateralInfo = ERC20_CONTRACTS['USDT'];
+  const priceDecimal = 18;
 
   if (!assetInfo || !collateralInfo) {
       throw new Error(`Asset info for ${params.asset} or collateral info for USDT not available for encoding openPosition call.`);
@@ -331,8 +334,8 @@ export async function openPosition(fromAddress: string, params: {
   const isLongHex = (params.direction === 'long' ? 1 : 0).toString(16).padStart(64, '0');
   const sizeHex = parseUnits(params.size.toString(), assetInfo.decimals).toString(16).padStart(64, '0');
   const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
-  const takeProfitHex = params.takeProfit ? parseUnits(params.takeProfit.toString(), collateralInfo.decimals).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
-  const stopLossHex = params.stopLoss ? parseUnits(params.stopLoss.toString(), collateralInfo.decimals).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
+  const takeProfitHex = params.takeProfit ? parseUnits(params.takeProfit.toString(), priceDecimal).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
+  const stopLossHex = params.stopLoss ? parseUnits(params.stopLoss.toString(), priceDecimal).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
   
   const dataPayload = `${openPositionSignature}${isLongHex}${sizeHex}${leverageHex}${takeProfitHex}${stopLossHex}`;
   

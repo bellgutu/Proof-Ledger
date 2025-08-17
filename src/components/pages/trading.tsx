@@ -15,7 +15,7 @@ import { TradingChart, type Candle } from '@/components/trading/trading-chart';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, openPosition, closePosition } from '@/services/blockchain-service';
+import { getActivePosition, openPosition, closePosition, ERC20_CONTRACTS } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -95,7 +95,8 @@ const TradingPageContent = () => {
     if (!isConnected || !walletAddress) return;
     setIsLoadingPosition(true);
     try {
-      const position = await getActivePosition(walletAddress);
+      const assetSymbol = selectedPair.split('/')[0];
+      const position = await getActivePosition(walletAddress, assetSymbol);
       if (position && position.active) {
         // Since contract doesn't store UI state, we add it back here
         const leverageUsed = localStorage.getItem(`leverage_${walletAddress}`) || '1';
@@ -109,7 +110,7 @@ const TradingPageContent = () => {
       // Don't toast on poll errors, only on direct actions
     }
     setIsLoadingPosition(false);
-  }, [isConnected, walletAddress]);
+  }, [isConnected, walletAddress, selectedPair]);
 
   useEffect(() => {
     fetchPosition();
@@ -202,23 +203,14 @@ const TradingPageContent = () => {
   const calculatePnl = (position: Position) => {
     if (!position.active) return 0;
     
-    // Replicate the contract's integer math to avoid floating point errors.
-    const scaler = 10n ** 8n; // Use 8 for price precision as in the contract
-    const currentPriceBigInt = BigInt(Math.round(currentPrice * 10**8));
-    const entryPriceBigInt = BigInt(Math.round(position.entryPrice * 10**8));
-    const sizeBigInt = BigInt(Math.round(position.size * 10**8)); // Use 8 for size precision for consistency
-
-    const priceDifference = currentPriceBigInt - entryPriceBigInt;
+    const priceDifference = currentPrice - position.entryPrice;
+    let pnl = position.size * priceDifference;
     
-    // (size * priceDifference) / (scaler * scaler) -> simplifies to size * priceDifference / scaler
-    // We scale size up, then scale the whole result down.
-    let pnl = (sizeBigInt * priceDifference) / scaler;
-
     if (position.side === 'short') {
-        pnl = -pnl;
+      pnl = -pnl;
     }
     
-    return Number(pnl) / 10**8;
+    return pnl;
   };
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'LINK/USDT', 'USDT/USDC'];

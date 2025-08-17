@@ -12,41 +12,19 @@ export function Logo() {
         className="text-primary"
       >
         <defs>
-          <linearGradient id="flameGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-            <stop offset="0%" stopColor="hsl(var(--accent))" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" />
+          <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="hsl(var(--primary))" />
+            <stop offset="100%" stopColor="hsl(var(--accent))" />
           </linearGradient>
         </defs>
-        {/* Anvil/Forge Base */}
         <path
-          d="M4 22C4 21.4477 4.44772 21 5 21H27C27.5523 21 28 21.4477 28 22V24C28 25.1046 27.1046 26 26 26H6C4.89543 26 4 25.1046 4 24V22Z"
-          fill="currentColor"
-        />
-        <path
-          d="M8 17C8 16.4477 8.44772 16 9 16H23C23.5523 16 24 16.4477 24 17V21H8V17Z"
-          fill="currentColor"
-          className="text-primary/70"
-        />
-        {/* Flame */}
-        <path
-          d="M16 4C10 9 13 14 13 16H19C19 14 22 9 16 4Z"
-          fill="url(#flameGradient)"
-          transform="translate(0, -2)"
-        />
-         <path
-          d="M12 9C9 12 11 15 11 16H13C13 15 14 12 12 9Z"
-          fill="url(#flameGradient)"
-          opacity="0.7"
-           transform="translate(0, -2)"
-        />
-         <path
-          d="M20 9C23 12 21 15 21 16H19C19 15 18 12 20 9Z"
-          fill="url(#flameGradient)"
-          opacity="0.7"
-           transform="translate(0, -2)"
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M16 32C24.8366 32 32 24.8366 32 16C32 7.16344 24.8366 0 16 0C7.16344 0 0 7.16344 0 16C0 24.8366 7.16344 32 16 32ZM13.0621 8.83101C12.0621 8.35101 11 9.06101 11 10.191V21.821C11 22.951 12.0621 23.661 13.0621 23.181L22.9321 17.361C23.9421 16.871 23.9421 15.141 22.9321 14.651L13.0621 8.83101Z"
+          fill="url(#logoGradient)"
         />
       </svg>
-      <span className="text-xl font-extrabold text-foreground">ProfitForge</span>
+      <span className="text-xl font-extrabold text-foreground tracking-tight">ProfitForge</span>
     </div>
   );
 }

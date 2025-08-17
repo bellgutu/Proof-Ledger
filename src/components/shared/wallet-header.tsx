@@ -6,7 +6,7 @@ import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Wallet, RefreshCcw, Orbit, Send } from 'lucide-react';
+import { Wallet, RefreshCcw, Orbit, CircleDollarSign } from 'lucide-react';
 import Image from 'next/image';
 
 export function WalletHeader() {
@@ -15,35 +15,42 @@ export function WalletHeader() {
   const { connectWallet, disconnectWallet } = walletActions;
 
   return (
-    <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01]">
-      <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between">
-        <div className="flex items-center space-x-4 mb-4 md:mb-0 w-full md:w-auto">
-          <Wallet size={48} className="text-primary flex-shrink-0" />
-          {!isConnected ? (
-            <h3 className="text-xl font-bold">Connect your wallet</h3>
-          ) : (
-            <div className="flex flex-col min-w-0">
-              <h3 className="text-xl font-bold text-foreground">Connected Wallet</h3>
-              <p className="text-muted-foreground text-sm break-all truncate">{walletAddress}</p>
-            </div>
-          )}
-        </div>
+    <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01] overflow-hidden">
+      <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {isConnected ? (
-          <div className="flex items-center gap-4">
-             <div className="flex flex-col items-end">
-                <div className="text-2xl font-bold text-foreground">${walletBalance}</div>
-                <p className="text-sm text-muted-foreground">Total Balance</p>
+          <>
+            <div className="flex items-center space-x-4">
+              <Wallet size={32} className="text-primary flex-shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <p className="text-muted-foreground text-xs">Connected Wallet</p>
+                <p className="font-mono text-sm break-all truncate">{walletAddress}</p>
+              </div>
             </div>
-            <div className="flex flex-col gap-2">
-                 <Button onClick={disconnectWallet} variant="secondary" size="sm">
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 text-right">
+                    <CircleDollarSign size={32} className="text-primary"/>
+                    <div>
+                        <p className="text-muted-foreground text-xs">Total Balance</p>
+                        <p className="text-2xl font-bold text-foreground">${walletBalance}</p>
+                    </div>
+                </div>
+                <Button onClick={disconnectWallet} variant="secondary" size="sm">
                     Disconnect
                 </Button>
             </div>
-          </div>
+          </>
         ) : (
-           <Dialog>
+          <>
+             <div className="flex items-center space-x-4">
+              <Wallet size={32} className="text-muted-foreground flex-shrink-0" />
+               <div>
+                  <h3 className="text-lg font-bold">Connect Your Wallet</h3>
+                  <p className="text-sm text-muted-foreground">To view and manage your assets.</p>
+               </div>
+            </div>
+            <Dialog>
               <DialogTrigger asChild>
-                 <Button disabled={isConnecting} variant="default" size="lg">
+                 <Button disabled={isConnecting} variant="default" size="lg" className="animate-pulse-strong">
                     {isConnecting ? (
                       <span className="flex items-center">
                         <RefreshCcw size={16} className="mr-2 animate-spin" /> Connecting...
@@ -72,6 +79,7 @@ export function WalletHeader() {
                 </div>
               </DialogContent>
             </Dialog>
+          </>
         )}
       </CardContent>
     </Card>

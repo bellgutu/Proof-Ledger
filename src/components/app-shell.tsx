@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -7,12 +8,19 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { useLogger } from '@/hooks/use-logger';
+import { useWallet } from '@/contexts/wallet-context';
+import type { ChainAsset } from '@/contexts/wallet-context';
+import { TokenActionDialog } from '@/components/shared/token-action-dialog';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const { logEvent } = useLogger();
+  const { walletState } = useWallet();
+
+  const [isSendOpen, setIsSendOpen] = useState(false);
+  const [sendAsset, setSendAsset] = useState<ChainAsset | null>(null);
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
@@ -50,6 +58,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleSendClick = () => {
+    const ethAsset = {
+      symbol: 'ETH',
+      balance: walletState.balances['ETH'] || '0',
+      name: 'Ethereum'
+    }
+    setSendAsset(ethAsset);
+    setIsSendOpen(true);
+  }
+
   const navItems = [
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
@@ -62,20 +80,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen lg:flex-row">
-      <aside className="bg-card text-card-foreground w-full lg:w-64 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-b lg:border-r border-border/60">
+    <>
+    <div className="flex flex-col min-h-screen lg:flex-row bg-secondary/40">
+      <aside className="bg-card text-card-foreground w-full lg:w-64 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-b lg:border-r">
         <div className="flex items-center justify-between mb-4 lg:mb-8">
           <Logo />
           <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </Button>
         </div>
-        <nav>
-          <ul className="flex flex-row lg:flex-col lg:space-y-2 overflow-x-auto lg:overflow-x-visible space-x-2 lg:space-x-0">
+        <nav className="flex flex-col h-[calc(100%-80px)]">
+          <ul className="flex flex-row lg:flex-col lg:space-y-2 overflow-x-auto lg:overflow-x-visible space-x-2 lg:space-x-0 flex-grow">
             {navItems.map(item => (
               <li key={item.id} className="flex-shrink-0">
                 <Button
-                  variant={activePage === item.id ? 'default' : 'ghost'}
+                  variant={activePage === item.id ? 'secondary' : 'ghost'}
                   onClick={() => navigate(item.path)}
                   className="w-full flex items-center justify-start text-left text-base font-semibold py-6"
                 >
@@ -85,6 +104,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </li>
             ))}
           </ul>
+           <div className="mt-auto">
+                <Button onClick={handleSendClick} className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground animate-pulse-strong">
+                    <Send className="mr-2"/> Send / Transfer
+                </Button>
+            </div>
         </nav>
       </aside>
 
@@ -94,5 +118,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
     </div>
+    
+      {sendAsset && (
+        <TokenActionDialog 
+          isOpen={isSendOpen}
+          setIsOpen={setIsSendOpen}
+          asset={sendAsset}
+        />
+      )}
+    </>
   );
 }

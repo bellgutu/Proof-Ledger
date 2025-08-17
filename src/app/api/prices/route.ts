@@ -7,7 +7,8 @@ export async function GET() {
     const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`, {
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      next: { revalidate: 60 } // Cache for 60 seconds
     });
 
     if (!response.ok) {

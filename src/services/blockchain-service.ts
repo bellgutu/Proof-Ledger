@@ -170,6 +170,7 @@ export async function sendTransaction(
     const transferSignature = '0xa9059cbb';
     const paddedToAddress = toAddress.substring(2).padStart(64, '0');
     
+    // DEFINITIVE FIX: Use the correct decimals for the specific token when sending.
     const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
     const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     

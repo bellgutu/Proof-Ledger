@@ -7,7 +7,7 @@ import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, History, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Transaction } from '@/contexts/wallet-context';
 import { TransactionDetailDialog } from '@/components/shared/transaction-detail-dialog';
@@ -43,6 +43,27 @@ export default function HistoryPage() {
     return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
   }
 
+  const renderDetails = (details: string | React.ReactNode) => {
+    if (typeof details === 'string') {
+      return <span className="text-muted-foreground">{details}</span>;
+    }
+    return details; // Render React components directly
+  };
+  
+  const renderAmount = (tx: Transaction) => {
+    if (tx.amount === undefined || tx.amount === null) {
+      return 'N/A';
+    }
+    // The amount is now a pre-formatted string. We just display it.
+    // We can use parseFloat to check if we should show it at all.
+    const numericAmount = parseFloat(tx.amount.toString());
+    if (isNaN(numericAmount) || numericAmount === 0) {
+      return 'N/A';
+    }
+    return `${tx.amount} ${tx.token}`;
+  };
+
+
   return (
     <div className="container mx-auto p-0 space-y-8">
        <Button variant="ghost" onClick={() => router.push('/portfolio')} className="mb-4">
@@ -74,10 +95,10 @@ export default function HistoryPage() {
                 transactions.map((tx) => (
                   <TableRow key={tx.id} onClick={() => handleTxClick(tx)} className="cursor-pointer">
                     <TableCell className="font-medium">{tx.type}</TableCell>
-                    <TableCell className="text-muted-foreground max-w-xs truncate">
-                        {typeof tx.details === 'string' ? tx.details : `Interaction with ${tx.to.slice(0, 10)}...`}
+                    <TableCell>
+                        {renderDetails(tx.details)}
                     </TableCell>
-                    <TableCell>{tx.amount ? `${tx.amount.toLocaleString(undefined, {maximumFractionDigits: 6})} ${tx.token}` : 'N/A'}</TableCell>
+                    <TableCell>{renderAmount(tx)}</TableCell>
                     <TableCell>{getStatusBadge(tx.status)}</TableCell>
                     <TableCell className="text-right">{formatDate(tx.timestamp)}</TableCell>
                   </TableRow>
@@ -104,5 +125,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-
-    

@@ -48,7 +48,6 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
             const rawBalance = BigInt(ethData.result);
-            // Directly format to string to avoid floating point issues
             const ethBalance = formatUnits(rawBalance, 18);
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
@@ -61,7 +60,6 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     }
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
-    // Throw an error to be caught by the caller, so it knows the connection failed.
     throw new Error("Could not connect to the local blockchain to fetch ETH balance. Is the node running?");
   }
 
@@ -83,7 +81,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
                 jsonrpc: '2.0',
                 method: 'eth_call',
                 params: [{
-                    from: address, // Required by some nodes
+                    from: address,
                     to: contract.address,
                     data: `${BALANCE_OF_SIGNATURE}${paddedAddress}`
                 }, 'latest'],
@@ -95,11 +93,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
-                  // DEFINITIVE FIX: Directly format the BigInt to a string with correct decimals.
-                  // This string is now the source of truth, preventing any floating point errors.
                   const balance = formatUnits(rawBalance, contract.decimals);
                   assets.push({ symbol, name: contract.name, balance });
-                  
                } else if (data.error) {
                   console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${data.error.message}`);
                }
@@ -170,7 +165,6 @@ export async function sendTransaction(
     const transferSignature = '0xa9059cbb';
     const paddedToAddress = toAddress.substring(2).padStart(64, '0');
     
-    // DEFINITIVE FIX: Use the correct decimals for the specific token when sending.
     const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
     const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     

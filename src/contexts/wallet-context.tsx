@@ -361,16 +361,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const pendingTxId = addTransaction({
       type: 'Send',
       to: toAddress,
+      // Pass the human-readable amount here
       details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
       token: tokenSymbol,
-      amount,
+      amount: amount, // Store the human-readable amount
     });
 
     try {
-        // Restore the REAL blockchain call. No more simulation.
         const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
         
-        // Update UI immediately for responsiveness, but the poller will provide the final source of truth.
         updateBalance(tokenSymbol, -amount);
         
         updateTransactionStatus(pendingTxId, 'Completed', `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`, result.txHash);
@@ -395,10 +394,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         throw e;
     } finally {
-        // Give the poller a moment to catch up before re-enabling it
         setTimeout(() => { isSendingRef.current = false; }, 5000);
     }
-
   }, [isConnected, walletAddress, addTransaction, updateBalance, updateTransactionStatus]);
 
 
@@ -416,7 +413,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             const remoteAssets = await getWalletAssets(walletAddress);
             if (isCancelled) return;
             
-            // This is a simple guard to prevent state wipes from transient RPC errors.
             if (!remoteAssets || remoteAssets.length === 0 && Object.keys(balances).length > 0) {
               console.warn("Polling returned no assets, but local state has balances. Ignoring update to prevent state wipe.");
               return;
@@ -427,7 +423,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               return acc;
             }, {} as Balances);
             
-            // The remote data is the source of truth. Simply update the local state to match it.
             setBalances(newBalances);
 
         } catch (error) {

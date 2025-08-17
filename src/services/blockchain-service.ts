@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -11,7 +12,7 @@ const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP R
 export interface ChainAsset {
   symbol: string;
   name: string;
-  balance: number;
+  balance: string; // Use string to maintain precision
 }
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, name: string, decimals: number } } = {
@@ -47,7 +48,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
             const rawBalance = BigInt(ethData.result);
-            const ethBalance = Number(formatUnits(rawBalance, 18));
+            const ethBalance = formatUnits(rawBalance, 18);
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
              console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
@@ -93,18 +94,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
-                  
-                  // ** THE DEFINITIVE FIX FOR THE "ZEROS BUG" **
-                  // For low-decimal tokens (USDT, USDC), format to a string with fixed decimal places
-                  // before converting to a number to avoid floating-point inaccuracies.
-                  if (contract.decimals < 18) {
-                    const formattedBalance = formatUnits(rawBalance, contract.decimals);
-                    const balance = Number(parseFloat(formattedBalance).toFixed(contract.decimals));
-                    assets.push({ symbol, name: contract.name, balance });
-                  } else {
-                    const balance = Number(formatUnits(rawBalance, contract.decimals));
-                    assets.push({ symbol, name: contract.name, balance });
-                  }
+                  const balance = formatUnits(rawBalance, contract.decimals);
+                  assets.push({ symbol, name: contract.name, balance });
                   
                } else if (data.error) {
                   console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${data.error.message}`);

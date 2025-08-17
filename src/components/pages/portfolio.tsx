@@ -30,10 +30,10 @@ export default function PortfolioPage() {
       balance,
       name: marketData[symbol]?.name || symbol,
     }))
-    .filter(asset => asset.balance > 0)
+    .filter(asset => parseFloat(asset.balance) > 0)
     .sort((a, b) => {
-        const valueA = a.balance * (marketData[a.symbol]?.price || 0);
-        const valueB = b.balance * (marketData[b.symbol]?.price || 0);
+        const valueA = parseFloat(a.balance) * (marketData[a.symbol]?.price || 0);
+        const valueB = parseFloat(b.balance) * (marketData[b.symbol]?.price || 0);
         return valueB - valueA;
     });
 
@@ -44,7 +44,8 @@ export default function PortfolioPage() {
   
   const AssetRow = ({ asset }: { asset: ChainAsset }) => {
     const price = marketData[asset.symbol]?.price ?? 0;
-    const value = asset.balance * price;
+    const balance = parseFloat(asset.balance) || 0;
+    const value = balance * price;
 
     return (
       <TableRow onClick={() => handleAssetClick(asset)} className="cursor-pointer">
@@ -58,7 +59,7 @@ export default function PortfolioPage() {
           </div>
         </TableCell>
         <TableCell className="text-right font-mono">
-          {asset.balance.toLocaleString('en-US', { maximumFractionDigits: 6 })}
+          {balance.toLocaleString('en-US', { maximumFractionDigits: 6 })}
         </TableCell>
         <TableCell className="text-right font-mono">
           ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

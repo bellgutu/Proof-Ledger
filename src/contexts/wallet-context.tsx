@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
@@ -61,7 +62,7 @@ interface MarketData {
 }
 
 interface Balances {
-  [symbol: string]: number;
+  [symbol: string]: string; // Use string to maintain precision
 }
 
 interface WalletState {
@@ -163,7 +164,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       setWalletBalance('0.00');
       return;
     };
-    const total = Object.entries(balances).reduce((acc, [symbol, balance]) => {
+    const total = Object.entries(balances).reduce((acc, [symbol, balanceStr]) => {
+      const balance = parseFloat(balanceStr) || 0;
       const price = marketData[symbol]?.price || 0;
       return acc + (balance * price);
     }, 0);
@@ -331,10 +333,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
-    setBalances(prev => ({
-        ...prev,
-        [symbol]: (prev[symbol] || 0) + amount
-    }));
+    setBalances(prev => {
+        const currentBalance = parseFloat(prev[symbol] || '0');
+        const newBalance = currentBalance + amount;
+        return {
+            ...prev,
+            [symbol]: newBalance.toString()
+        }
+    });
   }, []);
 
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
@@ -413,9 +419,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 const notificationsToShow: { title: string; description: string }[] = [];
                 // Check for received transactions
                 for (const remoteAsset of remoteAssets) {
-                    const localBalance = currentLocalBalances[remoteAsset.symbol] || 0;
-                    if (remoteAsset.balance > localBalance) {
-                         const amountReceived = remoteAsset.balance - localBalance;
+                    const localBalance = parseFloat(currentLocalBalances[remoteAsset.symbol] || '0');
+                    const remoteBalance = parseFloat(remoteAsset.balance);
+                    if (remoteBalance > localBalance) {
+                         const amountReceived = remoteBalance - localBalance;
                          addTransaction({
                             type: 'Receive',
                             txHash: `external_${Date.now()}_${remoteAsset.symbol}`,

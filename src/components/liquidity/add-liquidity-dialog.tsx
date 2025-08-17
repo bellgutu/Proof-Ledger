@@ -35,8 +35,8 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
 
   const [token1, token2] = pool.name.split('/');
 
-  const token1Balance = balances[token1] || 0;
-  const token2Balance = balances[token2] || 0;
+  const token1Balance = parseFloat(balances[token1] || '0');
+  const token2Balance = parseFloat(balances[token2] || '0');
 
   const token1Price = marketData[token1 as keyof typeof marketData]?.price || 0;
   const token2Price = marketData[token2 as keyof typeof marketData]?.price || 0;

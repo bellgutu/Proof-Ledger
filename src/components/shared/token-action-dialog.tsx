@@ -52,6 +52,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   });
 
   const assetPrice = marketData[asset.symbol]?.price || 0;
+  const assetBalance = parseFloat(balances[asset.symbol] || '0');
   
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
@@ -71,7 +72,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   };
 
   const handleSendSubmit = async (values: SendInput) => {
-    if (values.amount > (balances[asset.symbol] || 0)) {
+    if (values.amount > assetBalance) {
         toast({ variant: 'destructive', title: 'Insufficient balance' });
         return;
     }
@@ -159,7 +160,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
                     </FormControl>
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
                         <span>~{amountUSD}</span>
-                        <button type="button" onClick={() => sendForm.setValue('amount', balances[asset.symbol] || 0)}>Max: {(balances[asset.symbol] || 0).toLocaleString('en-US', { maximumFractionDigits: 6 })}</button>
+                        <button type="button" onClick={() => sendForm.setValue('amount', assetBalance)}>Max: {assetBalance.toLocaleString('en-US', { maximumFractionDigits: 6 })}</button>
                     </div>
                     <FormMessage />
                   </FormItem>

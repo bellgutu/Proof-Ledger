@@ -51,7 +51,7 @@ const TradingPageContent = () => {
   const [candleData, setCandleData] = useState<Candle[]>([]);
   const [priceScenario, setPriceScenario] = useState<PriceScenario | null>(null);
 
-  const usdtBalance = balances['USDT'] || 0;
+  const usdtBalance = parseFloat(balances['USDT'] || '0');
 
   const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
     setCandleData(candles);

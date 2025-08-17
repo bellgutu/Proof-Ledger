@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from 'react';
@@ -76,7 +77,7 @@ export default function HistoryPage() {
                     <TableCell className="text-muted-foreground max-w-xs truncate">
                         {typeof tx.details === 'string' ? tx.details : `Interaction with ${tx.to.slice(0, 10)}...`}
                     </TableCell>
-                    <TableCell>{tx.amount ? `${tx.amount.toLocaleString()} ${tx.token}` : 'N/A'}</TableCell>
+                    <TableCell>{tx.amount ? `${tx.amount.toLocaleString(undefined, {maximumFractionDigits: 6})} ${tx.token}` : 'N/A'}</TableCell>
                     <TableCell>{getStatusBadge(tx.status)}</TableCell>
                     <TableCell className="text-right">{formatDate(tx.timestamp)}</TableCell>
                   </TableRow>
@@ -103,3 +104,5 @@ export default function HistoryPage() {
     </div>
   );
 }
+
+    

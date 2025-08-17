@@ -392,20 +392,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isConnected || !walletAddress) return;
 
-    const pollForUpdates = async () => {
-        if (isSendingRef.current) return;
-        
-        const notificationsToShow: { title: string; description: string }[] = [];
+    let isCancelled = false;
 
+    const pollForUpdates = async () => {
+        if (isSendingRef.current || isCancelled) return;
+        
         try {
             const remoteAssets = await getWalletAssets(walletAddress);
+            if (isCancelled) return;
             
-            setBalances(currentLocalBalances => {
-                const newBalancesFromRemote = remoteAssets.reduce((acc, asset) => {
-                  acc[asset.symbol] = asset.balance;
-                  return acc;
-                }, {} as Balances);
+            const newBalances = remoteAssets.reduce((acc, asset) => {
+              acc[asset.symbol] = asset.balance;
+              return acc;
+            }, {} as Balances);
 
+            setBalances(currentLocalBalances => {
+                const notificationsToShow: { title: string; description: string }[] = [];
                 // Check for received transactions
                 for (const remoteAsset of remoteAssets) {
                     const localBalance = currentLocalBalances[remoteAsset.symbol] || 0;
@@ -425,30 +427,30 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                         });
                     }
                 }
+                notificationsToShow.forEach(n => toast(n));
                 
-                // We trust the remote source, so we set the balances directly.
-                // We keep local-only tokens if they have a balance > 0
-                for (const symbol in currentLocalBalances) {
-                    if (!(symbol in newBalancesFromRemote)) {
-                        if (currentLocalBalances[symbol] > 0) {
-                            newBalancesFromRemote[symbol] = currentLocalBalances[symbol];
-                        }
-                    }
-                }
-                
-                return newBalancesFromRemote;
+                // Trust the remote source as the source of truth for balances
+                return newBalances;
             });
 
-            notificationsToShow.forEach(n => toast(n));
-
         } catch (error) {
-            console.error("Failed to poll for wallet updates:", error);
+            console.error("Failed to poll for wallet updates. Stopping polling.", error);
+            toast({
+                variant: 'destructive',
+                title: 'Connection Lost',
+                description: 'Could not sync with the blockchain. Please reconnect.'
+            });
+            // Stop polling on error to prevent corrupted state
+            isCancelled = true; 
         }
     };
 
     const intervalId = setInterval(pollForUpdates, 15000);
 
-    return () => clearInterval(intervalId);
+    return () => {
+        isCancelled = true;
+        clearInterval(intervalId);
+    };
   }, [isConnected, walletAddress, addTransaction, toast]);
 
 

@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const url = `https://cryptopanic.com/api/v1/posts/?auth_token=${apiKey}&public=true`;
+    const url = `https://cryptopanic.com/api/developer/v2/posts/?auth_token=${apiKey}&public=true`;
     const response = await fetch(url);
 
     if (!response.ok) {

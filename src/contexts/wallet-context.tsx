@@ -352,6 +352,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     isSendingRef.current = true;
     
+    // Pass the human-readable amount to the dialog
     setTxStatusDialog({
       isOpen: true,
       state: 'processing',
@@ -361,10 +362,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const pendingTxId = addTransaction({
       type: 'Send',
       to: toAddress,
-      // Pass the human-readable amount here
       details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
       token: tokenSymbol,
-      amount: amount, // Store the human-readable amount
+      amount: amount,
     });
 
     try {

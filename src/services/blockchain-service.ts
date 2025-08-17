@@ -93,17 +93,18 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
                   const rawBalance = BigInt(data.result);
-                  let balance;
                   
                   // ** THE DEFINITIVE FIX FOR THE "ZEROS BUG" **
                   // For low-decimal tokens (USDT, USDC), format to a string with fixed decimal places
                   // before converting to a number to avoid floating-point inaccuracies.
                   if (contract.decimals < 18) {
-                    balance = Number(Number(formatUnits(rawBalance, contract.decimals)).toFixed(contract.decimals));
+                    const formattedBalance = formatUnits(rawBalance, contract.decimals);
+                    const balance = Number(parseFloat(formattedBalance).toFixed(contract.decimals));
+                    assets.push({ symbol, name: contract.name, balance });
                   } else {
-                    balance = Number(formatUnits(rawBalance, contract.decimals));
+                    const balance = Number(formatUnits(rawBalance, contract.decimals));
+                    assets.push({ symbol, name: contract.name, balance });
                   }
-                  assets.push({ symbol, name: contract.name, balance });
                   
                } else if (data.error) {
                   console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${data.error.message}`);

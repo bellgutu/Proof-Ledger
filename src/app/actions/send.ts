@@ -29,12 +29,12 @@ const erc20Abi = parseAbi([
 ]);
 
 const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, decimals: number } } = {
-    'USDT': { address: '0xF48883F2ae4C4bf4654f45997fE47D73daA4da07', decimals: 18 },
-    'USDC': { address: '0x093D305366218D6d09bA10448922F10814b031dd', decimals: 18 },
-    'WETH': { address: '0x492844c46CEf2d751433739fc3409B7A4a5ba9A7', decimals: 18 },
-    'LINK': { address: '0xf0F5e9b00b92f3999021fD8B88aC75c351D93fc7', decimals: 18 },
-    'BNB': { address: '0xDC0a0B1Cd093d321bD1044B5e0Acb71b525ABb6b', decimals: 18 },
-    'SOL': { address: '0x810090f35DFA6B18b5EB59d298e2A2443a2811E2', decimals: 18 },
+    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', decimals: 18 },
+    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', decimals: 18 },
+    'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', decimals: 18 },
+    'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', decimals: 18 },
+    'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', decimals: 18 },
+    'SOL': { address: '0x810090f35dfa6b18b5eb59d298e2a2443a2811e2', decimals: 18 },
 };
 
 export async function sendTokensAction(
@@ -55,7 +55,7 @@ export async function sendTokensAction(
     });
   } else {
     if (!contractInfo || !contractInfo.address) {
-      throw new Error(`Contract for ${tokenSymbol} is not configured in .env file.`);
+      throw new Error(`Contract for ${tokenSymbol} is not configured.`);
     }
     const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
     

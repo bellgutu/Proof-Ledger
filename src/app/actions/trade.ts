@@ -32,8 +32,8 @@ const erc20Abi = parseAbi([
     "function approve(address spender, uint256 amount) external returns (bool)"
 ]);
 
-const PERPETUALS_CONTRACT_ADDRESS = '0x9E73331Ca355235C335346159a74575196414115' as `0x${string}`;
-const USDT_CONTRACT_ADDRESS = '0xF48883F2ae4C4bf4654f45997fE47D73daA4da07' as `0x${string}`;
+const PERPETUALS_CONTRACT_ADDRESS = '0x9e73331ca355235c335346159a74575196414115' as `0x${string}`;
+const USDT_CONTRACT_ADDRESS = '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07' as `0x${string}`;
 
 export async function approveCollateralAction(amount: bigint): Promise<{ success: boolean; txHash: `0x${string}` }> {
   if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error('Perpetuals contract address is not configured');

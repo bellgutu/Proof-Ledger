@@ -34,7 +34,7 @@ const erc20Abi = parseAbi([
 
 const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
 const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS as `0x${string}`;
-const USDT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS as `0x${string}`;
+const USDT_CONTRACT_ADDRESS = '0xF48883F2ae4C4bf4654f45997fE47D73daA4da07' as `0x${string}`;
 
 export async function approveCollateralAction(amount: bigint): Promise<`0x${string}`> {
   if (!VAULT_CONTRACT_ADDRESS) throw new Error('Vault contract address is not configured');

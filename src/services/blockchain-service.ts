@@ -231,10 +231,13 @@ export async function getActivePosition(userAddress: string, assetSymbol: string
     console.warn("[BlockchainService] Perpetuals contract address not set in .env. Returning null.");
     return null;
   }
+  
+  // If the user is trading ETH, the contract needs the WETH address.
+  const contractAssetSymbol = assetSymbol === 'ETH' ? 'WETH' : assetSymbol;
+  const positionAssetInfo = ERC20_CONTRACTS[contractAssetSymbol as keyof typeof ERC20_CONTRACTS];
 
-  const positionAssetInfo = ERC20_CONTRACTS[assetSymbol as keyof typeof ERC20_CONTRACTS];
   if (!positionAssetInfo || !positionAssetInfo.address) {
-      throw new Error(`Asset info for ${assetSymbol} is not configured.`);
+      throw new Error(`Asset info for ${contractAssetSymbol} is not configured.`);
   }
 
   try {

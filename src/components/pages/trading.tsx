@@ -128,12 +128,14 @@ const TradingPageContent = () => {
     setIsProcessing(true);
     try {
       const assetSymbol = selectedPair.split('/')[0];
+      const contractAssetSymbol = assetSymbol === 'ETH' ? 'WETH' : assetSymbol;
+
       // Store UI-related state in localStorage, since contract doesn't hold it
       localStorage.setItem(`leverage_${walletAddress}_${assetSymbol}`, leverage.toString());
       localStorage.setItem(`pair_${walletAddress}_${assetSymbol}`, selectedPair);
 
       await openPosition(walletAddress, {
-          asset: assetSymbol,
+          asset: contractAssetSymbol,
           size,
           direction: tradeDirection,
           leverage,

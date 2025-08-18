@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, sendTransaction, ERC20_CONTRACTS } from '@/services/blockchain-service';
+import { getWalletAssets, sendTransaction, ERC20_CONTRACTS as ServiceERC20Contracts } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { parseUnits, formatUnits } from 'viem';
 
@@ -126,10 +126,10 @@ const initialMarketData: MarketData = {
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '1', name: 'ETH/USDT', type: 'V2', token1: { symbol: 'ETH', amount: 0 }, token2: { symbol: 'USDT', amount: 0 }, tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
-    { id: '2', name: 'WETH/USDC', type: 'V2', token1: { symbol: 'WETH', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
-    { id: '3', name: 'USDT/USDC', type: 'Stable', token1: { symbol: 'USDT', amount: 0 }, token2: { symbol: 'USDC', amount: 0 }, tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
-    { id: '4', name: 'ETH/LINK', type: 'V3', token1: { symbol: 'ETH', amount: 0 }, token2: { symbol: 'LINK', amount: 0 }, tvl: 80_000_000, volume24h: 15_000_000, apr: 18.2, feeTier: 1.0, priceRange: { min: 150, max: 250 } },
+    { id: '1', name: 'ETH/USDT', type: 'V2', token1: 'ETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '2', name: 'WETH/USDC', type: 'V2', token1: 'WETH', token2: 'USDC', tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
+    { id: '3', name: 'USDT/USDC', type: 'Stable', token1: 'USDT', token2: 'USDC', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '4', name: 'ETH/LINK', type: 'V3', token1: 'ETH', token2: 'LINK', tvl: 80_000_000, volume24h: 15_000_000, apr: 18.2, feeTier: 1.0, priceRange: { min: 150, max: 250 } },
 ];
 
 const initialProposals: Proposal[] = [
@@ -239,7 +239,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const marketUpdateInterval = setInterval(fetchMarketData, 30000);
 
     return () => clearInterval(marketUpdateInterval);
-  }, []);
+  }, [isMarketDataLoaded]);
   
   const getTxHistoryStorageKey = (address: string) => `tx_history_${address}`;
 
@@ -503,5 +503,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

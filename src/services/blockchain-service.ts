@@ -1,5 +1,3 @@
-
-
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -20,7 +18,9 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined,
     'USDC': { address: process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS, name: 'USD Coin', decimals: 18 },
     'WETH': { address: process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS, name: 'Wrapped Ether', decimals: 18 },
     'LINK': { address: process.env.NEXT_PUBLIC_LINK_CONTRACT_ADDRESS, name: 'Chainlink', decimals: 18 },
-    'ETH': { address: undefined, name: 'Ethereum', decimals: 18 }, // Add ETH for decimal consistency
+    'BNB': { address: process.env.NEXT_PUBLIC_BNB_CONTRACT_ADDRESS, name: 'BNB', decimals: 18 },
+    'SOL': { address: process.env.NEXT_PUBLIC_SOL_CONTRACT_ADDRESS, name: 'Solana', decimals: 18 },
+    'ETH': { address: undefined, name: 'Ethereum', decimals: 18 },
 };
 
 const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS;

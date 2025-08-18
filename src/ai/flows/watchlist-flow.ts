@@ -24,7 +24,21 @@ const prompt = ai.definePrompt({
   name: 'watchlistPrompt',
   input: { schema: z.string() },
   output: { schema: WatchlistBriefingSchema },
+  config: {
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_ONLY_HIGH',
+      },
+    ],
+  },
   prompt: `You are a crypto intelligence analyst. Your task is to provide a concise, one-paragraph intelligence briefing for the asset: {{{input}}}.
+
+The 'symbol' in your output **must** match the asset symbol provided in the input.
 
 Your briefing should synthesize plausible, simulated information from three key areas:
 1.  **Recent News:** Mention a recent development, partnership, or narrative affecting the asset.

@@ -26,7 +26,7 @@ export default function PortfolioPage() {
   const assets: ChainAsset[] = Object.entries(balances)
     .map(([symbol, balance]) => ({
       symbol,
-      balance,
+      balance: balance, // balance is a number
       name: marketData[symbol]?.name || symbol,
     }))
     .filter(asset => asset.balance > 0)

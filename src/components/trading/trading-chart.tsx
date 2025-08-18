@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import type { Position } from '@/services/blockchain-service';
 
 // Define the Candle data structure
@@ -36,6 +36,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
   const candleDataRef = useRef<Candle[]>([]);
   const currentPriceRef = useRef(initialPrice);
   const animationFrameIdRef = useRef<number>();
+  
+  const [animationProgress, setAnimationProgress] = useState(0);
+  const lastUpdateTimeRef = useRef(Date.now());
+  const candleInterval = 6000; // 6 seconds
 
   const getThemeColors = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -106,6 +110,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
         maxPrice = Math.max(maxPrice, position.entryPrice, position.takeProfit || -Infinity);
         minPrice = Math.min(minPrice, position.entryPrice, position.stopLoss || Infinity);
     }
+    
+    maxPrice = Math.max(maxPrice, currentPriceRef.current);
+    minPrice = Math.min(minPrice, currentPriceRef.current);
+
 
     const priceRange = maxPrice - minPrice;
     const paddedMax = maxPrice + priceRange * buffer;
@@ -151,18 +159,33 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
     }
 
     visibleCandles.forEach((candle, index) => {
+        let candleToDraw = candle;
+        // If it's the last candle, animate it based on progress
+        if (index === visibleCandles.length - 1) {
+            const interpolatedClose = candle.open + (candle.close - candle.open) * animationProgress;
+            const interpolatedHigh = candle.open + (candle.high - candle.open) * animationProgress;
+            const interpolatedLow = candle.open - (candle.open - candle.low) * animationProgress;
+
+            candleToDraw = {
+                ...candle,
+                close: interpolatedClose,
+                high: interpolatedHigh,
+                low: interpolatedLow
+            };
+        }
+
       const x = index * (candleWidth + spacing) + spacing;
-      const color = candle.close >= candle.open ? theme.upCandle : theme.downCandle;
+      const color = candleToDraw.close >= candleToDraw.open ? theme.upCandle : theme.downCandle;
 
       ctx.beginPath();
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
-      ctx.moveTo(x + candleWidth / 2, scaleY(candle.high));
-      ctx.lineTo(x + candleWidth / 2, scaleY(candle.low));
+      ctx.moveTo(x + candleWidth / 2, scaleY(candleToDraw.high));
+      ctx.lineTo(x + candleWidth / 2, scaleY(candleToDraw.low));
       ctx.stroke();
 
-      const bodyY = scaleY(Math.max(candle.open, candle.close));
-      const bodyHeight = Math.abs(scaleY(candle.open) - scaleY(candle.close)) || 1;
+      const bodyY = scaleY(Math.max(candleToDraw.open, candleToDraw.close));
+      const bodyHeight = Math.abs(scaleY(candleToDraw.open) - scaleY(candleToDraw.close)) || 1;
       ctx.fillStyle = color;
       ctx.fillRect(x, bodyY, candleWidth, bodyHeight);
     });
@@ -214,11 +237,10 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.fillText(currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), chartWidth + yAxisWidth / 2, priceY + 4);
     }
-  }, [getThemeColors, position]);
+  }, [getThemeColors, position, animationProgress]);
 
   // Effect for generating candle data and simulating price
   useEffect(() => {
-    const candleInterval = 2000;
     const volatility = 0.00005; // Reduced volatility for more stable simulation
 
     const generateNewCandle = () => {
@@ -229,21 +251,17 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       const open = lastCandle.close;
       let change;
 
-      // --- Scenario Logic ---
       switch (priceScenario) {
         case 'uptrend':
-          // Mostly positive changes with some small dips
           change = (Math.random() - 0.45) * (open * volatility * 10); 
           break;
         case 'downtrend':
-          // Mostly negative changes with some small rallies
           change = (Math.random() - 0.55) * (open * volatility * 10);
           break;
-        default: // 'normal' or null
+        default: 
           change = (Math.random() - 0.5) * (open * volatility * 10);
           break;
       }
-      // --- End Scenario Logic ---
 
       const close = open + change;
       const high = Math.max(open, close) + Math.random() * (open * volatility * 2);
@@ -255,12 +273,11 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
       if (candleDataRef.current.length > 200) {
         candleDataRef.current.shift();
       }
-      currentPriceRef.current = close;
-      onPriceChange(close);
+      
+      lastUpdateTimeRef.current = Date.now();
       onCandleDataUpdate([...candleDataRef.current]);
     };
     
-    // Generate initial set of candles if empty
     if (candleDataRef.current.length === 0) {
         let startTime = Date.now() - 100 * candleInterval;
         let price = initialPrice;
@@ -280,11 +297,37 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
         onCandleDataUpdate([...candleDataRef.current]);
     }
 
-
     const candleTimer = setInterval(generateNewCandle, candleInterval);
 
     return () => clearInterval(candleTimer);
-  }, [initialPrice, onPriceChange, onCandleDataUpdate, priceScenario]);
+  }, [initialPrice, onCandleDataUpdate, priceScenario]);
+  
+  useEffect(() => {
+    const renderLoop = () => {
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+      const progress = Math.min(timeSinceLastUpdate / candleInterval, 1);
+      setAnimationProgress(progress);
+      
+      if (candleDataRef.current.length > 0) {
+         const lastCandle = candleDataRef.current[candleDataRef.current.length - 1];
+         const interpolatedPrice = lastCandle.open + (lastCandle.close - lastCandle.open) * progress;
+         currentPriceRef.current = interpolatedPrice;
+         onPriceChange(interpolatedPrice);
+      }
+      
+      drawChart();
+      animationFrameIdRef.current = requestAnimationFrame(renderLoop);
+    };
+    renderLoop();
+
+    return () => {
+      if(animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
+  }, [drawChart, onPriceChange]);
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -295,17 +338,8 @@ export function TradingChart({ initialPrice, onPriceChange, onCandleDataUpdate, 
     });
     observer.observe(canvas);
 
-    const renderLoop = () => {
-      drawChart();
-      animationFrameIdRef.current = requestAnimationFrame(renderLoop);
-    };
-    renderLoop();
-
     return () => {
       observer.disconnect();
-      if(animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-      }
     };
   }, [drawChart]);
 

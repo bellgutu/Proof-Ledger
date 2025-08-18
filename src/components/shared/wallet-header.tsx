@@ -6,7 +6,7 @@ import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Wallet, RefreshCcw, Orbit, CircleDollarSign } from 'lucide-react';
+import { Wallet, RefreshCcw, CircleDollarSign } from 'lucide-react';
 import Image from 'next/image';
 
 export function WalletHeader() {
@@ -69,11 +69,11 @@ export function WalletHeader() {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
-                    <Orbit className="mr-4" size={28} />
+                    <Wallet className="mr-4" size={28} />
                     Browser Wallet
                   </Button>
                    <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
-                    <Image src="https://explorer.walletconnect.com/logo.svg" alt="WalletConnect" width={28} height={28} className="mr-4 h-auto"/>
+                    <Wallet className="mr-4" size={28} />
                     WalletConnect
                   </Button>
                 </div>

@@ -37,7 +37,7 @@ export interface TxStatusDialogInfo {
 export interface ChainAsset {
   symbol: string;
   name: string;
-  balance: number; 
+  balance: number;
 }
 
 export interface VaultStrategy {

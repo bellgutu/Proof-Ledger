@@ -59,7 +59,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     }
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
-    throw new Error("Could not connect to the local blockchain to fetch ETH balance. Is the node running?");
+    // Don't throw here, allow fetching of other tokens
   }
 
   // --- 2. Fetch ERC20 Balances ---
@@ -104,6 +104,10 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
       } catch(e) {
           console.error(`[BlockchainService] Error fetching balance for ${symbol}:`, e)
       }
+  }
+  
+  if (assets.length === 0) {
+    throw new Error("Could not connect to the local blockchain to fetch any balances. Is the node running?");
   }
   
   return assets;
@@ -277,7 +281,7 @@ export async function getActivePosition(address: string, assetSymbol: string): P
         throw new Error(`Asset info for ${assetSymbol} or collateral info for USDT not available for decoding position.`);
     }
     
-    offset = 0;
+    offset = 0; // Reset offset to read from the start
     const side = parseInt(resultData.slice(offset, offset + 64), 16) === 0 ? 'long' : 'short';
     offset += 64;
     const size = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), positionAssetInfo.decimals));

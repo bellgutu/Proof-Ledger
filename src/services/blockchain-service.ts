@@ -47,30 +47,29 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatUnits(ethBalance, 18)) });
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
+    // Even if ETH balance fails, we can try to fetch token balances
   }
 
-  for (const symbol in ERC20_CONTRACTS) {
-      if (symbol === 'ETH') continue;
-      
-      const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-      if (!contract || !contract.address) {
-          console.warn(`[BlockchainService] Contract address for ${symbol} is not configured.`);
-          continue;
-      }
-      
-      try {
-          const balance = await publicClient.readContract({
-              address: contract.address as `0x${string}`,
-              abi: erc20Abi,
-              functionName: 'balanceOf',
-              args: [address as `0x${string}`]
-          });
-
-          assets.push({ symbol, name: contract.name, balance: parseFloat(formatUnits(balance, contract.decimals)) });
-
-      } catch(e) {
-          console.error(`[BlockchainService] Error fetching balance for ${symbol}:`, e)
-      }
+  const tokenSymbols = Object.keys(ERC20_CONTRACTS).filter(symbol => symbol !== 'ETH');
+  
+  for (const symbol of tokenSymbols) {
+    const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
+    if (!contract || !contract.address) {
+      console.warn(`[BlockchainService] Contract address for ${symbol} is not configured.`);
+      continue;
+    }
+    
+    try {
+      const balance = await publicClient.readContract({
+        address: contract.address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'balanceOf',
+        args: [address as `0x${string}`]
+      });
+      assets.push({ symbol, name: contract.name, balance: parseFloat(formatUnits(balance, contract.decimals)) });
+    } catch(e) {
+      console.error(`[BlockchainService] Error fetching balance for ${symbol}:`, e)
+    }
   }
   
   if (assets.length === 0) {

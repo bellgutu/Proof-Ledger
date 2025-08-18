@@ -1,22 +1,14 @@
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  * Write operations that require a private key have been moved to server actions.
  */
-import { config } from 'dotenv';
-import path from 'path';
-
-config({ path: path.resolve(process.cwd(), 'src/.env') });
-
 import { type Abi, formatUnits, createPublicClient, http, parseAbi } from 'viem';
 import { localhost } from 'viem/chains';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
-
-if (!process.env.LOCAL_PRIVATE_KEY) {
-  throw new Error('FATAL: LOCAL_PRIVATE_KEY is not defined in the environment variables. Please check your .env file.');
-}
 
 export interface ChainAsset {
   symbol: string;

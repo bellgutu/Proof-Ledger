@@ -1,9 +1,10 @@
 
+
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const coinIds = 'ethereum,solana,binancecoin,tether,usd-coin,chainlink,ripple';
+    const coinIds = 'ethereum,bitcoin,solana,binancecoin,tether,usd-coin,chainlink,ripple,tether-gold,pepe';
     const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`, {
       headers: {
         'Content-Type': 'application/json',
@@ -26,3 +27,5 @@ export async function GET() {
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+    

@@ -8,7 +8,7 @@ import { getWalletAssets, sendTransaction, ERC20_CONTRACTS } from '@/services/bl
 import { useToast } from '@/hooks/use-toast';
 import { parseUnits, formatUnits } from 'viem';
 
-type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC';
+type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE';
 
 export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
@@ -112,6 +112,7 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const initialMarketData: MarketData = {
     ETH: { name: 'Ethereum', symbol: 'ETH', price: 0, change: 0 },
+    BTC: { name: 'Bitcoin', symbol: 'BTC', price: 0, change: 0 },
     SOL: { name: 'Solana', symbol: 'SOL', price: 0, change: 0 },
     BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
     USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
@@ -119,6 +120,8 @@ const initialMarketData: MarketData = {
     WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
     LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
     XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0},
+    XAUT: { name: 'Tether Gold', symbol: 'XAUT', price: 0, change: 0},
+    PEPE: { name: 'Pepe', symbol: 'PEPE', price: 0, change: 0},
 };
 
 const initialAvailablePools: Pool[] = [
@@ -181,7 +184,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const response = await fetch('/api/prices');
+        const coinIds = 'ethereum,bitcoin,solana,binancecoin,tether,usd-coin,chainlink,ripple,tether-gold,pepe';
+        const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`, {
+            headers: { 'Content-Type': 'application/json' },
+            next: { revalidate: 60 }
+        });
         
         if (!response.ok) {
           throw new Error(`API price route failed with status ${response.status}`);
@@ -194,12 +201,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             
             const mapCoinGeckoToSymbol: { [key: string]: AssetSymbol } = {
               'ethereum': 'ETH',
+              'bitcoin': 'BTC',
               'solana': 'SOL',
               'binancecoin': 'BNB',
               'tether': 'USDT',
               'usd-coin': 'USDC',
               'chainlink': 'LINK',
               'ripple': 'XRP',
+              'tether-gold': 'XAUT',
+              'pepe': 'PEPE',
             };
 
             for (const id in liveData) {
@@ -495,3 +505,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

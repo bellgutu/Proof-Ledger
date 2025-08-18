@@ -14,7 +14,11 @@ export const getTokenLogo = (symbol: string): string => {
     XRP: 'https://assets.coingecko.com/coins/images/44/thumb/xrp-symbol-white-128.png',
     WETH: 'https://assets.coingecko.com/coins/images/2518/thumb/weth.png',
     LINK: 'https://assets.coingecko.com/coins/images/877/thumb/chainlink-new-logo.png',
+    XAUT: 'https://assets.coingecko.com/coins/images/10481/thumb/tether-gold.png',
+    PEPE: 'https://assets.coingecko.com/coins/images/29851/thumb/pepe-token.jpeg',
   };
 
   return logos[symbolUpper] || `https://placehold.co/32x32.png`;
 };
+
+    

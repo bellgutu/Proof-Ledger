@@ -32,12 +32,12 @@ const erc20Abi = parseAbi([
     "function approve(address spender, uint256 amount) external returns (bool)"
 ]);
 
-const PERPETUALS_CONTRACT_ADDRESS = '0x9e73331ca355235c335346159a74575196414115' as `0x${string}`;
-const USDT_CONTRACT_ADDRESS = '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07' as `0x${string}`;
+const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
+const USDT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS as `0x${string}`;
 
 export async function approveCollateralAction(amount: bigint): Promise<{ success: boolean; txHash: `0x${string}` }> {
-  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error('Perpetuals contract address is not configured');
-  if (!USDT_CONTRACT_ADDRESS) throw new Error('USDT contract address not configured.');
+  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error('Perpetuals contract address (NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) is not configured in .env file');
+  if (!USDT_CONTRACT_ADDRESS) throw new Error('USDT contract address (NEXT_PUBLIC_USDT_CONTRACT_ADDRESS) is not configured in .env file.');
 
   const txHash = await client.writeContract({
     account,
@@ -55,7 +55,7 @@ export async function openPositionAction(params: {
     size: bigint;
     collateral: bigint;
 }): Promise<{ success: boolean; txHash: string }> {
-  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address not set in .env file.");
+  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address (NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) not set in .env file.");
 
   const txHash = await client.writeContract({
     account,
@@ -69,7 +69,7 @@ export async function openPositionAction(params: {
 }
 
 export async function closePositionAction(): Promise<{ success: boolean, txHash: string }> {
-    if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address not set in .env file.");
+    if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address (NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) not set in .env file.");
     
     const txHash = await client.writeContract({
         account,

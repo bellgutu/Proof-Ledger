@@ -25,19 +25,15 @@ export default function PortfolioPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const assets: ChainAsset[] = Object.entries(balances)
-    .map(([symbol, balance]) => {
-      // --- ADD THIS LOG HERE ---
-      console.log(`[4. DISPLAY] Rendering ${symbol} with value:`, balance);
-      return {
-        symbol,
-        balance, // balance is a string
-        name: marketData[symbol]?.name || symbol,
-      };
-    })
-    .filter(asset => parseFloat(asset.balance) > 0)
+    .map(([symbol, balance]) => ({
+      symbol,
+      balance: balance, // balance is a number
+      name: marketData[symbol]?.name || symbol,
+    }))
+    .filter(asset => asset.balance > 0)
     .sort((a, b) => {
-        const valueA = parseFloat(a.balance) * (marketData[a.symbol]?.price || 0);
-        const valueB = parseFloat(b.balance) * (marketData[b.symbol]?.price || 0);
+        const valueA = a.balance * (marketData[a.symbol]?.price || 0);
+        const valueB = b.balance * (marketData[b.symbol]?.price || 0);
         return valueB - valueA;
     });
 
@@ -48,8 +44,7 @@ export default function PortfolioPage() {
   
   const AssetRow = ({ asset }: { asset: ChainAsset }) => {
     const price = marketData[asset.symbol]?.price ?? 0;
-    const balance = parseFloat(asset.balance) || 0;
-    const value = balance * price;
+    const value = asset.balance * price;
 
     return (
       <TableRow onClick={() => handleAssetClick(asset)} className="cursor-pointer">
@@ -63,7 +58,7 @@ export default function PortfolioPage() {
           </div>
         </TableCell>
         <TableCell className="text-right font-mono">
-          {balance.toLocaleString('en-US', { maximumFractionDigits: 6 })}
+          {asset.balance.toLocaleString('en-US', { maximumFractionDigits: 6 })}
         </TableCell>
         <TableCell className="text-right font-mono">
           ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -156,5 +151,3 @@ export default function PortfolioPage() {
     </div>
   );
 }
-
-    

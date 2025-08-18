@@ -3,11 +3,21 @@
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * Each function is designed to be connected to your blockchain's RPC endpoint.
  */
-import { parseUnits, type Abi, formatUnits, createWalletClient, http, publicActions, parseAbi } from 'viem';
+import { config } from 'dotenv';
+import path from 'path';
+
+config({ path: path.resolve(process.cwd(), 'src/.env') });
+
+
+import { parseUnits, type Abi, formatUnits, createWalletClient, http, parseAbi, createPublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { localhost } from 'viem/chains';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
+
+if (!process.env.LOCAL_PRIVATE_KEY) {
+  throw new Error('FATAL: LOCAL_PRIVATE_KEY is not defined in the environment variables. Please check your .env file.');
+}
 
 export interface ChainAsset {
   symbol: string;
@@ -28,13 +38,18 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined,
 const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
 const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS as `0x${string}`;
 
-const account = privateKeyToAccount((process.env.LOCAL_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as `0x${string}`);
+const account = privateKeyToAccount(process.env.LOCAL_PRIVATE_KEY as `0x${string}`);
 
 const client = createWalletClient({
   account,
   chain: localhost,
   transport: http(LOCAL_CHAIN_RPC_URL),
-}).extend(publicActions);
+});
+
+const publicClient = createPublicClient({
+  chain: localhost,
+  transport: http(LOCAL_CHAIN_RPC_URL),
+})
 
 
 const perpetualsAbi = parseAbi([
@@ -55,20 +70,25 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   
   // --- 1. Fetch ETH Balance ---
   try {
-    const ethBalance = await client.getBalance({ address: address as `0x${string}` });
+    const ethBalance = await publicClient.getBalance({ address: address as `0x${string}` });
     assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatUnits(ethBalance, 18)) });
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
+    // Do not throw here, so we can attempt to fetch ERC20 balances.
   }
 
   // --- 2. Fetch ERC20 Balances ---
   for (const symbol in ERC20_CONTRACTS) {
+      if (symbol === 'ETH') continue;
+      
+      const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
+      if (!contract || !contract.address) {
+          console.warn(`[BlockchainService] Contract address for ${symbol} is not configured.`);
+          continue;
+      }
+      
       try {
-          if (symbol === 'ETH') continue;
-          const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-          if (!contract || !contract.address) continue;
-          
-          const balance = await client.readContract({
+          const balance = await publicClient.readContract({
               address: contract.address as `0x${string}`,
               abi: erc20Abi,
               functionName: 'balanceOf',
@@ -92,7 +112,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
 
 export async function getGasPrice(): Promise<bigint> {
     try {
-      const gasPrice = await client.getGasPrice();
+      const gasPrice = await publicClient.getGasPrice();
       return gasPrice;
     } catch(e) {
       console.error("[BlockchainService] getGasPrice failed", e);
@@ -124,6 +144,7 @@ export async function sendTransaction(
   if (tokenSymbol === 'ETH') {
     const valueInWei = parseUnits(amount.toString(), 18);
     txHash = await client.sendTransaction({
+        account,
         to: toAddress as `0x${string}`,
         value: valueInWei
     });
@@ -134,6 +155,7 @@ export async function sendTransaction(
     const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
     
     txHash = await client.writeContract({
+        account,
         address: contractInfo.address as `0x${string}`,
         abi: erc20Abi,
         functionName: "transfer",
@@ -163,7 +185,7 @@ export async function getActivePosition(userAddress: string): Promise<Position |
   }
   
   try {
-    const positionData = await client.readContract({
+    const positionData = await publicClient.readContract({
         address: PERPETUALS_CONTRACT_ADDRESS,
         abi: perpetualsAbi,
         functionName: 'positions',
@@ -176,22 +198,20 @@ export async function getActivePosition(userAddress: string): Promise<Position |
       return null;
     }
     
-    const wethDecimals = ERC20_CONTRACTS['WETH']?.decimals || 18;
-    const usdtDecimals = ERC20_CONTRACTS['USDT']?.decimals || 18;
+    // Decimals should ideally come from a central config
+    const sizeDecimals = 18; // Assuming the position asset (e.g., WETH) has 18 decimals
+    const collateralDecimals = 18; // Assuming collateral (e.g., USDT) has 18 decimals
     const priceDecimals = 18; // Oracles often use 18 decimals
 
     return {
       side: side === 0 ? 'long' : 'short',
-      size: parseFloat(formatUnits(size, wethDecimals)),
-      collateral: parseFloat(formatUnits(collateral, usdtDecimals)),
+      size: parseFloat(formatUnits(size, sizeDecimals)),
+      collateral: parseFloat(formatUnits(collateral, collateralDecimals)),
       entryPrice: parseFloat(formatUnits(entryPrice, priceDecimals)),
       active: active
     };
 
   } catch (error) {
-    console.error("[BlockchainService] getActivePosition failed:", error);
-    // It's common for this to fail if the contract call reverts (e.g., no position found).
-    // We can treat this as "no position" instead of throwing an error to the user.
     return null;
   }
 }
@@ -206,6 +226,7 @@ export async function approveCollateral(amount: bigint): Promise<`0x${string}`> 
   }
 
   return client.writeContract({
+    account,
     address: usdtAddress,
     abi: erc20Abi,
     functionName: "approve",
@@ -224,6 +245,7 @@ export async function openPosition(params: {
   }
 
   const txHash = await client.writeContract({
+    account,
     address: PERPETUALS_CONTRACT_ADDRESS,
     abi: perpetualsAbi,
     functionName: "openPosition",
@@ -239,6 +261,7 @@ export async function closePosition(): Promise<{ success: boolean, txHash: strin
     }
     
     const txHash = await client.writeContract({
+        account,
         address: PERPETUALS_CONTRACT_ADDRESS,
         abi: perpetualsAbi,
         functionName: "closePosition",

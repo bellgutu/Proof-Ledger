@@ -1,7 +1,4 @@
 import type {NextConfig} from 'next';
-import {config} from 'dotenv';
-
-config({ path: '.env' });
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -57,7 +54,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_POOL_DEPLOYER_ADDRESS: process.env.NEXT_PUBLIC_POOL_DEPLOYER_ADDRESS,
     NEXT_PUBLIC_TREASURY_ADDRESS: process.env.NEXT_PUBLIC_TREASURY_ADDRESS,
     CRYTOPANIC_API_KEY: process.env.CRYTOPANIC_API_KEY,
-    LOCAL_PRIVATE_KEY: process.env.LOCAL_PRIVATE_KEY,
+    // Note: LOCAL_PRIVATE_KEY is a server-side variable and should not be exposed here.
+    // It is loaded directly via dotenv on the server.
   }
 };
 

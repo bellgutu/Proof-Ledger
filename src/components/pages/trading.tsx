@@ -75,8 +75,8 @@ const TradingPageContent = () => {
       const position = await getActivePosition(walletAddress, assetSymbol);
       if (position && position.active) {
         // Since contract doesn't store UI state, we add it back here
-        const leverageUsed = localStorage.getItem(`leverage_${walletAddress}`) || '1';
-        const pairUsed = localStorage.getItem(`pair_${walletAddress}`) || 'ETH/USDT';
+        const leverageUsed = localStorage.getItem(`leverage_${walletAddress}_${assetSymbol}`) || '1';
+        const pairUsed = localStorage.getItem(`pair_${walletAddress}_${assetSymbol}`) || 'ETH/USDT';
         setActivePosition({ ...position, leverage: parseInt(leverageUsed), pair: pairUsed });
       } else {
         setActivePosition(null);
@@ -127,12 +127,13 @@ const TradingPageContent = () => {
     
     setIsProcessing(true);
     try {
+      const assetSymbol = selectedPair.split('/')[0];
       // Store UI-related state in localStorage, since contract doesn't hold it
-      localStorage.setItem(`leverage_${walletAddress}`, leverage.toString());
-      localStorage.setItem(`pair_${walletAddress}`, selectedPair);
+      localStorage.setItem(`leverage_${walletAddress}_${assetSymbol}`, leverage.toString());
+      localStorage.setItem(`pair_${walletAddress}_${assetSymbol}`, selectedPair);
 
       await openPosition(walletAddress, {
-          asset: selectedPair.split('/')[0],
+          asset: assetSymbol,
           size,
           direction: tradeDirection,
           leverage,
@@ -154,8 +155,8 @@ const TradingPageContent = () => {
   };
 
   const handleCloseTrade = async () => {
-    if (!walletAddress) {
-        toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address not found.' });
+    if (!walletAddress || !activePosition) {
+        toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address or active position not found.' });
         return;
     }
     setIsProcessing(true);
@@ -163,9 +164,10 @@ const TradingPageContent = () => {
         await closePosition(walletAddress);
         toast({ title: 'Position Closed', description: `Your trade has been settled.` });
         
+        const assetSymbol = activePosition.pair.split('/')[0];
         // Remove localStorage items on close
-        localStorage.removeItem(`leverage_${walletAddress}`);
-        localStorage.removeItem(`pair_${walletAddress}`);
+        localStorage.removeItem(`leverage_${walletAddress}_${assetSymbol}`);
+        localStorage.removeItem(`pair_${walletAddress}_${assetSymbol}`);
         
         setActivePosition(null); // Clear position immediately from UI
         await fetchPosition(); // Fetch to confirm closure

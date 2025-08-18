@@ -226,15 +226,21 @@ export interface Position {
   stopLoss?: number;
 }
 
-export async function getActivePosition(address: string, assetSymbol: string): Promise<Position | null> {
+export async function getActivePosition(userAddress: string, assetSymbol: string): Promise<Position | null> {
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     console.warn("[BlockchainService] Perpetuals contract address not set in .env. Returning null.");
     return null;
   }
 
+  const positionAssetInfo = ERC20_CONTRACTS[assetSymbol as keyof typeof ERC20_CONTRACTS];
+  if (!positionAssetInfo || !positionAssetInfo.address) {
+      throw new Error(`Asset info for ${assetSymbol} is not configured.`);
+  }
+
   try {
-    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)")
-    const paddedAddress = address.substring(2).padStart(64, '0');
+    const getPositionFunctionSignature = '0xb9a2092d'; // keccak256("positions(address,address)")
+    const paddedUserAddress = userAddress.substring(2).padStart(64, '0');
+    const paddedAssetAddress = positionAssetInfo.address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',
@@ -243,9 +249,9 @@ export async function getActivePosition(address: string, assetSymbol: string): P
         jsonrpc: '2.0',
         method: 'eth_call',
         params: [{
-          from: address,
+          from: userAddress,
           to: PERPETUALS_CONTRACT_ADDRESS,
-          data: `${getPositionFunctionSignature}${paddedAddress}`
+          data: `${getPositionFunctionSignature}${paddedUserAddress}${paddedAssetAddress}`
         }, 'latest'],
         id: 1,
       }),
@@ -273,12 +279,11 @@ export async function getActivePosition(address: string, assetSymbol: string): P
         return null;
     }
     
-    const positionAssetInfo = ERC20_CONTRACTS[assetSymbol as keyof typeof ERC20_CONTRACTS];
     const collateralAssetInfo = ERC20_CONTRACTS['USDT'];
     const priceDecimal = 18; // Oracles often use 18 decimals for price feeds.
 
-    if (!positionAssetInfo || !collateralAssetInfo) {
-        throw new Error(`Asset info for ${assetSymbol} or collateral info for USDT not available for decoding position.`);
+    if (!collateralAssetInfo) {
+        throw new Error(`Collateral info for USDT not available for decoding position.`);
     }
     
     offset = 0; // Reset offset to read from the start

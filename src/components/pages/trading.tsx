@@ -15,7 +15,7 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, openPosition, closePosition, ERC20_CONTRACTS } from '@/services/blockchain-service';
+import { getActivePosition, openPosition, closePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -31,7 +31,7 @@ interface PositionWithUI extends Position {
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress } = walletState;
-  const { updateBalance, setBalances } = walletActions;
+  const { updateBalance } = walletActions;
   const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
@@ -189,7 +189,7 @@ const TradingPageContent = () => {
     return pnl;
   };
   
-  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT', 'USDT/USDC'];
+  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
   
   if (!initialPriceForChart) {

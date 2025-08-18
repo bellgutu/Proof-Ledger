@@ -184,11 +184,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const coinIds = 'ethereum,bitcoin,solana,binancecoin,tether,usd-coin,chainlink,ripple,tether-gold,pepe';
-        const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd&include_24hr_change=true`, {
-            headers: { 'Content-Type': 'application/json' },
-            next: { revalidate: 60 }
-        });
+        const response = await fetch('/api/prices');
         
         if (!response.ok) {
           throw new Error(`API price route failed with status ${response.status}`);

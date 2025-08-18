@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
-import { RefreshCcw, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck } from 'lucide-react';
 import { parseUnits } from 'viem';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +33,7 @@ const TradingPageContent = () => {
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [activePosition, setActivePosition] = useState<Position | null>(null);
   const [isLoadingPosition, setIsLoadingPosition] = useState(true);
   
@@ -88,6 +89,32 @@ const TradingPageContent = () => {
     setTradeAmount('');
   };
 
+  const handleApprove = async () => {
+    const collateralNum = parseFloat(collateralAmount);
+    if (isNaN(collateralNum) || collateralNum <= 0) {
+        toast({ variant: 'destructive', title: 'Invalid collateral amount' });
+        return;
+    };
+     if (collateralNum > usdtBalance) {
+      toast({ variant: 'destructive', title: 'Insufficient Collateral', description: `You need at least ${collateralNum.toFixed(2)} USDT for this trade.` });
+      return;
+    }
+    
+    setIsApproving(true);
+    try {
+       const collateralBigInt = parseUnits(collateralAmount, 18);
+       toast({title: "Approval Required", description: `Approving the contract to spend ${collateralAmount} USDT.`});
+       await approveCollateralAction(collateralBigInt);
+       toast({title: "Approval Successful!", description: "You can now place trades using this collateral."});
+    } catch(e: any) {
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+        toast({ variant: 'destructive', title: 'Approval Failed', description: errorMessage });
+    } finally {
+        setIsApproving(false);
+    }
+  };
+
+
   const handlePlaceTrade = async () => {
     if (!walletAddress) {
         toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address not found.' });
@@ -111,12 +138,11 @@ const TradingPageContent = () => {
     
     setIsProcessing(true);
     try {
+      // Approval should be done separately now. This assumes user has approved enough.
       const collateralBigInt = parseUnits(collateralAmount, 18);
       const sizeBigInt = parseUnits(tradeAmount, 18);
       
-      toast({title: "Approval Required", description: "Please approve the vault to spend your USDT."});
-      await approveCollateralAction(collateralBigInt);
-      toast({title: "Approval Successful!", description: "Now opening position..."});
+      toast({title: "Opening Position", description: "Please confirm transaction..."});
 
       await openPositionAction({
           side: tradeDirection === 'long' ? 0 : 1,
@@ -134,7 +160,7 @@ const TradingPageContent = () => {
 
     } catch(e: any) {
         const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        toast({ variant: 'destructive', title: 'Trade Failed', description: errorMessage });
+        toast({ variant: 'destructive', title: 'Trade Failed', description: `Please ensure you have approved enough collateral. ${errorMessage}` });
     } finally {
         setIsProcessing(false);
     }
@@ -292,9 +318,17 @@ const TradingPageContent = () => {
               <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingUp size={16} className="mr-2" /> Long</Button>
               <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingDown size={16} className="mr-2" /> Short</Button>
             </div>
-            <Button onClick={handlePlaceTrade} disabled={!isConnected || isProcessing || !tradeAmount || !collateralAmount || !!activePosition} className="w-full">
-              {isProcessing ? <span className="flex items-center"><RefreshCcw size={16} className="mr-2 animate-spin" /> Placing...</span> : `Place ${tradeDirection === 'long' ? 'Long' : 'Short'} Trade`}
-            </Button>
+
+            <div className="flex space-x-2">
+                <Button onClick={handleApprove} disabled={!isConnected || isApproving || !collateralAmount || !!activePosition} className="w-full" variant="outline">
+                  {isApproving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+                  Approve
+                </Button>
+                <Button onClick={handlePlaceTrade} disabled={!isConnected || isProcessing || !tradeAmount || !collateralAmount || !!activePosition} className="w-full">
+                  {isProcessing ? <Loader2 className="animate-spin" /> : 'Place Trade'}
+                </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">Note: Approve collateral amount before placing your trade.</p>
           </CardContent>
         </Card>
 
@@ -334,3 +368,5 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
+
+    

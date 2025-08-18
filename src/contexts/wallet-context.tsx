@@ -37,7 +37,7 @@ export interface TxStatusDialogInfo {
 export interface ChainAsset {
   symbol: string;
   name: string;
-  balance: string; // Use string to maintain precision
+  balance: number; 
 }
 
 export interface VaultStrategy {
@@ -67,7 +67,7 @@ interface MarketData {
 }
 
 interface Balances {
-  [symbol: string]: string; // Use string to maintain precision
+  [symbol: string]: number;
 }
 
 interface WalletState {
@@ -139,11 +139,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [walletAddress, setWalletAddress] = useState('');
   const [balances, setBalances] = useState<Balances>({});
   
-  // --- ADD THIS ENTIRE useEffect BLOCK ---
-  useEffect(() => {
-    console.log('[3. CONTEXT] Balances state was updated:', balances);
-  }, [balances]);
-
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
   const [walletBalance, setWalletBalance] = useState('0.00');
@@ -174,15 +169,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       setWalletBalance('0.00');
       return;
     };
-    const total = Object.entries(balances).reduce((acc, [symbol, balanceStr]) => {
-      // Use the same BigInt math for better precision
-      const tokenDecimals = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS]?.decimals || 18;
-      const balanceBI = parseUnits(balanceStr || '0', tokenDecimals);
+    const total = Object.entries(balances).reduce((acc, [symbol, balance]) => {
       const price = marketData[symbol]?.price || 0;
-
-      // We can parseFloat here as it's just for display, but the balance is now precise
-      const balance = parseFloat(formatUnits(balanceBI, tokenDecimals));
-      
       return acc + (balance * price);
     }, 0);
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -351,24 +339,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
     setBalances(prev => {
-        // Find the decimals for the token, default to 18
-        const tokenDecimals = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS]?.decimals || 18;
-
-        // Convert string balance to a BigInt
-        const currentBalanceBI = parseUnits(prev[symbol] || '0', tokenDecimals);
-
-        // Convert the amount to add/subtract to a BigInt
-        const amountBI = parseUnits(amount.toString(), tokenDecimals);
-
-        // Perform math with perfect precision using BigInt
-        const newBalanceBI = currentBalanceBI + amountBI;
-
-        // Format the result back to a string
-        const newBalanceStr = formatUnits(newBalanceBI, tokenDecimals);
-
+        const currentBalance = prev[symbol] || 0;
+        const newBalance = currentBalance + amount;
         return {
             ...prev,
-            [symbol]: newBalanceStr
+            [symbol]: newBalance
         };
     });
   }, []);
@@ -520,5 +495,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

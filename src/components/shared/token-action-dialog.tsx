@@ -53,7 +53,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
   });
 
   const assetPrice = marketData[asset.symbol]?.price || 0;
-  const assetBalance = parseFloat(balances[asset.symbol] || '0');
+  const assetBalance = balances[asset.symbol] || 0;
   
   const amountUSD = useMemo(() => {
     const amount = sendForm.watch('amount');
@@ -263,5 +263,3 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
     </Sheet>
   );
 }
-
-    

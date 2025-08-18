@@ -54,13 +54,10 @@ export default function HistoryPage() {
     if (tx.amount === undefined || tx.amount === null) {
       return 'N/A';
     }
-    // The amount is now a pre-formatted string. We just display it.
-    // We can use parseFloat to check if we should show it at all.
-    const numericAmount = parseFloat(tx.amount.toString());
-    if (isNaN(numericAmount) || numericAmount === 0) {
+    if (isNaN(tx.amount) || tx.amount === 0) {
       return 'N/A';
     }
-    return `${tx.amount} ${tx.token}`;
+    return `${tx.amount.toLocaleString()} ${tx.token}`;
   };
 
 

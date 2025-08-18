@@ -12,7 +12,7 @@ const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP R
 export interface ChainAsset {
   symbol: string;
   name: string;
-  balance: string; // Use string to maintain precision and prevent floating point errors
+  balance: number; 
 }
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined, name: string, decimals: number } } = {
@@ -49,15 +49,13 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
         const ethData = await ethBalanceResponse.json();
         if (ethData.result) {
             const rawBalance = BigInt(ethData.result);
-            const ethBalance = formatUnits(rawBalance, 18);
+            const ethBalance = parseFloat(formatUnits(rawBalance, 18));
             assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
         } else if (ethData.error) {
              console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
-             throw new Error(`ETH balance RPC Error: ${ethData.error.message}`);
         }
     } else {
          console.error(`[BlockchainService] Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
-         throw new Error(`Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
     }
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
@@ -94,15 +92,8 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
           if (response.ok) {
               const data = await response.json();
                if (data.result && data.result !== '0x') {
-                  // --- ADD FIRST LOG HERE ---
-                  console.log(`[1. SERVICE] Raw data for ${symbol}:`, data.result);
-
                   const rawBalance = BigInt(data.result);
-                  const balance = formatUnits(rawBalance, contract.decimals);
-
-                  // --- ADD SECOND LOG HERE ---
-                  console.log(`[2. SERVICE] Formatted data for ${symbol}:`, balance);
-
+                  const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
                   assets.push({ symbol, name: contract.name, balance });
                } else if (data.error) {
                   console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${data.error.message}`);

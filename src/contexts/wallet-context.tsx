@@ -6,11 +6,12 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets } from '@/services/blockchain-service';
 import { sendTokensAction } from '@/app/actions/send';
 import { useToast } from '@/hooks/use-toast';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, createPublicClient, http } from 'viem';
+import { localhost } from 'viem/chains';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface Transaction {
@@ -93,7 +94,7 @@ interface WalletActions {
   updateBalance: (symbol: string, amount: number) => void;
   setBalances: React.Dispatch<SetStateAction<Balances>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to' | 'txHash'> & { to?: string; txHash?: string }) => string;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<SetStateAction<number>>;
   setActiveStrategy: React.Dispatch<SetStateAction<VaultStrategy | null>>;
@@ -165,7 +166,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   });
   
   const { toast } = useToast();
-  const isSendingRef = useRef(false);
+  const isUpdatingStateRef = useRef(false);
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
@@ -272,7 +273,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to' | 'txHash'> & { to?: string; txHash?: string }) => {
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => {
     if(!walletAddress) return '';
     const newTxId = Date.now().toString() + Math.random().toString();
     const newTx: Transaction = { 
@@ -359,7 +360,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!isConnected || !walletAddress) throw new Error("Wallet not connected");
 
-    isSendingRef.current = true;
+    isUpdatingStateRef.current = true;
     
     setTxStatusDialog({
       isOpen: true,
@@ -403,56 +404,72 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         throw e;
     } finally {
-        setTimeout(() => { isSendingRef.current = false; }, 5000);
+        setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
     }
   }, [isConnected, walletAddress, addTransaction, updateBalance, updateTransactionStatus]);
 
 
-  // Effect for polling for external wallet updates
+  // Effect for polling for external wallet updates and transaction statuses
   useEffect(() => {
     if (!isConnected || !walletAddress) return;
 
     let isCancelled = false;
-    let intervalId: NodeJS.Timeout;
+    
+    const publicClient = createPublicClient({ chain: localhost, transport: http('http://127.0.0.1:8545') });
 
-    const pollForUpdates = async () => {
-        if (isSendingRef.current || isCancelled) return;
+    const poll = async () => {
+        if (isCancelled) return;
         
-        try {
-            const remoteAssets = await getWalletAssets(walletAddress);
-            if (isCancelled) return;
-            
-            if (!remoteAssets || remoteAssets.length === 0 && Object.keys(balances).length > 0) {
-              console.warn("Polling returned no assets, but local state has balances. Ignoring update to prevent state wipe.");
-              return;
+        // Poll for balances
+        if (!isUpdatingStateRef.current) {
+            try {
+                const remoteAssets = await getWalletAssets(walletAddress);
+                if (!isCancelled) {
+                   if (!remoteAssets || remoteAssets.length === 0 && Object.keys(balances).length > 0) {
+                      console.warn("Polling returned no assets, but local state has balances. Ignoring update to prevent state wipe.");
+                    } else {
+                       const newBalances = remoteAssets.reduce((acc, asset) => {
+                          acc[asset.symbol] = asset.balance;
+                          return acc;
+                        }, {} as Balances);
+                        setBalances(newBalances);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to poll for wallet updates. Stopping polling.", error);
+                toast({ variant: 'destructive', title: 'Connection Lost' });
+                isCancelled = true;
             }
+        }
+        
+        // Poll for pending transaction statuses
+        const pendingTxs = transactions.filter(tx => tx.status === 'Pending' && tx.txHash);
+        for (const tx of pendingTxs) {
+            try {
+                const receipt = await publicClient.getTransactionReceipt({ hash: tx.txHash as `0x${string}` });
+                if (receipt) {
+                    if (receipt.status === 'success') {
+                        updateTransactionStatus(tx.id, 'Completed');
+                    } else if (receipt.status === 'reverted') {
+                        updateTransactionStatus(tx.id, 'Failed', 'Transaction was reverted by the contract.');
+                    }
+                }
+            } catch (e) {
+                console.error(`Error fetching receipt for tx ${tx.id}`, e);
+            }
+        }
 
-            const newBalances = remoteAssets.reduce((acc, asset) => {
-              acc[asset.symbol] = asset.balance;
-              return acc;
-            }, {} as Balances);
-            
-            setBalances(newBalances);
-
-        } catch (error) {
-            console.error("Failed to poll for wallet updates. Stopping polling.", error);
-            toast({
-                variant: 'destructive',
-                title: 'Connection Lost',
-                description: 'Could not refresh wallet balance. Please check your connection.',
-            });
-            isCancelled = true; 
-            clearInterval(intervalId); // Stop the interval
+        if (!isCancelled) {
+          setTimeout(poll, 15000);
         }
     };
 
-    intervalId = setInterval(pollForUpdates, 15000);
+    poll();
 
     return () => {
         isCancelled = true;
-        clearInterval(intervalId);
     };
-  }, [isConnected, walletAddress, balances, toast]);
+  }, [isConnected, walletAddress, balances, toast, transactions, updateTransactionStatus]);
 
 
   const value: WalletContextType = {

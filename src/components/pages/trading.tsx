@@ -24,7 +24,7 @@ import { Label } from '../ui/label';
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress } = walletState;
-  const { updateBalance } = walletActions;
+  const { updateBalance, addTransaction } = walletActions;
   const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
@@ -103,9 +103,18 @@ const TradingPageContent = () => {
     setIsApproving(true);
     try {
        const collateralBigInt = parseUnits(collateralAmount, 18);
-       toast({title: "Approval Required", description: `Approving the contract to spend ${collateralAmount} USDT.`});
-       await approveCollateralAction(collateralBigInt);
-       toast({title: "Approval Successful!", description: "You can now place trades using this collateral."});
+       toast({title: "Approval Required", description: `Submitting approval for ${collateralAmount} USDT.`});
+       
+       const { txHash } = await approveCollateralAction(collateralBigInt);
+       
+       addTransaction({
+            type: 'Approve',
+            details: `Approved spending ${collateralAmount} USDT`,
+            txHash: txHash,
+        });
+
+       toast({title: "Approval Submitted!", description: "Transaction is processing."});
+
     } catch(e: any) {
         const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
         toast({ variant: 'destructive', title: 'Approval Failed', description: errorMessage });
@@ -368,5 +377,3 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
-
-    

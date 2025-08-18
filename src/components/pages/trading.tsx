@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -16,18 +15,11 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, openPosition, closePosition, approveCollateral } from '@/services/blockchain-service';
+import { getActivePosition } from '@/services/blockchain-service';
+import { approveCollateralAction, openPositionAction, closePositionAction } from '@/app/actions/trade';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
-
-
-// We need to store some UI state that's not on the contract
-interface PositionWithUI extends Position {
-  pair: string;
-  leverage: number;
-}
-
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
@@ -39,9 +31,6 @@ const TradingPageContent = () => {
   const [tradeAmount, setTradeAmount] = useState(''); // This is now 'size' of the asset in string format
   const [collateralAmount, setCollateralAmount] = useState(''); // Collateral in USDT
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
-  const [leverage, setLeverage] = useState(1);
-  const [takeProfit, setTakeProfit] = useState('');
-  const [stopLoss, setStopLoss] = useState('');
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [activePosition, setActivePosition] = useState<Position | null>(null);
@@ -71,8 +60,6 @@ const TradingPageContent = () => {
 
   const fetchPosition = useCallback(async () => {
     if (!isConnected || !walletAddress) return;
-    // No need to set loading to true on polls, only initial load.
-    // setIsLoadingPosition(true);
     try {
       const position = await getActivePosition(walletAddress);
       setActivePosition(position);
@@ -106,8 +93,8 @@ const TradingPageContent = () => {
         toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address not found.' });
         return;
     }
-    const sizeNum = parseFloat(tradeAmount);
     const collateralNum = parseFloat(collateralAmount);
+    const sizeNum = parseFloat(tradeAmount);
 
     if (isNaN(sizeNum) || sizeNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid trade size' });
@@ -128,10 +115,10 @@ const TradingPageContent = () => {
       const sizeBigInt = parseUnits(tradeAmount, 18);
       
       toast({title: "Approval Required", description: "Please approve the vault to spend your USDT."});
-      await approveCollateral(collateralBigInt);
+      await approveCollateralAction(collateralBigInt);
       toast({title: "Approval Successful!", description: "Now opening position..."});
 
-      await openPosition({
+      await openPositionAction({
           side: tradeDirection === 'long' ? 0 : 1,
           size: sizeBigInt,
           collateral: collateralBigInt
@@ -139,7 +126,6 @@ const TradingPageContent = () => {
 
       toast({ title: 'Position Opened', description: `Your ${tradeDirection} position for ${selectedPair} is now active.`});
       
-      // Manually deduct collateral from UI for immediate feedback
       updateBalance('USDT', -collateralNum);
 
       setTradeAmount('');
@@ -147,7 +133,8 @@ const TradingPageContent = () => {
       await fetchPosition();
 
     } catch(e: any) {
-        toast({ variant: 'destructive', title: 'Trade Failed', description: e.message });
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+        toast({ variant: 'destructive', title: 'Trade Failed', description: errorMessage });
     } finally {
         setIsProcessing(false);
     }
@@ -160,13 +147,14 @@ const TradingPageContent = () => {
     }
     setIsProcessing(true);
     try {
-        await closePosition();
+        await closePositionAction();
         toast({ title: 'Position Closed', description: `Your trade has been settled.` });
         
-        setActivePosition(null); // Clear position immediately from UI
-        await fetchPosition(); // Fetch to confirm closure
+        setActivePosition(null); 
+        await fetchPosition(); 
     } catch(e: any) {
-        toast({ variant: 'destructive', title: 'Failed to Close', description: e.message });
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+        toast({ variant: 'destructive', title: 'Failed to Close', description: errorMessage });
     } finally {
         setIsProcessing(false);
     }

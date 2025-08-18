@@ -1,10 +1,10 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, sendTransaction, ERC20_CONTRACTS as ServiceERC20Contracts } from '@/services/blockchain-service';
+import { getWalletAssets } from '@/services/blockchain-service';
+import { sendTokensAction } from '@/app/actions/send';
 import { useToast } from '@/hooks/use-toast';
 import { parseUnits, formatUnits } from 'viem';
 
@@ -361,7 +361,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     isSendingRef.current = true;
     
-    // Pass the human-readable amount to the dialog
     setTxStatusDialog({
       isOpen: true,
       state: 'processing',
@@ -377,7 +376,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
 
     try {
-        const result = await sendTransaction(walletAddress, toAddress, tokenSymbol, amount);
+        const result = await sendTokensAction(toAddress, tokenSymbol, amount);
         
         updateBalance(tokenSymbol, -amount);
         
@@ -393,12 +392,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     } catch(e: any) {
         console.error('Send token transaction failed:', e);
+        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
         updateTransactionStatus(pendingTxId, 'Failed', `Failed to send ${amount} ${tokenSymbol}`);
         
         setTxStatusDialog(prev => ({
           ...prev,
           state: 'error',
-          error: e.message || 'An unknown error occurred.'
+          error: errorMessage
         }));
         
         throw e;

@@ -226,24 +226,15 @@ export interface Position {
   stopLoss?: number;
 }
 
-export async function getActivePosition(userAddress: string, assetSymbol: string): Promise<Position | null> {
+export async function getActivePosition(userAddress: string): Promise<Position | null> {
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     console.warn("[BlockchainService] Perpetuals contract address not set in .env. Returning null.");
     return null;
   }
-  
-  // If the user is trading ETH, the contract needs the WETH address.
-  const contractAssetSymbol = assetSymbol === 'ETH' ? 'WETH' : assetSymbol;
-  const positionAssetInfo = ERC20_CONTRACTS[contractAssetSymbol as keyof typeof ERC20_CONTRACTS];
-
-  if (!positionAssetInfo || !positionAssetInfo.address) {
-      throw new Error(`Asset info for ${contractAssetSymbol} is not configured.`);
-  }
 
   try {
-    const getPositionFunctionSignature = '0xb9a2092d'; // keccak256("positions(address,address)")
+    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)")
     const paddedUserAddress = userAddress.substring(2).padStart(64, '0');
-    const paddedAssetAddress = positionAssetInfo.address.substring(2).padStart(64, '0');
     
     const response = await fetch(LOCAL_CHAIN_RPC_URL, {
       method: 'POST',
@@ -254,7 +245,7 @@ export async function getActivePosition(userAddress: string, assetSymbol: string
         params: [{
           from: userAddress,
           to: PERPETUALS_CONTRACT_ADDRESS,
-          data: `${getPositionFunctionSignature}${paddedUserAddress}${paddedAssetAddress}`
+          data: `${getPositionFunctionSignature}${paddedUserAddress}`
         }, 'latest'],
         id: 1,
       }),
@@ -282,11 +273,12 @@ export async function getActivePosition(userAddress: string, assetSymbol: string
         return null;
     }
     
+    const positionAssetInfo = ERC20_CONTRACTS['WETH']; // Assume WETH for now as asset isn't returned
     const collateralAssetInfo = ERC20_CONTRACTS['USDT'];
     const priceDecimal = 18; // Oracles often use 18 decimals for price feeds.
 
-    if (!collateralAssetInfo) {
-        throw new Error(`Collateral info for USDT not available for decoding position.`);
+    if (!collateralAssetInfo || !positionAssetInfo) {
+        throw new Error(`Asset info for WETH/USDT not available for decoding position.`);
     }
     
     offset = 0; // Reset offset to read from the start

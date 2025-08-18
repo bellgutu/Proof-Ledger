@@ -71,10 +71,10 @@ const TradingPageContent = () => {
     if (!isConnected || !walletAddress) return;
     setIsLoadingPosition(true);
     try {
-      const assetSymbol = selectedPair.split('/')[0];
-      const position = await getActivePosition(walletAddress, assetSymbol);
+      const position = await getActivePosition(walletAddress);
       if (position && position.active) {
         // Since contract doesn't store UI state, we add it back here
+        const assetSymbol = selectedPair.split('/')[0];
         const leverageUsed = localStorage.getItem(`leverage_${walletAddress}_${assetSymbol}`) || '1';
         const pairUsed = localStorage.getItem(`pair_${walletAddress}_${assetSymbol}`) || 'ETH/USDT';
         setActivePosition({ ...position, leverage: parseInt(leverageUsed), pair: pairUsed });

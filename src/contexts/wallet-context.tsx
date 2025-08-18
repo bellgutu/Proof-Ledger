@@ -275,16 +275,23 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => {
     if(!walletAddress) return '';
-    const newTxId = Date.now().toString() + Math.random().toString();
-    const newTx: Transaction = { 
-        id: newTxId, 
-        status: 'Pending', 
+    const newTxId = `local_${Date.now()}_${Math.random()}`;
+    const newTx: Transaction = {
+        id: newTxId,
+        status: 'Pending',
         from: walletAddress,
         to: transaction.to || '0x0000000000000000000000000000000000000000', // Default to address
         timestamp: Date.now(),
-        txHash: transaction.txHash || '',
-        ...transaction 
+        txHash: transaction.txHash || '', // Can be empty initially
+        ...transaction
     };
+    
+    // Simulate completion for non-onchain actions immediately
+    const nonOnChainTypes: TransactionType[] = ['AI Rebalance', 'Add Liquidity', 'Remove Liquidity', 'Vote'];
+    if (nonOnChainTypes.includes(newTx.type) && !newTx.txHash) {
+        newTx.status = 'Completed';
+    }
+
 
     setTransactions(prevTxs => {
       const newTxs = [newTx, ...prevTxs];
@@ -311,7 +318,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
     // This is a simulated connection. We avoid direct interaction with browser wallets.
-    const address = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'; // Default hardhat address
+    const address = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'; // Default hardhat address
     
     try {
         const assets = await getWalletAssets(address);
@@ -443,7 +450,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
         
         // Poll for pending transaction statuses
-        const pendingTxs = transactions.filter(tx => tx.status === 'Pending' && tx.txHash);
+        const pendingTxs = transactions.filter(tx => {
+            // Only check transactions that are pending and have a valid-looking hash
+            return tx.status === 'Pending' && tx.txHash && /^0x[a-fA-F0-9]{64}$/.test(tx.txHash);
+        });
+
         for (const tx of pendingTxs) {
             try {
                 const receipt = await publicClient.getTransactionReceipt({ hash: tx.txHash as `0x${string}` });

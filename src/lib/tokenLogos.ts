@@ -15,7 +15,7 @@ export const getTokenLogo = (symbol: string): string => {
     WETH: 'https://assets.coingecko.com/coins/images/2518/thumb/weth.png',
     LINK: 'https://assets.coingecko.com/coins/images/877/thumb/chainlink-new-logo.png',
     XAUT: 'https://assets.coingecko.com/coins/images/10481/thumb/tether-gold.png',
-    PEPE: 'https://assets.coingecko.com/coins/images/29851/thumb/pepe-token.jpeg',
+    PEPE: 'https://pepecoin.org/assets/img/brand-assets/Pepecoin_onWhite_IconOnly-RGB%20[Converted].svg',
     DOGE: 'https://assets.coingecko.com/coins/images/5/thumb/dogecoin.png',
   };
 

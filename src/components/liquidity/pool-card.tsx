@@ -14,7 +14,7 @@ import { ManageLiquidityDialog } from './manage-liquidity-dialog';
 interface PoolCardProps {
   pool: Pool;
   userPosition?: UserPosition;
-  onAddPosition: (pool: Pool, lpTokens: number, share: number) => void;
+  onAddPosition: (pool: Pool, lpTokens: number, share: number, amount1: number, amount2: number) => void;
   onUpdatePosition: (poolId: string, lpAmount: number, shareChange: number) => void;
   onClaimRewards: (positionId: string, rewards: number) => void;
 }

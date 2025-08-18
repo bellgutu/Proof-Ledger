@@ -61,7 +61,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const handleSendClick = () => {
     const ethAsset = {
       symbol: 'ETH',
-      balance: walletState.balances['ETH'] || '0',
+      balance: walletState.balances['ETH'] || 0,
       name: 'Ethereum'
     }
     setSendAsset(ethAsset);

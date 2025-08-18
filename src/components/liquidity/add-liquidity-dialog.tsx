@@ -17,7 +17,7 @@ interface AddLiquidityDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   pool: Pool;
-  onAddPosition: (pool: Pool, lpTokens: number, share: number) => void;
+  onAddPosition: (pool: Pool, lpTokens: number, share: number, amount1: number, amount2: number) => void;
 }
 
 export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: AddLiquidityDialogProps) {
@@ -35,8 +35,8 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
 
   const [token1, token2] = pool.name.split('/');
 
-  const token1Balance = parseFloat(balances[token1] || '0');
-  const token2Balance = parseFloat(balances[token2] || '0');
+  const token1Balance = balances[token1] || 0;
+  const token2Balance = balances[token2] || 0;
 
   const token1Price = marketData[token1 as keyof typeof marketData]?.price || 0;
   const token2Price = marketData[token2 as keyof typeof marketData]?.price || 0;
@@ -87,9 +87,10 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
         if(numAmount2 > 0) updateBalance(token2, -numAmount2);
 
         const lpTokensReceived = Math.sqrt(numAmount1 * numAmount2); // Simplified LP calculation
-        const poolShare = (lpTokensReceived / (pool.tvl + numAmount1 * token1Price + numAmount2 * token2Price)) * 100;
+        const poolValue = (pool.tvl + numAmount1 * token1Price + numAmount2 * token2Price);
+        const poolShare = poolValue > 0 ? (lpTokensReceived / poolValue) * 100 : 100;
         
-        onAddPosition(pool, lpTokensReceived, poolShare);
+        onAddPosition(pool, lpTokensReceived, poolShare, numAmount1, numAmount2);
 
         toast({ title: 'Liquidity Added', description: `You received ${lpTokensReceived.toFixed(4)} LP tokens.` });
         setIsDepositing(false);

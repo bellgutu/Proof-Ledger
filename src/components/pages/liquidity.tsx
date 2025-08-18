@@ -25,8 +25,8 @@ export interface Pool {
   id: string;
   name: string;
   type: 'V2' | 'V3' | 'Stable'; // V2 = Standard, V3 = Concentrated, Stable = Stable-Swap
-  token1: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
-  token2: { symbol: 'ETH' | 'WETH' | 'SOL' | 'USDT' | 'BTC' | 'BNB' | 'XRP' | 'LINK'; amount: number };
+  token1: string;
+  token2: string;
   tvl: number;
   volume24h: number;
   apr: number;
@@ -46,7 +46,7 @@ const configuredTokens = ['ETH', 'USDT', 'USDC', 'WETH', 'LINK'];
 export default function LiquidityPage() {
   const { walletState, walletActions } = useWallet();
   const { isConnected, marketData, availablePools, userPositions } = walletState;
-  const { updateBalance, setAvailablePools, setUserPositions } = walletActions;
+  const { updateBalance, addTransaction, setAvailablePools, setUserPositions } = walletActions;
   const { toast } = useToast();
   
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -61,7 +61,7 @@ export default function LiquidityPage() {
   
   const tokenOptions = configuredTokens;
 
-  const handleAddPosition = (pool: Pool, lpTokens: number, share: number) => {
+  const handleAddPosition = (pool: Pool, lpTokens: number, share: number, amount1: number, amount2: number) => {
     setUserPositions(prev => {
       const existingPositionIndex = prev.findIndex(p => p.id === pool.id);
       if (existingPositionIndex > -1) {
@@ -72,11 +72,22 @@ export default function LiquidityPage() {
       }
       return [...prev, { ...pool, lpTokens, share, unclaimedRewards: Math.random() * 50, impermanentLoss: Math.random() * -5 }];
     });
+
+    addTransaction({
+      type: 'Add Liquidity',
+      details: `Added ${amount1.toFixed(2)} ${pool.token1} and ${amount2.toFixed(2)} ${pool.token2} to ${pool.name} pool`,
+    });
   };
 
   const handleUpdatePosition = (poolId: string, lpAmount: number, shareChange: number) => {
      setUserPositions(prev => prev.map(p => {
       if (p.id === poolId) {
+        if(p.lpTokens + lpAmount > 0.00001) {
+          addTransaction({
+            type: 'Remove Liquidity',
+            details: `Removed ${(shareChange / p.share * 100).toFixed(2)}% of liquidity from ${p.name} pool`
+          });
+        }
         return { ...p, lpTokens: p.lpTokens + lpAmount, share: p.share + shareChange };
       }
       return p;
@@ -84,6 +95,9 @@ export default function LiquidityPage() {
   };
 
   const handleClaimRewards = (positionId: string, rewards: number) => {
+    const position = userPositions.find(p => p.id === positionId);
+    if(!position) return;
+
     updateBalance('USDT', rewards); // Assuming rewards are in USDT
     setUserPositions(prev => prev.map(p => {
       if (p.id === positionId) {
@@ -91,6 +105,12 @@ export default function LiquidityPage() {
       }
       return p;
     }));
+
+    addTransaction({
+      type: 'Add Liquidity',
+      details: `Claimed $${rewards.toFixed(2)} rewards from ${position.name} pool.`
+    });
+
     toast({ title: 'Rewards Claimed!', description: `$${rewards.toFixed(2)} has been added to your wallet.`});
   };
 
@@ -104,15 +124,12 @@ export default function LiquidityPage() {
       return;
     }
 
-    const price1 = marketData[newToken1 as keyof typeof marketData].price;
-    const price2 = marketData[newToken2 as keyof typeof marketData].price;
-
     const newPool: Pool = {
       id: (availablePools.length + 1).toString(),
       name: `${newToken1}/${newToken2}`,
       type: newPoolType,
-      token1: { symbol: newToken1 as any, amount: 0 },
-      token2: { symbol: newToken2 as any, amount: 0 },
+      token1: newToken1,
+      token2: newToken2,
       tvl: 0,
       volume24h: 0,
       apr: Math.random() * (newPoolType === 'Stable' ? 5 : 20),

@@ -19,13 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 import { useRouter } from 'next/navigation';
 
-export interface Transaction {
-  id: string;
-  type: 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
-  details: string | React.ReactNode;
-  status: 'Completed' | 'Pending';
-}
-
 export interface VaultStrategy {
     name: string;
     value: number;
@@ -53,7 +46,6 @@ export default function FinancePage() {
     isConnected, 
     balances, 
     marketData,
-    transactions,
     vaultWeth,
     activeStrategy,
     proposals
@@ -123,7 +115,7 @@ export default function FinancePage() {
   
   const handleSwap = async () => {
     const amountToSwap = parseFloat(fromAmount);
-    if (!fromToken || !toToken || isNaN(amountToSwap) || amountToSwap <= 0 || amountToSwap > parseFloat(balances[fromToken] || '0')) {
+    if (!fromToken || !toToken || isNaN(amountToSwap) || amountToSwap <= 0 || amountToSwap > (balances[fromToken] || 0)) {
         toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
         return;
     }
@@ -175,7 +167,7 @@ export default function FinancePage() {
 
   const handleDepositToVault = () => {
     const amountToDeposit = 0.5;
-    if (parseFloat(balances['WETH'] || '0') < amountToDeposit) {
+    if ((balances['WETH'] || 0) < amountToDeposit) {
        toast({ variant: "destructive", title: "Insufficient WETH balance" });
        return;
     }
@@ -216,7 +208,7 @@ export default function FinancePage() {
     if(rebalanceLoading) return;
     setRebalanceLoading(true);
     try {
-        const currentEth = parseFloat(balances['ETH'] || '0');
+        const currentEth = balances['ETH'] || 0;
         // Ensure there are assets to rebalance.
         if (vaultWeth <= 0 && currentEth <= 0) {
             toast({ variant: "destructive", title: "Vault is empty", description: "Deposit WETH or hold ETH to enable AI rebalancing." });
@@ -286,7 +278,7 @@ export default function FinancePage() {
   // Effect to handle switching token amounts when pair changes
   useEffect(() => {
     handleAmountChange(fromAmount);
-  }, [fromToken, toToken, conversionRate]);
+  }, [fromToken, toToken, conversionRate, fromAmount, handleAmountChange]);
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -305,7 +297,7 @@ export default function FinancePage() {
                 <div className="p-4 bg-background rounded-md border space-y-2">
                     <div className="flex justify-between items-center">
                         <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
-                        <p className="text-xs text-muted-foreground mt-1">Balance: {(parseFloat(balances[fromToken] || '0')).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[fromToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                     </div>
                     <div className="flex gap-2">
                     <Input
@@ -336,7 +328,7 @@ export default function FinancePage() {
                 <div className="p-4 bg-background rounded-md border space-y-2">
                     <div className="flex justify-between items-center">
                     <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
-                    <p className="text-xs text-muted-foreground mt-1">Balance: {(parseFloat(balances[toToken] || '0')).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[toToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                     </div>
                     <div className="flex gap-2">
                     <Input
@@ -413,7 +405,7 @@ export default function FinancePage() {
                     <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                             onClick={handleDepositToVault}
-                            disabled={!isConnected || vaultLoading || parseFloat(balances['WETH'] || '0') <= 0}
+                            disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) <= 0}
                             className="w-full bg-green-600 text-white hover:bg-green-700"
                         >
                             {vaultLoading ? (

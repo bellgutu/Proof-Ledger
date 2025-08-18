@@ -3,7 +3,9 @@
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * Each function is designed to be connected to your blockchain's RPC endpoint.
  */
-import { parseUnits, type Abi, formatUnits } from 'viem';
+import { parseUnits, type Abi, formatUnits, createWalletClient, http, publicActions, parseAbi } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { localhost } from 'viem/chains';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
 
@@ -23,84 +25,57 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: string | undefined,
     'ETH': { address: undefined, name: 'Ethereum', decimals: 18 },
 };
 
-const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS;
-const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS;
-const PRICE_ORACLE_ADDRESS = process.env.NEXT_PUBLIC_PRICE_ORACLE_ADDRESS;
-const DEX_ROUTER_ADDRESS = process.env.NEXT_PUBLIC_DEX_ROUTER_ADDRESS;
+const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
+const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS as `0x${string}`;
+
+const account = privateKeyToAccount((process.env.LOCAL_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as `0x${string}`);
+
+const client = createWalletClient({
+  account,
+  chain: localhost,
+  transport: http(LOCAL_CHAIN_RPC_URL),
+}).extend(publicActions);
+
+
+const perpetualsAbi = parseAbi([
+  "function openPosition(uint8 side, uint256 size, uint256 collateral)",
+  "function closePosition()",
+  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
+]);
+
+const erc20Abi = parseAbi([
+    "function approve(address spender, uint256 amount) external returns (bool)",
+    "function balanceOf(address account) external view returns (uint256)"
+]);
 
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   const assets: ChainAsset[] = [];
-  const BALANCE_OF_SIGNATURE = '0x70a08231';
   
   // --- 1. Fetch ETH Balance ---
   try {
-    const ethBalanceResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_getBalance',
-            params: [address, 'latest'],
-            id: 1,
-        }),
-    });
-    if (ethBalanceResponse.ok) {
-        const ethData = await ethBalanceResponse.json();
-        if (ethData.result) {
-            const rawBalance = BigInt(ethData.result);
-            const ethBalance = parseFloat(formatUnits(rawBalance, 18));
-            assets.push({ symbol: 'ETH', name: 'Ethereum', balance: ethBalance });
-        } else if (ethData.error) {
-             console.warn(`[BlockchainService] ETH balance RPC Error: ${ethData.error.message}`);
-        }
-    } else {
-         console.error(`[BlockchainService] Failed to fetch ETH balance with status: ${ethBalanceResponse.status}`);
-    }
+    const ethBalance = await client.getBalance({ address: address as `0x${string}` });
+    assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatUnits(ethBalance, 18)) });
   } catch (error) {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
-    // Don't throw here, allow fetching of other tokens
   }
 
   // --- 2. Fetch ERC20 Balances ---
   for (const symbol in ERC20_CONTRACTS) {
       try {
-          if (symbol === 'ETH') continue; // Already handled
+          if (symbol === 'ETH') continue;
           const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-          if (!contract || !contract.address) {
-              console.warn(`[BlockchainService] Skipping ${symbol}: address not found in .env file.`);
-              continue;
-          };
+          if (!contract || !contract.address) continue;
           
-          const paddedAddress = address.substring(2).padStart(64, '0');
-          
-          const response = await fetch(LOCAL_CHAIN_RPC_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_call',
-                params: [{
-                    from: address,
-                    to: contract.address,
-                    data: `${BALANCE_OF_SIGNATURE}${paddedAddress}`
-                }, 'latest'],
-                id: 1,
-            }),
+          const balance = await client.readContract({
+              address: contract.address as `0x${string}`,
+              abi: erc20Abi,
+              functionName: 'balanceOf',
+              args: [address as `0x${string}`]
           });
 
-          if (response.ok) {
-              const data = await response.json();
-               if (data.result && data.result !== '0x') {
-                  const rawBalance = BigInt(data.result);
-                  const balance = parseFloat(formatUnits(rawBalance, contract.decimals));
-                  assets.push({ symbol, name: contract.name, balance });
-               } else if (data.error) {
-                  console.warn(`[BlockchainService] RPC call for ${symbol} balance failed, but continuing. Error: ${data.error.message}`);
-               }
-          } else {
-              console.error(`[BlockchainService] Failed to fetch ${symbol} balance with status: ${response.status}`);
-          }
+          assets.push({ symbol, name: contract.name, balance: parseFloat(formatUnits(balance, contract.decimals)) });
+
       } catch(e) {
           console.error(`[BlockchainService] Error fetching balance for ${symbol}:`, e)
       }
@@ -113,22 +88,11 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
   return assets;
 }
 
+
 export async function getGasPrice(): Promise<bigint> {
     try {
-      const response = await fetch(LOCAL_CHAIN_RPC_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'eth_gasPrice',
-              params: [],
-              id: 1,
-          }),
-      });
-      if (!response.ok) throw new Error(`Failed to fetch gas price with status: ${response.status}`);
-      const data = await response.json();
-      if (data.error) throw new Error(`Gas price RPC Error: ${data.error.message}`);
-      return BigInt(data.result);
+      const gasPrice = await client.getGasPrice();
+      return gasPrice;
     } catch(e) {
       console.error("[BlockchainService] getGasPrice failed", e);
       return 20000000000n; // Return a default value
@@ -149,69 +113,36 @@ export async function sendTransaction(
   amount: number,
 ): Promise<{ success: boolean; txHash: string }> {
 
-  let txParams;
-  const gasPrice = await getGasPrice();
-
   const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
   if (!contractInfo) {
     throw new Error(`Token info for ${tokenSymbol} not found.`);
   }
+  
+  let txHash: `0x${string}`;
 
   if (tokenSymbol === 'ETH') {
     const valueInWei = parseUnits(amount.toString(), 18);
-    txParams = {
-        from: fromAddress,
-        to: toAddress,
-        value: `0x${valueInWei.toString(16)}`,
-        gas: `0x${(21000).toString(16)}`, 
-        gasPrice: `0x${gasPrice.toString(16)}`,
-    };
+    txHash = await client.sendTransaction({
+        to: toAddress as `0x${string}`,
+        value: valueInWei
+    });
   } else {
     if (!contractInfo.address) {
       throw new Error(`Contract for ${tokenSymbol} is not configured in .env file.`);
     }
-    const transferSignature = '0xa9059cbb';
-    const paddedToAddress = toAddress.substring(2).padStart(64, '0');
-    
     const valueInSmallestUnit = parseUnits(amount.toString(), contractInfo.decimals);
-    const paddedValue = valueInSmallestUnit.toString(16).padStart(64, '0');
     
-    txParams = {
-      from: fromAddress,
-      to: contractInfo.address,
-      data: `${transferSignature}${paddedToAddress}${paddedValue}`,
-      gas: `0x${(60000).toString(16)}`,
-      gasPrice: `0x${gasPrice.toString(16)}`,
-    };
+    txHash = await client.writeContract({
+        address: contractInfo.address as `0x${string}`,
+        abi: parseAbi(["function transfer(address to, uint256 amount) external returns (bool)"]),
+        functionName: "transfer",
+        args: [toAddress as `0x${string}`, valueInSmallestUnit]
+    });
   }
   
-  const response = await fetch(LOCAL_CHAIN_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_sendTransaction',
-          params: [txParams],
-          id: 1,
-      }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error("eth_sendTransaction error body:", errorBody);
-    throw new Error(`eth_sendTransaction failed with status: ${response.status}`);
-  }
-
-  const data = await response.json();
-  if (data.error) {
-    console.error("RPC Error details:", data.error);
-    const errorMessage = data.error.message || JSON.stringify(data.error);
-    throw new Error(`Transaction RPC Error: ${errorMessage}`);
-  }
-
   return {
     success: true,
-    txHash: data.result,
+    txHash: txHash,
   };
 }
 
@@ -222,8 +153,6 @@ export interface Position {
   collateral: number;
   entryPrice: number;
   active: boolean;
-  takeProfit?: number;
-  stopLoss?: number;
 }
 
 export async function getActivePosition(userAddress: string): Promise<Position | null> {
@@ -233,164 +162,84 @@ export async function getActivePosition(userAddress: string): Promise<Position |
   }
 
   try {
-    const getPositionFunctionSignature = '0xddca7a8c'; // keccak256("positions(address)")
-    const paddedUserAddress = userAddress.substring(2).padStart(64, '0');
-    
-    const response = await fetch(LOCAL_CHAIN_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_call',
-        params: [{
-          from: userAddress,
-          to: PERPETUALS_CONTRACT_ADDRESS,
-          data: `${getPositionFunctionSignature}${paddedUserAddress}`
-        }, 'latest'],
-        id: 1,
-      }),
+    const positionData = await client.readContract({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: perpetualsAbi,
+        functionName: 'positions',
+        args: [userAddress as `0x${string}`]
     });
 
-    if (!response.ok) {
-      throw new Error(`eth_call to getActivePosition failed with status ${response.status}`);
-    }
+    const [side, size, collateral, entryPrice, active] = positionData;
 
-    const data = await response.json();
-    if (data.error) {
-      throw new Error(`RPC Error for getActivePosition: ${data.error.message}`);
-    }
-    
-    const resultData = data.result.substring(2);
-    if (resultData.length < 448) { 
-      console.warn(`[BlockchainService] getActivePosition returned unexpected data length: ${resultData.length}. Assuming no active position.`);
+    if (!active) {
       return null;
     }
     
-    let offset = 4 * 64; // Active flag is the 5th returned value (index 4)
-    const active = parseInt(resultData.slice(offset, offset + 64), 16) === 1;
+    const wethDecimals = ERC20_CONTRACTS['WETH']?.decimals || 18;
+    const usdtDecimals = ERC20_CONTRACTS['USDT']?.decimals || 18;
+    const priceDecimals = 18; // Oracles often use 18 decimals
 
-    if (!active) {
-        return null;
-    }
-    
-    const positionAssetInfo = ERC20_CONTRACTS['WETH']; // Assume WETH for now as asset isn't returned
-    const collateralAssetInfo = ERC20_CONTRACTS['USDT'];
-    const priceDecimal = 18; // Oracles often use 18 decimals for price feeds.
-
-    if (!collateralAssetInfo || !positionAssetInfo) {
-        throw new Error(`Asset info for WETH/USDT not available for decoding position.`);
-    }
-    
-    offset = 0; // Reset offset to read from the start
-    const side = parseInt(resultData.slice(offset, offset + 64), 16) === 0 ? 'long' : 'short';
-    offset += 64;
-    const size = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), positionAssetInfo.decimals));
-    offset += 64;
-    const collateral = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), collateralAssetInfo.decimals));
-    offset += 64;
-    const entryPrice = Number(formatUnits(BigInt('0x' + resultData.slice(offset, offset + 64)), priceDecimal));
-    offset += 64;
-    // 'active' is already decoded
-    offset += 64; 
-
-    const rawTakeProfit = BigInt('0x' + resultData.slice(offset, offset + 64));
-    offset += 64;
-    const rawStopLoss = BigInt('0x' + resultData.slice(offset, offset + 64));
-
-    const takeProfit = rawTakeProfit > 0 ? Number(formatUnits(rawTakeProfit, priceDecimal)) : undefined;
-    const stopLoss = rawStopLoss > 0 ? Number(formatUnits(rawStopLoss, priceDecimal)) : undefined;
-
-    return { side, size, collateral, entryPrice, active, takeProfit, stopLoss };
+    return {
+      side: side === 0 ? 'long' : 'short',
+      size: parseFloat(formatUnits(size, wethDecimals)),
+      collateral: parseFloat(formatUnits(collateral, usdtDecimals)),
+      entryPrice: parseFloat(formatUnits(entryPrice, priceDecimals)),
+      active: active
+    };
 
   } catch (error) {
     console.error("[BlockchainService] getActivePosition failed:", error);
+    // It's common for this to fail if the contract call reverts (e.g., no position found).
+    // We can treat this as "no position" instead of throwing an error to the user.
     return null;
   }
 }
 
+export async function approveCollateral(amount: bigint): Promise<`0x${string}`> {
+  if (!VAULT_CONTRACT_ADDRESS) {
+      throw new Error('Vault contract address is not configured');
+  }
+  const usdtAddress = ERC20_CONTRACTS['USDT'].address as `0x${string}`;
 
-export async function openPosition(fromAddress: string, params: {
-  asset: string;
-  size: number;
-  direction: 'long' | 'short';
-  leverage: number;
-  takeProfit?: number;
-  stopLoss?: number;
+  return client.writeContract({
+    address: usdtAddress,
+    abi: erc20Abi,
+    functionName: "approve",
+    args: [VAULT_CONTRACT_ADDRESS, amount]
+  });
+}
+
+
+export async function openPosition(params: {
+    side: number, // 0 for long, 1 for short
+    size: bigint,
+    collateral: bigint,
 }): Promise<{ success: boolean; txHash: string }> {
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     throw new Error("Perpetuals contract address not set in .env file.");
   }
-  
-  const assetInfo = ERC20_CONTRACTS[params.asset as keyof typeof ERC20_CONTRACTS];
-  const collateralInfo = ERC20_CONTRACTS['USDT'];
-  const priceDecimal = 18;
 
-  if (!assetInfo || !collateralInfo) {
-      throw new Error(`Asset info for ${params.asset} or collateral info for USDT not available for encoding openPosition call.`);
-  }
-
-  // keccak256("openPosition(bool,uint256,uint256,uint256,uint256)")
-  const openPositionSignature = '0x153c1374';
-
-  const isLongHex = (params.direction === 'long' ? 1 : 0).toString(16).padStart(64, '0');
-  const sizeHex = parseUnits(params.size.toString(), assetInfo.decimals).toString(16).padStart(64, '0');
-  const leverageHex = BigInt(params.leverage).toString(16).padStart(64, '0');
-  const takeProfitHex = params.takeProfit ? parseUnits(params.takeProfit.toString(), priceDecimal).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
-  const stopLossHex = params.stopLoss ? parseUnits(params.stopLoss.toString(), priceDecimal).toString(16).padStart(64, '0') : ''.padEnd(64, '0');
-  
-  const dataPayload = `${openPositionSignature}${isLongHex}${sizeHex}${leverageHex}${takeProfitHex}${stopLossHex}`;
-  
-  const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_sendTransaction',
-          params: [{
-              from: fromAddress,
-              to: PERPETUALS_CONTRACT_ADDRESS,
-              data: dataPayload,
-              gas: `0x${(500000).toString(16)}`, 
-          }],
-          id: 1,
-      }),
+  const txHash = await client.writeContract({
+    address: PERPETUALS_CONTRACT_ADDRESS,
+    abi: perpetualsAbi,
+    functionName: "openPosition",
+    args: [params.side, params.size, params.collateral]
   });
 
-  const txData = await txResponse.json();
-  if (txData.error) {
-    throw new Error(`Open position RPC Error: ${txData.error.message}`);
-  }
-
-  return { success: true, txHash: txData.result };
+  return { success: true, txHash: txHash };
 }
 
-export async function closePosition(fromAddress: string): Promise<{ success: boolean, txHash: string }> {
+export async function closePosition(): Promise<{ success: boolean, txHash: string }> {
     if (!PERPETUALS_CONTRACT_ADDRESS) {
       throw new Error("Perpetuals contract address not set in .env file.");
     }
     
-    const closePositionSignature = '0x43d726d6'; // keccak256("closePosition()")
-    
-    const txResponse = await fetch(LOCAL_CHAIN_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_sendTransaction',
-          params: [{
-              from: fromAddress,
-              to: PERPETUALS_CONTRACT_ADDRESS,
-              data: closePositionSignature,
-              gas: `0x${(300000).toString(16)}`,
-          }],
-          id: 1,
-      }),
+    const txHash = await client.writeContract({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: perpetualsAbi,
+        functionName: "closePosition",
+        args: []
     });
 
-    const txData = await txResponse.json();
-    if (txData.error) {
-        throw new Error(`Close position RPC Error: ${txData.error.message}`);
-    }
-
-    return { success: true, txHash: txData.result };
+    return { success: true, txHash: txHash };
 }

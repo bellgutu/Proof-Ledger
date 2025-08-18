@@ -14,6 +14,10 @@ import { localhost } from 'viem/chains';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
 
+if (!process.env.LOCAL_PRIVATE_KEY) {
+  throw new Error('FATAL: LOCAL_PRIVATE_KEY is not defined in the environment variables. Please check your .env file.');
+}
+
 export interface ChainAsset {
   symbol: string;
   name: string;

@@ -8,7 +8,7 @@ import { getWalletAssets, sendTransaction, ERC20_CONTRACTS } from '@/services/bl
 import { useToast } from '@/hooks/use-toast';
 import { parseUnits, formatUnits } from 'viem';
 
-type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE';
+type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
 export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
@@ -122,6 +122,7 @@ const initialMarketData: MarketData = {
     XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0},
     XAUT: { name: 'Tether Gold', symbol: 'XAUT', price: 0, change: 0},
     PEPE: { name: 'Pepe', symbol: 'PEPE', price: 0, change: 0},
+    DOGE: { name: 'Dogecoin', symbol: 'DOGE', price: 0, change: 0},
 };
 
 const initialAvailablePools: Pool[] = [
@@ -206,6 +207,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               'ripple': 'XRP',
               'tether-gold': 'XAUT',
               'pepe': 'PEPE',
+              'dogecoin': 'DOGE',
             };
 
             for (const id in liveData) {

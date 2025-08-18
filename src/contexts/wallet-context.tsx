@@ -231,7 +231,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const marketUpdateInterval = setInterval(fetchMarketData, 30000);
 
     return () => clearInterval(marketUpdateInterval);
-  }, [isMarketDataLoaded]);
+  }, []);
   
   const getTxHistoryStorageKey = (address: string) => `tx_history_${address}`;
 

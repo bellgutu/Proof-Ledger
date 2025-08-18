@@ -80,11 +80,9 @@ export default function MarketsPage() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
   const [newsFeed, setNewsFeed] = useState<NewsArticle[]>([]);
-  const [newsFetched, setNewsFetched] = useState(false);
 
   const fetchNews = useCallback(async () => {
     setIsLoadingNews(true);
-    setNewsFetched(true);
     try {
         const response = await fetch('/api/news');
         if (!response.ok) {
@@ -94,12 +92,14 @@ export default function MarketsPage() {
         setNewsFeed(data.articles);
     } catch(e) {
         console.error("Failed to fetch news:", e);
-        setNewsFeed([
-             { id: 1, title: 'News Feed Error', url: '#', domain: 'System', createdAt: new Date().toISOString() },
-        ] as any);
+        setNewsFeed([]);
     }
     setIsLoadingNews(false);
   }, []);
+
+  useEffect(() => {
+    fetchNews();
+  }, [fetchNews]);
 
   useEffect(() => {
     if (isMarketDataLoaded) {
@@ -107,9 +107,9 @@ export default function MarketsPage() {
             id: data.symbol,
             name: data.name,
             symbol: data.symbol,
-            value: parseFloat(data.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: parseFloat(data.price) > 1 ? 2 : 4}),
-            change: parseFloat(data.change).toFixed(2) + '%',
-            isPositive: parseFloat(data.change) >= 0,
+            value: parseFloat(data.price.toString()).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: parseFloat(data.price.toString()) > 1 ? 2 : 4}),
+            change: parseFloat(data.change.toString()).toFixed(2) + '%',
+            isPositive: parseFloat(data.change.toString()) >= 0,
         }));
         setMarkets(newMarkets);
     }
@@ -146,11 +146,11 @@ export default function MarketsPage() {
           `}</style>
           {isLoadingNews ? (
              Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="w-80 h-40 flex-none" />)
-          ) : newsFetched ? (
+          ) : newsFeed.length > 0 ? (
             newsFeed.map(news => <NewsCard key={news.id} {...news} />)
           ) : (
             <div className="w-full h-40 flex items-center justify-center text-muted-foreground">
-              Click the refresh button to load the latest news.
+              Could not load news feed.
             </div>
           )}
         </div>

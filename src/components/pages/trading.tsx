@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WalletHeader } from '@/components/shared/wallet-header';
-import { TradingChart, type Candle } from '@/components/trading/trading-chart';
+import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
@@ -26,8 +26,6 @@ interface PositionWithUI extends Position {
   pair: string;
   leverage: number;
 }
-
-type PriceScenario = 'uptrend' | 'downtrend' | 'normal';
 
 
 const TradingPageContent = () => {
@@ -48,47 +46,25 @@ const TradingPageContent = () => {
   const [isLoadingPosition, setIsLoadingPosition] = useState(true);
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
-  const [candleData, setCandleData] = useState<Candle[]>([]);
-  const [priceScenario, setPriceScenario] = useState<PriceScenario | null>(null);
 
   const usdtBalance = balances['USDT'] || 0;
-
-  const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
-    setCandleData(candles);
-  }, []);
   
   const asset = selectedPair.split('/')[0];
+  const tradingViewSymbol = `BINANCE:${asset}USDT`;
   
   useEffect(() => {
     const pairAsset = selectedPair.split('/')[0];
     if (marketData[pairAsset]) {
       setCurrentPrice(marketData[pairAsset].price);
     }
-  }, [marketData, selectedPair]);
-  
-  // Listen for external commands via localStorage
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'price_scenario_command' && event.newValue) {
-        const command = event.newValue as PriceScenario;
-        console.log(`Received external command: ${command}`);
-        if (command === 'normal') {
-            setPriceScenario(null);
-        } else {
-            setPriceScenario(command);
-        }
-      }
-    };
-    
-    // This allows an external application to control the chart scenario
-    // by setting a value in localStorage.
-    // Example: localStorage.setItem('price_scenario_command', 'uptrend')
-    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(() => {
+         if (marketData[pairAsset]) {
+            setCurrentPrice(marketData[pairAsset].price);
+         }
+    }, 2000);
+    return () => clearInterval(interval);
 
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  }, [marketData, selectedPair]);
 
 
   const fetchPosition = useCallback(async () => {
@@ -213,7 +189,7 @@ const TradingPageContent = () => {
     return pnl;
   };
   
-  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'LINK/USDT', 'USDT/USDC'];
+  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT', 'USDT/USDC'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
   
   if (!initialPriceForChart) {
@@ -244,14 +220,7 @@ const TradingPageContent = () => {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-card rounded-md">
-              <TradingChart 
-                  key={selectedPair} 
-                  initialPrice={initialPriceForChart} 
-                  onPriceChange={setCurrentPrice} 
-                  onCandleDataUpdate={handleCandleDataUpdate}
-                  priceScenario={priceScenario}
-                  position={activePosition}
-              />
+                <TradingViewWidget symbol={tradingViewSymbol} />
             </div>
           </CardContent>
         </Card>

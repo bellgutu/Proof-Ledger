@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft, BarChart2, TrendingUp, TrendingDown, Layers, CircleDollarSign, Bot, BrainCircuit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TradingChart, type Candle } from '@/components/trading/trading-chart';
+import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Skeleton } from '../ui/skeleton';
 import { useWallet } from '@/contexts/wallet-context';
@@ -35,10 +35,6 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
   const [currentPrice, setCurrentPrice] = useState(0);
   const [briefing, setBriefing] = useState<WatchlistBriefing | null>(null);
   const [isBriefingLoading, setIsBriefingLoading] = useState(true);
-
-  const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
-    // We can use this for AI analysis in the future
-  }, []);
 
   useEffect(() => {
     if (isMarketDataLoaded) {
@@ -114,6 +110,7 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
   }
   
   const isPositive = getChange() >= 0;
+  const tradingViewSymbol = `BINANCE:${coinData.symbol}USDT`;
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
@@ -193,7 +190,7 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
         </CardHeader>
         <CardContent>
           <div className="h-96 bg-card rounded-md">
-            <TradingChart key={symbol} initialPrice={coinData.price} onPriceChange={setCurrentPrice} onCandleDataUpdate={handleCandleDataUpdate} />
+            <TradingViewWidget symbol={tradingViewSymbol} />
           </div>
         </CardContent>
       </Card>

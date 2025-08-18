@@ -6,8 +6,7 @@ import { useWallet } from '@/contexts/wallet-context';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TradingChart, type Candle } from '@/components/trading/trading-chart';
-import { AIChartAnalysis } from '@/components/trading/ai-chart-analysis';
+import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { Skeleton } from '../ui/skeleton';
 import { AlertCircle, Bot, Loader2, PlusCircle, Search, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
@@ -30,9 +29,7 @@ const IntelligencePageContent = () => {
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH'].price);
-  const [candleData, setCandleData] = useState<Candle[]>([]);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-
+  
   // Watchlist State
   const [watchlist, setWatchlist] = useState<string[]>(['BTC', 'SOL']);
   const [briefings, setBriefings] = useState<Record<string, WatchlistBriefing>>({});
@@ -71,10 +68,6 @@ const IntelligencePageContent = () => {
       return newBriefings;
     });
   };
-
-  const handleCandleDataUpdate = useCallback((candles: Candle[]) => {
-    setCandleData(candles);
-  }, []);
   
   useEffect(() => {
     const pairAsset = selectedPair.split('/')[0];
@@ -92,7 +85,9 @@ const IntelligencePageContent = () => {
   };
   
   const tradeablePairs = ['ETH/USDT', 'BTC/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT'];
-  const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
+  const asset = selectedPair.split('/')[0];
+  const tradingViewSymbol = `BINANCE:${asset}USDT`;
+  const initialPriceForChart = marketData[asset]?.price;
   
   if (!initialPriceForChart) {
     return null; // or a loading skeleton
@@ -100,7 +95,7 @@ const IntelligencePageContent = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 space-y-8">
+      <div className="lg:col-span-3 space-y-8">
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
           <CardHeader>
               <div className="flex items-center justify-between gap-4">
@@ -122,12 +117,7 @@ const IntelligencePageContent = () => {
           </CardHeader>
           <CardContent>
             <div className="h-[60vh] bg-card rounded-md">
-              <TradingChart 
-                  key={selectedPair} 
-                  initialPrice={initialPriceForChart} 
-                  onPriceChange={setCurrentPrice} 
-                  onCandleDataUpdate={handleCandleDataUpdate}
-              />
+              <TradingViewWidget symbol={tradingViewSymbol} />
             </div>
           </CardContent>
         </Card>
@@ -181,21 +171,6 @@ const IntelligencePageContent = () => {
             </CardContent>
           </Card>
       </div>
-      <div className="space-y-8">
-         <AIChartAnalysis 
-            candleData={candleData} 
-            onError={setAnalysisError}
-        />
-        {analysisError && (
-             <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Analysis Error</AlertTitle>
-                <AlertDescription>
-                    {analysisError}
-                </AlertDescription>
-            </Alert>
-        )}
-      </div>
     </div>
   );
 }
@@ -208,12 +183,9 @@ export default function IntelligencePage() {
   if (!isMarketDataLoaded) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
            <Skeleton className="h-[75vh] w-full" />
            <Skeleton className="h-64 w-full mt-8" />
-        </div>
-        <div className="space-y-8">
-            <Skeleton className="h-96 w-full" />
         </div>
       </div>
     )

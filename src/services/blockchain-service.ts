@@ -45,7 +45,8 @@ const perpetualsAbi = parseAbi([
 
 const erc20Abi = parseAbi([
     "function approve(address spender, uint256 amount) external returns (bool)",
-    "function balanceOf(address account) external view returns (uint256)"
+    "function balanceOf(address account) external view returns (uint256)",
+    "function transfer(address to, uint256 amount) external returns (bool)"
 ]);
 
 
@@ -134,7 +135,7 @@ export async function sendTransaction(
     
     txHash = await client.writeContract({
         address: contractInfo.address as `0x${string}`,
-        abi: parseAbi(["function transfer(address to, uint256 amount) external returns (bool)"]),
+        abi: erc20Abi,
         functionName: "transfer",
         args: [toAddress as `0x${string}`, valueInSmallestUnit]
     });
@@ -160,7 +161,7 @@ export async function getActivePosition(userAddress: string): Promise<Position |
     console.warn("[BlockchainService] Perpetuals contract address not set in .env. Returning null.");
     return null;
   }
-
+  
   try {
     const positionData = await client.readContract({
         address: PERPETUALS_CONTRACT_ADDRESS,
@@ -200,6 +201,9 @@ export async function approveCollateral(amount: bigint): Promise<`0x${string}`> 
       throw new Error('Vault contract address is not configured');
   }
   const usdtAddress = ERC20_CONTRACTS['USDT'].address as `0x${string}`;
+  if(!usdtAddress){
+    throw new Error('USDT contract address not configured.');
+  }
 
   return client.writeContract({
     address: usdtAddress,

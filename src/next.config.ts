@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -41,13 +42,8 @@ const nextConfig: NextConfig = {
   },
   env: {
     CRYTOPANIC_API_KEY: process.env.CRYTOPANIC_API_KEY,
-    NEXT_PUBLIC_USDT_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS,
-    NEXT_PUBLIC_USDC_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS,
-    NEXT_PUBLIC_WETH_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS,
-    NEXT_PUBLIC_LINK_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_LINK_CONTRACT_ADDRESS,
-    NEXT_PUBLIC_BNB_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_BNB_CONTRACT_ADDRESS,
-    NEXT_PUBLIC_SOL_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_SOL_CONTRACT_ADDRESS,
-    NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS,
+    // Note: LOCAL_PRIVATE_KEY is a server-side variable and should not be exposed here.
+    // It is loaded directly via dotenv on the server.
   }
 };
 

@@ -32,12 +32,12 @@ const erc20Abi = parseAbi([
     "function approve(address spender, uint256 amount) external returns (bool)"
 ]);
 
-const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
-const USDT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS as `0x${string}`;
+const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
+const USDT_CONTRACT_ADDRESS = '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07';
 
 export async function approveCollateralAction(amount: bigint): Promise<{ success: boolean; txHash: `0x${string}` }> {
-  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error('Perpetuals contract address (NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) is not configured in .env file');
-  if (!USDT_CONTRACT_ADDRESS) throw new Error('USDT contract address (NEXT_PUBLIC_USDT_CONTRACT_ADDRESS) is not configured in .env file.');
+  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error('Perpetuals contract address is not configured');
+  if (!USDT_CONTRACT_ADDRESS) throw new Error('USDT contract address is not configured.');
 
   const txHash = await client.writeContract({
     account,
@@ -55,7 +55,7 @@ export async function openPositionAction(params: {
     size: bigint;
     collateral: bigint;
 }): Promise<{ success: boolean; txHash: string }> {
-  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address (NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) not set in .env file.");
+  if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address not set.");
 
   const txHash = await client.writeContract({
     account,
@@ -69,7 +69,7 @@ export async function openPositionAction(params: {
 }
 
 export async function closePositionAction(): Promise<{ success: boolean, txHash: string }> {
-    if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address (NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) not set in .env file.");
+    if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address not set.");
     
     const txHash = await client.writeContract({
         account,

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, SetStateAction, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets } from '@/services/blockchain-service';
 import { sendTokensAction } from '@/app/actions/send';
@@ -92,16 +92,16 @@ interface WalletActions {
   connectWallet: () => void;
   disconnectWallet: () => void;
   updateBalance: (symbol: string, amount: number) => void;
-  setBalances: React.Dispatch<SetStateAction<Balances>>;
+  setBalances: React.Dispatch<React.SetStateAction<Balances>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
-  setVaultWeth: React.Dispatch<SetStateAction<number>>;
-  setActiveStrategy: React.Dispatch<SetStateAction<VaultStrategy | null>>;
-  setProposals: React.Dispatch<SetStateAction<Proposal[]>>;
-  setAvailablePools: React.Dispatch<SetStateAction<Pool[]>>;
-  setUserPositions: React.Dispatch<SetStateAction<UserPosition[]>>;
-  setTxStatusDialog: React.Dispatch<SetStateAction<TxStatusDialogInfo>>;
+  setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
+  setActiveStrategy: React.Dispatch<React.SetStateAction<VaultStrategy | null>>;
+  setProposals: React.Dispatch<React.SetStateAction<Proposal[]>>;
+  setAvailablePools: React.Dispatch<React.SetStateAction<Pool[]>>;
+  setUserPositions: React.Dispatch<React.SetStateAction<UserPosition[]>>;
+  setTxStatusDialog: React.Dispatch<React.SetStateAction<TxStatusDialogInfo>>;
 }
 
 interface WalletContextType {
@@ -275,7 +275,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => {
     if(!walletAddress) return '';
-    const newTxId = `local_${Date.now()}_${Math.random()}`;
+    const newTxId = transaction.txHash || `local_${Date.now()}_${Math.random()}`;
     const newTx: Transaction = {
         id: newTxId,
         status: 'Pending',
@@ -354,6 +354,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
+    isUpdatingStateRef.current = true;
     setBalances(prev => {
         const currentBalance = prev[symbol] || 0;
         const newBalance = currentBalance + amount;
@@ -362,6 +363,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             [symbol]: newBalance
         };
     });
+    setTimeout(() => { isUpdatingStateRef.current = false }, 3000); // Prevent polling for a few seconds
   }, []);
 
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
@@ -374,21 +376,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       state: 'processing',
       transaction: { amount: amount, token: tokenSymbol, to: toAddress }
     });
-
-    const pendingTxId = addTransaction({
-      type: 'Send',
-      to: toAddress,
-      details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
-      token: tokenSymbol,
-      amount: amount,
-    });
-
+    
+    // Server action returns a hash, but no pending tx is created yet.
     try {
         const result = await sendTokensAction(toAddress, tokenSymbol, amount);
         
+        // Now create the pending transaction with the real hash
+        const pendingTxId = addTransaction({
+            type: 'Send',
+            to: toAddress,
+            details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
+            token: tokenSymbol,
+            amount: amount,
+            txHash: result.txHash
+        });
+
         updateBalance(tokenSymbol, -amount);
-        
-        updateTransactionStatus(pendingTxId, 'Completed', `Sent ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`, result.txHash);
         
         setTxStatusDialog(prev => ({
           ...prev,
@@ -401,7 +404,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     } catch(e: any) {
         console.error('Send token transaction failed:', e);
         const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-        updateTransactionStatus(pendingTxId, 'Failed', `Failed to send ${amount} ${tokenSymbol}`);
         
         setTxStatusDialog(prev => ({
           ...prev,
@@ -427,36 +429,29 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const poll = async () => {
         if (isCancelled) return;
         
-        // Poll for balances
+        // 1. Poll for balances if no recent local update is in progress
         if (!isUpdatingStateRef.current) {
             try {
                 const remoteAssets = await getWalletAssets(walletAddress);
                 if (!isCancelled) {
-                   if (!remoteAssets || remoteAssets.length === 0 && Object.keys(balances).length > 0) {
-                      console.warn("Polling returned no assets, but local state has balances. Ignoring update to prevent state wipe.");
-                    } else {
-                       const newBalances = remoteAssets.reduce((acc, asset) => {
-                          acc[asset.symbol] = asset.balance;
-                          return acc;
-                        }, {} as Balances);
-                        setBalances(newBalances);
-                    }
+                    const newBalances = remoteAssets.reduce((acc, asset) => {
+                        acc[asset.symbol] = asset.balance;
+                        return acc;
+                    }, {} as Balances);
+                    setBalances(newBalances);
                 }
             } catch (error) {
-                console.error("Failed to poll for wallet updates. Will retry on next cycle.", error);
+                console.warn("Failed to poll for wallet updates. Will retry on next cycle.", error);
             }
         }
         
-        // Poll for pending transaction statuses
-        const pendingTxs = transactions.filter(tx => {
-            // Only check transactions that are pending and have a valid-looking hash
-            return tx.status === 'Pending' && tx.txHash && /^0x[a-fA-F0-9]{64}$/.test(tx.txHash);
-        });
+        // 2. Poll for pending transaction statuses
+        const pendingTxs = transactions.filter(tx => tx.status === 'Pending' && tx.txHash && tx.txHash.startsWith('0x'));
 
         for (const tx of pendingTxs) {
             try {
                 const receipt = await publicClient.getTransactionReceipt({ hash: tx.txHash as `0x${string}` });
-                if (receipt) {
+                if (receipt && !isCancelled) {
                     if (receipt.status === 'success') {
                         updateTransactionStatus(tx.id, 'Completed');
                     } else if (receipt.status === 'reverted') {
@@ -464,12 +459,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             } catch (e) {
-                console.error(`Error fetching receipt for tx ${tx.id}`, e);
+                // This can happen if the tx is not yet indexed. It's not a fatal error.
+                // console.warn(`Receipt for tx ${tx.id} not found yet.`, e);
             }
         }
 
         if (!isCancelled) {
-          setTimeout(poll, 15000);
+          setTimeout(poll, 5000); // Poll every 5 seconds
         }
     };
 
@@ -478,7 +474,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return () => {
         isCancelled = true;
     };
-  }, [isConnected, walletAddress, balances, transactions, updateTransactionStatus]);
+  }, [isConnected, walletAddress, transactions, updateTransactionStatus]);
 
 
   const value: WalletContextType = {
@@ -529,3 +525,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

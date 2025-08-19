@@ -54,7 +54,7 @@ export async function openPositionAction(params: {
     side: number;
     size: bigint;
     collateral: bigint;
-}): Promise<{ success: boolean; txHash: string }> {
+}): Promise<{ success: boolean; txHash: `0x${string}` }> {
   if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address not set.");
 
   const txHash = await client.writeContract({
@@ -65,10 +65,10 @@ export async function openPositionAction(params: {
     args: [params.side, params.size, params.collateral]
   });
 
-  return { success: true, txHash: txHash };
+  return { success: true, txHash };
 }
 
-export async function closePositionAction(): Promise<{ success: boolean, txHash: string }> {
+export async function closePositionAction(): Promise<{ success: boolean, txHash: `0x${string}` }> {
     if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address not set.");
     
     const txHash = await client.writeContract({
@@ -79,5 +79,7 @@ export async function closePositionAction(): Promise<{ success: boolean, txHash:
         args: []
     });
 
-    return { success: true, txHash: txHash };
+    return { success: true, txHash };
 }
+
+    

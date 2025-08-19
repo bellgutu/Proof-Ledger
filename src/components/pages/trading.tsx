@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
-import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck, Copy } from 'lucide-react';
 import { parseUnits } from 'viem';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,16 +20,17 @@ import { approveCollateralAction, openPositionAction, closePositionAction } from
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress } = walletState;
-  const { updateBalance, addTransaction } = walletActions;
+  const { addTransaction } = walletActions;
   const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
-  const [tradeAmount, setTradeAmount] = useState(''); // This is now 'size' of the asset in string format
-  const [collateralAmount, setCollateralAmount] = useState(''); // Collateral in USDT
+  const [tradeAmount, setTradeAmount] = useState('');
+  const [collateralAmount, setCollateralAmount] = useState('');
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -39,11 +40,20 @@ const TradingPageContent = () => {
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
 
+  const [isErrorAlertOpen, setIsErrorAlertOpen] = useState(false);
+  const [errorDetails, setErrorDetails] = useState({ title: '', message: '' });
+
   const usdtBalance = balances['USDT'] || 0;
   
   const asset = selectedPair.split('/')[0];
   const tradingViewSymbol = `BINANCE:${asset}USDT`;
   
+  const showErrorDialog = (title: string, error: any) => {
+    const message = error instanceof Error ? error.message : "An unknown error occurred. Check the browser console for more details.";
+    setErrorDetails({ title, message });
+    setIsErrorAlertOpen(true);
+  };
+
   useEffect(() => {
     const pairAsset = selectedPair.split('/')[0];
     if (marketData[pairAsset]) {
@@ -72,7 +82,7 @@ const TradingPageContent = () => {
 
   useEffect(() => {
     fetchPosition();
-    const interval = setInterval(fetchPosition, 5000); // Poll for updates every 5s
+    const interval = setInterval(fetchPosition, 5000);
     return () => clearInterval(interval);
   }, [fetchPosition]);
 
@@ -116,8 +126,7 @@ const TradingPageContent = () => {
        toast({title: "Approval Submitted!", description: "Transaction is processing."});
 
     } catch(e: any) {
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        toast({ variant: 'destructive', title: 'Approval Failed', description: errorMessage });
+        showErrorDialog('Approval Failed', e);
     } finally {
         setIsApproving(false);
     }
@@ -126,7 +135,7 @@ const TradingPageContent = () => {
 
   const handlePlaceTrade = async () => {
     if (!walletAddress) {
-        toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address not found.' });
+        showErrorDialog('Wallet Error', new Error('Wallet address not found.'));
         return;
     }
     const collateralNum = parseFloat(collateralAmount);
@@ -147,29 +156,34 @@ const TradingPageContent = () => {
     
     setIsProcessing(true);
     try {
-      // Approval should be done separately now. This assumes user has approved enough.
       const collateralBigInt = parseUnits(collateralAmount, 18);
       const sizeBigInt = parseUnits(tradeAmount, 18);
       
       toast({title: "Opening Position", description: "Please confirm transaction..."});
 
-      await openPositionAction({
+      const { txHash } = await openPositionAction({
           side: tradeDirection === 'long' ? 0 : 1,
           size: sizeBigInt,
           collateral: collateralBigInt
       });
+      
+      addTransaction({
+          type: 'Send', // This is technically an Open Position action
+          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312', //Perpetuals contract
+          details: `Opened ${tradeDirection} position for ${sizeNum} ${asset}`,
+          token: 'USDT',
+          amount: collateralNum,
+          txHash,
+      });
 
       toast({ title: 'Position Opened', description: `Your ${tradeDirection} position for ${selectedPair} is now active.`});
       
-      updateBalance('USDT', -collateralNum);
-
       setTradeAmount('');
       setCollateralAmount('');
       await fetchPosition();
 
     } catch(e: any) {
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        toast({ variant: 'destructive', title: 'Trade Failed', description: `Please ensure you have approved enough collateral. ${errorMessage}` });
+        showErrorDialog('Trade Failed', e);
     } finally {
         setIsProcessing(false);
     }
@@ -177,19 +191,26 @@ const TradingPageContent = () => {
 
   const handleCloseTrade = async () => {
     if (!walletAddress || !activePosition) {
-        toast({ variant: 'destructive', title: 'Wallet Error', description: 'Wallet address or active position not found.' });
+        showErrorDialog('Action Error', new Error('Wallet address or active position not found.'));
         return;
     }
     setIsProcessing(true);
     try {
-        await closePositionAction();
+        const { txHash } = await closePositionAction();
+
+        addTransaction({
+          type: 'Send', // This is technically a Close Position action
+          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312', // Perpetuals contract
+          details: `Closed position for ${activePosition.size} ${asset}`,
+          txHash: txHash
+        });
+
         toast({ title: 'Position Closed', description: `Your trade has been settled.` });
         
         setActivePosition(null); 
         await fetchPosition(); 
     } catch(e: any) {
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        toast({ variant: 'destructive', title: 'Failed to Close', description: errorMessage });
+        showErrorDialog('Failed to Close Position', e);
     } finally {
         setIsProcessing(false);
     }
@@ -212,7 +233,7 @@ const TradingPageContent = () => {
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
   
   if (!initialPriceForChart) {
-    return null; // or a loading skeleton
+    return null;
   }
 
   return (
@@ -346,6 +367,27 @@ const TradingPageContent = () => {
         <OrderBook currentPrice={currentPrice} assetSymbol={asset} />
       </div>
     </div>
+     <AlertDialog open={isErrorAlertOpen} onOpenChange={setIsErrorAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{errorDetails.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              The operation could not be completed. You can copy the error details below to share for debugging.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-4 p-4 bg-muted rounded-md max-h-48 overflow-auto">
+            <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono">
+              {errorDetails.message}
+            </pre>
+          </div>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => navigator.clipboard.writeText(errorDetails.message)}>
+              <Copy className="mr-2 h-4 w-4" /> Copy Error
+            </Button>
+            <AlertDialogAction onClick={() => setIsErrorAlertOpen(false)}>Close</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -377,3 +419,5 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
+
+    

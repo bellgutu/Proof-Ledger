@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getCollateralAllowance } from '@/services/blockchain-service';
+import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError } from 'viem';
 import { localhost } from 'viem/chains';
@@ -128,11 +128,11 @@ const publicClient = createPublicClient({
 });
 
 const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
-const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, decimals: number } } = {
-    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', decimals: 18 },
-    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', decimals: 18 },
-    'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', decimals: 18 },
-    'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', decimals: 18 },
+const localErc20Contracts: { [symbol: string]: { address: `0x${string}`, decimals: number } } = {
+    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', decimals: ERC20_CONTRACTS.USDT.decimals },
+    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', decimals: ERC20_CONTRACTS.USDC.decimals },
+    'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', decimals: ERC20_CONTRACTS.WETH.decimals },
+    'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', decimals: ERC20_CONTRACTS.LINK.decimals },
 };
 
 const erc20Abi = [
@@ -357,6 +357,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
       
       const tempTxId = `temp_${Date.now()}`;
+      // Add a pending transaction immediately for better UX
       addTransaction({id: tempTxId, type: txType, ...dialogDetails});
       
       try {
@@ -374,9 +375,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               if (receipt.status === 'success') {
                   updateTransactionStatus(txHash, 'Completed');
               } else {
-                  updateTransactionStatus(txHash, 'Failed');
+                  updateTransactionStatus(txHash, 'Failed', 'Transaction was reverted by the contract.');
               }
           });
+          // Update balance after successful submission
+          if (dialogDetails.token && dialogDetails.amount) {
+            updateBalance(dialogDetails.token, -dialogDetails.amount);
+          }
+
 
       } catch (e: any) {
           console.error(`${txType} failed:`, e);
@@ -447,7 +453,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     value: parseUnits(amount.toString(), 18)
                 });
             } else {
-                const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+                const contractInfo = localErc20Contracts[tokenSymbol as keyof typeof localErc20Contracts];
                 if (!contractInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
                 return walletClient.writeContract({
                     address: contractInfo.address,
@@ -466,10 +472,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           'Approve',
           { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' },
           (walletClient, account) => walletClient.writeContract({
-              address: ERC20_CONTRACTS.USDT.address,
+              address: localErc20Contracts.USDT.address,
               abi: erc20Abi,
               functionName: 'approve',
-              args: [PERPETUALS_CONTRACT_ADDRESS, parseUnits(amount, 18)],
+              args: [PERPETUALS_CONTRACT_ADDRESS, parseUnits(amount, localErc20Contracts.USDT.decimals)],
               account
           })
       );
@@ -484,7 +490,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: perpetualsAbi,
               functionName: 'openPosition',
-              args: [side, parseUnits(size, 18), parseUnits(collateral, 18)],
+              args: [side, parseUnits(size, 18), parseUnits(collateral, localErc20Contracts.USDT.decimals)],
               account
           })
       );

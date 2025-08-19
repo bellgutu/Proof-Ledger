@@ -443,9 +443,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             } catch (error) {
-                console.error("Failed to poll for wallet updates. Stopping polling.", error);
-                toast({ variant: 'destructive', title: 'Connection Lost' });
-                isCancelled = true;
+                console.error("Failed to poll for wallet updates. Will retry on next cycle.", error);
             }
         }
         
@@ -480,7 +478,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return () => {
         isCancelled = true;
     };
-  }, [isConnected, walletAddress, balances, toast, transactions, updateTransactionStatus]);
+  }, [isConnected, walletAddress, balances, transactions, updateTransactionStatus]);
 
 
   const value: WalletContextType = {

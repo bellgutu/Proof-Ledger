@@ -9,7 +9,7 @@ import { localhost } from 'viem/chains';
 
 config({ path: path.resolve(process.cwd(), 'src/.env') });
 
-const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545';
+const LOCAL_CHAIN_RPC_URL = 'http://host.docker.internal:8545';
 
 if (!process.env.LOCAL_PRIVATE_KEY) {
   throw new Error('FATAL: LOCAL_PRIVATE_KEY is not defined in the environment variables. Please check your .env file.');

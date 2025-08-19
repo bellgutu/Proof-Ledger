@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets } from '@/services/blockchain-service';
+import { getWalletAssets, getCollateralAllowance } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createPublicClient, createWalletClient, http, custom, parseUnits, formatUnits, parseAbi, defineChain } from 'viem';
 import { localhost } from 'viem/chains';
@@ -560,5 +560,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

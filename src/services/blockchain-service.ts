@@ -9,6 +9,7 @@ import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'vi
 import { localhost } from 'viem/chains';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
+const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
 
 const anvilChain = defineChain({
   ...localhost,
@@ -37,6 +38,7 @@ const perpetualsAbi = parseAbi([
 
 const erc20Abi = parseAbi([
     "function balanceOf(address account) external view returns (uint256)",
+    "function allowance(address owner, address spender) external view returns (uint256)"
 ]);
 
 const publicClient = createPublicClient({
@@ -110,7 +112,6 @@ export interface Position {
 }
 
 export async function getActivePosition(userAddress: string): Promise<Position | null> {
-  const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     console.warn("[BlockchainService] Perpetuals contract address not set. Returning null.");
     return null;
@@ -148,6 +149,23 @@ export async function getActivePosition(userAddress: string): Promise<Position |
   }
 }
 
-    
+export async function getCollateralAllowance(ownerAddress: string): Promise<number> {
+  const usdtContract = ERC20_CONTRACTS['USDT'];
+  if (!usdtContract.address) {
+    console.warn("[BlockchainService] USDT contract address not set. Returning 0 allowance.");
+    return 0;
+  }
 
-    
+  try {
+    const allowance = await publicClient.readContract({
+      address: usdtContract.address,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args: [ownerAddress as `0x${string}`, PERPETUALS_CONTRACT_ADDRESS as `0x${string}`]
+    });
+    return parseFloat(formatUnits(allowance, usdtContract.decimals));
+  } catch (error) {
+    console.error('[BlockchainService] Failed to get collateral allowance:', error);
+    return 0;
+  }
+}

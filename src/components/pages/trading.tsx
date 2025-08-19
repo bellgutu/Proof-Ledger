@@ -14,7 +14,7 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition } from '@/services/blockchain-service';
+import { getActivePosition, getCollateralAllowance } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -42,6 +42,7 @@ const TradingPageContent = () => {
   const [errorDetails, setErrorDetails] = useState({ title: '', message: '' });
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [allowance, setAllowance] = useState(0);
 
   const usdtBalance = balances['USDT'] || 0;
   
@@ -53,6 +54,17 @@ const TradingPageContent = () => {
     setErrorDetails({ title, message });
     setIsErrorAlertOpen(true);
   };
+
+  const checkAllowance = useCallback(async () => {
+    if (!isConnected || !walletAddress) return;
+    try {
+      const currentAllowance = await getCollateralAllowance(walletAddress);
+      setAllowance(currentAllowance);
+    } catch (e) {
+      console.error("Failed to fetch allowance", e);
+      setAllowance(0);
+    }
+  }, [isConnected, walletAddress]);
 
   useEffect(() => {
     const pairAsset = selectedPair.split('/')[0];
@@ -83,9 +95,13 @@ const TradingPageContent = () => {
 
   useEffect(() => {
     fetchPosition();
-    const interval = setInterval(fetchPosition, 5000);
+    checkAllowance();
+    const interval = setInterval(() => {
+      fetchPosition();
+      checkAllowance();
+    }, 5000);
     return () => clearInterval(interval);
-  }, [fetchPosition]);
+  }, [fetchPosition, checkAllowance]);
 
   const handlePairChange = (pair: string) => {
     if(activePosition) {
@@ -114,6 +130,7 @@ const TradingPageContent = () => {
     setIsApproving(true);
     try {
        await approveCollateral(collateralAmount);
+       await checkAllowance();
     } catch(e: any) {
         showErrorDialog('Approval Failed', e);
     } finally {
@@ -137,6 +154,10 @@ const TradingPageContent = () => {
     if (collateralNum > usdtBalance) {
       toast({ variant: 'destructive', title: 'Insufficient Collateral', description: `You need at least ${collateralNum.toFixed(2)} USDT for this trade.` });
       return;
+    }
+    if (collateralNum > allowance) {
+        toast({ variant: 'destructive', title: 'Approval Required', description: `You must approve at least ${collateralNum} USDT.`});
+        return;
     }
 
     setIsConfirmOpen(true);
@@ -201,6 +222,9 @@ const TradingPageContent = () => {
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
+
+  const collateralNum = parseFloat(collateralAmount) || 0;
+  const isApproved = allowance >= collateralNum && collateralNum > 0;
   
   if (!initialPriceForChart) {
     return null;
@@ -320,15 +344,15 @@ const TradingPageContent = () => {
             </div>
 
             <div className="flex space-x-2">
-                <Button onClick={handleApprove} disabled={!isConnected || isApproving || !collateralAmount || !!activePosition} className="w-full" variant="outline">
+                <Button onClick={handleApprove} disabled={!isConnected || isApproving || collateralNum <= 0 || isApproved || !!activePosition} className="w-full" variant="outline">
                   {isApproving ? <Loader2 className="animate-spin" /> : <ShieldCheck className="mr-2" />}
-                  Approve
+                  {isApproved ? 'Approved' : 'Approve'}
                 </Button>
-                <Button onClick={handlePlaceTradeReview} disabled={!isConnected || isProcessing || !tradeAmount || !collateralAmount || !!activePosition} className="w-full">
+                <Button onClick={handlePlaceTradeReview} disabled={!isConnected || isProcessing || !isApproved || !!activePosition} className="w-full">
                   {isProcessing ? <Loader2 className="animate-spin" /> : 'Place Trade'}
                 </Button>
             </div>
-            <p className="text-xs text-muted-foreground text-center">Note: Approve collateral amount before placing your trade.</p>
+            <p className="text-xs text-muted-foreground text-center">Allowance: {allowance.toLocaleString()} USDT</p>
           </CardContent>
         </Card>
 

@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createPublicClient, createWalletClient, http, custom, parseUnits, formatUnits, parseAbi } from 'viem';
+import { createPublicClient, createWalletClient, http, custom, parseUnits, formatUnits, parseAbi, defineChain } from 'viem';
 import { localhost } from 'viem/chains';
 
 // --- TYPE DEFINITIONS ---
@@ -138,6 +138,11 @@ const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, decimals: n
     'SOL': { address: '0x810090f35dfa6b18b5eb59d298e2a2443a2811e2', decimals: 18 },
 };
 
+const anvilChain = defineChain({
+  ...localhost,
+  id: 31337,
+})
+
 
 // --- INITIAL STATE ---
 
@@ -196,7 +201,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     transaction: {}
   });
 
-  const [publicClient, setPublicClient] = useState(() => createPublicClient({ chain: localhost, transport: http(LOCAL_CHAIN_RPC_URL) }));
+  const [publicClient, setPublicClient] = useState(() => createPublicClient({ chain: anvilChain, transport: http(LOCAL_CHAIN_RPC_URL) }));
   const [walletClient, setWalletClient] = useState<any | null>(null);
   
   const { toast } = useToast();
@@ -345,7 +350,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const client = createWalletClient({
-            chain: localhost,
+            chain: anvilChain,
             transport: custom(window.ethereum)
         });
 
@@ -555,3 +560,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

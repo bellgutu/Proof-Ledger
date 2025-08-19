@@ -20,7 +20,7 @@ import { approveCollateralAction, openPositionAction, closePositionAction } from
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
@@ -42,6 +42,8 @@ const TradingPageContent = () => {
 
   const [isErrorAlertOpen, setIsErrorAlertOpen] = useState(false);
   const [errorDetails, setErrorDetails] = useState({ title: '', message: '' });
+
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const usdtBalance = balances['USDT'] || 0;
   
@@ -133,11 +135,7 @@ const TradingPageContent = () => {
   };
 
 
-  const handlePlaceTrade = async () => {
-    if (!walletAddress) {
-        showErrorDialog('Wallet Error', new Error('Wallet address not found.'));
-        return;
-    }
+  const handlePlaceTradeReview = () => {
     const collateralNum = parseFloat(collateralAmount);
     const sizeNum = parseFloat(tradeAmount);
 
@@ -153,7 +151,18 @@ const TradingPageContent = () => {
       toast({ variant: 'destructive', title: 'Insufficient Collateral', description: `You need at least ${collateralNum.toFixed(2)} USDT for this trade.` });
       return;
     }
-    
+
+    setIsConfirmOpen(true);
+  };
+  
+  const executeTrade = async () => {
+    if (!walletAddress) {
+        showErrorDialog('Wallet Error', new Error('Wallet address not found.'));
+        return;
+    }
+    const collateralNum = parseFloat(collateralAmount);
+    const sizeNum = parseFloat(tradeAmount);
+
     setIsProcessing(true);
     try {
       const collateralBigInt = parseUnits(collateralAmount, 18);
@@ -168,8 +177,8 @@ const TradingPageContent = () => {
       });
       
       addTransaction({
-          type: 'Send', // This is technically an Open Position action
-          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312', //Perpetuals contract
+          type: 'Send',
+          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312',
           details: `Opened ${tradeDirection} position for ${sizeNum} ${asset}`,
           token: 'USDT',
           amount: collateralNum,
@@ -186,6 +195,7 @@ const TradingPageContent = () => {
         showErrorDialog('Trade Failed', e);
     } finally {
         setIsProcessing(false);
+        setIsConfirmOpen(false);
     }
   };
 
@@ -199,8 +209,8 @@ const TradingPageContent = () => {
         const { txHash } = await closePositionAction();
 
         addTransaction({
-          type: 'Send', // This is technically a Close Position action
-          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312', // Perpetuals contract
+          type: 'Send',
+          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312',
           details: `Closed position for ${activePosition.size} ${asset}`,
           txHash: txHash
         });
@@ -351,10 +361,10 @@ const TradingPageContent = () => {
 
             <div className="flex space-x-2">
                 <Button onClick={handleApprove} disabled={!isConnected || isApproving || !collateralAmount || !!activePosition} className="w-full" variant="outline">
-                  {isApproving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+                  {isApproving ? <Loader2 className="animate-spin" /> : <ShieldCheck className="mr-2" />}
                   Approve
                 </Button>
-                <Button onClick={handlePlaceTrade} disabled={!isConnected || isProcessing || !tradeAmount || !collateralAmount || !!activePosition} className="w-full">
+                <Button onClick={handlePlaceTradeReview} disabled={!isConnected || isProcessing || !tradeAmount || !collateralAmount || !!activePosition} className="w-full">
                   {isProcessing ? <Loader2 className="animate-spin" /> : 'Place Trade'}
                 </Button>
             </div>
@@ -367,6 +377,49 @@ const TradingPageContent = () => {
         <OrderBook currentPrice={currentPrice} assetSymbol={asset} />
       </div>
     </div>
+    
+     <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Trade</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please review the details of your trade before submitting.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Action:</span>
+              <span className={`font-bold ${tradeDirection === 'long' ? 'text-green-400' : 'text-red-400'}`}>
+                {tradeDirection.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Pair:</span>
+              <span className="font-bold">{selectedPair}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Size:</span>
+              <span className="font-mono">{tradeAmount} {asset}</span>
+            </div>
+             <div className="flex justify-between">
+              <span className="text-muted-foreground">Collateral:</span>
+              <span className="font-mono">{collateralAmount} USDT</span>
+            </div>
+             <div className="flex justify-between">
+              <span className="text-muted-foreground">Current Price:</span>
+              <span className="font-mono">${currentPrice.toLocaleString()}</span>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeTrade} disabled={isProcessing}>
+                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirm & Place Trade
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
      <AlertDialog open={isErrorAlertOpen} onOpenChange={setIsErrorAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -419,5 +472,3 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
-
-    

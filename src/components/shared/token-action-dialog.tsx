@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -95,6 +94,7 @@ export function TokenActionDialog({ isOpen, setIsOpen, asset }: TokenActionDialo
     } catch (e: any) {
       // Error is handled in the context by the txStatusDialog
       console.error(e);
+      toast({ variant: 'destructive', title: 'Transaction Failed', description: e.message });
     } finally {
       setSending(false);
     }

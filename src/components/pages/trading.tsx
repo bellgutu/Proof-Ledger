@@ -38,9 +38,6 @@ const TradingPageContent = () => {
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
 
-  const [isErrorAlertOpen, setIsErrorAlertOpen] = useState(false);
-  const [errorDetails, setErrorDetails] = useState({ title: '', message: '' });
-
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [allowance, setAllowance] = useState(0);
 
@@ -49,12 +46,6 @@ const TradingPageContent = () => {
   const asset = selectedPair.split('/')[0];
   const tradingViewSymbol = `BINANCE:${asset}USDT`;
   
-  const showErrorDialog = (title: string, error: any) => {
-    const message = error instanceof Error ? error.message : "An unknown error occurred. Check the browser console for more details.";
-    setErrorDetails({ title, message });
-    setIsErrorAlertOpen(true);
-  };
-
   const checkAllowance = useCallback(async () => {
     if (!isConnected || !walletAddress) return;
     try {
@@ -132,7 +123,7 @@ const TradingPageContent = () => {
        await approveCollateral(collateralAmount);
        await checkAllowance();
     } catch(e: any) {
-        showErrorDialog('Approval Failed', e);
+        // Error is handled by the wallet context dialog
     } finally {
         setIsApproving(false);
     }
@@ -164,16 +155,12 @@ const TradingPageContent = () => {
   };
   
   const executeTrade = async () => {
-    if (!walletAddress) {
-        showErrorDialog('Wallet Error', new Error('Wallet address not found.'));
-        return;
-    }
+    if (!walletAddress) return;
 
     setIsConfirmOpen(false);
     setIsProcessing(true);
 
     try {
-      // Ensure values are passed as strings to the action
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
           size: tradeAmount.toString(),
@@ -185,24 +172,21 @@ const TradingPageContent = () => {
       await fetchPosition();
 
     } catch(e: any) {
-        showErrorDialog('Trade Failed', e);
+        // Error is handled by the wallet context dialog
     } finally {
         setIsProcessing(false);
     }
   };
 
   const handleCloseTrade = async () => {
-    if (!walletAddress || !activePosition) {
-        showErrorDialog('Action Error', new Error('Wallet address or active position not found.'));
-        return;
-    }
+    if (!walletAddress || !activePosition) return;
     setIsProcessing(true);
     try {
         await closePosition();
         setActivePosition(null); 
         await fetchPosition(); 
     } catch(e: any) {
-        showErrorDialog('Failed to Close Position', e);
+        // Error is handled by the wallet context dialog
     } finally {
         setIsProcessing(false);
     }
@@ -401,28 +385,6 @@ const TradingPageContent = () => {
                 {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Confirm & Place Trade
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-     <AlertDialog open={isErrorAlertOpen} onOpenChange={setIsErrorAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{errorDetails.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              The operation could not be completed. You can copy the error details below to share for debugging.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-4 p-4 bg-muted rounded-md max-h-48 overflow-auto">
-            <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono">
-              {errorDetails.message}
-            </pre>
-          </div>
-          <AlertDialogFooter>
-            <Button variant="outline" onClick={() => navigator.clipboard.writeText(errorDetails.message)}>
-              <Copy className="mr-2 h-4 w-4" /> Copy Error
-            </Button>
-            <AlertDialogAction onClick={() => setIsErrorAlertOpen(false)}>Close</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

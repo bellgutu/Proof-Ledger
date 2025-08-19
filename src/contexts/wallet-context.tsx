@@ -5,8 +5,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets, getCollateralAllowance } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError } from 'viem';
 import { localhost } from 'viem/chains';
 
 // --- TYPE DEFINITIONS ---
@@ -69,7 +68,7 @@ interface MarketData {
 }
 
 interface Balances {
-  [symbol: string]: number;
+  [symbol:string]: number;
 }
 
 interface WalletState {
@@ -98,7 +97,7 @@ interface WalletActions {
   approveCollateral: (amount: string) => Promise<void>;
   openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
   closePosition: () => Promise<void>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => string;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
   setActiveStrategy: React.Dispatch<React.SetStateAction<VaultStrategy | null>>;
@@ -305,9 +304,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => {
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => {
     if(!walletAddress) return '';
-    const newTxId = transaction.txHash || `local_${Date.now()}_${Math.random()}`;
+    const newTxId = transaction.id || transaction.txHash || `local_${Date.now()}_${Math.random()}`;
     const newTx: Transaction = {
         id: newTxId, status: 'Pending', from: walletAddress,
         to: transaction.to || '0x0000000000000000000000000000000000000000', 
@@ -315,12 +314,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         ...transaction
     };
     
-    const nonOnChainTypes: TransactionType[] = ['AI Rebalance', 'Add Liquidity', 'Remove Liquidity', 'Vote'];
-    if (nonOnChainTypes.includes(newTx.type) && !newTx.txHash) {
-        newTx.status = 'Completed';
-    }
-
     setTransactions(prevTxs => {
+      // Avoid adding duplicates
+      if (prevTxs.some(tx => tx.id === newTxId)) return prevTxs;
       const newTxs = [newTx, ...prevTxs];
       persistTransactions(newTxs, walletAddress);
       return newTxs;
@@ -360,24 +356,34 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       isUpdatingStateRef.current = true;
       setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
       
+      const tempTxId = `temp_${Date.now()}`;
+      addTransaction({id: tempTxId, type: txType, ...dialogDetails});
+      
       try {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();
           
           const txHash = await txFunction(walletClient, account);
           
-          addTransaction({ type: txType, ...dialogDetails, txHash });
+          // Update the temporary transaction with the real hash
+          setTransactions(prev => prev.map(tx => tx.id === tempTxId ? { ...tx, id: txHash, txHash: txHash } : tx));
+          
           setTxStatusDialog(prev => ({ ...prev, state: 'success', transaction: { ...prev.transaction, txHash } }));
           
           publicClient.waitForTransactionReceipt({ hash: txHash }).then(receipt => {
-              // Optionally update balance or transaction status after confirmation
-              console.log(`${txType} confirmed:`, receipt);
+              if (receipt.status === 'success') {
+                  updateTransactionStatus(txHash, 'Completed');
+              } else {
+                  updateTransactionStatus(txHash, 'Failed');
+              }
           });
 
       } catch (e: any) {
           console.error(`${txType} failed:`, e);
-          const errorMessage = e.shortMessage || e.message || 'An unknown transaction error occurred.';
+          const errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
+          
           setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
+          updateTransactionStatus(tempTxId, 'Failed', errorMessage);
           throw e; // Re-throw for the UI component to catch
       } finally {
           setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);

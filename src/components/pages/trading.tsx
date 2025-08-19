@@ -173,10 +173,11 @@ const TradingPageContent = () => {
     setIsProcessing(true);
 
     try {
+      // Ensure values are passed as strings to the action
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
-          size: tradeAmount,
-          collateral: collateralAmount
+          size: tradeAmount.toString(),
+          collateral: collateralAmount.toString()
       });
       
       setTradeAmount('');

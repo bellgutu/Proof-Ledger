@@ -3,7 +3,7 @@
 
 import { config } from 'dotenv';
 import path from 'path';
-import { createWalletClient, http, parseAbi } from 'viem';
+import { createWalletClient, http, parseAbi, parseUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { localhost } from 'viem/chains';
 
@@ -20,13 +20,7 @@ const account = privateKeyToAccount(process.env.LOCAL_PRIVATE_KEY as `0x${string
 const client = createWalletClient({
   account,
   chain: localhost,
-  transport: http(LOCAL_CHAIN_RPC_URL, {
-    fetchOptions: {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-      }
-    }
-  }),
+  transport: http(LOCAL_CHAIN_RPC_URL),
 });
 
 const perpetualsAbi = parseAbi([
@@ -41,16 +35,18 @@ const erc20Abi = parseAbi([
 const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
 const USDT_CONTRACT_ADDRESS = '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07';
 
-export async function approveCollateralAction(amount: bigint): Promise<{ success: boolean; txHash: `0x${string}` }> {
+export async function approveCollateralAction(amount: string): Promise<{ success: boolean; txHash: `0x${string}` }> {
   if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error('Perpetuals contract address is not configured');
   if (!USDT_CONTRACT_ADDRESS) throw new Error('USDT contract address is not configured.');
+  
+  const amountInWei = parseUnits(amount, 18);
 
   const txHash = await client.writeContract({
     account,
     address: USDT_CONTRACT_ADDRESS,
     abi: erc20Abi,
     functionName: "approve",
-    args: [PERPETUALS_CONTRACT_ADDRESS, amount]
+    args: [PERPETUALS_CONTRACT_ADDRESS, amountInWei]
   });
 
   return { success: true, txHash };
@@ -58,17 +54,20 @@ export async function approveCollateralAction(amount: bigint): Promise<{ success
 
 export async function openPositionAction(params: {
     side: number;
-    size: bigint;
-    collateral: bigint;
+    size: string;
+    collateral: string;
 }): Promise<{ success: boolean; txHash: `0x${string}` }> {
   if (!PERPETUALS_CONTRACT_ADDRESS) throw new Error("Perpetuals contract address not set.");
+  
+  const sizeInWei = parseUnits(params.size, 18);
+  const collateralInWei = parseUnits(params.collateral, 18);
 
   const txHash = await client.writeContract({
     account,
     address: PERPETUALS_CONTRACT_ADDRESS,
     abi: perpetualsAbi,
     functionName: "openPosition",
-    args: [params.side, params.size, params.collateral]
+    args: [params.side, sizeInWei, collateralInWei]
   });
 
   return { success: true, txHash };
@@ -87,5 +86,3 @@ export async function closePositionAction(): Promise<{ success: boolean, txHash:
 
     return { success: true, txHash };
 }
-
-    

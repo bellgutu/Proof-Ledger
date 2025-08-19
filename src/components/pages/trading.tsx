@@ -114,10 +114,9 @@ const TradingPageContent = () => {
     
     setIsApproving(true);
     try {
-       const collateralBigInt = parseUnits(collateralAmount, 18);
        toast({title: "Approval Required", description: `Submitting approval for ${collateralAmount} USDT.`});
        
-       const { txHash } = await approveCollateralAction(collateralBigInt);
+       const { txHash } = await approveCollateralAction(collateralAmount);
        
        addTransaction({
             type: 'Approve',
@@ -160,28 +159,25 @@ const TradingPageContent = () => {
         showErrorDialog('Wallet Error', new Error('Wallet address not found.'));
         return;
     }
-    const collateralNum = parseFloat(collateralAmount);
-    const sizeNum = parseFloat(tradeAmount);
 
+    setIsConfirmOpen(false);
     setIsProcessing(true);
+
     try {
-      const collateralBigInt = parseUnits(collateralAmount, 18);
-      const sizeBigInt = parseUnits(tradeAmount, 18);
-      
       toast({title: "Opening Position", description: "Please confirm transaction..."});
 
       const { txHash } = await openPositionAction({
           side: tradeDirection === 'long' ? 0 : 1,
-          size: sizeBigInt,
-          collateral: collateralBigInt
+          size: tradeAmount,
+          collateral: collateralAmount
       });
       
       addTransaction({
           type: 'Send',
           to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312',
-          details: `Opened ${tradeDirection} position for ${sizeNum} ${asset}`,
+          details: `Opened ${tradeDirection} position for ${tradeAmount} ${asset}`,
           token: 'USDT',
-          amount: collateralNum,
+          amount: parseFloat(collateralAmount),
           txHash,
       });
 
@@ -195,7 +191,6 @@ const TradingPageContent = () => {
         showErrorDialog('Trade Failed', e);
     } finally {
         setIsProcessing(false);
-        setIsConfirmOpen(false);
     }
   };
 

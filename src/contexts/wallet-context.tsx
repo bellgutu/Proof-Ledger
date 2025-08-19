@@ -201,7 +201,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     transaction: {}
   });
 
-  const [publicClient, setPublicClient] = useState(() => createPublicClient({ chain: anvilChain, transport: http(LOCAL_CHAIN_RPC_URL) }));
+  const [publicClient, setPublicClient] = useState(() => createPublicClient({ chain: anvilChain, transport: http(LOCAL_CHAIN_RPC_URL, { timeout: 10000 }) }));
   const [walletClient, setWalletClient] = useState<any | null>(null);
   
   const { toast } = useToast();

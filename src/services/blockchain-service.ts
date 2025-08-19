@@ -43,7 +43,7 @@ const erc20Abi = parseAbi([
 
 const publicClient = createPublicClient({
   chain: anvilChain,
-  transport: http(LOCAL_CHAIN_RPC_URL),
+  transport: http(LOCAL_CHAIN_RPC_URL, { timeout: 10000 }),
 })
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {

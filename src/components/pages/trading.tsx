@@ -4,7 +4,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
 import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck, Copy } from 'lucide-react';
-import { parseUnits } from 'viem';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,6 @@ import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
 import { getActivePosition } from '@/services/blockchain-service';
-import { approveCollateralAction, openPositionAction, closePositionAction } from '@/app/actions/trade';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -25,7 +23,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress } = walletState;
-  const { addTransaction } = walletActions;
+  const { approveCollateral, openPosition, closePosition } = walletActions;
   const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
@@ -73,6 +71,7 @@ const TradingPageContent = () => {
 
   const fetchPosition = useCallback(async () => {
     if (!isConnected || !walletAddress) return;
+    setIsLoadingPosition(true);
     try {
       const position = await getActivePosition(walletAddress);
       setActivePosition(position);
@@ -114,18 +113,7 @@ const TradingPageContent = () => {
     
     setIsApproving(true);
     try {
-       toast({title: "Approval Required", description: `Submitting approval for ${collateralAmount} USDT.`});
-       
-       const { txHash } = await approveCollateralAction(collateralAmount);
-       
-       addTransaction({
-            type: 'Approve',
-            details: `Approved spending ${collateralAmount} USDT`,
-            txHash: txHash,
-        });
-
-       toast({title: "Approval Submitted!", description: "Transaction is processing."});
-
+       await approveCollateral(collateralAmount);
     } catch(e: any) {
         showErrorDialog('Approval Failed', e);
     } finally {
@@ -164,24 +152,11 @@ const TradingPageContent = () => {
     setIsProcessing(true);
 
     try {
-      toast({title: "Opening Position", description: "Please confirm transaction..."});
-
-      const { txHash } = await openPositionAction({
+      await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
           size: tradeAmount,
           collateral: collateralAmount
       });
-      
-      addTransaction({
-          type: 'Send',
-          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312',
-          details: `Opened ${tradeDirection} position for ${tradeAmount} ${asset}`,
-          token: 'USDT',
-          amount: parseFloat(collateralAmount),
-          txHash,
-      });
-
-      toast({ title: 'Position Opened', description: `Your ${tradeDirection} position for ${selectedPair} is now active.`});
       
       setTradeAmount('');
       setCollateralAmount('');
@@ -201,17 +176,7 @@ const TradingPageContent = () => {
     }
     setIsProcessing(true);
     try {
-        const { txHash } = await closePositionAction();
-
-        addTransaction({
-          type: 'Send',
-          to: '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312',
-          details: `Closed position for ${activePosition.size} ${asset}`,
-          txHash: txHash
-        });
-
-        toast({ title: 'Position Closed', description: `Your trade has been settled.` });
-        
+        await closePosition();
         setActivePosition(null); 
         await fetchPosition(); 
     } catch(e: any) {

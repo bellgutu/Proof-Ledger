@@ -4,14 +4,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets } from '@/services/blockchain-service';
-import { sendTokensAction } from '@/app/actions/send';
 import { useToast } from '@/hooks/use-toast';
-import { parseUnits, formatUnits, createPublicClient, http } from 'viem';
+import { createPublicClient, createWalletClient, http, custom, parseUnits, formatUnits, parseAbi } from 'viem';
 import { localhost } from 'viem/chains';
+
+// --- TYPE DEFINITIONS ---
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface Transaction {
@@ -34,7 +35,6 @@ export interface TxStatusDialogInfo {
   error?: string;
 }
 
-
 export interface ChainAsset {
   symbol: string;
   name: string;
@@ -56,7 +56,6 @@ export interface Proposal {
   votesAgainst: number;
   userVote?: 'for' | 'against';
 }
-
 
 interface MarketData {
   [key: string]: {
@@ -93,7 +92,10 @@ interface WalletActions {
   disconnectWallet: () => void;
   updateBalance: (symbol: string, amount: number) => void;
   setBalances: React.Dispatch<React.SetStateAction<Balances>>;
-  sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<{ success: boolean; txHash: string }>;
+  sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<void>;
+  approveCollateral: (amount: string) => Promise<void>;
+  openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
+  closePosition: () => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
@@ -109,7 +111,35 @@ interface WalletContextType {
   walletActions: WalletActions;
 }
 
+// --- CONSTANTS AND ABIS ---
+
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
+
+const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545';
+const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
+const USDT_CONTRACT_ADDRESS = '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07';
+
+const erc20Abi = parseAbi([
+    "function transfer(address to, uint256 amount) external returns (bool)",
+    "function approve(address spender, uint256 amount) external returns (bool)"
+]);
+
+const perpetualsAbi = parseAbi([
+  "function openPosition(uint8 side, uint256 size, uint256 collateral)",
+  "function closePosition()"
+]);
+
+const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, decimals: number } } = {
+    'USDT': { address: USDT_CONTRACT_ADDRESS as `0x${string}`, decimals: 18 },
+    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', decimals: 18 },
+    'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', decimals: 18 },
+    'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', decimals: 18 },
+    'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', decimals: 18 },
+    'SOL': { address: '0x810090f35dfa6b18b5eb59d298e2a2443a2811e2', decimals: 18 },
+};
+
+
+// --- INITIAL STATE ---
 
 const initialMarketData: MarketData = {
     ETH: { name: 'Ethereum', symbol: 'ETH', price: 0, change: 0 },
@@ -138,6 +168,7 @@ const initialProposals: Proposal[] = [
     { id: '2', title: 'Onboard a new collateral asset: LINK', description: 'Allow Chainlink (LINK) to be used as collateral within the protocol.', votesFor: 850000, votesAgainst: 600000 },
 ];
 
+
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -164,6 +195,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     state: 'processing',
     transaction: {}
   });
+
+  const [publicClient, setPublicClient] = useState(() => createPublicClient({ chain: localhost, transport: http(LOCAL_CHAIN_RPC_URL) }));
+  const [walletClient, setWalletClient] = useState<any | null>(null);
   
   const { toast } = useToast();
   const isUpdatingStateRef = useRef(false);
@@ -198,17 +232,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             const newData: MarketData = { ...prevData };
             
             const mapCoinGeckoToSymbol: { [key: string]: AssetSymbol } = {
-              'ethereum': 'ETH',
-              'bitcoin': 'BTC',
-              'solana': 'SOL',
-              'binancecoin': 'BNB',
-              'tether': 'USDT',
-              'usd-coin': 'USDC',
-              'chainlink': 'LINK',
-              'ripple': 'XRP',
-              'tether-gold': 'XAUT',
-              'pepe': 'PEPE',
-              'dogecoin': 'DOGE',
+              'ethereum': 'ETH', 'bitcoin': 'BTC', 'solana': 'SOL',
+              'binancecoin': 'BNB', 'tether': 'USDT', 'usd-coin': 'USDC',
+              'chainlink': 'LINK', 'ripple': 'XRP', 'tether-gold': 'XAUT',
+              'pepe': 'PEPE', 'dogecoin': 'DOGE',
             };
 
             for (const id in liveData) {
@@ -277,21 +304,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if(!walletAddress) return '';
     const newTxId = transaction.txHash || `local_${Date.now()}_${Math.random()}`;
     const newTx: Transaction = {
-        id: newTxId,
-        status: 'Pending',
-        from: walletAddress,
-        to: transaction.to || '0x0000000000000000000000000000000000000000', // Default to address
-        timestamp: Date.now(),
-        txHash: transaction.txHash || '', // Can be empty initially
+        id: newTxId, status: 'Pending', from: walletAddress,
+        to: transaction.to || '0x0000000000000000000000000000000000000000', 
+        timestamp: Date.now(), txHash: transaction.txHash || '',
         ...transaction
     };
     
-    // Simulate completion for non-onchain actions immediately
     const nonOnChainTypes: TransactionType[] = ['AI Rebalance', 'Add Liquidity', 'Remove Liquidity', 'Vote'];
     if (nonOnChainTypes.includes(newTx.type) && !newTx.txHash) {
         newTx.status = 'Completed';
     }
-
 
     setTransactions(prevTxs => {
       const newTxs = [newTx, ...prevTxs];
@@ -317,29 +339,33 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
-    // This is a simulated connection. We avoid direct interaction with browser wallets.
-    const address = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'; // Default hardhat address
-    
     try {
-        const assets = await getWalletAssets(address);
-        
-        const newBalances = assets.reduce((acc, asset) => {
+        if (typeof window.ethereum === 'undefined') {
+          throw new Error('MetaMask or a compatible wallet is not installed.');
+        }
+
+        const client = createWalletClient({
+            chain: localhost,
+            transport: custom(window.ethereum)
+        });
+
+        const [address] = await client.requestAddresses();
+        setWalletClient(client);
+        setWalletAddress(address);
+
+        const remoteAssets = await getWalletAssets(address);
+        const newBalances = remoteAssets.reduce((acc, asset) => {
           acc[asset.symbol] = asset.balance;
           return acc;
         }, {} as Balances);
-
-        setWalletAddress(address);
+        
         setBalances(newBalances);
         loadTransactions(address);
         setIsConnected(true);
+
     } catch (e: any) {
-        console.error("Failed to get wallet assets during simulated connection:", e);
-        toast({
-            variant: "destructive",
-            title: "Connection Failed",
-            description: e.message || "Could not connect to the local blockchain. Please ensure it's running.",
-        });
-        setBalances({});
+        console.error("Failed to connect wallet:", e);
+        toast({ variant: "destructive", title: "Connection Failed", description: e.message || "An unknown error occurred." });
         setIsConnected(false);
     } finally {
         setIsConnecting(false);
@@ -351,6 +377,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setWalletAddress('');
     setBalances({});
     setTransactions([]);
+    setWalletClient(null);
   }, []);
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
@@ -358,78 +385,112 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setBalances(prev => {
         const currentBalance = prev[symbol] || 0;
         const newBalance = currentBalance + amount;
-        return {
-            ...prev,
-            [symbol]: newBalance
-        };
+        return { ...prev, [symbol]: newBalance };
     });
-    setTimeout(() => { isUpdatingStateRef.current = false }, 3000); // Prevent polling for a few seconds
+    setTimeout(() => { isUpdatingStateRef.current = false }, 3000);
   }, []);
 
-  const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
-    if (!isConnected || !walletAddress) throw new Error("Wallet not connected");
-
+  const executeTransaction = async (
+    txType: TransactionType,
+    txDetails: string,
+    txAction: () => Promise<`0x${string}`>,
+    dialogDetails: Partial<Transaction>
+  ) => {
+    if (!walletClient || !walletAddress) throw new Error("Wallet not connected");
     isUpdatingStateRef.current = true;
-    
-    setTxStatusDialog({
-      isOpen: true,
-      state: 'processing',
-      transaction: { amount: amount, token: tokenSymbol, to: toAddress }
-    });
-    
-    // Server action returns a hash, but no pending tx is created yet.
+    setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
+
     try {
-        const result = await sendTokensAction(toAddress, tokenSymbol, amount);
-        
-        // Now create the pending transaction with the real hash
-        const pendingTxId = addTransaction({
-            type: 'Send',
-            to: toAddress,
-            details: `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0, 10)}...`,
-            token: tokenSymbol,
-            amount: amount,
-            txHash: result.txHash
-        });
+        const txHash = await txAction();
+        addTransaction({ type: txType, to: dialogDetails.to, details: txDetails, token: dialogDetails.token, amount: dialogDetails.amount, txHash });
+        setTxStatusDialog(prev => ({ ...prev, state: 'success', transaction: { ...prev.transaction, txHash } }));
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (txType === 'Send') {
+            updateBalance(dialogDetails.token!, -dialogDetails.amount!);
+        }
+        const freshAssets = await getWalletAssets(walletAddress);
+        setBalances(freshAssets.reduce((acc, asset) => { acc[asset.symbol] = asset.balance; return acc; }, {} as Balances));
 
-        updateBalance(tokenSymbol, -amount);
-        
-        setTxStatusDialog(prev => ({
-          ...prev,
-          state: 'success',
-          transaction: { ...prev.transaction, txHash: result.txHash }
-        }));
-        
-        return result;
-
-    } catch(e: any) {
-        console.error('Send token transaction failed:', e);
-        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-        
-        setTxStatusDialog(prev => ({
-          ...prev,
-          state: 'error',
-          error: errorMessage
-        }));
-        
+    } catch (e: any) {
+        console.error(`${txType} failed:`, e);
+        const errorMessage = e.shortMessage || e.message || 'An unknown error occurred.';
+        setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
         throw e;
     } finally {
         setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
     }
-  }, [isConnected, walletAddress, addTransaction, updateBalance, updateTransactionStatus]);
+  };
 
+  const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
+    const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+    const amountInSmallestUnit = parseUnits(amount.toString(), contractInfo ? contractInfo.decimals : 18);
+
+    await executeTransaction(
+        'Send',
+        `Sending ${amount} ${tokenSymbol} to ${toAddress.slice(0,10)}...`,
+        () => {
+            if (tokenSymbol === 'ETH') {
+                return walletClient.sendTransaction({ account: walletAddress as `0x${string}`, to: toAddress as `0x${string}`, value: amountInSmallestUnit });
+            } else {
+                if (!contractInfo || !contractInfo.address) throw new Error(`Contract for ${tokenSymbol} not found.`);
+                return walletClient.writeContract({
+                    account: walletAddress as `0x${string}`, address: contractInfo.address,
+                    abi: erc20Abi, functionName: 'transfer', args: [toAddress as `0x${string}`, amountInSmallestUnit]
+                });
+            }
+        },
+        { amount, token: tokenSymbol, to: toAddress }
+    );
+  }, [walletClient, walletAddress, executeTransaction]);
+
+  const approveCollateral = useCallback(async (amount: string) => {
+    const amountInWei = parseUnits(amount, 18);
+    await executeTransaction(
+        'Approve',
+        `Approving ${amount} USDT for trading`,
+        () => walletClient.writeContract({
+            account: walletAddress as `0x${string}`, address: USDT_CONTRACT_ADDRESS,
+            abi: erc20Abi, functionName: 'approve', args: [PERPETUALS_CONTRACT_ADDRESS, amountInWei]
+        }),
+        { amount: parseFloat(amount), token: 'USDT', to: PERPETUALS_CONTRACT_ADDRESS }
+    );
+  }, [walletClient, walletAddress, executeTransaction]);
+
+  const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
+    const sizeInWei = parseUnits(params.size, 18);
+    const collateralInWei = parseUnits(params.collateral, 18);
+    await executeTransaction(
+        'Open Position',
+        `Opening ${params.side === 0 ? 'long' : 'short'} position of ${params.size} ETH`,
+        () => walletClient.writeContract({
+            account: walletAddress as `0x${string}`, address: PERPETUALS_CONTRACT_ADDRESS,
+            abi: perpetualsAbi, functionName: 'openPosition', args: [params.side, sizeInWei, collateralInWei]
+        }),
+        { amount: parseFloat(params.collateral), token: 'USDT', to: PERPETUALS_CONTRACT_ADDRESS }
+    );
+  }, [walletClient, walletAddress, executeTransaction]);
+
+  const closePosition = useCallback(async () => {
+    await executeTransaction(
+        'Close Position',
+        'Closing active position',
+        () => walletClient.writeContract({
+            account: walletAddress as `0x${string}`, address: PERPETUALS_CONTRACT_ADDRESS,
+            abi: perpetualsAbi, functionName: 'closePosition', args: []
+        }),
+        { to: PERPETUALS_CONTRACT_ADDRESS }
+    );
+  }, [walletClient, walletAddress, executeTransaction]);
 
   // Effect for polling for external wallet updates and transaction statuses
   useEffect(() => {
-    if (!isConnected || !walletAddress) return;
+    if (!isConnected || !walletAddress || !publicClient) return;
 
     let isCancelled = false;
     
-    const publicClient = createPublicClient({ chain: localhost, transport: http('http://127.0.0.1:8545') });
-
     const poll = async () => {
         if (isCancelled) return;
         
-        // 1. Poll for balances if no recent local update is in progress
         if (!isUpdatingStateRef.current) {
             try {
                 const remoteAssets = await getWalletAssets(walletAddress);
@@ -441,73 +502,42 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     setBalances(newBalances);
                 }
             } catch (error) {
-                console.warn("Failed to poll for wallet updates. Will retry on next cycle.", error);
+                console.warn("Poll for wallet updates failed. Retrying.", error);
             }
         }
         
-        // 2. Poll for pending transaction statuses
         const pendingTxs = transactions.filter(tx => tx.status === 'Pending' && tx.txHash && tx.txHash.startsWith('0x'));
 
         for (const tx of pendingTxs) {
             try {
                 const receipt = await publicClient.getTransactionReceipt({ hash: tx.txHash as `0x${string}` });
                 if (receipt && !isCancelled) {
-                    if (receipt.status === 'success') {
-                        updateTransactionStatus(tx.id, 'Completed');
-                    } else if (receipt.status === 'reverted') {
-                        updateTransactionStatus(tx.id, 'Failed', 'Transaction was reverted by the contract.');
-                    }
+                    const status = receipt.status === 'success' ? 'Completed' : 'Failed';
+                    updateTransactionStatus(tx.id, status, status === 'Failed' ? 'Transaction reverted' : undefined);
                 }
             } catch (e) {
-                // This can happen if the tx is not yet indexed. It's not a fatal error.
-                // console.warn(`Receipt for tx ${tx.id} not found yet.`, e);
+                // Ignore errors for not-yet-indexed txs
             }
         }
 
-        if (!isCancelled) {
-          setTimeout(poll, 5000); // Poll every 5 seconds
-        }
+        if (!isCancelled) setTimeout(poll, 5000);
     };
 
     poll();
 
-    return () => {
-        isCancelled = true;
-    };
-  }, [isConnected, walletAddress, transactions, updateTransactionStatus]);
+    return () => { isCancelled = true; };
+  }, [isConnected, walletAddress, transactions, updateTransactionStatus, publicClient]);
 
 
   const value: WalletContextType = {
       walletState: { 
-        isConnected, 
-        isConnecting, 
-        walletAddress, 
-        balances, 
-        walletBalance, 
-        marketData, 
-        isMarketDataLoaded,
-        transactions,
-        vaultWeth,
-        activeStrategy,
-        proposals,
-        availablePools,
-        userPositions,
-        txStatusDialog,
+        isConnected, isConnecting, walletAddress, balances, walletBalance, marketData, isMarketDataLoaded,
+        transactions, vaultWeth, activeStrategy, proposals, availablePools, userPositions, txStatusDialog,
       },
       walletActions: {
-          connectWallet,
-          disconnectWallet,
-          updateBalance,
-          setBalances,
-          sendTokens,
-          addTransaction,
-          updateTransactionStatus,
-          setVaultWeth,
-          setActiveStrategy,
-          setProposals,
-          setAvailablePools,
-          setUserPositions,
-          setTxStatusDialog
+          connectWallet, disconnectWallet, updateBalance, setBalances, sendTokens, addTransaction,
+          updateTransactionStatus, setVaultWeth, setActiveStrategy, setProposals, setAvailablePools,
+          setUserPositions, setTxStatusDialog, approveCollateral, openPosition, closePosition
       }
   }
 
@@ -525,5 +555,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

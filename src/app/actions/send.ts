@@ -21,13 +21,7 @@ const account = privateKeyToAccount(process.env.LOCAL_PRIVATE_KEY as `0x${string
 const client = createWalletClient({
   account,
   chain: localhost,
-  transport: http(LOCAL_CHAIN_RPC_URL, {
-    fetchOptions: {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-      }
-    }
-  }),
+  transport: http(LOCAL_CHAIN_RPC_URL),
 });
 
 const erc20Abi = parseAbi([
@@ -79,5 +73,3 @@ export async function sendTokensAction(
     txHash: txHash,
   };
 }
-
-    

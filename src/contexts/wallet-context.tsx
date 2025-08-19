@@ -128,12 +128,6 @@ const publicClient = createPublicClient({
 });
 
 const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
-const localErc20Contracts: { [symbol: string]: { address: `0x${string}`, decimals: number } } = {
-    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', decimals: ERC20_CONTRACTS.USDT.decimals },
-    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', decimals: ERC20_CONTRACTS.USDC.decimals },
-    'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', decimals: ERC20_CONTRACTS.WETH.decimals },
-    'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', decimals: ERC20_CONTRACTS.LINK.decimals },
-};
 
 const erc20Abi = [
     { constant: false, inputs: [{ name: "_to", type: "address" }, { name: "_value", type: "uint256" }], name: "transfer", outputs: [{ name: "", type: "bool" }], type: "function" },
@@ -453,8 +447,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     value: parseUnits(amount.toString(), 18)
                 });
             } else {
-                const contractInfo = localErc20Contracts[tokenSymbol as keyof typeof localErc20Contracts];
-                if (!contractInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
+                const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+                if (!contractInfo || !contractInfo.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
                 return walletClient.writeContract({
                     address: contractInfo.address,
                     abi: erc20Abi,
@@ -468,14 +462,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress]);
 
   const approveCollateral = useCallback(async (amount: string) => {
+      const contractInfo = ERC20_CONTRACTS['USDT'];
+      if(!contractInfo.address) throw new Error("USDT contract address not configured");
       await executeTransaction(
           'Approve',
           { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' },
           (walletClient, account) => walletClient.writeContract({
-              address: localErc20Contracts.USDT.address,
+              address: contractInfo.address!,
               abi: erc20Abi,
               functionName: 'approve',
-              args: [PERPETUALS_CONTRACT_ADDRESS, parseUnits(amount, localErc20Contracts.USDT.decimals)],
+              args: [PERPETUALS_CONTRACT_ADDRESS, parseUnits(amount, contractInfo.decimals)],
               account
           })
       );
@@ -483,6 +479,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
       const { side, size, collateral } = params;
+      const collateralContractInfo = ERC20_CONTRACTS['USDT'];
+      const tradeContractInfo = ERC20_CONTRACTS['ETH']; // Assuming ETH-based perpetuals for now
+      
+      if (!collateralContractInfo.address || !tradeContractInfo) throw new Error("Contract info missing");
+
       await executeTransaction(
           'Open Position',
           { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract' },
@@ -490,7 +491,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: perpetualsAbi,
               functionName: 'openPosition',
-              args: [side, parseUnits(size, 18), parseUnits(collateral, localErc20Contracts.USDT.decimals)],
+              args: [side, parseUnits(size, tradeContractInfo.decimals), parseUnits(collateral, collateralContractInfo.decimals)],
               account
           })
       );

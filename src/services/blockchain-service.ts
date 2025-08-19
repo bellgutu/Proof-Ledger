@@ -23,8 +23,8 @@ export interface ChainAsset {
 }
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number } } = {
-    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 6 },
-    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 6 },
+    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 18 },
+    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 18 },
     'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', name: 'Wrapped Ether', decimals: 18 },
     'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', name: 'Chainlink', decimals: 18 },
     'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', name: 'BNB', decimals: 18 },

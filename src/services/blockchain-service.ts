@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -46,8 +47,8 @@ export const GOVERNOR_ABI = parseAbi([
 ]);
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number, abi: typeof genericErc20Abi } } = {
-    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 6, abi: genericErc20Abi },
-    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 6, abi: genericErc20Abi },
+    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 18, abi: genericErc20Abi },
+    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
     'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
     'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
     'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', name: 'BNB', decimals: 18, abi: genericErc20Abi },
@@ -62,6 +63,7 @@ const perpetualsAbi = parseAbi([
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
+  pollingInterval: undefined,
 })
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
@@ -150,7 +152,7 @@ export async function getActivePosition(userAddress: string): Promise<Position |
     }
     
     const sizeDecimals = 18; 
-    const collateralDecimals = 6;
+    const collateralDecimals = ERC20_CONTRACTS['USDT']?.decimals || 18;
     const priceDecimals = 18;
 
     return {

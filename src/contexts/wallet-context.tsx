@@ -3,11 +3,10 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS } from '@/services/blockchain-service';
+import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_ABI } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError, getContract } from 'viem';
 import { localhost } from 'viem/chains';
-import { swapTokensAction, depositToVaultAction, withdrawFromVaultAction, voteOnProposalAction } from '@/app/actions/defi-actions';
 
 // --- TYPE DEFINITIONS ---
 
@@ -129,6 +128,7 @@ const anvilChain = defineChain({
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
+  pollingInterval: undefined,
 });
 
 const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
@@ -343,13 +343,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return createWalletClient({
         chain: anvilChain,
         transport: custom(window.ethereum),
+        pollingInterval: undefined,
     });
   };
 
   const executeTransaction = async (
     txType: TransactionType,
     dialogDetails: Partial<Transaction>,
-    txFunction: () => Promise<{ success: boolean, txHash: `0x${string}` } | `0x${string}`>
+    txFunction: () => Promise<`0x${string}`>
   ) => {
       isUpdatingStateRef.current = true;
       setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
@@ -358,8 +359,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       addTransaction({ id: tempTxId, type: txType, ...dialogDetails });
       
       try {
-          const result = await txFunction();
-          const txHash = typeof result === 'string' ? result : result.txHash;
+          const txHash = await txFunction();
           
           setTransactions(prev => prev.map(tx => tx.id === tempTxId ? { ...tx, id: txHash, txHash: txHash } : tx));
           
@@ -523,25 +523,104 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${fromToken} to ${toToken}` };
-    const txFunction = () => swapTokensAction(fromToken, toToken, amountIn);
+    const txFunction = async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        const fromTokenInfo = ERC20_CONTRACTS[fromToken];
+        const dexContract = getContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, client: { public: publicClient, wallet: walletClient } });
+
+        if (!fromTokenInfo || !fromTokenInfo.address) throw new Error("Unsupported fromToken");
+    
+        const amountInWei = parseUnits(amountIn.toString(), fromTokenInfo.decimals);
+
+        // First, approve the DEX contract to spend the token
+        const tokenContract = getContract({ address: fromTokenInfo.address, abi: fromTokenInfo.abi, client: { public: publicClient, wallet: walletClient } });
+        const approveHash = await tokenContract.write.approve([DEX_CONTRACT_ADDRESS, amountInWei], { account });
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+
+        // Then, perform the swap
+        const toTokenAddress = ERC20_CONTRACTS[toToken]?.address || '0x0000000000000000000000000000000000000000';
+
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: DEX_CONTRACT_ADDRESS,
+            abi: DEX_ABI,
+            functionName: 'swap',
+            args: [fromTokenInfo.address, toTokenAddress, amountInWei],
+        });
+
+        return walletClient.writeContract(request);
+    };
     await executeTransaction('Swap', dialogDetails, txFunction);
   }, []);
 
   const depositToVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', to: 'AI Strategy Vault' };
-    const txFunction = () => depositToVaultAction(amount);
+    const txFunction = async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+
+        const wethInfo = ERC20_CONTRACTS['WETH'];
+        if (!wethInfo || !wethInfo.address) throw new Error("WETH contract not found");
+        
+        const amountInWei = parseUnits(amount.toString(), wethInfo.decimals);
+        
+        // Approve Vault
+        const tokenContract = getContract({ address: wethInfo.address, abi: wethInfo.abi, client: { public: publicClient, wallet: walletClient } });
+        const approveHash = await tokenContract.write.approve([VAULT_CONTRACT_ADDRESS, amountInWei], { account });
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        
+        // Deposit
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: VAULT_CONTRACT_ADDRESS,
+            abi: VAULT_ABI,
+            functionName: 'deposit',
+            args: [amountInWei]
+        });
+        
+        return walletClient.writeContract(request);
+    };
     await executeTransaction('Vault Deposit', dialogDetails, txFunction);
   }, []);
   
   const withdrawFromVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', details: 'Withdraw from AI Strategy Vault' };
-    const txFunction = () => withdrawFromVaultAction(amount);
+    const txFunction = async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        const wethInfo = ERC20_CONTRACTS['WETH'];
+        if (!wethInfo) throw new Error("WETH contract not found");
+        const amountInWei = parseUnits(amount.toString(), wethInfo.decimals);
+
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: VAULT_CONTRACT_ADDRESS,
+            abi: VAULT_ABI,
+            functionName: 'withdraw',
+            args: [amountInWei]
+        });
+        
+        return walletClient.writeContract(request);
+    };
     await executeTransaction('Vault Withdraw', dialogDetails, txFunction);
   }, []);
 
   const voteOnProposal = useCallback(async (proposalId: string, support: number) => {
     const dialogDetails = { details: `Vote on proposal #${proposalId}` };
-    const txFunction = () => voteOnProposalAction(proposalId, support);
+    const txFunction = async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: GOVERNOR_CONTRACT_ADDRESS,
+            abi: GOVERNOR_ABI,
+            functionName: 'castVote',
+            args: [BigInt(proposalId), support]
+        });
+
+        return walletClient.writeContract(request);
+    };
     await executeTransaction('Vote', dialogDetails, txFunction);
   }, []);
 

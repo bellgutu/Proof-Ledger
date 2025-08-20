@@ -3,9 +3,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_ABI } from '@/services/blockchain-service';
+import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError, getContract } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError, getContract, parseAbi } from 'viem';
 import { localhost } from 'viem/chains';
 
 // --- TYPE DEFINITIONS ---
@@ -131,7 +131,6 @@ const publicClient = createPublicClient({
   pollingInterval: undefined,
 });
 
-const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
 
 const erc20Abi = [
     { constant: false, inputs: [{ name: "_to", type: "address" }, { name: "_value", type: "uint256" }], name: "transfer", outputs: [{ name: "", type: "bool" }], type: "function" },
@@ -527,7 +526,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         const fromTokenInfo = ERC20_CONTRACTS[fromToken];
-        const dexContract = getContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, client: { public: publicClient, wallet: walletClient } });
 
         if (!fromTokenInfo || !fromTokenInfo.address) throw new Error("Unsupported fromToken");
     
@@ -539,7 +537,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
         // Then, perform the swap
-        const toTokenAddress = ERC20_CONTRACTS[toToken]?.address || '0x0000000000000000000000000000000000000000';
+        const toTokenAddress = ERC20_CONTRACTS[toToken]?.address;
+        if (!toTokenAddress) throw new Error(`Unsupported toToken: ${toToken}`);
 
         const { request } = await publicClient.simulateContract({
             account,
@@ -684,3 +683,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

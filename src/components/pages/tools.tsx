@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from 'react';
@@ -46,20 +47,16 @@ const bridgeableTokens = ['ETH', 'USDT'];
 export default function ToolsPage() {
   const [activeTab, setActiveTab] = useState('bridge');
 
-  // Bridge State
-  const [isBridging, setIsBridging] = useState(false);
-  const [bridgeResult, setBridgeResult] = useState<{ title: string; description: string } | null>(null);
-
-  // Auditor State
-  const [isAuditing, setIsAuditing] = useState(false);
-  const [auditResult, setAuditResult] = useState<string | null>(null);
-  const [auditTitle, setAuditTitle] = useState('');
+  // Universal State
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Analyzer State
+  // Results State
+  const [bridgeResult, setBridgeResult] = useState<{ summary: string; sourceTxHash: string; destTxHash: string } | null>(null);
+  const [auditResult, setAuditResult] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Universal Alert
+  // Alert Dialog State
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alertContent, setAlertContent] = useState<{title: string, description: React.ReactNode} | null>(null);
 
@@ -70,58 +67,56 @@ export default function ToolsPage() {
   const analyzerForm = useForm<AnalyzerInput>({ resolver: zodResolver(AnalyzerInputSchema), defaultValues: { whitePaperUrl: "" } });
 
   const handleBridge = async (values: BridgeInput) => {
-    setIsBridging(true);
+    setIsLoading(true);
+    setBridgeResult(null);
+    setError(null);
     try {
         const result = await getBridgeTransactionDetails(values);
+        setBridgeResult(result);
         setAlertContent({
-            title: 'Bridge Transaction Initiated',
-            description: <p className="whitespace-pre-wrap">{`${result.summary}\nSource Tx: ${result.sourceTxHash}\nDest Tx: ${result.destTxHash}`}</p>
+            title: 'Bridge Transaction Simulated',
+            description: <div className="text-sm text-left"><p>{result.summary}</p><p className="mt-2 text-xs font-mono">Src: {result.sourceTxHash}</p><p className="text-xs font-mono">Dest: {result.destTxHash}</p></div>
         });
-    } catch(e) {
-        console.error("Bridging failed", e);
-        setAlertContent({
-            title: 'Bridge Failed',
-            description: "The AI transaction simulator failed. Please try again."
-        });
-    } finally {
-        setIsBridging(false);
         setIsAlertOpen(true);
+    } catch(e: any) {
+        setError(e.message || "The AI transaction simulator failed. Please try again.");
+    } finally {
+        setIsLoading(false);
     }
   };
 
   const handleAudit = async (type: 'contract' | 'token', values: AuditorInput) => {
-    setIsAuditing(true);
+    setIsLoading(true);
+    setAuditResult(null);
+    setError(null);
     try {
       const result = type === 'contract' ? await auditContract(values.address) : await auditToken(values.address);
       const htmlResult = await marked(result.analysis);
+      setAuditResult(htmlResult);
       setAlertContent({
           title: type === 'contract' ? 'Smart Contract Audit Result' : 'Token Audit Result',
-          description: <div className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground" dangerouslySetInnerHTML={{ __html: htmlResult }} />
+          description: <div className="prose prose-sm prose-invert max-w-none text-left max-h-[50vh] overflow-y-auto prose-p:text-muted-foreground" dangerouslySetInnerHTML={{ __html: htmlResult }} />
       });
-    } catch (e) {
-      setAlertContent({
-        title: 'Audit Error',
-        description: <p className="text-destructive">Audit failed. Please try again.</p>
-      });
-    } finally {
-      setIsAuditing(false);
       setIsAlertOpen(true);
+    } catch (e: any) {
+      setError(e.message || 'Audit failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   async function handleAnalyze(values: AnalyzerInput) {
-    setIsAnalyzing(true);
+    setIsLoading(true);
     setAnalysisResult(null);
-
+    setError(null);
     try {
       const result = await analyzeWhitePaper(values.whitePaperUrl);
       const htmlResult = await marked(result.analysis);
       setAnalysisResult(htmlResult);
-    } catch (e) {
-      console.error("Analysis failed:", e);
-      setAnalysisResult(`<p class="text-destructive">Failed to analyze the white paper. Please check the URL and try again.</p>`);
+    } catch (e: any) {
+      setError(e.message || "Failed to analyze the white paper. Please check the URL and try again.");
     } finally {
-      setIsAnalyzing(false);
+      setIsLoading(false);
     }
   }
 
@@ -169,11 +164,12 @@ export default function ToolsPage() {
                                 </Select>
                             </div>
                         </div>
-                        <Button type="submit" className="w-full" disabled={isBridging}>
-                            {isBridging ? <Loader2 className="mr-2 animate-spin"/> : <ArrowRight className="mr-2" />}
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading ? <Loader2 className="mr-2 animate-spin"/> : <ArrowRight className="mr-2" />}
                             Initiate Bridge
                         </Button>
                     </form>
+                    {error && <p className="text-destructive text-center mt-4">{error}</p>}
                 </CardContent>
             </Card>
         </TabsContent>
@@ -189,8 +185,8 @@ export default function ToolsPage() {
                 <CardContent>
                    <form onSubmit={contractAuditorForm.handleSubmit(data => handleAudit('contract', data))} className="space-y-4">
                         <Input placeholder="0x..." {...contractAuditorForm.register("address")} />
-                        <Button type="submit" disabled={isAuditing} className="w-full">
-                            {isAuditing ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
+                        <Button type="submit" disabled={isLoading} className="w-full">
+                            {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
                             Audit Contract
                         </Button>
                    </form>
@@ -204,19 +200,20 @@ export default function ToolsPage() {
                 <CardContent>
                    <form onSubmit={tokenAuditorForm.handleSubmit(data => handleAudit('token', data))} className="space-y-4">
                         <Input placeholder="0x..." {...tokenAuditorForm.register("address")} />
-                        <Button type="submit" disabled={isAuditing} className="w-full">
-                           {isAuditing ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
+                        <Button type="submit" disabled={isLoading} className="w-full">
+                           {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
                             Audit Token
                         </Button>
                    </form>
                 </CardContent>
             </Card>
+             {error && <p className="text-destructive text-center mt-4 lg:col-span-2">{error}</p>}
           </div>
         </TabsContent>
 
         {/* Analyzer Tab */}
         <TabsContent value="analyzer" className="mt-6">
-            <div className="grid grid-cols-1 gap-8">
+            <div className="space-y-8">
                  <Card>
                     <CardHeader>
                         <CardTitle>AI White Paper Analyzer</CardTitle>
@@ -225,14 +222,15 @@ export default function ToolsPage() {
                     <CardContent>
                         <form onSubmit={analyzerForm.handleSubmit(handleAnalyze)} className="space-y-4">
                             <Input placeholder="https://example.com/whitepaper.pdf" {...analyzerForm.register("whitePaperUrl")} />
-                            <Button type="submit" className="w-full" disabled={isAnalyzing}>
-                                {isAnalyzing ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                                {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
                                 Analyze White Paper
                             </Button>
                         </form>
                     </CardContent>
                 </Card>
-                {isAnalyzing && (
+                {error && <p className="text-destructive text-center">{error}</p>}
+                {isLoading && (
                     <Card>
                         <CardHeader>
                             <CardTitle>AI Analysis</CardTitle>
@@ -264,7 +262,7 @@ export default function ToolsPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>{alertContent?.title}</AlertDialogTitle>
                     <AlertDialogDescription asChild>
-                         {alertContent?.description || ''}
+                         <div className="pt-2">{alertContent?.description || ''}</div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

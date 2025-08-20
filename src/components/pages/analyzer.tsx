@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -37,13 +38,15 @@ export default function AnalyzerPage() {
     setAnalysisResult(null);
 
     try {
-      // Using the real Genkit flow now
       const result = await analyzeWhitePaper(values.whitePaperUrl);
+      if (!result || !result.analysis) {
+        throw new Error("AI failed to produce an analysis.");
+      }
       const htmlResult = await marked(result.analysis);
       setAnalysisResult(htmlResult);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Analysis failed:", e);
-      setError("Failed to analyze the white paper. Please check the URL and try again.");
+      setError(e.message || "Failed to analyze the white paper. Please check the URL and try again.");
     } finally {
       setIsLoading(false);
     }

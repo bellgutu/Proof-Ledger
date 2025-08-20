@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -12,20 +13,30 @@ import { Button } from '../ui/button';
 
 export function WhaleWatch({ pair }: { pair: string }) {
   const [data, setData] = useState<WhaleWatchData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start loading on mount
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const result = await getWhaleWatchData(pair);
+      if (!result) {
+        throw new Error("AI failed to return whale data.");
+      }
       setData(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to get whale watch data:", error);
+      setError(error.message || "Could not load whale activity.");
       setData(null);
     } finally {
       setIsLoading(false);
     }
   }, [pair]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const getSentimentVariant = (sentiment: 'Bullish' | 'Bearish' | 'Neutral' | undefined) => {
     switch (sentiment) {
@@ -55,6 +66,8 @@ export function WhaleWatch({ pair }: { pair: string }) {
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
           </div>
+        ) : error ? (
+            <p className="text-muted-foreground text-sm text-center text-destructive">{error}</p>
         ) : data ? (
             <>
                 <div className="p-3 bg-background rounded-lg border space-y-2">

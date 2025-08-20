@@ -51,6 +51,7 @@ export default function LiquidityPage() {
   
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<LPStrategy[]>([]);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
 
   // State for creating a new pool
   const [newPoolType, setNewPoolType] = useState<'V2' | 'V3' | 'Stable'>('V2');
@@ -150,15 +151,21 @@ export default function LiquidityPage() {
   
   const fetchSuggestions = async () => {
     setIsLoadingSuggestions(true);
+    setSuggestionError(null);
     setSuggestions([]);
     try {
       const result = await getLpStrategy();
+      if (!result || !result.strategies) {
+        throw new Error("AI did not return valid strategies.");
+      }
       setSuggestions(result.strategies);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast({ variant: 'destructive', title: 'AI Error', description: 'Could not fetch suggestions.' });
+      setSuggestionError(e.message || 'Could not fetch suggestions.');
+      toast({ variant: 'destructive', title: 'AI Error', description: e.message || 'Could not fetch suggestions.' });
+    } finally {
+      setIsLoadingSuggestions(false);
     }
-    setIsLoadingSuggestions(false);
   }
 
   const useSuggestion = (strategy: LPStrategy) => {
@@ -237,6 +244,7 @@ export default function LiquidityPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {isLoadingSuggestions && <div className="text-sm text-center text-muted-foreground">Looking for opportunities...</div>}
+                {suggestionError && <p className="text-sm text-center text-destructive">{suggestionError}</p>}
                 {suggestions.length > 0 ? (
                   suggestions.map((strat, i) => (
                       <Alert key={i}>
@@ -245,7 +253,7 @@ export default function LiquidityPage() {
                         <Button size="sm" variant="link" className="p-0 h-auto mt-2" onClick={() => useSuggestion(strat)}>Use this pair</Button>
                       </Alert>
                   ))
-                ) : !isLoadingSuggestions && (
+                ) : !isLoadingSuggestions && !suggestionError && (
                     <p className="text-sm text-center text-muted-foreground py-4">Click the AI button for suggestions.</p>
                 )}
               </CardContent>

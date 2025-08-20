@@ -194,6 +194,10 @@ export default function FinancePage() {
 
         const action = await getRebalanceAction({ currentEth: currentEth, currentWeth: vaultWeth });
         
+        if (!action) {
+          throw new Error("AI failed to provide a rebalancing action.");
+        }
+
         // This remains a simulation for now, as it's a complex multi-step process
         if (action.fromToken === 'WETH' && action.toToken === 'WETH') {
             const wethAmount = Math.min(action.amount, vaultWeth);
@@ -229,12 +233,12 @@ export default function FinancePage() {
              }
         }
 
-    } catch (e) {
+    } catch (e: any) {
         console.error("Failed to get rebalance detail:", e);
          toast({
             variant: "destructive",
             title: "Rebalance Error",
-            description: "Could not get rebalancing strategy from AI.",
+            description: e.message || "Could not get rebalancing strategy from AI.",
         });
     } finally {
         setRebalanceLoading(false);
@@ -349,7 +353,7 @@ export default function FinancePage() {
                         <BrainCircuit className="mr-2" /> AI Strategy Vault
                     </div>
                     <Button onClick={handleAiRebalance} disabled={rebalanceLoading || vaultLoading} size="icon" variant="ghost">
-                        {rebalanceLoading ? <RefreshCcw className="animate-spin"/> :<BrainCircuit />}
+                        {rebalanceLoading ? <Loader2 className="animate-spin"/> :<BrainCircuit />}
                         <span className="sr-only">Rebalance Vault</span>
                     </Button>
                     </CardTitle>

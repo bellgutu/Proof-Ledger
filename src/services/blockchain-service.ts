@@ -9,7 +9,11 @@ import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'vi
 import { localhost } from 'viem/chains';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
-const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
+export const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
+export const DEX_CONTRACT_ADDRESS = '0x9d4e50d5334235a46231c51394a1d4a6a57bb859';
+export const VAULT_CONTRACT_ADDRESS = '0x8f2a17a3a992e5c808b86559792138a39f4f46c0';
+export const GOVERNOR_CONTRACT_ADDRESS = '0x3a48e7155b410656a81b3cd5206d214695952136';
+
 
 const anvilChain = defineChain({
   ...localhost,
@@ -22,29 +26,42 @@ export interface ChainAsset {
   balance: number; 
 }
 
-export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number } } = {
-    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 18 },
-    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 18 },
-    'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', name: 'Wrapped Ether', decimals: 18 },
-    'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', name: 'Chainlink', decimals: 18 },
-    'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', name: 'BNB', decimals: 18 },
-    'SOL': { address: '0x810090f35dfa6b18b5eb59d298e2a2443a2811e2', name: 'Solana', decimals: 18 },
-    'ETH': { address: '0x3ca5269b5c54d4c807ca0df7eeb2cb7a5327e77d', name: 'Ethereum', decimals: 18 },
+const genericErc20Abi = parseAbi([
+    "function balanceOf(address account) external view returns (uint256)",
+    "function allowance(address owner, address spender) external view returns (uint256)",
+    "function approve(address spender, uint256 amount) external returns (bool)",
+    "function transfer(address to, uint256 amount) external returns (bool)"
+]);
+
+export const DEX_ABI = parseAbi([
+  "function swap(address tokenIn, address tokenOut, uint256 amountIn) external returns (uint256 amountOut)"
+]);
+export const VAULT_ABI = parseAbi([
+  "function deposit(uint256 amount) external",
+  "function withdraw(uint256 amount) external",
+  "function balance(address user) external view returns (uint256)"
+]);
+export const GOVERNOR_ABI = parseAbi([
+  "function castVote(uint256 proposalId, uint8 support) external returns (uint256)"
+]);
+
+export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number, abi: typeof genericErc20Abi } } = {
+    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 6, abi: genericErc20Abi },
+    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 6, abi: genericErc20Abi },
+    'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
+    'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
+    'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', name: 'BNB', decimals: 18, abi: genericErc20Abi },
+    'SOL': { address: '0x810090f35dfa6b18b5eb59d298e2a2443a2811e2', name: 'Solana', decimals: 18, abi: genericErc20Abi },
+    'ETH': { address: '0x3ca5269b5c54d4c807ca0df7eeb2cb7a5327e77d', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
 };
 
 const perpetualsAbi = parseAbi([
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
 ]);
 
-const erc20Abi = parseAbi([
-    "function balanceOf(address account) external view returns (uint256)",
-    "function allowance(address owner, address spender) external view returns (uint256)"
-]);
-
 const publicClient = createPublicClient({
   chain: anvilChain,
-  transport: http(LOCAL_CHAIN_RPC_URL),
-  pollingInterval: undefined,
+  transport: http(),
 })
 
 export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
@@ -69,7 +86,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     try {
       const balance = await publicClient.readContract({
         address: contract.address,
-        abi: erc20Abi,
+        abi: contract.abi,
         functionName: 'balanceOf',
         args: [address as `0x${string}`]
       });
@@ -133,7 +150,7 @@ export async function getActivePosition(userAddress: string): Promise<Position |
     }
     
     const sizeDecimals = 18; 
-    const collateralDecimals = 18;
+    const collateralDecimals = 6;
     const priceDecimals = 18;
 
     return {
@@ -160,7 +177,7 @@ export async function getCollateralAllowance(ownerAddress: string): Promise<numb
   try {
     const allowance = await publicClient.readContract({
       address: usdtContract.address,
-      abi: erc20Abi,
+      abi: usdtContract.abi,
       functionName: 'allowance',
       args: [ownerAddress as `0x${string}`, PERPETUALS_CONTRACT_ADDRESS as `0x${string}`]
     });

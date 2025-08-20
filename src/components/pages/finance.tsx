@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -56,7 +55,10 @@ export default function FinancePage() {
     setVaultWeth,
     setActiveStrategy,
     setProposals,
-    sendTokens
+    swapTokens,
+    depositToVault,
+    withdrawFromVault,
+    voteOnProposal,
   } = walletActions;
   const { toast } = useToast();
   const router = useRouter();
@@ -121,87 +123,62 @@ export default function FinancePage() {
     }
     
     setSwapping(true);
-    // This is a simulated swap. For a real app, this would involve complex interactions
-    // with a DEX router contract. Here, we simulate it by 'sending' the fromToken
-    // to a dummy address (simulating a contract) and then manually updating the 'toToken' balance.
     try {
-      // Step 1: Send the `fromToken` to a simulated contract/burner address
-      await sendTokens('0x0000000000000000000000000000000000000001', fromToken, amountToSwap);
+      await swapTokens(fromToken, toToken, amountToSwap);
       
-      // Step 2: 'Receive' the `toToken`
-      const amountReceived = parseFloat(toAmount);
-      updateBalance(toToken, amountReceived);
-      
-      // Step 3: Add a transaction record for the swap
-      addTransaction({
-        type: 'Swap',
-        details: `Swapped ${amountToSwap.toLocaleString('en-US', {maximumFractionDigits: 4})} ${fromToken} for ${amountReceived.toLocaleString('en-US', {maximumFractionDigits: 2})} ${toToken}`
-      });
-
       setFromAmount('');
       setToAmount('');
-      toast({ title: "Swap Successful!", description: `You received ${amountReceived.toLocaleString()} ${toToken}.`})
+      toast({ title: "Swap Submitted!", description: `Your transaction is being processed.`});
     } catch(e: any) {
-      toast({ variant: "destructive", title: "Swap Failed", description: e.message || "The transaction could not be completed." });
+        // Error is handled by the wallet context dialog
     } finally {
       setSwapping(false);
     }
   };
   
-  const handleVote = (proposalId: string, vote: 'for' | 'against') => {
-    setProposals(prev => prev.map(p => {
-        if (p.id === proposalId && !p.userVote) {
-            const simulatedVotingPower = (Math.random() * 50000) + 10000;
-            return {
-                ...p,
-                userVote: vote,
-                votesFor: p.votesFor + (vote === 'for' ? simulatedVotingPower : 0),
-                votesAgainst: p.votesAgainst + (vote === 'against' ? simulatedVotingPower : 0)
-            };
-        }
-        return p;
-    }));
-    addTransaction({ type: 'Vote', details: `Voted ${vote} on proposal "${proposals.find(p => p.id === proposalId)?.title}"` });
+  const handleVote = async (proposalId: string, vote: 'for' | 'against') => {
+    const support = vote === 'for' ? 1 : 0;
+    try {
+      await voteOnProposal(proposalId, support);
+      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, userVote: vote } : p));
+      toast({ title: "Vote Cast!", description: `Your vote for proposal #${proposalId} has been submitted.`});
+    } catch (e: any) {
+      // error handled by context
+    }
   };
 
 
-  const handleDepositToVault = () => {
+  const handleDepositToVault = async () => {
     const amountToDeposit = 0.5;
     if ((balances['WETH'] || 0) < amountToDeposit) {
        toast({ variant: "destructive", title: "Insufficient WETH balance" });
        return;
     }
     setVaultLoading(true);
-    setTimeout(() => {
-      updateBalance('WETH', -amountToDeposit);
-      setVaultWeth(prev => prev + amountToDeposit);
-      addTransaction({
-        type: 'Vault Deposit',
-        details: `Deposited 0.5 WETH to AI Strategy Vault`
-      });
-      setVaultLoading(false);
-    }, 2000);
+    try {
+      await depositToVault(amountToDeposit);
+      setVaultWeth(prev => prev + amountToDeposit); // Optimistic update
+      toast({ title: "Deposit Submitted", description: `Depositing ${amountToDeposit} WETH to vault.`});
+    } catch (e) {
+      // error handled by context
+    } finally {
+        setVaultLoading(false);
+    }
   };
 
-  const handleWithdrawFromVault = () => {
-    if (vaultTotalUsd <= 0) return;
+  const handleWithdrawFromVault = async () => {
+    if (vaultWeth <= 0) return;
     setVaultLoading(true);
-    setTimeout(() => {
-        updateBalance('WETH', vaultWeth);
-
-        if (activeStrategy) {
-            updateBalance(activeStrategy.asset, activeStrategy.value);
-        }
-
-        setVaultWeth(0);
-        setActiveStrategy(null);
-
-        addTransaction({
-            type: 'Vault Withdraw',
-            details: `Withdrew all assets from AI Strategy Vault`
-        });
-        setVaultLoading(false);
-    }, 2000);
+    try {
+      await withdrawFromVault(vaultWeth);
+      setVaultWeth(0); // Optimistic update
+      setActiveStrategy(null);
+      toast({ title: "Withdraw Submitted", description: `Withdrawing all assets from vault.`});
+    } catch(e) {
+       // error handled by context
+    } finally {
+      setVaultLoading(false);
+    }
   }
   
   const handleAiRebalance = useCallback(async () => {
@@ -209,7 +186,6 @@ export default function FinancePage() {
     setRebalanceLoading(true);
     try {
         const currentEth = balances['ETH'] || 0;
-        // Ensure there are assets to rebalance.
         if (vaultWeth <= 0 && currentEth <= 0) {
             toast({ variant: "destructive", title: "Vault is empty", description: "Deposit WETH or hold ETH to enable AI rebalancing." });
             setRebalanceLoading(false);
@@ -218,6 +194,7 @@ export default function FinancePage() {
 
         const action = await getRebalanceAction({ currentEth: currentEth, currentWeth: vaultWeth });
         
+        // This remains a simulation for now, as it's a complex multi-step process
         if (action.fromToken === 'WETH' && action.toToken === 'WETH') {
             const wethAmount = Math.min(action.amount, vaultWeth);
             if (wethAmount > 0) {
@@ -275,7 +252,6 @@ export default function FinancePage() {
     </SelectItem>
   );
   
-  // Effect to handle switching token amounts when pair changes
   useEffect(() => {
     handleAmountChange(fromAmount);
   }, [fromToken, toToken, conversionRate, fromAmount, handleAmountChange]);
@@ -405,7 +381,7 @@ export default function FinancePage() {
                     <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                             onClick={handleDepositToVault}
-                            disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) <= 0}
+                            disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) < 0.5}
                             className="w-full bg-green-600 text-white hover:bg-green-700"
                         >
                             {vaultLoading ? (
@@ -413,7 +389,7 @@ export default function FinancePage() {
                                 <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
                                 </span>
                             ) : (
-                                <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit WETH</span>
+                                <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit 0.5 WETH</span>
                             )}
                         </Button>
                             <Button
@@ -469,7 +445,7 @@ export default function FinancePage() {
                                 <Button 
                                     onClick={() => handleVote(p.id, 'against')}
                                     disabled={!!p.userVote}
-                                        variant={p.userVote === 'against' ? 'destructive' : 'outline'}
+                                    variant={p.userVote === 'against' ? 'destructive' : 'outline'}
                                     className="w-full"
                                 >
                                     <XCircle className="mr-2" /> Vote Against

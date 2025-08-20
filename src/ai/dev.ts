@@ -1,3 +1,4 @@
+
 import { config } from 'dotenv';
 config();
 
@@ -11,3 +12,4 @@ import '@/ai/flows/token-auditor-flow.ts';
 import '@/ai/flows/watchlist-flow.ts';
 import '@/ai/flows/bridge-narrator-flow.ts';
 import '@/ai/flows/lp-advisor-flow.ts';
+import '@/app/actions/defi-actions.ts';

@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const TradingStrategyInputSchema = z.object({
@@ -36,6 +37,7 @@ export async function getTradingStrategy(input: TradingStrategyInput): Promise<T
 
 const prompt = ai.definePrompt({
   name: 'tradingStrategyPrompt',
+  model: googleAI('gemini-1.5-flash-latest'),
   input: {schema: TradingStrategyInputSchema},
   output: {schema: TradingStrategyOutputSchema},
   prompt: `You are an AI-powered trading strategy assistant. Analyze the current market trends and suggest a potential trading strategy based on the user's risk profile.

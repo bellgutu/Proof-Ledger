@@ -520,10 +520,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       await executeTransaction('Close Position', dialogDetails, txFunction);
   }, []);
 
-  const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
+  const swapTokens = useCallback(async (fromToken: string, toToken: string, amount: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
 
-    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${fromToken} to ${toToken}` };
+    const dialogDetails = { amount: amount, token: fromToken, details: `Swap ${fromToken} to ${toToken}` };
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
@@ -532,21 +532,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
         if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Unsupported token in swap pair");
     
-        const amountInWei = parseUnits(amountIn.toString(), fromTokenInfo.decimals);
+        const amountIn = parseUnits(amount.toString(), fromTokenInfo.decimals);
 
         // First, approve the DEX contract to spend the token
         const approveHash = await walletClient.writeContract({
             address: fromTokenInfo.address,
             abi: fromTokenInfo.abi,
             functionName: 'approve',
-            args: [DEX_CONTRACT_ADDRESS, amountInWei],
+            args: [DEX_CONTRACT_ADDRESS, amountIn],
             account
         });
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
-        // Then, perform the swap
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 minutes from now
+        const amountOutMin = 0n; // Or calculate a realistic slippage value
         const path = [fromTokenInfo.address, toTokenInfo.address];
+        const to = account.address;
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes from now
         
         const { request } = await publicClient.simulateContract({
             account,
@@ -554,11 +555,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             abi: DEX_ABI,
             functionName: 'swapExactTokensForTokens',
             args: [
-              amountInWei, 
-              0n, // amountOutMin - set to 0 for simplicity in this simulation
+              amountIn,
+              amountOutMin,
               path,
-              false, // stable swap flag
-              account.address,
+              false, // stable
+              to,
               deadline
             ],
         });
@@ -703,3 +704,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

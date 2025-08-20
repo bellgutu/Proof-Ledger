@@ -44,6 +44,10 @@ export default function AssistantPage() {
       logEvent('generate_strategy', { riskProfile: values.riskProfile, trendLength: values.marketTrends.length });
       const result = await getTradingStrategy(values);
 
+      if (!result || !result.strategySuggestion || !result.riskConsiderations) {
+        throw new Error("The AI failed to generate a valid strategy. Please try again.");
+      }
+
       // Convert markdown fields to HTML
       const formattedResult = {
         strategySuggestion: await marked(result.strategySuggestion),

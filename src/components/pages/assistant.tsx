@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,13 +7,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { getTradingStrategy, type TradingStrategyInput, type TradingStrategyOutput } from "@/ai/flows/trading-strategy-assistant";
 import { useLogger } from "@/hooks/use-logger";
+import { marked } from "marked";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { BrainCircuit, Bot, Zap, ShieldAlert } from "lucide-react";
+import { BrainCircuit, Bot, Zap, ShieldAlert, Loader2 } from "lucide-react";
+import { Skeleton } from "../ui/skeleton";
 
 const TradingStrategyInputSchema = z.object({
   marketTrends: z.string().min(10, { message: "Please describe the market trends in at least 10 characters." }),
@@ -40,9 +43,16 @@ export default function AssistantPage() {
     try {
       logEvent('generate_strategy', { riskProfile: values.riskProfile, trendLength: values.marketTrends.length });
       const result = await getTradingStrategy(values);
-      setStrategyOutput(result);
-    } catch (e) {
-      setError("Failed to generate trading strategy. Please try again.");
+
+      // Convert markdown fields to HTML
+      const formattedResult = {
+        strategySuggestion: await marked(result.strategySuggestion),
+        riskConsiderations: await marked(result.riskConsiderations),
+        disclaimer: result.disclaimer, // Keep disclaimer as plain text
+      };
+      setStrategyOutput(formattedResult);
+    } catch (e: any) {
+      setError(e.message || "Failed to generate trading strategy. Please try again.");
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -109,7 +119,7 @@ export default function AssistantPage() {
               <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
                 {isLoading ? (
                   <>
-                    <Bot className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
                   </>
                 ) : (
@@ -125,6 +135,26 @@ export default function AssistantPage() {
       </Card>
 
       {error && <p className="text-destructive text-center">{error}</p>}
+      
+      {isLoading && (
+        <div className="grid gap-8 md:grid-cols-2">
+            <Card>
+                <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
+                <CardContent className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
+                <CardContent className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                </CardContent>
+            </Card>
+        </div>
+      )}
 
       {strategyOutput && (
         <div className="grid gap-8 md:grid-cols-2">
@@ -133,7 +163,10 @@ export default function AssistantPage() {
               <CardTitle className="flex items-center"><Zap className="mr-2 text-primary" /> Strategy Suggestion</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground whitespace-pre-wrap">{strategyOutput.strategySuggestion}</p>
+              <div
+                className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-headings:text-foreground"
+                dangerouslySetInnerHTML={{ __html: strategyOutput.strategySuggestion }}
+              />
             </CardContent>
           </Card>
           <Card className="transform transition-transform duration-300 hover:scale-[1.02]">
@@ -141,7 +174,10 @@ export default function AssistantPage() {
               <CardTitle className="flex items-center"><ShieldAlert className="mr-2 text-yellow-500" /> Risk Considerations</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground whitespace-pre-wrap">{strategyOutput.riskConsiderations}</p>
+               <div
+                className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground prose-headings:text-foreground"
+                dangerouslySetInnerHTML={{ __html: strategyOutput.riskConsiderations }}
+              />
             </CardContent>
           </Card>
            <Card className="md:col-span-2 bg-muted/50 transform transition-transform duration-300 hover:scale-[1.01]">

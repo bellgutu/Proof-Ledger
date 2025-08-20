@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -21,10 +22,10 @@ export type TradingStrategyInput = z.infer<typeof TradingStrategyInputSchema>;
 const TradingStrategyOutputSchema = z.object({
   strategySuggestion: z
     .string()
-    .describe('A potential trading strategy suggestion based on the input.'),
+    .describe('A potential trading strategy suggestion based on the input. Use Markdown for formatting (headings, lists, bold).'),
   riskConsiderations: z
     .string()
-    .describe('Important risk considerations for the suggested strategy.'),
+    .describe('Important risk considerations for the suggested strategy. Use Markdown for formatting (headings, lists, bold).'),
   disclaimer: z.string().describe('A disclaimer that this is not financial advice.'),
 });
 export type TradingStrategyOutput = z.infer<typeof TradingStrategyOutputSchema>;
@@ -51,7 +52,7 @@ Provide a strategy suggestion, important risk considerations, and a disclaimer t
 
 Remember to NOT provide any specific buy or sell recommendations. Only provide general trading strategy suggestions and risk considerations.
 
-Output should be in markdown format.
+IMPORTANT: Format the 'strategySuggestion' and 'riskConsiderations' outputs using Markdown for clear presentation (e.g., use headings, bullet points, and bold text).
 
 `,
 });

@@ -527,8 +527,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
-        const fromTokenInfo = ERC20_CONTRACTS[fromToken];
-        const toTokenInfo = ERC20_CONTRACTS[toToken];
+        
+        const fromTokenSymbol = fromToken === 'ETH' ? 'WETH' : fromToken;
+        const toTokenSymbol = toToken === 'ETH' ? 'WETH' : toToken;
+
+        const fromTokenInfo = ERC20_CONTRACTS[fromTokenSymbol];
+        const toTokenInfo = ERC20_CONTRACTS[toTokenSymbol];
 
         if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Unsupported token in swap pair");
     
@@ -544,10 +548,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         });
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
-        const amountOutMin = 0n; // Or calculate a realistic slippage value
+        const amountOutMin = 0n; // No slippage protection for this simulation
         const path = [fromTokenInfo.address, toTokenInfo.address];
         const to = account.address;
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes from now
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 minutes from now
         
         const { request } = await publicClient.simulateContract({
             account,

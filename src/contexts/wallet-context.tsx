@@ -521,7 +521,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amount: number) => {
-    if (!walletAddress) throw new Error("Wallet not connected");
+    if (!walletAddress) {
+      throw new Error("Wallet not connected");
+    }
 
     const dialogDetails = { amount: amount, token: fromToken, details: `Swap ${fromToken} to ${toToken}` };
     const txFunction = async () => {
@@ -531,8 +533,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const fromTokenSymbol = fromToken === 'ETH' ? 'WETH' : fromToken;
         const toTokenSymbol = toToken === 'ETH' ? 'WETH' : toToken;
 
-        const fromTokenInfo = ERC20_CONTRACTS[fromTokenSymbol];
-        const toTokenInfo = ERC20_CONTRACTS[toTokenSymbol];
+        const fromTokenInfo = ERC20_CONTRACTS[fromTokenSymbol as keyof typeof ERC20_CONTRACTS];
+        const toTokenInfo = ERC20_CONTRACTS[toTokenSymbol as keyof typeof ERC20_CONTRACTS];
 
         if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Unsupported token in swap pair");
     

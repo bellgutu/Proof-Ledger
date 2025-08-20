@@ -10,9 +10,9 @@ import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'vi
 import { localhost } from 'viem/chains';
 
 const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
-export const PERPETUALS_CONTRACT_ADDRESS = '0xf62eec897fa5ef36a957702aa4a45b58fe8fe312';
-export const DEX_CONTRACT_ADDRESS = '0x9d4e50d5334235a46231c51394a1d4a6a57bb859';
-export const VAULT_CONTRACT_ADDRESS = '0x8f2a17a3a992e5c808b86559792138a39f4f46c0';
+export const PERPETUALS_CONTRACT_ADDRESS = '0xF62eEc897fa5ef36a957702AA4a45B58fE8Fe312';
+export const DEX_CONTRACT_ADDRESS = '0x5147c5C1Cb5b5D3f56186C37a4bcFBb3Cd0bD5A7';
+export const VAULT_CONTRACT_ADDRESS = '0xBCF063A9eB18bc3C6eB005791C61801B7cB16fe4';
 export const GOVERNOR_CONTRACT_ADDRESS = '0x3a48e7155b410656a81b3cd5206d214695952136';
 
 
@@ -47,8 +47,8 @@ export const GOVERNOR_ABI = parseAbi([
 ]);
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number, abi: typeof genericErc20Abi } } = {
-    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 18, abi: genericErc20Abi },
-    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
+    'USDT': { address: '0xf48883f2ae4c4bf4654f45997fe47d73daa4da07', name: 'Tether', decimals: 6, abi: genericErc20Abi },
+    'USDC': { address: '0x093d305366218d6d09ba10448922f10814b031dd', name: 'USD Coin', decimals: 6, abi: genericErc20Abi },
     'WETH': { address: '0x492844c46cef2d751433739fc3409b7a4a5ba9a7', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
     'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
     'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', name: 'BNB', decimals: 18, abi: genericErc20Abi },

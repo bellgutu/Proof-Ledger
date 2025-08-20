@@ -59,7 +59,7 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
     'LINK': { address: '0xf0f5e9b00b92f3999021fd8b88ac75c351d93fc7', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
     'BNB': { address: '0xdc0a0b1cd093d321bd1044b5e0acb71b525abb6b', name: 'BNB', decimals: 18, abi: genericErc20Abi },
     'SOL': { address: '0x810090f35dfa6b18b5eb59d298e2a2443a2811e2', name: 'Solana', decimals: 18, abi: genericErc20Abi },
-    'ETH': { address: '0x3ca5269b5c54d4c807ca0df7eeb2cb7a5327e77d', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
+    'ETH': { address: undefined, name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
 };
 
 const perpetualsAbi = parseAbi([

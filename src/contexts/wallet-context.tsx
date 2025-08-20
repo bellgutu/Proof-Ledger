@@ -530,28 +530,37 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         
-        const fromTokenSymbol = fromToken === 'ETH' ? 'WETH' : fromToken;
-        const toTokenSymbol = toToken === 'ETH' ? 'WETH' : toToken;
+        const fromTokenSymbolForApproval = fromToken === 'ETH' ? 'WETH' : fromToken;
+        const fromTokenInfo = ERC20_CONTRACTS[fromTokenSymbolForApproval as keyof typeof ERC20_CONTRACTS];
+        
+        if (!fromTokenInfo?.address) throw new Error(`Unsupported fromToken for swap: ${fromToken}`);
 
-        const fromTokenInfo = ERC20_CONTRACTS[fromTokenSymbol as keyof typeof ERC20_CONTRACTS];
-        const toTokenInfo = ERC20_CONTRACTS[toTokenSymbol as keyof typeof ERC20_CONTRACTS];
-
-        if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Unsupported token in swap pair");
-    
         const amountIn = parseUnits(amount.toString(), fromTokenInfo.decimals);
 
-        // First, approve the DEX contract to spend the token
-        const approveHash = await walletClient.writeContract({
-            address: fromTokenInfo.address,
-            abi: fromTokenInfo.abi,
-            functionName: 'approve',
-            args: [DEX_CONTRACT_ADDRESS, amountIn],
-            account
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        // First, approve the DEX contract to spend the token if it's not native ETH
+        if (fromToken !== 'ETH') {
+            const approveHash = await walletClient.writeContract({
+                address: fromTokenInfo.address,
+                abi: erc20Abi, // Use the correct generic ABI for approve
+                functionName: 'approve',
+                args: [DEX_CONTRACT_ADDRESS, amountIn],
+                account
+            });
+            await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        }
 
+        const fromTokenSymbolForPath = fromToken === 'ETH' ? 'WETH' : fromToken;
+        const toTokenSymbolForPath = toToken === 'ETH' ? 'WETH' : toToken;
+
+        const fromTokenInfoForPath = ERC20_CONTRACTS[fromTokenSymbolForPath as keyof typeof ERC20_CONTRACTS];
+        const toTokenInfoForPath = ERC20_CONTRACTS[toTokenSymbolForPath as keyof typeof ERC20_CONTRACTS];
+
+        if (!fromTokenInfoForPath?.address || !toTokenInfoForPath?.address) {
+             throw new Error("Invalid token path for swap.");
+        }
+        
         const amountOutMin = 0n; // No slippage protection for this simulation
-        const path = [fromTokenInfo.address, toTokenInfo.address];
+        const path = [fromTokenInfoForPath.address, toTokenInfoForPath.address];
         const to = account.address;
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 minutes from now
         
@@ -568,6 +577,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               to,
               deadline
             ],
+            // If swapping ETH for a token, we need to send value
+            value: fromToken === 'ETH' ? amountIn : undefined, 
         });
 
         return walletClient.writeContract(request);
@@ -589,7 +600,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         // Approve Vault
         const approveHash = await walletClient.writeContract({
             address: wethInfo.address,
-            abi: wethInfo.abi,
+            abi: erc20Abi,
             functionName: 'approve',
             args: [VAULT_CONTRACT_ADDRESS, amountInWei],
             account
@@ -710,5 +721,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

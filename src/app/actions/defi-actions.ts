@@ -14,7 +14,7 @@ if (!localKey) {
 
 const anvilChain = { ...localhost, id: 31337 };
 
-const account = privateKeyToAccount(localKey as `0x${string}`);
+const account = privateKeyToAccount(`0x${localKey}`);
 
 const walletClient = createWalletClient({
   account,

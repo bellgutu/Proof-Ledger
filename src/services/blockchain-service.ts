@@ -35,8 +35,14 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-  "function swap(address tokenIn, address tokenOut, uint256 amountIn) external returns (uint256 amountOut)"
+    "constructor(address _factory)",
+    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256, uint256, address to, uint256 deadline) returns (uint256 liquidity)",
+    "function factory() view returns (address)",
+    "function removeLiquidity(address tokenA, address tokenB, bool stable, uint256 liquidity, uint256, uint256, address to, uint256 deadline) returns (uint256 amountA, uint256 amountB)",
+    "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, bool stable, address to, uint256 deadline)"
 ]);
+
+
 export const VAULT_ABI = parseAbi([
   "function deposit(uint256 amount) external",
   "function withdraw(uint256 amount) external",
@@ -152,7 +158,7 @@ export async function getActivePosition(userAddress: string): Promise<Position |
     }
     
     const sizeDecimals = 18; 
-    const collateralDecimals = ERC20_CONTRACTS['USDT']?.decimals || 18;
+    const collateralDecimals = 18;
     const priceDecimals = 18;
 
     return {

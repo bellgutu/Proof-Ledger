@@ -521,37 +521,52 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
+    if (!walletAddress) throw new Error("Wallet not connected");
+
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${fromToken} to ${toToken}` };
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         const fromTokenInfo = ERC20_CONTRACTS[fromToken];
+        const toTokenInfo = ERC20_CONTRACTS[toToken];
 
-        if (!fromTokenInfo || !fromTokenInfo.address) throw new Error("Unsupported fromToken");
+        if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Unsupported token in swap pair");
     
         const amountInWei = parseUnits(amountIn.toString(), fromTokenInfo.decimals);
 
         // First, approve the DEX contract to spend the token
-        const tokenContract = getContract({ address: fromTokenInfo.address, abi: fromTokenInfo.abi, client: { public: publicClient, wallet: walletClient } });
-        const approveHash = await tokenContract.write.approve([DEX_CONTRACT_ADDRESS, amountInWei], { account });
+        const approveHash = await walletClient.writeContract({
+            address: fromTokenInfo.address,
+            abi: fromTokenInfo.abi,
+            functionName: 'approve',
+            args: [DEX_CONTRACT_ADDRESS, amountInWei],
+            account
+        });
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
         // Then, perform the swap
-        const toTokenAddress = ERC20_CONTRACTS[toToken]?.address;
-        if (!toTokenAddress) throw new Error(`Unsupported toToken: ${toToken}`);
-
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 minutes from now
+        const path = [fromTokenInfo.address, toTokenInfo.address];
+        
         const { request } = await publicClient.simulateContract({
             account,
             address: DEX_CONTRACT_ADDRESS,
             abi: DEX_ABI,
-            functionName: 'swap',
-            args: [fromTokenInfo.address, toTokenAddress, amountInWei],
+            functionName: 'swapExactTokensForTokens',
+            args: [
+              amountInWei, 
+              0n, // amountOutMin - set to 0 for simplicity in this simulation
+              path,
+              false, // stable swap flag
+              account.address,
+              deadline
+            ],
         });
 
         return walletClient.writeContract(request);
     };
     await executeTransaction('Swap', dialogDetails, txFunction);
-  }, []);
+  }, [walletAddress]);
 
   const depositToVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', to: 'AI Strategy Vault' };
@@ -565,8 +580,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const amountInWei = parseUnits(amount.toString(), wethInfo.decimals);
         
         // Approve Vault
-        const tokenContract = getContract({ address: wethInfo.address, abi: wethInfo.abi, client: { public: publicClient, wallet: walletClient } });
-        const approveHash = await tokenContract.write.approve([VAULT_CONTRACT_ADDRESS, amountInWei], { account });
+        const approveHash = await walletClient.writeContract({
+            address: wethInfo.address,
+            abi: wethInfo.abi,
+            functionName: 'approve',
+            args: [VAULT_CONTRACT_ADDRESS, amountInWei],
+            account
+        });
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
         
         // Deposit
@@ -683,5 +703,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

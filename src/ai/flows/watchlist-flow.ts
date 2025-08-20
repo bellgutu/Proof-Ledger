@@ -42,11 +42,11 @@ const prompt = ai.definePrompt({
 The 'symbol' in your output **must** match the asset symbol provided in the input.
 
 Your briefing should synthesize plausible, simulated information from three key areas:
-1.  **Recent News:** Mention a recent development, partnership, or narrative affecting the asset.
-2.  **Whale Activity:** Describe a significant on-chain movement by large holders (e.g., moving assets to/from exchanges).
-3.  **Technical Analysis:** Reference a key chart pattern or indicator that suggests a potential price direction.
+1.  **Recent News:** Invent a realistic, recent development, partnership, or narrative specifically affecting the asset {{{input}}}. For example, "Recent news suggests {{{input}}} is expanding into the GameFi sector with a new partnership."
+2.  **Whale Activity:** Invent a significant, specific on-chain movement by large holders. For example, "On-chain data shows a large outflow of {{{input}}} from centralized exchanges to private wallets, suggesting accumulation."
+3.  **Technical Analysis:** Invent a reference to a key chart pattern or indicator. For example, "Technical analysis for {{{input}}} shows a bullish flag forming on the 4-hour chart, indicating potential for a breakout."
 
-Combine these three points into a single, coherent paragraph. The tone should be professional and insightful.
+Combine these three invented points into a single, coherent paragraph. The tone should be professional and insightful. Do not use real-world data.
 `,
 });
 

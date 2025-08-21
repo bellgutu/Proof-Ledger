@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState } from 'react';
@@ -41,8 +40,6 @@ export interface UserPosition extends Pool {
   impermanentLoss: number; // Added for IL tracking
 }
 
-const configuredTokens = ['ETH', 'USDT', 'USDC', 'WETH', 'LINK'];
-
 export default function LiquidityPage() {
   const { walletState, walletActions } = useWallet();
   const { isConnected, marketData, availablePools, userPositions } = walletState;
@@ -60,7 +57,7 @@ export default function LiquidityPage() {
   const [newFeeTier, setNewFeeTier] = useState<number | undefined>(0.3);
   const [newPriceRange, setNewPriceRange] = useState({ min: '', max: '' });
   
-  const tokenOptions = configuredTokens;
+  const tokenOptions = Object.keys(marketData);
 
   const handleAddPosition = (pool: Pool, lpTokens: number, share: number, amount1: number, amount2: number) => {
     setUserPositions(prev => {
@@ -170,6 +167,10 @@ export default function LiquidityPage() {
 
   const useSuggestion = (strategy: LPStrategy) => {
     const [t1, t2] = strategy.pair.split('/');
+    if (!tokenOptions.includes(t1) || !tokenOptions.includes(t2)) {
+      toast({ variant: 'destructive', title: 'Unsupported Token', description: `The AI suggested an unsupported token pair: ${strategy.pair}.`});
+      return;
+    }
     setNewToken1(t1);
     setNewToken2(t2);
     setNewFeeTier(strategy.feeTier);

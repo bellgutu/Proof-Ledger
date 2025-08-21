@@ -9,11 +9,25 @@
 import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'viem';
 import { localhost } from 'viem/chains';
 
-const LOCAL_CHAIN_RPC_URL = 'http://127.0.0.1:8545'; // Your blockchain's HTTP RPC endpoint
-export const PERPETUALS_CONTRACT_ADDRESS = '0xF62eEc897fa5ef36a957702AA4a45B58fE8Fe312';
-export const DEX_CONTRACT_ADDRESS = '0x5147c5C1Cb5b5D3f56186C37a4bcFBb3Cd0bD5A7';
-export const VAULT_CONTRACT_ADDRESS = '0xBCF063A9eB18bc3C6eB005791C61801B7cB16fe4';
-export const GOVERNOR_CONTRACT_ADDRESS = '0x3a48e7155b410656a81b3cd5206d214695952136';
+// --- Environment-loaded Contract Addresses ---
+export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0xF62eEc897fa5ef36a957702AA4a45B58fE8Fe312') as `0x${string}`;
+export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER || '0x5147c5C1Cb5b5D3f56186C37a4bcFBb3Cd0bD5A7') as `0x${string}`;
+export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0xBCF063A9eB18bc3C6eB005791C61801B7cB16fe4') as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x3a48e7155b410656a81b3cd5206d214695952136') as `0x${string}`;
+
+// Runtime guards to prevent 'undefined' address errors
+if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
+  throw new Error("Perpetuals contract address not configured — check NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS");
+}
+if (!DEX_CONTRACT_ADDRESS || !DEX_CONTRACT_ADDRESS.startsWith('0x')) {
+  throw new Error("DEX Router address not configured — check NEXT_PUBLIC_DEX_ROUTER");
+}
+if (!VAULT_CONTRACT_ADDRESS || !VAULT_CONTRACT_ADDRESS.startsWith('0x')) {
+  throw new Error("Vault contract address not configured — check NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS");
+}
+if (!GOVERNOR_CONTRACT_ADDRESS || !GOVERNOR_CONTRACT_ADDRESS.startsWith('0x')) {
+  throw new Error("Governor contract address not configured — check NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS");
+}
 
 
 const anvilChain = defineChain({
@@ -28,28 +42,28 @@ export interface ChainAsset {
 }
 
 const genericErc20Abi = parseAbi([
-    "function balanceOf(address account) external view returns (uint256)",
-    "function allowance(address owner, address spender) external view returns (uint256)",
-    "function approve(address spender, uint256 amount) external returns (bool)",
-    "function transfer(address to, uint256 amount) external returns (bool)"
+  "function balanceOf(address account) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function transfer(address to, uint256 amount) returns (bool)"
 ]);
 
 export const DEX_ABI = parseAbi([
-    "constructor(address _factory)",
-    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256, uint256, address to, uint256 deadline) returns (uint256 liquidity)",
-    "function factory() view returns (address)",
-    "function removeLiquidity(address tokenA, address tokenB, bool stable, uint256 liquidity, uint256, uint256, address to, uint256 deadline) returns (uint256 amountA, uint256 amountB)",
-    "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, bool stable, address to, uint256 deadline)"
+  "constructor(address)",
+  "function addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256) returns (uint256)",
+  "function factory() view returns (address)",
+  "function removeLiquidity(address,address,bool,uint256,uint256,uint256,address,uint256) returns (uint256,uint256)",
+  "function swapExactTokensForTokens(uint256,uint256,address[],bool,address,uint256)"
 ]);
 
 
 export const VAULT_ABI = parseAbi([
-  "function deposit(uint256 amount) external",
-  "function withdraw(uint256 amount) external",
-  "function balance(address user) external view returns (uint256)"
+  "function deposit(uint256)",
+  "function withdraw(uint256)",
+  "function balance(address) view returns (uint256)"
 ]);
 export const GOVERNOR_ABI = parseAbi([
-  "function castVote(uint256 proposalId, uint8 support) external returns (uint256)"
+  "function castVote(uint256,uint8) returns (uint256)"
 ]);
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number, abi: typeof genericErc20Abi } } = {

@@ -23,7 +23,7 @@ interface AddLiquidityDialogProps {
 export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: AddLiquidityDialogProps) {
   const { walletState, walletActions } = useWallet();
   const { marketData, balances } = walletState;
-  const { updateBalance } = walletActions;
+  const { addLiquidity } = walletActions;
   
   const { toast } = useToast();
   
@@ -62,7 +62,7 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
     }
   };
 
-  const handleDeposit = () => {
+  const handleDeposit = async () => {
     const numAmount1 = parseFloat(amount1) || 0;
     const numAmount2 = parseFloat(amount2) || 0;
 
@@ -82,22 +82,25 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
     }
 
     setIsDepositing(true);
-    setTimeout(() => {
-        if(numAmount1 > 0) updateBalance(token1, -numAmount1);
-        if(numAmount2 > 0) updateBalance(token2, -numAmount2);
 
-        const lpTokensReceived = Math.sqrt(numAmount1 * numAmount2); // Simplified LP calculation
-        const poolValue = (pool.tvl + numAmount1 * token1Price + numAmount2 * token2Price);
-        const poolShare = poolValue > 0 ? (lpTokensReceived / poolValue) * 100 : 100;
-        
-        onAddPosition(pool, lpTokensReceived, poolShare, numAmount1, numAmount2);
-
-        toast({ title: 'Liquidity Added', description: `You received ${lpTokensReceived.toFixed(4)} LP tokens.` });
-        setIsDepositing(false);
-        setAmount1('');
-        setAmount2('');
-        setIsOpen(false);
-    }, 1500);
+    try {
+      await addLiquidity(token1, token2, numAmount1, numAmount2, pool.type === 'Stable');
+      // The onAddPosition logic is now optimistic and might not be needed, or can be triggered by a tx success event.
+      // For now, we'll keep the optimistic update for UI responsiveness.
+      const lpTokensReceived = Math.sqrt(numAmount1 * numAmount2); // Simplified LP calculation
+      const poolValue = (pool.tvl + numAmount1 * token1Price + numAmount2 * token2Price);
+      const poolShare = poolValue > 0 ? (lpTokensReceived / poolValue) * 100 : 100;
+      onAddPosition(pool, lpTokensReceived, poolShare, numAmount1, numAmount2);
+      
+      toast({ title: 'Add Liquidity Submitted', description: 'Your transaction is being processed.' });
+      setAmount1('');
+      setAmount2('');
+      setIsOpen(false);
+    } catch(e) {
+      // Error is handled by wallet context dialog
+    } finally {
+      setIsDepositing(false);
+    }
   };
   
   const isV3AndUnset = pool.type === 'V3' && !pool.priceRange;
@@ -159,3 +162,5 @@ export function AddLiquidityDialog({ isOpen, setIsOpen, pool, onAddPosition }: A
     </Dialog>
   );
 }
+
+    

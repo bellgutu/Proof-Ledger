@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS } from '@/services/blockchain-service';
+import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits as viemFormatUnits } from 'viem';
 import { localhost } from 'viem/chains';
@@ -121,6 +121,7 @@ interface WalletContextType {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 // --- CONFIG & CONSTANTS ---
+const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x59b670e9fA9D0A427751Af201D676719a970857b') as `0x${string}`;
 
 const anvilChain = defineChain({
   ...localhost,
@@ -451,20 +452,24 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
-        if (tokenSymbol === 'ETH') {
-            return walletClient.sendTransaction({
+        const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+
+        if (!tokenInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
+
+        if (tokenSymbol === 'ETH' && ERC20_CONTRACTS['ETH'].address === undefined) {
+             return walletClient.sendTransaction({
                 account,
                 to: toAddress as `0x${string}`,
                 value: parseUnits(amount.toString(), 18)
             });
-        } else {
-            const contractInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-            if (!contractInfo || !contractInfo.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
+        }
+        else {
+            if (!tokenInfo.address) throw new Error(`Contract address for ${tokenSymbol} not found`);
             return walletClient.writeContract({
-                address: contractInfo.address,
+                address: tokenInfo.address,
                 abi: erc20Abi,
                 functionName: 'transfer',
-                args: [toAddress as `0x${string}`, parseUnits(amount.toString(), contractInfo.decimals)],
+                args: [toAddress as `0x${string}`, parseUnits(amount.toString(), tokenInfo.decimals)],
                 account
             });
         }

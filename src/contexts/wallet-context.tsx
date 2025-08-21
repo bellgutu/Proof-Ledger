@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -109,7 +110,6 @@ interface WalletActions {
   depositToVault: (amount: number) => Promise<void>;
   withdrawFromVault: (amount: number) => Promise<void>;
   voteOnProposal: (proposalId: string, support: number) => Promise<void>;
-  approveToken: (tokenSymbol: string, amount: number) => Promise<boolean>;
   addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => Promise<void>;
 }
 
@@ -135,6 +135,9 @@ const publicClient = createPublicClient({
 
 
 const erc20Abi = parseAbi([
+    "function name() view returns (string)",
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
     "function balanceOf(address account) external view returns (uint256)",
     "function allowance(address owner, address spender) external view returns (uint256)",
     "function approve(address spender, uint256 amount) external returns (bool)",
@@ -468,14 +471,20 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     };
     await executeTransaction('Send', dialogDetails, txFunction);
   }, [walletAddress]);
-
-  const approveToken = useCallback(async (tokenSymbol: string, amount: number): Promise<boolean> => {
+  
+  const approveTokenForRouter = useCallback(async (tokenSymbol: string, amount: number): Promise<boolean> => {
     if (!walletAddress) throw new Error("Wallet not connected");
+    // Native ETH doesn't require approval.
+    if (tokenSymbol === 'ETH') return true;
 
-    const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-    if (!tokenInfo || !tokenInfo.address) throw new Error(`Unsupported token for approval: ${tokenSymbol}`);
-
-    const dialogDetails = { amount, token: tokenSymbol, to: 'DEX Router' };
+    const tokenToApproveSymbol = tokenSymbol === 'ETH' ? 'WETH' : tokenSymbol;
+    const tokenInfo = ERC20_CONTRACTS[tokenToApproveSymbol as keyof typeof ERC20_CONTRACTS];
+    if (!tokenInfo || !tokenInfo.address) {
+        toast({ variant: 'destructive', title: 'Configuration Error', description: `Token ${tokenToApproveSymbol} is not configured.` });
+        return false;
+    }
+    
+    const dialogDetails = { amount, token: tokenToApproveSymbol, to: 'DEX Router' };
     try {
         await executeTransaction('Approve', dialogDetails, async () => {
             const walletClient = getWalletClient();
@@ -489,79 +498,60 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             });
             return await walletClient.writeContract(request);
         });
+        toast({ title: 'Approval Successful', description: `Approved DEX to spend ${amount} ${tokenToApproveSymbol}`});
         return true;
     } catch(e) {
         console.error("Approval failed", e);
         return false;
     }
-  }, [walletAddress]);
+  }, [walletAddress, toast]);
+
 
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
-    if (!walletAddress) {
-      throw new Error("Wallet not connected");
-    }
+    if (!walletAddress) throw new Error("Wallet not connected");
 
     const tokenToApprove = fromToken === 'ETH' ? 'WETH' : fromToken;
-    const approvalSuccess = await approveToken(tokenToApprove, amountIn);
+    const approvalSuccess = await approveTokenForRouter(tokenToApprove, amountIn);
+    
+    if (!approvalSuccess) return;
 
-    if (!approvalSuccess) {
-      toast({ variant: 'destructive', title: 'Approval Failed', description: `Could not approve ${tokenToApprove} for swapping.`});
-      return;
-    }
+    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${fromToken} for ${toToken}` };
+    await executeTransaction('Swap', dialogDetails, async () => {
+      const walletClient = getWalletClient();
+      const [account] = await walletClient.getAddresses();
+      
+      const fromTokenInfo = ERC20_CONTRACTS[fromToken === 'ETH' ? 'WETH' : fromToken];
+      const toTokenInfo = ERC20_CONTRACTS[toToken === 'ETH' ? 'WETH' : toToken];
+      
+      if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Invalid token path for swap.");
 
-    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${fromToken} to ${toToken}` };
-    const txFunction = async () => {
-        const walletClient = getWalletClient();
-        const [account] = await walletClient.getAddresses();
-        
-        const fromTokenInfo = ERC20_CONTRACTS[tokenToApprove as keyof typeof ERC20_CONTRACTS];
-        const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
+      const amountInWei = parseUnits(amountIn.toString(), fromTokenInfo.decimals);
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 mins
 
-        if (!fromTokenInfo?.address || !toTokenInfo?.address) {
-             throw new Error("Invalid token path for swap.");
-        }
-        
-        const amountInWei = parseUnits(amountIn.toString(), fromTokenInfo.decimals);
-        const amountOutMin = 0n; // No slippage protection for this simulation
-        const path = [fromTokenInfo.address, toTokenInfo.address];
-        const to = account.address;
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 minutes from now
-        
-        const { request } = await publicClient.simulateContract({
-            account,
-            address: DEX_CONTRACT_ADDRESS,
-            abi: DEX_ABI,
-            functionName: 'swapExactTokensForTokens',
-            args: [
-              amountInWei,
-              amountOutMin,
-              path,
-              false, // stable
-              to,
-              deadline
-            ],
-            // If swapping ETH for a token, we need to send value
-            value: fromToken === 'ETH' ? amountInWei : undefined, 
-        });
+      const { request } = await publicClient.simulateContract({
+        account,
+        address: DEX_CONTRACT_ADDRESS,
+        abi: DEX_ABI,
+        functionName: 'swapExactTokensForTokens',
+        args: [amountInWei, 0n, [fromTokenInfo.address, toTokenInfo.address], false, account, deadline],
+        value: fromToken === 'ETH' ? amountInWei : 0n,
+      });
 
-        return walletClient.writeContract(request);
-    };
-    await executeTransaction('Swap', dialogDetails, txFunction);
-  }, [walletAddress, approveToken, toast]);
+      return await walletClient.writeContract(request);
+    });
+  }, [walletAddress, approveTokenForRouter]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
       if (!walletAddress) throw new Error("Wallet not connected");
 
-      const approveA = await approveToken(tokenA, amountA);
-      const approveB = await approveToken(tokenB, amountB);
-
-      if(!approveA || !approveB) {
-          toast({ variant: 'destructive', title: 'Approval Failed', description: 'Could not approve tokens for adding liquidity.'});
-          return;
-      }
+      const approveASuccess = await approveTokenForRouter(tokenA, amountA);
+      if (!approveASuccess) return;
+      
+      const approveBSuccess = await approveTokenForRouter(tokenB, amountB);
+      if (!approveBSuccess) return;
       
       const dialogDetails = { details: `Add ${amountA} ${tokenA} and ${amountB} ${tokenB} to pool` };
-      const txFunction = async () => {
+      await executeTransaction('Add Liquidity', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         
@@ -579,24 +569,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             address: DEX_CONTRACT_ADDRESS,
             abi: DEX_ABI,
             functionName: "addLiquidity",
-            args: [
-                tokenAInfo.address,
-                tokenBInfo.address,
-                stable,
-                amountADesired,
-                amountBDesired,
-                0n, // amountAMin
-                0n, // amountBMin
-                account,
-                deadline
-            ]
+            args: [ tokenAInfo.address, tokenBInfo.address, stable, amountADesired, amountBDesired, 0n, 0n, account, deadline ]
         });
 
         return walletClient.writeContract(request);
-      };
-
-      await executeTransaction('Add Liquidity', dialogDetails, txFunction);
-  }, [walletAddress, approveToken, toast]);
+      });
+  }, [walletAddress, approveTokenForRouter]);
   
   const approveCollateral = useCallback(async (amount: string) => {
       const contractInfo = ERC20_CONTRACTS['USDT'];
@@ -770,7 +748,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           connectWallet, disconnectWallet, updateBalance, setBalances, sendTokens, addTransaction,
           updateTransactionStatus, setVaultWeth, setActiveStrategy, setProposals, setAvailablePools,
           setUserPositions, setTxStatusDialog, approveCollateral, openPosition, closePosition,
-          swapTokens, depositToVault, withdrawFromVault, voteOnProposal, approveToken, addLiquidity
+          swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity
       }
   }
 

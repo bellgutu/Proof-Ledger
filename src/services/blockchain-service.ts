@@ -10,10 +10,10 @@ import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'vi
 import { localhost } from 'viem/chains';
 
 // --- Environment-loaded Contract Addresses ---
-export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F') as `0x${string}`;
-export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER || '0xc5a5C42992dECbae36851359345FE25997F5C42d') as `0x${string}`;
-export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0x4A679253410272dd5232B3Ff7cF5dbB88f295319') as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x59b670e9fA9D0A427751Af201D676719a970857b') as `0x${string}`;
+export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0x8d375dE3D5DDde8d8caAaD6a4c31bD291756180b') as `0x${string}`;
+export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER || '0x9852795dbb01913439f534b4984fBf74aC8AfA12') as `0x${string}`;
+export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0x4458AcB1185aD869F982D51b5b0b87e23767A3A9') as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d') as `0x${string}`;
 
 // Runtime guards to prevent 'undefined' address errors
 if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
@@ -70,13 +70,13 @@ export const GOVERNOR_ABI = parseAbi([
 ]);
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number, abi: typeof genericErc20Abi } } = {
-    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 18, abi: genericErc20Abi },
-    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
-    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
-    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
-    'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016', name: 'BNB', decimals: 18, abi: genericErc20Abi },
-    'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'Solana', decimals: 18, abi: genericErc20Abi },
-    'ETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
+    'USDT': { address: '0x20BBE62B175134D21b10C157498b663F048672bA', name: 'Tether', decimals: 18, abi: genericErc20Abi },
+    'USDC': { address: '0xa68E430060f74F9821D2dC9A9E2CE3aF7d842EBe', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
+    'WETH': { address: '0x4432a6DcfAEAB227673B43C30c6fEf40eaBD5D30', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
+    'LINK': { address: '0xA4aE77554847958aC0854f06601267c9F9C75dfD', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
+    'BNB': { address: '0x4A351C6aE3249499CBb50E8FE6566E2615386Da8', name: 'BNB', decimals: 18, abi: genericErc20Abi },
+    'SOL': { address: '0x20F5f006a0184883068bBF58fb0c526A8EEa8BFD', name: 'Solana', decimals: 18, abi: genericErc20Abi },
+    'ETH': { address: '0xC0340c0831Aa40A0791cF8C3Ab4287EB0a9705d8', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
 };
 
 const perpetualsAbi = parseAbi([
@@ -99,7 +99,7 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     console.error("[BlockchainService] Error connecting to local blockchain for ETH balance:", error);
   }
 
-  const tokenSymbols = Object.keys(ERC20_CONTRACTS).filter(symbol => symbol !== 'ETH' && ERC20_CONTRACTS[symbol].address !== '0x0165878A594ca255338adfa4d48449f69242Eb8F');
+  const tokenSymbols = Object.keys(ERC20_CONTRACTS).filter(symbol => symbol !== 'ETH');
   
   for (const symbol of tokenSymbols) {
     const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];

@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_CONTRACT_ADDRESS } from '@/services/blockchain-service';
+import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits as viemFormatUnits } from 'viem';
 import { localhost } from 'viem/chains';
@@ -747,7 +747,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const [account] = await walletClient.getAddresses();
         const { request } = await publicClient.simulateContract({
             account,
-            address: GOVERNOR_CONTRACT_ADDRESS,
+            address: GOVERNOR_ADDR,
             abi: GOVERNOR_ABI,
             functionName: 'castVote',
             args: [BigInt(proposalId), support]
@@ -819,3 +819,4 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+

@@ -453,12 +453,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const [account] = await walletClient.getAddresses();
 
         if (tokenSymbol === 'ETH') {
-            const { request } = await publicClient.simulateContract({
+            return walletClient.sendTransaction({
                 account,
                 to: toAddress as `0x${string}`,
                 value: parseUnits(amount.toString(), 18)
             });
-            return walletClient.writeContract(request);
         } else {
             const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
             if (!tokenInfo || !tokenInfo.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
@@ -819,3 +818,4 @@ export const useWallet = (): WalletContextType => {
   return context;
 };
 
+    

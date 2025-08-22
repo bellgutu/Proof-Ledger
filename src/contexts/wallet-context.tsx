@@ -121,7 +121,7 @@ interface WalletContextType {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 // --- CONFIG & CONSTANTS ---
-const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x59b670e9fA9D0A427751Af201D676719a970857b') as `0x${string}`;
+const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d') as `0x${string}`;
 
 const anvilChain = defineChain({
   ...localhost,
@@ -169,9 +169,8 @@ const initialMarketData: MarketData = {
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '1', name: 'ETH/USDT', type: 'V2', token1: 'ETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
-    { id: '2', name: 'WETH/USDC', type: 'V2', token1: 'WETH', token2: 'USDC', tvl: 120_000_000, volume24h: 25_000_000, apr: 11.8, feeTier: 0.3 },
-    { id: '3', name: 'USDT/USDC', type: 'Stable', token1: 'USDT', token2: 'USDC', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '0x3D888300626c50C6Ac2054f2Dd5929a068f533aD', name: 'USDT/USDC', type: 'Stable', token1: 'USDT', token2: 'USDC', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '0x03d6E52c8De32BB21F60A98bd188FdCb6c53227c', name: 'USDT/WETH', type: 'V2', token1: 'USDT', token2: 'WETH', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
     { id: '4', name: 'ETH/LINK', type: 'V3', token1: 'ETH', token2: 'LINK', tvl: 80_000_000, volume24h: 15_000_000, apr: 18.2, feeTier: 1.0, priceRange: { min: 150, max: 250 } },
 ];
 

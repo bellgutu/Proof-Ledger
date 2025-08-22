@@ -9,10 +9,10 @@ import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'vi
 import { localhost } from 'viem/chains';
 
 // --- Environment-loaded Contract Addresses ---
-export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0xf93b0549cD50c849D792f0eAE94A598fA77C7718') as `0x${string}`;
-export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER || '0x29023DE63D7075B4cC2CE30B55f050f9c67548d4') as `0x${string}`;
-export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0x4c04377f90Eb1E42D845AB21De874803B8773669') as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x6fFa22292b86D678fF6621eEdC9B15e68dC44DcD') as `0x${string}`;
+export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) as `0x${string}`;
+export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER) as `0x${string}`;
+export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS) as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
 
 // Runtime guards to prevent 'undefined' address errors
 if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
@@ -108,13 +108,23 @@ export async function getWalletAssets(address: string): Promise<ChainAsset[]> {
     }
     
     try {
+      const name = await publicClient.readContract({
+        address: contract.address,
+        abi: contract.abi,
+        functionName: 'name',
+      });
+       const decimals = await publicClient.readContract({
+        address: contract.address,
+        abi: contract.abi,
+        functionName: 'decimals',
+      });
       const balance = await publicClient.readContract({
         address: contract.address,
         abi: contract.abi,
         functionName: 'balanceOf',
         args: [address as `0x${string}`]
       });
-      assets.push({ symbol, name: contract.name, balance: parseFloat(formatUnits(balance, contract.decimals)) });
+      assets.push({ symbol, name: name, balance: parseFloat(formatUnits(balance, decimals)) });
     } catch(e) {
       console.error(`[BlockchainService] Error fetching balance for ${symbol}:`, e)
     }

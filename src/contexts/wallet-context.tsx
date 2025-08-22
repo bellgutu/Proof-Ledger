@@ -13,7 +13,7 @@ import { localhost } from 'viem/chains';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface Transaction {
@@ -55,7 +55,6 @@ export interface Proposal {
   description: string;
   votesFor: number;
   votesAgainst: number;
-
   userVote?: 'for' | 'against';
 }
 
@@ -111,6 +110,8 @@ interface WalletActions {
   withdrawFromVault: (amount: number) => Promise<void>;
   voteOnProposal: (proposalId: string, support: number) => Promise<void>;
   addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => Promise<void>;
+  removeLiquidity: (position: UserPosition, percentage: number) => Promise<void>;
+  claimRewards: (position: UserPosition) => Promise<void>;
 }
 
 interface WalletContextType {
@@ -508,7 +509,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         console.error("Approval failed", e);
         return false;
     }
-  }, [walletAddress, toast]);
+  }, [walletAddress, toast, executeTransaction]);
 
 
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
@@ -524,8 +525,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const walletClient = getWalletClient();
       const [account] = await walletClient.getAddresses();
       
-      const fromTokenInfo = ERC20_CONTRACTS[fromToken === 'ETH' ? 'WETH' : fromToken];
-      const toTokenInfo = ERC20_CONTRACTS[toToken === 'ETH' ? 'WETH' : toToken];
+      const fromTokenInfo = ERC20_CONTRACTS[fromToken === 'ETH' ? 'WETH' : fromToken as keyof typeof ERC20_CONTRACTS];
+      const toTokenInfo = ERC20_CONTRACTS[toToken === 'ETH' ? 'WETH' : toToken as keyof typeof ERC20_CONTRACTS];
       
       if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Invalid token path for swap.");
 
@@ -543,7 +544,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
       return await walletClient.writeContract(request);
     });
-  }, [walletAddress, approveTokenForRouter]);
+  }, [walletAddress, approveTokenForRouter, executeTransaction]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
       if (!walletAddress) throw new Error("Wallet not connected");
@@ -554,7 +555,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const approveBSuccess = await approveTokenForRouter(tokenB, amountB);
       if (!approveBSuccess) return;
       
-      const dialogDetails = { details: `Add ${amountA} ${tokenA} and ${amountB} ${tokenB} to pool` };
+      const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
       await executeTransaction('Add Liquidity', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
@@ -578,7 +579,53 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
         return walletClient.writeContract(request);
       });
-  }, [walletAddress, approveTokenForRouter]);
+  }, [walletAddress, approveTokenForRouter, executeTransaction]);
+
+  const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
+      if (!walletAddress) throw new Error("Wallet not connected");
+
+      const dialogDetails = { details: `Remove ${percentage}% of liquidity from ${position.name} pool`};
+      await executeTransaction('Remove Liquidity', dialogDetails, async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        
+        const tokenAInfo = ERC20_CONTRACTS[position.token1 as keyof typeof ERC20_CONTRACTS];
+        const tokenBInfo = ERC20_CONTRACTS[position.token2 as keyof typeof ERC20_CONTRACTS];
+        
+        if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for liquidity");
+
+        // This is a simplified calculation for demo purposes. A real app would get this from the LP token contract.
+        const liquidityToRemove = parseUnits((position.lpTokens * (percentage / 100)).toString(), 18);
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
+
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: DEX_CONTRACT_ADDRESS,
+            abi: DEX_ABI,
+            functionName: "removeLiquidity",
+            args: [ tokenAInfo.address, tokenBInfo.address, position.type === 'Stable', liquidityToRemove, 0n, 0n, account, deadline ]
+        });
+
+        return walletClient.writeContract(request);
+      });
+  }, [walletAddress, executeTransaction]);
+
+  const claimRewards = useCallback(async (position: UserPosition) => {
+      // This is a simulated function for the demo as rewards contracts are complex.
+      // In a real app, this would call a `claim` or `harvest` function on a staking or rewards contract.
+      updateBalance('USDT', position.unclaimedRewards);
+      setUserPositions(prev => prev.map(p => {
+        if (p.id === position.id) {
+          return { ...p, unclaimedRewards: 0 };
+        }
+        return p;
+      }));
+      addTransaction({
+        type: 'Claim Rewards',
+        details: `Claimed $${position.unclaimedRewards.toFixed(2)} rewards from ${position.name} pool.`
+      });
+      toast({ title: 'Rewards Claimed!', description: `$${position.unclaimedRewards.toFixed(2)} has been added to your wallet.`});
+  }, [addTransaction, updateBalance, toast]);
   
   const approveCollateral = useCallback(async (amount: string) => {
       const contractInfo = ERC20_CONTRACTS['USDT'];
@@ -596,7 +643,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
       };
       await executeTransaction('Approve', dialogDetails, txFunction);
-  }, []);
+  }, [executeTransaction]);
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
       const { side, size, collateral } = params;
@@ -618,7 +665,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
       };
       await executeTransaction('Open Position', dialogDetails, txFunction);
-  }, []);
+  }, [executeTransaction]);
 
   const closePosition = useCallback(async () => {
       const dialogDetails = { to: 'Perpetuals Contract' };
@@ -633,7 +680,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
       }
       await executeTransaction('Close Position', dialogDetails, txFunction);
-  }, []);
+  }, [executeTransaction]);
 
   const depositToVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', to: 'AI Strategy Vault' };
@@ -668,7 +715,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vault Deposit', dialogDetails, txFunction);
-  }, []);
+  }, [executeTransaction]);
   
   const withdrawFromVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', details: 'Withdraw from AI Strategy Vault' };
@@ -690,7 +737,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vault Withdraw', dialogDetails, txFunction);
-  }, []);
+  }, [executeTransaction]);
 
   const voteOnProposal = useCallback(async (proposalId: string, support: number) => {
     const dialogDetails = { details: `Vote on proposal #${proposalId}` };
@@ -708,7 +755,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vote', dialogDetails, txFunction);
-  }, []);
+  }, [executeTransaction]);
 
   // Effect for polling for external wallet updates
   useEffect(() => {
@@ -752,7 +799,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           connectWallet, disconnectWallet, updateBalance, setBalances, sendTokens, addTransaction,
           updateTransactionStatus, setVaultWeth, setActiveStrategy, setProposals, setAvailablePools,
           setUserPositions, setTxStatusDialog, approveCollateral, openPosition, closePosition,
-          swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity
+          swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
+          claimRewards
       }
   }
 
@@ -770,5 +818,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

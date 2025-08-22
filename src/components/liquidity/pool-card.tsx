@@ -10,20 +10,28 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { type Pool, type UserPosition } from '@/components/pages/liquidity';
 import { AddLiquidityDialog } from './add-liquidity-dialog';
 import { ManageLiquidityDialog } from './manage-liquidity-dialog';
+import { useWallet } from '@/contexts/wallet-context';
 
 interface PoolCardProps {
   pool: Pool;
   userPosition?: UserPosition;
   onAddPosition: (pool: Pool, lpTokens: number, share: number, amount1: number, amount2: number) => void;
-  onUpdatePosition: (poolId: string, lpAmount: number, shareChange: number) => void;
-  onClaimRewards: (positionId: string, rewards: number) => void;
 }
 
-export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition, onClaimRewards }: PoolCardProps) {
+export function PoolCard({ pool, userPosition, onAddPosition }: PoolCardProps) {
+  const { walletActions } = useWallet();
+  const { claimRewards } = walletActions;
+
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isManageDialogOpen, setIsManageDialogOpen] = React.useState(false);
 
   const [token1, token2] = pool.name.split('/');
+
+  const handleClaim = () => {
+    if (userPosition && userPosition.unclaimedRewards > 0) {
+      claimRewards(userPosition);
+    }
+  }
   
   return (
     <>
@@ -99,7 +107,7 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition, 
                       size="sm" 
                       variant="link" 
                       className="p-0 h-auto text-primary"
-                      onClick={() => onClaimRewards(userPosition.id, userPosition.unclaimedRewards)}
+                      onClick={handleClaim}
                       disabled={userPosition.unclaimedRewards <= 0}
                     >
                       Claim
@@ -122,7 +130,6 @@ export function PoolCard({ pool, userPosition, onAddPosition, onUpdatePosition, 
           isOpen={isManageDialogOpen}
           setIsOpen={setIsManageDialogOpen}
           position={userPosition}
-          onUpdatePosition={onUpdatePosition}
         />
       )}
     </>

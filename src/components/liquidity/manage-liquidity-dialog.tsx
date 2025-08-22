@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -15,12 +16,11 @@ interface ManageLiquidityDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   position: UserPosition;
-  onUpdatePosition: (poolId: string, lpAmount: number, shareChange: number) => void;
 }
 
-export function ManageLiquidityDialog({ isOpen, setIsOpen, position, onUpdatePosition }: ManageLiquidityDialogProps) {
-  const { walletState, walletActions } = useWallet();
-  const { marketData } = walletState;
+export function ManageLiquidityDialog({ isOpen, setIsOpen, position }: ManageLiquidityDialogProps) {
+  const { walletActions } = useWallet();
+  const { removeLiquidity } = walletActions;
   
   const { toast } = useToast();
   
@@ -29,27 +29,24 @@ export function ManageLiquidityDialog({ isOpen, setIsOpen, position, onUpdatePos
   
   const [token1, token2] = position.name.split('/');
 
-  const handleWithdraw = () => {
-    const percent = withdrawPercent[0] / 100;
-    const lpToRemove = position.lpTokens * percent;
-    
-    if (lpToRemove <= 0) {
+  const handleWithdraw = async () => {
+    const percent = withdrawPercent[0];
+    if (percent <= 0) {
       toast({ variant: 'destructive', title: 'Invalid amount' });
       return;
     }
 
     setIsProcessing(true);
-    setTimeout(() => {
-      // For a real app, this would be a complex calculation based on current pool reserves
-      const shareToRemove = position.share * percent;
-      
-      onUpdatePosition(position.id, -lpToRemove, -shareToRemove);
-
-      toast({ title: 'Liquidity Withdrawn', description: `You have successfully withdrawn ${percent * 100}% of your position.` });
+    try {
+      await removeLiquidity(position, percent);
+      toast({ title: 'Withdraw Submitted', description: `Your transaction to withdraw ${percent}% is processing.` });
+      setIsOpen(false);
+    } catch(e) {
+      // Error is handled by wallet context dialog
+    } finally {
       setIsProcessing(false);
       setWithdrawPercent([50]);
-      setIsOpen(false);
-    }, 1500);
+    }
   };
   
   return (

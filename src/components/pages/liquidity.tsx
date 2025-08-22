@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from 'react';
@@ -43,7 +44,7 @@ export interface UserPosition extends Pool {
 export default function LiquidityPage() {
   const { walletState, walletActions } = useWallet();
   const { isConnected, marketData, availablePools, userPositions } = walletState;
-  const { updateBalance, addTransaction, setAvailablePools, setUserPositions } = walletActions;
+  const { addTransaction, setAvailablePools, setUserPositions, claimRewards } = walletActions;
   const { toast } = useToast();
   
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -71,46 +72,13 @@ export default function LiquidityPage() {
       return [...prev, { ...pool, lpTokens, share, unclaimedRewards: Math.random() * 50, impermanentLoss: Math.random() * -5 }];
     });
 
-    addTransaction({
-      type: 'Add Liquidity',
-      details: `Added ${amount1.toFixed(2)} ${pool.token1} and ${amount2.toFixed(2)} ${pool.token2} to ${pool.name} pool`,
-    });
+    // The transaction is now added via executeTransaction in the context, so this is redundant
+    // addTransaction({
+    //   type: 'Add Liquidity',
+    //   details: `Added ${amount1.toFixed(2)} ${pool.token1} and ${amount2.toFixed(2)} ${pool.token2} to ${pool.name} pool`,
+    // });
   };
 
-  const handleUpdatePosition = (poolId: string, lpAmount: number, shareChange: number) => {
-     setUserPositions(prev => prev.map(p => {
-      if (p.id === poolId) {
-        if(p.lpTokens + lpAmount > 0.00001) {
-          addTransaction({
-            type: 'Remove Liquidity',
-            details: `Removed ${(shareChange / p.share * 100).toFixed(2)}% of liquidity from ${p.name} pool`
-          });
-        }
-        return { ...p, lpTokens: p.lpTokens + lpAmount, share: p.share + shareChange };
-      }
-      return p;
-    }).filter(p => p.lpTokens > 0.00001));
-  };
-
-  const handleClaimRewards = (positionId: string, rewards: number) => {
-    const position = userPositions.find(p => p.id === positionId);
-    if(!position) return;
-
-    updateBalance('USDT', rewards); // Assuming rewards are in USDT
-    setUserPositions(prev => prev.map(p => {
-      if (p.id === positionId) {
-        return { ...p, unclaimedRewards: 0 };
-      }
-      return p;
-    }));
-
-    addTransaction({
-      type: 'Add Liquidity',
-      details: `Claimed $${rewards.toFixed(2)} rewards from ${position.name} pool.`
-    });
-
-    toast({ title: 'Rewards Claimed!', description: `$${rewards.toFixed(2)} has been added to your wallet.`});
-  };
 
   const handleCreatePool = () => {
     if (!newToken1 || !newToken2 || (newPoolType !== 'Stable' && !newFeeTier) || newToken1 === newToken2) {
@@ -202,8 +170,6 @@ export default function LiquidityPage() {
                         pool={position}
                         userPosition={position} 
                         onAddPosition={handleAddPosition}
-                        onUpdatePosition={handleUpdatePosition}
-                        onClaimRewards={handleClaimRewards}
                       />
                     ))
                   ) : (
@@ -223,9 +189,7 @@ export default function LiquidityPage() {
                         key={`avail-${pool.id}`} 
                         pool={pool} 
                         onAddPosition={handleAddPosition}
-                        onUpdatePosition={handleUpdatePosition}
                         userPosition={userPositions.find(p => p.id === pool.id)}
-                        onClaimRewards={handleClaimRewards}
                       />
                   ))}
                 </CardContent>

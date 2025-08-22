@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI } from '@/services/blockchain-service';
+import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_CONTRACT_ADDRESS } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits as viemFormatUnits } from 'viem';
 import { localhost } from 'viem/chains';
@@ -122,7 +122,6 @@ interface WalletContextType {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 // --- CONFIG & CONSTANTS ---
-const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d') as `0x${string}`;
 
 const anvilChain = defineChain({
   ...localhost,
@@ -170,8 +169,8 @@ const initialMarketData: MarketData = {
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '0x3D888300626c50C6Ac2054f2Dd5929a068f533aD', name: 'USDT/USDC', type: 'Stable', token1: 'USDT', token2: 'USDC', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
-    { id: '0x03d6E52c8De32BB21F60A98bd188FdCb6c53227c', name: 'USDT/WETH', type: 'V2', token1: 'USDT', token2: 'WETH', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '0xe3464d7B906F82Bcb546909B854c65784A0bf1cd', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '0xDbc59fE0d9a1a4FB63685F52Cf92fb8EbD9102F0', name: 'WETH/USDT', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
     { id: '4', name: 'ETH/LINK', type: 'V3', token1: 'ETH', token2: 'LINK', tvl: 80_000_000, volume24h: 15_000_000, apr: 18.2, feeTier: 1.0, priceRange: { min: 150, max: 250 } },
 ];
 

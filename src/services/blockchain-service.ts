@@ -1,5 +1,4 @@
 
-
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -10,10 +9,10 @@ import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'vi
 import { localhost } from 'viem/chains';
 
 // --- Environment-loaded Contract Addresses ---
-export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0x8d375dE3D5DDde8d8caAaD6a4c31bD291756180b') as `0x${string}`;
-export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER || '0x9852795dbb01913439f534b4984fBf74aC8AfA12') as `0x${string}`;
-export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0x4458AcB1185aD869F982D51b5b0b87e23767A3A9') as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x0aD6371dd7E9923d9968D63Eb8B9858c700abD9d') as `0x${string}`;
+export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0xf93b0549cD50c849D792f0eAE94A598fA77C7718') as `0x${string}`;
+export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER || '0x29023DE63D7075B4cC2CE30B55f050f9c67548d4') as `0x${string}`;
+export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0x4c04377f90Eb1E42D845AB21De874803B8773669') as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x6fFa22292b86D678fF6621eEdC9B15e68dC44DcD') as `0x${string}`;
 
 // Runtime guards to prevent 'undefined' address errors
 if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
@@ -70,13 +69,13 @@ export const GOVERNOR_ABI = parseAbi([
 ]);
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number, abi: typeof genericErc20Abi } } = {
-    'USDT': { address: '0x20BBE62B175134D21b10C157498b663F048672bA', name: 'Tether', decimals: 18, abi: genericErc20Abi },
-    'USDC': { address: '0xa68E430060f74F9821D2dC9A9E2CE3aF7d842EBe', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
-    'WETH': { address: '0x4432a6DcfAEAB227673B43C30c6fEf40eaBD5D30', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
-    'LINK': { address: '0xA4aE77554847958aC0854f06601267c9F9C75dfD', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
-    'BNB': { address: '0x4A351C6aE3249499CBb50E8FE6566E2615386Da8', name: 'BNB', decimals: 18, abi: genericErc20Abi },
-    'SOL': { address: '0x20F5f006a0184883068bBF58fb0c526A8EEa8BFD', name: 'Solana', decimals: 18, abi: genericErc20Abi },
-    'ETH': { address: '0xC0340c0831Aa40A0791cF8C3Ab4287EB0a9705d8', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
+    'USDT': { address: '0xF357118EBd576f3C812c7875B1A1651a7f140E9C', name: 'Tether', decimals: 18, abi: genericErc20Abi },
+    'USDC': { address: '0xb6057e08a11da09a998985874FE2119e98dB3D5D', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
+    'WETH': { address: '0x876939152C56362e17D508B9DEA77a3fDF9e4083', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
+    'LINK': { address: '0x3C2BafebbB0c8c58f39A976e725cD20D611d01e9', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
+    'BNB': { address: '0x4Dd5336F3C0D70893A7a86c6aEBe9B953E87c891', name: 'BNB', decimals: 18, abi: genericErc20Abi },
+    'SOL': { address: '0x54287AaB4D98eA51a3B1FBceE56dAf27E04a56A6', name: 'Solana', decimals: 18, abi: genericErc20Abi },
+    'ETH': { address: '0x4278C5d322aB92F1D876Dd7Bd9b44d1748b88af2', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
 };
 
 const perpetualsAbi = parseAbi([

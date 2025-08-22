@@ -483,7 +483,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     // Native ETH doesn't require approval.
     if (tokenSymbol === 'ETH') return true;
 
-    const tokenToApproveSymbol = tokenSymbol === 'ETH' ? 'WETH' : tokenSymbol;
+    const tokenToApproveSymbol = tokenSymbol;
     const tokenInfo = ERC20_CONTRACTS[tokenToApproveSymbol as keyof typeof ERC20_CONTRACTS];
     if (!tokenInfo || !tokenInfo.address) {
         toast({ variant: 'destructive', title: 'Configuration Error', description: `Token ${tokenToApproveSymbol} is not configured.` });
@@ -516,7 +516,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
 
-    const tokenToApprove = fromToken === 'ETH' ? 'WETH' : fromToken;
+    const tokenToApprove = fromToken;
     const approvalSuccess = await approveTokenForRouter(tokenToApprove, amountIn);
     
     if (!approvalSuccess) return;
@@ -526,8 +526,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const walletClient = getWalletClient();
       const [account] = await walletClient.getAddresses();
       
-      const fromTokenInfo = ERC20_CONTRACTS[fromToken === 'ETH' ? 'WETH' : fromToken as keyof typeof ERC20_CONTRACTS];
-      const toTokenInfo = ERC20_CONTRACTS[toToken === 'ETH' ? 'WETH' : toToken as keyof typeof ERC20_CONTRACTS];
+      const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
+      const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
       
       if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Invalid token path for swap.");
 

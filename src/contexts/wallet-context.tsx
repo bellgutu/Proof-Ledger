@@ -448,22 +448,23 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (!walletAddress) throw new Error("Wallet not connected");
     
     const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
+
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
 
-        if (!tokenInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
-
-        if (tokenSymbol === 'ETH' && ERC20_CONTRACTS['ETH'].address === undefined) {
-             return walletClient.sendTransaction({
+        if (tokenSymbol === 'ETH') {
+            // Handle native ETH transfer
+            return walletClient.sendTransaction({
                 account,
                 to: toAddress as `0x${string}`,
                 value: parseUnits(amount.toString(), 18)
             });
-        }
-        else {
-            if (!tokenInfo.address) throw new Error(`Contract address for ${tokenSymbol} not found`);
+        } else {
+            // Handle ERC20 token transfer
+            if (!tokenInfo || !tokenInfo.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
+            
             return walletClient.writeContract({
                 address: tokenInfo.address,
                 abi: erc20Abi,
@@ -473,8 +474,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             });
         }
     };
+
     await executeTransaction('Send', dialogDetails, txFunction);
-  }, [walletAddress]);
+  }, [walletAddress, executeTransaction]);
   
   const approveTokenForRouter = useCallback(async (tokenSymbol: string, amount: number): Promise<boolean> => {
     if (!walletAddress) throw new Error("Wallet not connected");

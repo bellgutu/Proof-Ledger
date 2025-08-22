@@ -69,13 +69,13 @@ export const GOVERNOR_ABI = parseAbi([
 ]);
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string, decimals: number, abi: typeof genericErc20Abi } } = {
-    'USDT': { address: '0xF357118EBd576f3C812c7875B1A1651a7f140E9C', name: 'Tether', decimals: 18, abi: genericErc20Abi },
-    'USDC': { address: '0xb6057e08a11da09a998985874FE2119e98dB3D5D', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
-    'WETH': { address: '0x876939152C56362e17D508B9DEA77a3fDF9e4083', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
-    'LINK': { address: '0x3C2BafebbB0c8c58f39A976e725cD20D611d01e9', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
-    'BNB': { address: '0x4Dd5336F3C0D70893A7a86c6aEBe9B953E87c891', name: 'BNB', decimals: 18, abi: genericErc20Abi },
-    'SOL': { address: '0x54287AaB4D98eA51a3B1FBceE56dAf27E04a56A6', name: 'Solana', decimals: 18, abi: genericErc20Abi },
-    'ETH': { address: '0x4278C5d322aB92F1D876Dd7Bd9b44d1748b88af2', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
+    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 18, abi: genericErc20Abi },
+    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin', decimals: 18, abi: genericErc20Abi },
+    'ETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F', name: 'Ethereum', decimals: 18, abi: genericErc20Abi },
+    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether', decimals: 18, abi: genericErc20Abi },
+    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink', decimals: 18, abi: genericErc20Abi },
+    'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016', name: 'BNB', decimals: 18, abi: genericErc20Abi },
+    'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'Solana', decimals: 18, abi: genericErc20Abi },
 };
 
 const perpetualsAbi = parseAbi([
@@ -221,5 +221,3 @@ export async function getCollateralAllowance(ownerAddress: string): Promise<numb
     return 0;
   }
 }
-
-

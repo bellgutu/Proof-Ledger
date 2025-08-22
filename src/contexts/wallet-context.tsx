@@ -171,7 +171,6 @@ const initialMarketData: MarketData = {
 const initialAvailablePools: Pool[] = [
     { id: '0xe3464d7B906F82Bcb546909B854c65784A0bf1cd', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
     { id: '0xDbc59fE0d9a1a4FB63685F52Cf92fb8EbD9102F0', name: 'WETH/USDT', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
-    { id: '4', name: 'ETH/LINK', type: 'V3', token1: 'ETH', token2: 'LINK', tvl: 80_000_000, volume24h: 15_000_000, apr: 18.2, feeTier: 1.0, priceRange: { min: 150, max: 250 } },
 ];
 
 const initialProposals: Proposal[] = [
@@ -452,26 +451,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
-        const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
 
         if (tokenSymbol === 'ETH') {
-            // Handle native ETH transfer
-            return walletClient.sendTransaction({
+            const { request } = await publicClient.simulateContract({
                 account,
                 to: toAddress as `0x${string}`,
                 value: parseUnits(amount.toString(), 18)
             });
+            return walletClient.writeContract(request);
         } else {
-            // Handle ERC20 token transfer
+            const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
             if (!tokenInfo || !tokenInfo.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
             
-            return walletClient.writeContract({
-                address: tokenInfo.address,
-                abi: erc20Abi,
-                functionName: 'transfer',
-                args: [toAddress as `0x${string}`, parseUnits(amount.toString(), tokenInfo.decimals)],
-                account
+            const { request } = await publicClient.simulateContract({
+                 account,
+                 address: tokenInfo.address,
+                 abi: erc20Abi,
+                 functionName: 'transfer',
+                 args: [toAddress as `0x${string}`, parseUnits(amount.toString(), tokenInfo.decimals)],
             });
+            return walletClient.writeContract(request);
         }
     };
 
@@ -612,8 +611,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, executeTransaction]);
 
   const claimRewards = useCallback(async (position: UserPosition) => {
-      // This is a simulated function for the demo as rewards contracts are complex.
-      // In a real app, this would call a `claim` or `harvest` function on a staking or rewards contract.
+      if (!walletAddress) throw new Error("Wallet not connected");
+
       updateBalance('USDT', position.unclaimedRewards);
       setUserPositions(prev => prev.map(p => {
         if (p.id === position.id) {
@@ -626,7 +625,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         details: `Claimed $${position.unclaimedRewards.toFixed(2)} rewards from ${position.name} pool.`
       });
       toast({ title: 'Rewards Claimed!', description: `$${position.unclaimedRewards.toFixed(2)} has been added to your wallet.`});
-  }, [addTransaction, updateBalance, toast]);
+  }, [addTransaction, updateBalance, toast, walletAddress]);
   
   const approveCollateral = useCallback(async (amount: string) => {
       const contractInfo = ERC20_CONTRACTS['USDT'];
@@ -819,4 +818,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-

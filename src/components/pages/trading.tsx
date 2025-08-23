@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
-import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck, Copy, Info, PlusCircle, MinusCircle, PiggyBank } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, Loader2, Info, PlusCircle, MinusCircle, PiggyBank } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,19 +19,20 @@ import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Slider } from '../ui/slider';
 
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, balances, marketData, walletAddress, vaultCollateral } = walletState;
+  const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals } = walletState;
   const { depositCollateral, withdrawCollateral, openPosition, closePosition } = walletActions;
   const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
-  const [tradeCollateral, setTradeCollateral] = useState('');
+  const [leverage, setLeverage] = useState([10]);
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
 
   const [depositAmount, setDepositAmount] = useState('');
@@ -50,8 +51,15 @@ const TradingPageContent = () => {
   
   const usdtBalance = balances['USDT'] || 0;
   
-  const asset = selectedPair.split('/[0]');
   const tradingViewSymbol = `BINANCE:${selectedPair.split('/')[0]}USDT`;
+
+  const requiredCollateral = useMemo(() => {
+    const sizeNum = parseFloat(tradeSize);
+    const price = currentPrice;
+    if (!sizeNum || !price || leverage[0] === 0) return 0;
+    const positionValue = sizeNum * price;
+    return positionValue / leverage[0];
+  }, [tradeSize, currentPrice, leverage]);
   
 
   useEffect(() => {
@@ -91,7 +99,7 @@ const TradingPageContent = () => {
 
   const handlePairChange = (pair: string) => {
     if(activePosition) {
-      toast({ title: "Action blocked", description: "Close your active position before changing pairs."});
+      toast({ variant: 'destructive', title: "Action blocked", description: "Close your active position before changing pairs."});
       return;
     }
     setSelectedPair(pair);
@@ -146,29 +154,21 @@ const TradingPageContent = () => {
 
 
   const handlePlaceTradeReview = () => {
-    const collateralNum = parseFloat(tradeCollateral);
     const sizeNum = parseFloat(tradeSize);
 
     if (isNaN(sizeNum) || sizeNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid trade size' });
         return;
     };
-    if (isNaN(collateralNum) || collateralNum <= 0) {
+    if (requiredCollateral <= 0) {
         toast({ variant: 'destructive', title: 'Invalid collateral amount' });
         return;
     };
-    if (collateralNum > vaultCollateral.available) {
-      toast({ variant: 'destructive', title: 'Insufficient Available Collateral', description: `You need to have at least ${collateralNum.toFixed(2)} USDT deposited in the vault and available.` });
+    if (requiredCollateral > vaultCollateral.available) {
+      toast({ variant: 'destructive', title: 'Insufficient Available Collateral', description: `You need to have at least ${requiredCollateral.toFixed(2)} USDT deposited in the vault and available for this trade.` });
       return;
     }
     
-    const positionValue = sizeNum * currentPrice;
-    const maxLeverage = 10;
-    if (positionValue > collateralNum * maxLeverage) {
-        toast({ variant: 'destructive', title: 'Leverage Too High', description: `Your collateral is too low for this position size. Max leverage is ${maxLeverage}x.`});
-        return;
-    }
-
     setIsConfirmOpen(true);
   };
   
@@ -182,11 +182,10 @@ const TradingPageContent = () => {
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
           size: tradeSize.toString(),
-          collateral: tradeCollateral.toString()
+          collateral: requiredCollateral.toString()
       });
       
       setTradeSize('');
-      setTradeCollateral('');
       await fetchPosition();
 
     } catch(e: any) {
@@ -223,13 +222,6 @@ const TradingPageContent = () => {
     return pnl;
   };
 
-  const leverage = useMemo(() => {
-    const sizeNum = parseFloat(tradeSize);
-    const collateralNum = parseFloat(tradeCollateral);
-    if (!sizeNum || !collateralNum || !currentPrice) return 0;
-    const positionValue = sizeNum * currentPrice;
-    return positionValue / collateralNum;
-  }, [tradeSize, tradeCollateral, currentPrice]);
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
@@ -279,7 +271,7 @@ const TradingPageContent = () => {
                     {(pos => {
                         const pnl = calculatePnl(pos);
                         const positionValue = pos.size * currentPrice;
-                        const leverage = pos.collateral > 0 ? positionValue / pos.collateral : 0;
+                        const currentLeverage = pos.collateral > 0 ? positionValue / pos.collateral : 0;
                         return (
                             <div key={pos.entryPrice} className="p-4 bg-background rounded-md border">
                                 <div className="flex flex-wrap items-center justify-between mt-1 gap-4">
@@ -288,7 +280,7 @@ const TradingPageContent = () => {
                                 </span>
                                 <div className="flex items-center gap-4">
                                   <span className="text-foreground font-semibold">Entry: ${pos.entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
-                                  <span className="text-foreground font-semibold">Leverage: {leverage.toFixed(2)}x</span>
+                                  <span className="text-foreground font-semibold">Leverage: {currentLeverage.toFixed(2)}x</span>
                                 </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
@@ -335,7 +327,7 @@ const TradingPageContent = () => {
                         <Label htmlFor="deposit-amount">Amount to Deposit (USDT)</Label>
                         <Input id="deposit-amount" type="number" placeholder="0.0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} />
                         <p className="text-xs text-muted-foreground text-right">Wallet Balance: {usdtBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                        <Button onClick={handleDeposit} disabled={isDepositing} className="w-full">
+                        <Button onClick={handleDeposit} disabled={isDepositing || !isConnected} className="w-full">
                            {isDepositing ? <Loader2 className="animate-spin" /> : "Deposit Collateral"}
                         </Button>
                     </TabsContent>
@@ -343,7 +335,7 @@ const TradingPageContent = () => {
                         <Label htmlFor="withdraw-amount">Amount to Withdraw (USDT)</Label>
                         <Input id="withdraw-amount" type="number" placeholder="0.0" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
                         <p className="text-xs text-muted-foreground text-right">Available in Vault: {vaultCollateral.available.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                        <Button onClick={handleWithdraw} disabled={isWithdrawing} variant="destructive" className="w-full">
+                        <Button onClick={handleWithdraw} disabled={isWithdrawing || !isConnected} variant="destructive" className="w-full">
                            {isWithdrawing ? <Loader2 className="animate-spin" /> : "Withdraw Collateral"}
                         </Button>
                     </TabsContent>
@@ -370,29 +362,27 @@ const TradingPageContent = () => {
               />
             </div>
              <div>
-              <Label htmlFor="collateral-amount">Collateral to Lock (USDT)</Label>
-              <Input
-                id="collateral-amount"
-                type="number"
-                value={tradeCollateral}
-                onChange={(e) => setTradeCollateral(e.target.value)}
-                disabled={!isConnected || !!activePosition}
-                placeholder="0.0"
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Available in Vault: {vaultCollateral.available.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <div className="flex justify-between items-center">
+                    <Label htmlFor="leverage-slider">Leverage</Label>
+                    <span className="font-bold text-primary">{leverage[0]}x</span>
+                </div>
+                <Slider
+                    id="leverage-slider"
+                    value={leverage}
+                    onValueChange={setLeverage}
+                    max={10}
+                    min={1}
+                    step={0.5}
+                    disabled={!isConnected || !!activePosition}
+                    className="mt-2"
+                />
             </div>
             
-            <div className="p-2 bg-muted/50 rounded-md text-sm text-center font-semibold">
-                Leverage: <span className={leverage > 10 ? "text-destructive" : "text-primary"}>{leverage.toFixed(2)}x</span>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Info className="inline-block ml-2 h-4 w-4 text-muted-foreground cursor-help"/>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Max leverage is 10x.</p>
-                    </TooltipContent>
-                </Tooltip>
+            <div className="p-3 bg-muted/50 rounded-md text-sm text-center">
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Required Collateral:</span>
+                    <span className="font-bold text-foreground">{requiredCollateral.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+                </div>
             </div>
             
             <div className="flex space-x-2">
@@ -436,15 +426,15 @@ const TradingPageContent = () => {
               <span className="font-mono">{tradeSize} {selectedPair.split('/')[0]}</span>
             </div>
              <div className="flex justify-between">
-              <span className="text-muted-foreground">Collateral to Lock:</span>
-              <span className="font-mono">{tradeCollateral} USDT</span>
+              <span className="text-muted-foreground">Required Collateral:</span>
+              <span className="font-mono">{requiredCollateral.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
             </div>
              <div className="flex justify-between">
               <span className="text-muted-foreground">Leverage:</span>
-              <span className="font-mono">{leverage.toFixed(2)}x</span>
+              <span className="font-mono">{leverage[0]}x</span>
             </div>
              <div className="flex justify-between">
-              <span className="text-muted-foreground">Current Price:</span>
+              <span className="text-muted-foreground">Est. Entry Price:</span>
               <span className="font-mono">${currentPrice.toLocaleString()}</span>
             </div>
           </div>
@@ -488,3 +478,5 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
+
+    

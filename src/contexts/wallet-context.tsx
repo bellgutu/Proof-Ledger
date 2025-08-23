@@ -144,26 +144,10 @@ const erc20Abi = parseAbi([
     "function transfer(address to, uint256 amount) external returns (bool)"
 ]);
 
-const perpetualsAbi = [
-    {
-        "inputs": [
-            { "internalType": "uint8", "name": "side", "type": "uint8" },
-            { "internalType": "uint256", "name": "size", "type": "uint256" },
-            { "internalType": "uint256", "name": "collateral", "type": "uint256" }
-        ],
-        "name": "openPosition",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "closePosition",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    }
-] as const;
+const perpetualsAbi = parseAbi([
+    "function openPosition(uint8 side, uint256 size, uint256 collateral) external",
+    "function closePosition() external",
+]);
 
 
 // --- INITIAL STATE ---
@@ -394,7 +378,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           }).finally(async () => {
              // Refresh balances after any successful tx
              if(walletAddress) {
-                const remoteAssets = await getWalletAssets(walletAddress);
+                const remoteAssets = await getWalletAssets(walletAddress as `0x${string}`);
                 const newBalances = remoteAssets.reduce((acc, asset) => {
                     acc[asset.symbol] = asset.balance;
                     return acc;
@@ -466,25 +450,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const [account] = await walletClient.getAddresses();
 
     const txFunction = async () => {
-        if (tokenSymbol === 'ETH') {
-            return walletClient.sendTransaction({
-                account,
-                to: toAddress as `0x${string}`,
-                value: parseUnits(amount.toString(), 18)
-            });
-        } else {
-            const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-            if (!tokenInfo || !tokenInfo.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
-            
-            const { request } = await publicClient.simulateContract({
-                 account,
-                 address: tokenInfo.address,
-                 abi: erc20Abi,
-                 functionName: 'transfer',
-                 args: [toAddress as `0x${string}`, parseUnits(amount.toString(), tokenInfo.decimals)],
-            });
-            return walletClient.writeContract(request);
-        }
+      const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+      
+      if (tokenSymbol === 'ETH') {
+          return walletClient.sendTransaction({
+              account,
+              to: toAddress as `0x${string}`,
+              value: parseUnits(amount.toString(), 18)
+          });
+      } else if (!tokenInfo) {
+          throw new Error(`Unsupported token: ${tokenSymbol}`);
+      } else {
+          const { request } = await publicClient.simulateContract({
+               account,
+               address: tokenInfo.address,
+               abi: erc20Abi,
+               functionName: 'transfer',
+               args: [toAddress as `0x${string}`, parseUnits(amount.toString(), tokenInfo.decimals)],
+          });
+          return walletClient.writeContract(request);
+      }
     };
 
     await executeTransaction('Send', dialogDetails, txFunction);
@@ -661,9 +646,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
       const { side, size, collateral } = params;
       const collateralContractInfo = ERC20_CONTRACTS['USDT'];
-      const tradeContractInfo = ERC20_CONTRACTS['ETH']; // Assuming ETH-based perpetuals for now
       
-      if (!collateralContractInfo.address || !tradeContractInfo) throw new Error("Contract info missing");
+      if (!collateralContractInfo) throw new Error("Collateral contract info (USDT) missing");
+      
+      const sizeInSmallestUnit = parseUnits(size, 6);
+      const collateralInSmallestUnit = parseUnits(collateral, collateralContractInfo.decimals);
 
       const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract' };
       const txFunction = async () => {
@@ -673,7 +660,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: perpetualsAbi,
               functionName: 'openPosition',
-              args: [side, parseUnits(size, tradeContractInfo.decimals), parseUnits(collateral, collateralContractInfo.decimals)],
+              args: [side, sizeInSmallestUnit, collateralInSmallestUnit],
               account
           });
       };
@@ -781,7 +768,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         if (!isUpdatingStateRef.current) {
             try {
-                const remoteAssets = await getWalletAssets(walletAddress);
+                const remoteAssets = await getWalletAssets(walletAddress as `0x${string}`);
                 if (!isCancelled) {
                     const newBalances = remoteAssets.reduce((acc, asset) => {
                         acc[asset.symbol] = asset.balance;

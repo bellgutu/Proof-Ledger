@@ -1,38 +1,13 @@
 
 import { NextResponse } from 'next/server';
+import { getNewsBriefing } from '@/ai/flows/news-generator-flow';
 
 export async function GET(request: Request) {
-  const apiKey = process.env.CRYTOPANIC_API_KEY;
-
-  if (!apiKey) {
-    return NextResponse.json({ message: 'CryptoPanic API key is not configured.' }, { status: 500 });
-  }
-
   try {
-    const url = `https://cryptopanic.com/api/developer/v2/posts/?auth_token=${apiKey}&public=true`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      console.error(`CryptoPanic API request failed with status ${response.status}`);
-      const errorBody = await response.text();
-      console.error('Error body:', errorBody);
-      return NextResponse.json({ message: `CryptoPanic API request failed` }, { status: response.status });
-    }
-
-    const data = await response.json();
-    
-    const articles = data.results.map((article: any) => ({
-        id: article.id,
-        title: article.title,
-        url: article.url,
-        domain: article.domain,
-        createdAt: article.created_at,
-    }));
-
-    return NextResponse.json({ articles });
-
+    const newsData = await getNewsBriefing();
+    return NextResponse.json({ articles: newsData.articles });
   } catch (error) {
-    console.error('Failed to fetch from CryptoPanic API:', error);
+    console.error('Failed to fetch from AI news generator:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }

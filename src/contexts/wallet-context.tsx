@@ -133,6 +133,9 @@ const anvilChain = defineChain({
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
+  multicall: {
+    batch: false,
+  },
 });
 
 

@@ -79,6 +79,9 @@ const perpetualsAbi = parseAbi([
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
+  multicall: {
+    batch: false,
+  },
 })
 
 export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsset[]> {
@@ -89,28 +92,32 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
     const ethBalance = await publicClient.getBalance({ address });
     assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatTokenAmount(ethBalance, 18)), decimals: 18 });
 
-    const balanceCalls = tokenSymbols.flatMap(symbol => {
+    for (const symbol of tokenSymbols) {
       const contract = ERC20_CONTRACTS[symbol];
-      return [
-        { address: contract.address, abi: genericErc20Abi, functionName: 'balanceOf', args: [address] },
-        { address: contract.address, abi: genericErc20Abi, functionName: 'decimals' },
-      ] as const;
-    });
-
-    const results = await publicClient.multicall({ contracts: balanceCalls, allowFailure: false });
-
-    for (let i = 0; i < tokenSymbols.length; i++) {
-        const symbol = tokenSymbols[i];
-        const contract = ERC20_CONTRACTS[symbol];
-        const balance = results[i * 2] as bigint;
-        const decimals = results[i * 2 + 1] as number;
+      try {
+        const [balance, decimals] = await Promise.all([
+          publicClient.readContract({
+            address: contract.address,
+            abi: genericErc20Abi,
+            functionName: 'balanceOf',
+            args: [address],
+          }),
+          publicClient.readContract({
+            address: contract.address,
+            abi: genericErc20Abi,
+            functionName: 'decimals',
+          }),
+        ]);
 
         assets.push({
-            symbol,
-            name: contract.name,
-            balance: parseFloat(formatTokenAmount(balance, decimals)),
-            decimals,
+          symbol,
+          name: contract.name,
+          balance: parseFloat(formatTokenAmount(balance, decimals)),
+          decimals,
         });
+      } catch (tokenError) {
+        console.warn(`[BlockchainService] Failed to fetch data for ${symbol}:`, tokenError);
+      }
     }
 
   } catch (error) {

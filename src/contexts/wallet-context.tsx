@@ -6,7 +6,7 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets, getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI } from '@/services/blockchain-service';
 import type { VaultCollateral } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
 import { localhost } from 'viem/chains';
 import { parseTokenAmount } from '@/lib/format';
 
@@ -618,8 +618,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const tokenBInfo = ERC20_CONTRACTS[position.token2 as keyof typeof ERC20_CONTRACTS];
         
         if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for liquidity");
-
-        const liquidityToRemove = parseTokenAmount((position.lpTokens * (percentage / 100)).toString(), 18);
+        
+        const lpDecimals = 18; // LP tokens are standard
+        const liquidityToRemove = parseTokenAmount((position.lpTokens * (percentage / 100)).toString(), lpDecimals);
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
 
         const { request } = await publicClient.simulateContract({
@@ -635,7 +636,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, executeTransaction]);
 
   const claimRewards = useCallback(async (position: UserPosition) => {
-      if (!walletAddress) throw new Error("Wallet not connected");
+      if (!walletAddress) return;
 
       updateBalance('USDT', position.unclaimedRewards);
       setUserPositions(prev => prev.map(p => {
@@ -714,7 +715,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const sizeInSmallestUnit = parseTokenAmount(size, usdtDecimals);
       const collateralInSmallestUnit = parseTokenAmount(collateral, usdtDecimals);
 
-      const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract' };
+      const dialogDetails = { 
+        amount: parseFloat(collateral), 
+        token: 'USDT', 
+        to: 'Perpetuals Contract',
+        details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH`
+      };
       const txFunction = async () => {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();
@@ -731,7 +737,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [executeTransaction, decimals]);
 
   const closePosition = useCallback(async () => {
-      const dialogDetails = { to: 'Perpetuals Contract' };
+      const dialogDetails = { to: 'Perpetuals Contract', details: 'Close active position' };
       const txFunction = async () => {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();

@@ -131,6 +131,9 @@ const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
   pollingInterval: undefined,
+  batch: {
+    multicall: false, 
+  },
 });
 
 
@@ -473,7 +476,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     };
 
     await executeTransaction('Send', dialogDetails, txFunction);
-  }, [walletAddress, executeTransaction]);
+  }, [walletAddress]);
   
   const approveTokenForRouter = useCallback(async (tokenSymbol: string, amount: number): Promise<boolean> => {
     if (!walletAddress) throw new Error("Wallet not connected");

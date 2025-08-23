@@ -94,6 +94,9 @@ const perpetualsAbi = parseAbi([
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
+  batch: {
+    multicall: false, 
+  },
 })
 
 // --- Efficiently fetches all wallet assets using multicall ---
@@ -112,26 +115,26 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
       } as const;
     });
 
-    const [ethBalance, tokenBalances] = await Promise.all([
-        publicClient.getBalance({ address }),
-        publicClient.multicall({ contracts: balanceCalls })
+    const [ethBalance, ...tokenBalanceResults] = await Promise.all([
+      publicClient.getBalance({ address }),
+      ...balanceCalls.map(call => publicClient.readContract(call).catch(e => {
+          console.warn(`[BlockchainService] Failed to fetch balance for a token:`, e);
+          return null;
+      }))
     ]);
 
     assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatUnits(ethBalance, 18)) });
 
-    tokenBalances.forEach((result, index) => {
-        const symbol = tokenSymbols[index];
-        const contract = ERC20_CONTRACTS[symbol];
-        if (result.status === 'success') {
-            const balance = result.result as bigint;
-            assets.push({
-                symbol,
-                name: contract.name,
-                balance: parseFloat(formatUnits(balance, contract.decimals))
-            });
-        } else {
-            console.warn(`[BlockchainService] Failed to fetch balance for ${symbol}:`, result.error);
-        }
+    tokenBalanceResults.forEach((balance, index) => {
+      const symbol = tokenSymbols[index];
+      const contract = ERC20_CONTRACTS[symbol];
+      if (balance !== null) {
+          assets.push({
+              symbol,
+              name: contract.name,
+              balance: parseFloat(formatUnits(balance as bigint, contract.decimals))
+          });
+      }
     });
 
   } catch (error) {

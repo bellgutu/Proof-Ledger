@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
@@ -56,8 +57,10 @@ export const DEX_ABI = parseAbi([
 export const VAULT_ABI = parseAbi([
   "function deposit(uint256)",
   "function withdraw(uint256)",
-  "function balance(address) view returns (uint256)"
+  "function collateral(address) view returns (uint256)",
+  "function lockedCollateral(address) view returns (uint256)"
 ]);
+
 export const GOVERNOR_ABI = parseAbi([
   "function castVote(uint256,uint8) returns (uint256)"
 ]);
@@ -73,6 +76,8 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, name
 
 
 const perpetualsAbi = parseAbi([
+  "function openPosition(uint8 side, uint256 size, uint256 collateral) external",
+  "function closePosition() external",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
 ]);
 
@@ -155,6 +160,40 @@ export interface Position {
   collateral: number;
   entryPrice: number;
   active: boolean;
+}
+
+export interface VaultCollateral {
+  total: number;
+  locked: number;
+  available: number;
+}
+
+export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
+  const usdtDecimals = 6;
+  try {
+    const [total, locked] = await Promise.all([
+      publicClient.readContract({
+        address: VAULT_CONTRACT_ADDRESS,
+        abi: VAULT_ABI,
+        functionName: 'collateral',
+        args: [userAddress],
+      }),
+      publicClient.readContract({
+        address: VAULT_CONTRACT_ADDRESS,
+        abi: VAULT_ABI,
+        functionName: 'lockedCollateral',
+        args: [userAddress],
+      })
+    ]);
+    const totalF = parseFloat(formatTokenAmount(total, usdtDecimals));
+    const lockedF = parseFloat(formatTokenAmount(locked, usdtDecimals));
+
+    return { total: totalF, locked: lockedF, available: totalF - lockedF };
+
+  } catch(e) {
+    console.error("[BlockchainService] Failed to fetch vault collateral", e);
+    return { total: 0, locked: 0, available: 0 };
+  }
 }
 
 export async function getActivePosition(userAddress: `0x${string}`): Promise<Position | null> {

@@ -3,9 +3,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
-import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck, Copy, Info } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck, Copy, Info, PlusCircle, MinusCircle, PiggyBank } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,49 +14,45 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, getCollateralAllowance } from '@/services/blockchain-service';
+import { getActivePosition, getVaultCollateral } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, balances, marketData, walletAddress } = walletState;
-  const { approveCollateral, openPosition, closePosition } = walletActions;
+  const { isConnected, balances, marketData, walletAddress, vaultCollateral } = walletState;
+  const { depositCollateral, withdrawCollateral, openPosition, closePosition } = walletActions;
   const { toast } = useToast();
 
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
-  const [tradeAmount, setTradeAmount] = useState('');
-  const [collateralAmount, setCollateralAmount] = useState('');
+  const [tradeSize, setTradeSize] = useState('');
+  const [tradeCollateral, setTradeCollateral] = useState('');
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
 
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isApproving, setIsApproving] = useState(false);
+  const [isDepositing, setIsDepositing] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  
   const [activePosition, setActivePosition] = useState<Position | null>(null);
   const [isLoadingPosition, setIsLoadingPosition] = useState(true);
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [allowance, setAllowance] = useState(0);
-
+  
   const usdtBalance = balances['USDT'] || 0;
   
-  const asset = selectedPair.split('/')[0];
-  const tradingViewSymbol = `BINANCE:${asset}USDT`;
+  const asset = selectedPair.split('/[0]');
+  const tradingViewSymbol = `BINANCE:${selectedPair.split('/')[0]}USDT`;
   
-  const checkAllowance = useCallback(async () => {
-    if (!isConnected || !walletAddress) return;
-    try {
-      const currentAllowance = await getCollateralAllowance(walletAddress);
-      setAllowance(currentAllowance);
-    } catch (e) {
-      console.error("Failed to fetch allowance", e);
-      setAllowance(0);
-    }
-  }, [isConnected, walletAddress]);
 
   useEffect(() => {
     const pairAsset = selectedPair.split('/')[0];
@@ -87,13 +83,11 @@ const TradingPageContent = () => {
 
   useEffect(() => {
     fetchPosition();
-    checkAllowance();
     const interval = setInterval(() => {
       fetchPosition();
-      checkAllowance();
     }, 5000);
     return () => clearInterval(interval);
-  }, [fetchPosition, checkAllowance]);
+  }, [fetchPosition]);
 
   const handlePairChange = (pair: string) => {
     if(activePosition) {
@@ -105,35 +99,55 @@ const TradingPageContent = () => {
     if (marketData[pairAsset]) {
         setCurrentPrice(marketData[pairAsset].price);
     }
-    setTradeAmount('');
+    setTradeSize('');
   };
 
-  const handleApprove = async () => {
-    const collateralNum = parseFloat(collateralAmount);
-    if (isNaN(collateralNum) || collateralNum <= 0) {
-        toast({ variant: 'destructive', title: 'Invalid collateral amount' });
+  const handleDeposit = async () => {
+    const amount = parseFloat(depositAmount);
+    if(isNaN(amount) || amount <= 0) {
+        toast({variant: 'destructive', title: 'Invalid amount'});
         return;
-    };
-     if (collateralNum > usdtBalance) {
-      toast({ variant: 'destructive', title: 'Insufficient Collateral', description: `You need at least ${collateralNum.toFixed(2)} USDT for this trade.` });
-      return;
     }
-    
-    setIsApproving(true);
+    if(amount > usdtBalance) {
+        toast({variant: 'destructive', title: 'Insufficient USDT balance'});
+        return;
+    }
+    setIsDepositing(true);
     try {
-       await approveCollateral(collateralAmount);
-       await checkAllowance();
-    } catch(e: any) {
-        // Error is handled by the wallet context dialog
+        await depositCollateral(depositAmount);
+        setDepositAmount('');
+    } catch(e) {
+        // error handled by context
     } finally {
-        setIsApproving(false);
+        setIsDepositing(false);
     }
-  };
+  }
+  
+  const handleWithdraw = async () => {
+      const amount = parseFloat(withdrawAmount);
+      if (isNaN(amount) || amount <= 0) {
+          toast({ variant: 'destructive', title: 'Invalid amount' });
+          return;
+      }
+      if (amount > vaultCollateral.available) {
+          toast({ variant: 'destructive', title: 'Insufficient available collateral' });
+          return;
+      }
+      setIsWithdrawing(true);
+      try {
+          await withdrawCollateral(withdrawAmount);
+          setWithdrawAmount('');
+      } catch (e) {
+          // error handled by context
+      } finally {
+          setIsWithdrawing(false);
+      }
+  }
 
 
   const handlePlaceTradeReview = () => {
-    const collateralNum = parseFloat(collateralAmount);
-    const sizeNum = parseFloat(tradeAmount);
+    const collateralNum = parseFloat(tradeCollateral);
+    const sizeNum = parseFloat(tradeSize);
 
     if (isNaN(sizeNum) || sizeNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid trade size' });
@@ -143,13 +157,9 @@ const TradingPageContent = () => {
         toast({ variant: 'destructive', title: 'Invalid collateral amount' });
         return;
     };
-    if (collateralNum > usdtBalance) {
-      toast({ variant: 'destructive', title: 'Insufficient Collateral', description: `You need at least ${collateralNum.toFixed(2)} USDT for this trade.` });
+    if (collateralNum > vaultCollateral.available) {
+      toast({ variant: 'destructive', title: 'Insufficient Available Collateral', description: `You need to have at least ${collateralNum.toFixed(2)} USDT deposited in the vault and available.` });
       return;
-    }
-    if (collateralNum > allowance) {
-        toast({ variant: 'destructive', title: 'Approval Required', description: `You must approve at least ${collateralNum} USDT.`});
-        return;
     }
     
     const positionValue = sizeNum * currentPrice;
@@ -171,12 +181,12 @@ const TradingPageContent = () => {
     try {
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
-          size: tradeAmount.toString(),
-          collateral: collateralAmount.toString()
+          size: tradeSize.toString(),
+          collateral: tradeCollateral.toString()
       });
       
-      setTradeAmount('');
-      setCollateralAmount('');
+      setTradeSize('');
+      setTradeCollateral('');
       await fetchPosition();
 
     } catch(e: any) {
@@ -214,18 +224,15 @@ const TradingPageContent = () => {
   };
 
   const leverage = useMemo(() => {
-    const sizeNum = parseFloat(tradeAmount);
-    const collateralNum = parseFloat(collateralAmount);
+    const sizeNum = parseFloat(tradeSize);
+    const collateralNum = parseFloat(tradeCollateral);
     if (!sizeNum || !collateralNum || !currentPrice) return 0;
     const positionValue = sizeNum * currentPrice;
     return positionValue / collateralNum;
-  }, [tradeAmount, collateralAmount, currentPrice]);
+  }, [tradeSize, tradeCollateral, currentPrice]);
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
-
-  const collateralNum = parseFloat(collateralAmount) || 0;
-  const isApproved = allowance >= collateralNum && collateralNum > 0;
   
   if (!initialPriceForChart) {
     return null;
@@ -234,7 +241,7 @@ const TradingPageContent = () => {
   return (
     <TooltipProvider>
     <WalletHeader />
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
       <div className="lg:col-span-2 space-y-8">
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
           <CardHeader>
@@ -277,7 +284,7 @@ const TradingPageContent = () => {
                             <div key={pos.entryPrice} className="p-4 bg-background rounded-md border">
                                 <div className="flex flex-wrap items-center justify-between mt-1 gap-4">
                                 <span className={`text-lg font-bold ${pos.side === 'long' ? 'text-green-400' : 'text-red-400'}`}>
-                                    {pos.side.toUpperCase()} {pos.size.toLocaleString('en-US', {maximumFractionDigits: 4})} {asset}
+                                    {pos.side.toUpperCase()} {pos.size.toLocaleString('en-US', {maximumFractionDigits: 4})} {selectedPair.split('/')[0]}
                                 </span>
                                 <div className="flex items-center gap-4">
                                   <span className="text-foreground font-semibold">Entry: ${pos.entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
@@ -308,35 +315,72 @@ const TradingPageContent = () => {
       </div>
 
       <div className="space-y-8">
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-3 text-2xl font-bold text-primary"><PiggyBank/> Collateral Vault</CardTitle>
+                <CardDescription>Deposit USDT here to use as collateral for trades.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="p-4 rounded-lg bg-background border mb-4 text-center space-y-1">
+                    <Label className="text-muted-foreground">Available to Trade</Label>
+                    <p className="text-2xl font-bold">${vaultCollateral.available.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Total: ${vaultCollateral.total.toLocaleString()} | Locked: ${vaultCollateral.locked.toLocaleString()}</p>
+                </div>
+                <Tabs defaultValue="deposit">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="deposit"><PlusCircle/> Deposit</TabsTrigger>
+                        <TabsTrigger value="withdraw"><MinusCircle/> Withdraw</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="deposit" className="pt-4 space-y-2">
+                        <Label htmlFor="deposit-amount">Amount to Deposit (USDT)</Label>
+                        <Input id="deposit-amount" type="number" placeholder="0.0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} />
+                        <p className="text-xs text-muted-foreground text-right">Wallet Balance: {usdtBalance.toLocaleString()}</p>
+                        <Button onClick={handleDeposit} disabled={isDepositing} className="w-full">
+                           {isDepositing ? <Loader2 className="animate-spin" /> : "Deposit Collateral"}
+                        </Button>
+                    </TabsContent>
+                    <TabsContent value="withdraw" className="pt-4 space-y-2">
+                        <Label htmlFor="withdraw-amount">Amount to Withdraw (USDT)</Label>
+                        <Input id="withdraw-amount" type="number" placeholder="0.0" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
+                        <p className="text-xs text-muted-foreground text-right">Available in Vault: {vaultCollateral.available.toLocaleString()}</p>
+                        <Button onClick={handleWithdraw} disabled={isWithdrawing} variant="destructive" className="w-full">
+                           {isWithdrawing ? <Loader2 className="animate-spin" /> : "Withdraw Collateral"}
+                        </Button>
+                    </TabsContent>
+                </Tabs>
+            </CardContent>
+        </Card>
+
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-primary">Trade {asset}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-primary">Open Position</CardTitle>
+             <CardDescription>Use your deposited collateral to open a leveraged position.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="trade-amount">Trade Size ({asset})</Label>
+              <Label htmlFor="trade-amount">Trade Size ({selectedPair.split('/')[0]})</Label>
               <Input
                 id="trade-amount"
                 type="number"
-                value={tradeAmount}
-                onChange={(e) => setTradeAmount(e.target.value)}
+                value={tradeSize}
+                onChange={(e) => setTradeSize(e.target.value)}
                 disabled={!isConnected || !!activePosition}
                 placeholder="0.0"
                 className="mt-1"
               />
             </div>
              <div>
-              <Label htmlFor="collateral-amount">Collateral (USDT)</Label>
+              <Label htmlFor="collateral-amount">Collateral to Lock (USDT)</Label>
               <Input
                 id="collateral-amount"
                 type="number"
-                value={collateralAmount}
-                onChange={(e) => setCollateralAmount(e.target.value)}
+                value={tradeCollateral}
+                onChange={(e) => setTradeCollateral(e.target.value)}
                 disabled={!isConnected || !!activePosition}
                 placeholder="0.0"
                 className="mt-1"
               />
-              <p className="text-xs text-muted-foreground mt-1">Balance: {usdtBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+              <p className="text-xs text-muted-foreground mt-1">Available in Vault: {vaultCollateral.available.toLocaleString()}</p>
             </div>
             
             <div className="p-2 bg-muted/50 rounded-md text-sm text-center font-semibold">
@@ -356,22 +400,15 @@ const TradingPageContent = () => {
               <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingDown size={16} className="mr-2" /> Short</Button>
             </div>
 
-            <div className="flex space-x-2">
-                <Button onClick={handleApprove} disabled={!isConnected || isApproving || collateralNum <= 0 || isApproved || !!activePosition} className="w-full" variant="outline">
-                  {isApproving ? <Loader2 className="animate-spin" /> : <ShieldCheck className="mr-2" />}
-                  {isApproved ? 'Approved' : 'Approve'}
-                </Button>
-                <Button onClick={handlePlaceTradeReview} disabled={!isConnected || isProcessing || !isApproved || !!activePosition} className="w-full">
-                  {isProcessing ? <Loader2 className="animate-spin" /> : 'Place Trade'}
-                </Button>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">Allowance: {allowance.toLocaleString()} USDT</p>
+            <Button onClick={handlePlaceTradeReview} disabled={!isConnected || isProcessing || !!activePosition} className="w-full">
+                {isProcessing ? <Loader2 className="animate-spin" /> : 'Open Position'}
+            </Button>
           </CardContent>
         </Card>
 
         <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
         
-        <OrderBook currentPrice={currentPrice} assetSymbol={asset} />
+        <OrderBook currentPrice={currentPrice} assetSymbol={selectedPair.split('/')[0]} />
       </div>
     </div>
     
@@ -396,11 +433,11 @@ const TradingPageContent = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Size:</span>
-              <span className="font-mono">{tradeAmount} {asset}</span>
+              <span className="font-mono">{tradeSize} {selectedPair.split('/')[0]}</span>
             </div>
              <div className="flex justify-between">
-              <span className="text-muted-foreground">Collateral:</span>
-              <span className="font-mono">{collateralAmount} USDT</span>
+              <span className="text-muted-foreground">Collateral to Lock:</span>
+              <span className="font-mono">{tradeCollateral} USDT</span>
             </div>
              <div className="flex justify-between">
               <span className="text-muted-foreground">Leverage:</span>
@@ -415,7 +452,7 @@ const TradingPageContent = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={executeTrade} disabled={isProcessing}>
                 {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Confirm & Place Trade
+                Confirm & Open Position
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -451,5 +488,3 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
-
-    

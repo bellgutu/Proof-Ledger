@@ -3,9 +3,10 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR } from '@/services/blockchain-service';
+import { getWalletAssets, getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI } from '@/services/blockchain-service';
+import type { VaultCollateral } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits as viemFormatUnits } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi } from 'viem';
 import { localhost } from 'viem/chains';
 import { parseTokenAmount } from '@/lib/format';
 
@@ -13,7 +14,7 @@ import { parseTokenAmount } from '@/lib/format';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface Transaction {
@@ -68,10 +69,6 @@ interface MarketData {
   };
 }
 
-interface Balances {
-  [symbol:string]: { balance: number; decimals: number };
-}
-
 interface WalletState {
   isConnected: boolean;
   isConnecting: boolean;
@@ -83,6 +80,7 @@ interface WalletState {
   isMarketDataLoaded: boolean;
   transactions: Transaction[];
   vaultWeth: number;
+  vaultCollateral: VaultCollateral;
   activeStrategy: VaultStrategy | null;
   proposals: Proposal[];
   availablePools: Pool[];
@@ -96,12 +94,14 @@ interface WalletActions {
   updateBalance: (symbol: string, amount: number) => void;
   setBalances: React.Dispatch<React.SetStateAction<{ [symbol:string]: number }>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<void>;
-  approveCollateral: (amount: string) => Promise<void>;
+  depositCollateral: (amount: string) => Promise<void>;
+  withdrawCollateral: (amount: string) => Promise<void>;
   openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
   closePosition: () => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
+  setVaultCollateral: React.Dispatch<React.SetStateAction<VaultCollateral>>;
   setActiveStrategy: React.Dispatch<React.SetStateAction<VaultStrategy | null>>;
   setProposals: React.Dispatch<React.SetStateAction<Proposal[]>>;
   setAvailablePools: React.Dispatch<React.SetStateAction<Pool[]>>;
@@ -197,6 +197,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   // DeFi State
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [vaultWeth, setVaultWeth] = useState(0);
+  const [vaultCollateral, setVaultCollateral] = useState<VaultCollateral>({ total: 0, locked: 0, available: 0 });
   const [activeStrategy, setActiveStrategy] = useState<VaultStrategy | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals);
 
@@ -356,6 +357,24 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const refreshAllBalances = useCallback(async (address: `0x${string}`) => {
+    const remoteAssets = await getWalletAssets(address);
+    const newBalances = remoteAssets.reduce((acc, asset) => {
+        acc[asset.symbol] = asset.balance;
+        return acc;
+    }, {} as { [symbol: string]: number });
+    const newDecimals = remoteAssets.reduce((acc, asset) => {
+        acc[asset.symbol] = asset.decimals;
+        return acc;
+    }, {} as { [symbol: string]: number });
+
+    const collateral = await getVaultCollateral(address);
+
+    setBalances(newBalances);
+    setDecimals(newDecimals);
+    setVaultCollateral(collateral);
+  }, []);
+
   const executeTransaction = async (
     txType: TransactionType,
     dialogDetails: Partial<Transaction>,
@@ -383,17 +402,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           }).finally(async () => {
              // Refresh balances after any successful tx
              if(walletAddress) {
-                const remoteAssets = await getWalletAssets(walletAddress as `0x${string}`);
-                const newBalances = remoteAssets.reduce((acc, asset) => {
-                    acc[asset.symbol] = asset.balance;
-                    return acc;
-                }, {} as { [symbol: string]: number });
-                const newDecimals = remoteAssets.reduce((acc, asset) => {
-                    acc[asset.symbol] = asset.decimals;
-                    return acc;
-                }, {} as { [symbol: string]: number });
-                setBalances(newBalances);
-                setDecimals(newDecimals);
+                await refreshAllBalances(walletAddress as `0x${string}`);
              }
           });
           
@@ -415,19 +424,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
         const address = accounts[0];
         setWalletAddress(address);
-
-        const remoteAssets = await getWalletAssets(address);
-        const newBalances = remoteAssets.reduce((acc, asset) => {
-          acc[asset.symbol] = asset.balance;
-          return acc;
-        }, {} as { [symbol: string]: number });
-        const newDecimals = remoteAssets.reduce((acc, asset) => {
-          acc[asset.symbol] = asset.decimals;
-          return acc;
-        }, {} as { [symbol: string]: number });
-        
-        setBalances(newBalances);
-        setDecimals(newDecimals);
+        await refreshAllBalances(address);
         loadTransactions(address);
         setIsConnected(true);
 
@@ -438,7 +435,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     } finally {
         setIsConnecting(false);
     }
-  }, [loadTransactions, toast]);
+  }, [loadTransactions, toast, refreshAllBalances]);
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);
@@ -654,46 +651,81 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       toast({ title: 'Rewards Claimed!', description: `$${position.unclaimedRewards.toFixed(2)} has been added to your wallet.`});
   }, [addTransaction, updateBalance, toast, walletAddress]);
   
-  const approveCollateral = useCallback(async (amount: string) => {
-      const contractInfo = ERC20_CONTRACTS['USDT'];
-      if(!contractInfo.address) throw new Error("USDT contract address not configured");
-      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
-      const txFunction = async () => {
+  const depositCollateral = useCallback(async (amount: string) => {
+    const usdtDecimals = decimals['USDT'];
+    if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
+
+    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
+    const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
-        const usdtDecimals = decimals['USDT'];
-        if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
+        const amountOnChain = parseTokenAmount(amount, usdtDecimals);
+        
+        const { request: approveRequest } = await publicClient.simulateContract({
+            account,
+            address: ERC20_CONTRACTS['USDT'].address,
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [VAULT_CONTRACT_ADDRESS, amountOnChain]
+        });
+        const approveHash = await walletClient.writeContract(approveRequest);
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
-        return walletClient.writeContract({
-              address: contractInfo.address!,
-              abi: erc20Abi,
-              functionName: 'approve',
-              args: [PERPETUALS_CONTRACT_ADDRESS, parseTokenAmount(amount, usdtDecimals)],
-              account
-          });
-      };
-      await executeTransaction('Approve', dialogDetails, txFunction);
+        const { request: depositRequest } = await publicClient.simulateContract({
+            account,
+            address: VAULT_CONTRACT_ADDRESS,
+            abi: VAULT_ABI,
+            functionName: 'deposit',
+            args: [amountOnChain]
+        });
+        return walletClient.writeContract(depositRequest);
+    };
+    await executeTransaction('Deposit Collateral', dialogDetails, txFunction);
   }, [executeTransaction, decimals]);
+  
+  const withdrawCollateral = useCallback(async (amount: string) => {
+    const usdtDecimals = decimals['USDT'];
+    if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
+
+    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
+    const txFunction = async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        const amountOnChain = parseTokenAmount(amount, usdtDecimals);
+        
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: VAULT_CONTRACT_ADDRESS,
+            abi: VAULT_ABI,
+            functionName: 'withdraw',
+            args: [amountOnChain]
+        });
+        return walletClient.writeContract(request);
+    };
+    await executeTransaction('Withdraw Collateral', dialogDetails, txFunction);
+  }, [executeTransaction, decimals]);
+
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
       const { side, size, collateral } = params;
       const usdtDecimals = decimals['USDT'];
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
       
-      const sizeInSmallestUnit = parseTokenAmount(size, usdtDecimals); // Size is in terms of the quote currency, USDT
+      const sizeInSmallestUnit = parseTokenAmount(size, usdtDecimals);
       const collateralInSmallestUnit = parseTokenAmount(collateral, usdtDecimals);
 
       const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract' };
       const txFunction = async () => {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();
-          return walletClient.writeContract({
+          const { request } = await publicClient.simulateContract({
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: perpetualsAbi,
               functionName: 'openPosition',
               args: [side, sizeInSmallestUnit, collateralInSmallestUnit],
               account
           });
+          return walletClient.writeContract(request);
       };
       await executeTransaction('Open Position', dialogDetails, txFunction);
   }, [executeTransaction, decimals]);
@@ -703,12 +735,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const txFunction = async () => {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();
-          return walletClient.writeContract({
+          const { request } = await publicClient.simulateContract({
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: perpetualsAbi,
               functionName: 'closePosition',
               account
           });
+          return walletClient.writeContract(request);
       }
       await executeTransaction('Close Position', dialogDetails, txFunction);
   }, [executeTransaction]);
@@ -799,18 +832,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         if (!isUpdatingStateRef.current) {
             try {
-                const remoteAssets = await getWalletAssets(walletAddress as `0x${string}`);
                 if (!isCancelled) {
-                    const newBalances = remoteAssets.reduce((acc, asset) => {
-                        acc[asset.symbol] = asset.balance;
-                        return acc;
-                    }, {} as { [symbol:string]: number });
-                     const newDecimals = remoteAssets.reduce((acc, asset) => {
-                        acc[asset.symbol] = asset.decimals;
-                        return acc;
-                    }, {} as { [symbol:string]: number });
-                    setBalances(newBalances);
-                    setDecimals(newDecimals);
+                    await refreshAllBalances(walletAddress as `0x${string}`);
                 }
             } catch (error) {
                 console.warn("Poll for wallet updates failed. Retrying.", error);
@@ -823,20 +846,20 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     poll();
 
     return () => { isCancelled = true; };
-  }, [isConnected, walletAddress]);
+  }, [isConnected, walletAddress, refreshAllBalances]);
 
 
   const value: WalletContextType = {
       walletState: { 
         isConnected, isConnecting, walletAddress, balances, decimals, walletBalance, marketData, isMarketDataLoaded,
-        transactions, vaultWeth, activeStrategy, proposals, availablePools, userPositions, txStatusDialog,
+        transactions, vaultWeth, vaultCollateral, activeStrategy, proposals, availablePools, userPositions, txStatusDialog,
       },
       walletActions: {
           connectWallet, disconnectWallet, updateBalance, setBalances, sendTokens, addTransaction,
-          updateTransactionStatus, setVaultWeth, setActiveStrategy, setProposals, setAvailablePools,
-          setUserPositions, setTxStatusDialog, approveCollateral, openPosition, closePosition,
+          updateTransactionStatus, setVaultWeth, setVaultCollateral, setActiveStrategy, setProposals, setAvailablePools,
+          setUserPositions, setTxStatusDialog, openPosition, closePosition,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
-          claimRewards
+          claimRewards, depositCollateral, withdrawCollateral
       }
   }
 

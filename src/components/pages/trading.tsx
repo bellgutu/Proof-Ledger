@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
-import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck, Copy } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, Loader2, ShieldCheck, Copy, Info } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
@@ -150,6 +151,13 @@ const TradingPageContent = () => {
         toast({ variant: 'destructive', title: 'Approval Required', description: `You must approve at least ${collateralNum} USDT.`});
         return;
     }
+    
+    const positionValue = sizeNum * currentPrice;
+    const maxLeverage = 10;
+    if (positionValue > collateralNum * maxLeverage) {
+        toast({ variant: 'destructive', title: 'Leverage Too High', description: `Your collateral is too low for this position size. Max leverage is ${maxLeverage}x.`});
+        return;
+    }
 
     setIsConfirmOpen(true);
   };
@@ -204,6 +212,14 @@ const TradingPageContent = () => {
     
     return pnl;
   };
+
+  const leverage = useMemo(() => {
+    const sizeNum = parseFloat(tradeAmount);
+    const collateralNum = parseFloat(collateralAmount);
+    if (!sizeNum || !collateralNum || !currentPrice) return 0;
+    const positionValue = sizeNum * currentPrice;
+    return positionValue / collateralNum;
+  }, [tradeAmount, collateralAmount, currentPrice]);
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
@@ -216,7 +232,7 @@ const TradingPageContent = () => {
   }
 
   return (
-    <>
+    <TooltipProvider>
     <WalletHeader />
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-8">
@@ -323,6 +339,18 @@ const TradingPageContent = () => {
               <p className="text-xs text-muted-foreground mt-1">Balance: {usdtBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
             
+            <div className="p-2 bg-muted/50 rounded-md text-sm text-center font-semibold">
+                Leverage: <span className={leverage > 10 ? "text-destructive" : "text-primary"}>{leverage.toFixed(2)}x</span>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Info className="inline-block ml-2 h-4 w-4 text-muted-foreground cursor-help"/>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Max leverage is 10x.</p>
+                    </TooltipContent>
+                </Tooltip>
+            </div>
+            
             <div className="flex space-x-2">
               <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingUp size={16} className="mr-2" /> Long</Button>
               <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingDown size={16} className="mr-2" /> Short</Button>
@@ -375,6 +403,10 @@ const TradingPageContent = () => {
               <span className="font-mono">{collateralAmount} USDT</span>
             </div>
              <div className="flex justify-between">
+              <span className="text-muted-foreground">Leverage:</span>
+              <span className="font-mono">{leverage.toFixed(2)}x</span>
+            </div>
+             <div className="flex justify-between">
               <span className="text-muted-foreground">Current Price:</span>
               <span className="font-mono">${currentPrice.toLocaleString()}</span>
             </div>
@@ -388,7 +420,7 @@ const TradingPageContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   );
 }
 
@@ -419,3 +451,5 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
+
+    

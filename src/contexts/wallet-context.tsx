@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -146,8 +145,24 @@ const erc20Abi = parseAbi([
 ]);
 
 const perpetualsAbi = [
-    { inputs: [{ name: "side", type: "uint8" }, { name: "size", type: "uint256" }, { name: "collateral", type: "uint256" }], name: "openPosition", outputs: [], stateMutability: "nonpayable", type: "function" },
-    { inputs: [], name: "closePosition", outputs: [], stateMutability: "nonpayable", type: "function" }
+    {
+        "inputs": [
+            { "internalType": "uint8", "name": "side", "type": "uint8" },
+            { "internalType": "uint256", "name": "size", "type": "uint256" },
+            { "internalType": "uint256", "name": "collateral", "type": "uint256" }
+        ],
+        "name": "openPosition",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "closePosition",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
 ] as const;
 
 
@@ -447,11 +462,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (!walletAddress) throw new Error("Wallet not connected");
     
     const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
+    const walletClient = getWalletClient();
+    const [account] = await walletClient.getAddresses();
 
     const txFunction = async () => {
-        const walletClient = getWalletClient();
-        const [account] = await walletClient.getAddresses();
-
         if (tokenSymbol === 'ETH') {
             return walletClient.sendTransaction({
                 account,
@@ -817,5 +831,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
+    
     

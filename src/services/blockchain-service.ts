@@ -1,20 +1,19 @@
-
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
-import { formatUnits, createPublicClient, http, parseAbi, defineChain } from 'viem';
+import { createPublicClient, http, parseAbi, defineChain } from 'viem';
 import { localhost } from 'viem/chains';
+import { formatTokenAmount } from '@/lib/format';
 
 // --- Environment-loaded Contract Addresses ---
-// No changes here, this is good practice.
 export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) as `0x${string}`;
 export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER) as `0x${string}`;
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS) as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
 
-// Runtime guards are excellent.
+// Runtime guards
 if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
   throw new Error("Perpetuals contract address not configured — check NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS");
 }
@@ -36,10 +35,10 @@ const anvilChain = defineChain({
 export interface ChainAsset {
   symbol: string;
   name: string;
-  balance: number; 
+  balance: number;
+  decimals: number;
 }
 
-// --- ABIs (No changes needed, but consolidated generic ABI) ---
 const genericErc20Abi = parseAbi([
   "function name() view returns (string)",
   "function symbol() view returns (string)",
@@ -63,29 +62,15 @@ export const GOVERNOR_ABI = parseAbi([
   "function castVote(uint256,uint8) returns (uint256)"
 ]);
 
-// --- ERC20_CONTRACTS Configuration ---
-// This configuration is now the single source of truth for token info.
-export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, name: string, decimals: number } } = {
-    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether', decimals: 6 },
-    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin', decimals: 6 },
-    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether', decimals: 18 },
-    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink', decimals: 18 },
-    'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016', name: 'BNB', decimals: 18 },
-    'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'Solana', decimals: 18 },
+export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, name: string } } = {
+    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether' },
+    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin' },
+    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether' },
+    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink' },
+    'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016', name: 'BNB' },
+    'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'Solana' },
 };
 
-// --- CORRECTED: Perpetuals contract decimals based on the provided Solidity code ---
-const PERPETUALS_DECIMALS = {
-    // Set to 6 because PnL is added to collateral. For the math to work,
-    // PnL must have the same decimals as collateral (USDT, 6). The contract's
-    // PnL formula implies `pnl` and `size` have the same decimals.
-    size: 6,
-    // Collateral is USDT, which has 6 decimals.
-    collateral: 6,
-    // The contract's `calculatePnl` function divides by 10**8,
-    // indicating the price feed uses 8 decimals.
-    entryPrice: 8,
-};
 
 const perpetualsAbi = parseAbi([
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
@@ -94,48 +79,39 @@ const perpetualsAbi = parseAbi([
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
-  batch: {
-    multicall: false, 
-  },
 })
 
-// --- Efficiently fetches all wallet assets using multicall ---
 export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsset[]> {
   const assets: ChainAsset[] = [];
   const tokenSymbols = Object.keys(ERC20_CONTRACTS);
 
   try {
-    const balanceCalls = tokenSymbols.map(symbol => {
+    const ethBalance = await publicClient.getBalance({ address });
+    assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatTokenAmount(ethBalance, 18)), decimals: 18 });
+
+    const balanceCalls = tokenSymbols.flatMap(symbol => {
       const contract = ERC20_CONTRACTS[symbol];
-      return {
-        address: contract.address,
-        abi: genericErc20Abi,
-        functionName: 'balanceOf',
-        args: [address]
-      } as const;
+      return [
+        { address: contract.address, abi: genericErc20Abi, functionName: 'balanceOf', args: [address] },
+        { address: contract.address, abi: genericErc20Abi, functionName: 'decimals' },
+      ] as const;
     });
 
-    const [ethBalance, ...tokenBalanceResults] = await Promise.all([
-      publicClient.getBalance({ address }),
-      ...balanceCalls.map(call => publicClient.readContract(call).catch(e => {
-          console.warn(`[BlockchainService] Failed to fetch balance for a token:`, e);
-          return null;
-      }))
-    ]);
+    const results = await publicClient.multicall({ contracts: balanceCalls, allowFailure: false });
 
-    assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatUnits(ethBalance, 18)) });
+    for (let i = 0; i < tokenSymbols.length; i++) {
+        const symbol = tokenSymbols[i];
+        const contract = ERC20_CONTRACTS[symbol];
+        const balance = results[i * 2] as bigint;
+        const decimals = results[i * 2 + 1] as number;
 
-    tokenBalanceResults.forEach((balance, index) => {
-      const symbol = tokenSymbols[index];
-      const contract = ERC20_CONTRACTS[symbol];
-      if (balance !== null) {
-          assets.push({
-              symbol,
-              name: contract.name,
-              balance: parseFloat(formatUnits(balance as bigint, contract.decimals))
-          });
-      }
-    });
+        assets.push({
+            symbol,
+            name: contract.name,
+            balance: parseFloat(formatTokenAmount(balance, decimals)),
+            decimals,
+        });
+    }
 
   } catch (error) {
     console.error("[BlockchainService] Error fetching wallet assets:", error);
@@ -148,7 +124,6 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
   return assets;
 }
 
-// --- Gas Functions ---
 export async function getGasPrice(): Promise<bigint | null> {
     try {
       return await publicClient.getGasPrice();
@@ -164,7 +139,7 @@ export async function getGasFee(): Promise<number | null> {
     
     const gasLimit = 21000n; 
     const feeInWei = gasPrice * gasLimit;
-    return parseFloat(formatUnits(feeInWei, 18));
+    return parseFloat(formatTokenAmount(feeInWei, 18));
 }
 
 export interface Position {
@@ -175,7 +150,6 @@ export interface Position {
   active: boolean;
 }
 
-// --- Reads active position using the corrected decimal configuration ---
 export async function getActivePosition(userAddress: `0x${string}`): Promise<Position | null> {
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     console.warn("[BlockchainService] Perpetuals contract address not set. Returning null.");
@@ -183,6 +157,8 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
   }
  
   try {
+    const usdtDecimals = 6;
+    const priceDecimals = 8;
     const [side, size, collateral, entryPrice, active] = await publicClient.readContract({
         address: PERPETUALS_CONTRACT_ADDRESS,
         abi: perpetualsAbi,
@@ -196,9 +172,9 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
    
     return {
       side: side === 0 ? 'long' : 'short',
-      size: parseFloat(formatUnits(size, PERPETUALS_DECIMALS.size)),
-      collateral: parseFloat(formatUnits(collateral, PERPETUALS_DECIMALS.collateral)),
-      entryPrice: parseFloat(formatUnits(entryPrice, PERPETUALS_DECIMALS.entryPrice)),
+      size: parseFloat(formatTokenAmount(size, usdtDecimals)),
+      collateral: parseFloat(formatTokenAmount(collateral, usdtDecimals)),
+      entryPrice: parseFloat(formatTokenAmount(entryPrice, priceDecimals)),
       active: active
     };
 
@@ -208,9 +184,9 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
   }
 }
 
-// --- Reads collateral allowance using info from the config ---
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
   const usdtContract = ERC20_CONTRACTS['USDT'];
+  const usdtDecimals = 6;
  
   try {
     const allowance = await publicClient.readContract({
@@ -219,7 +195,7 @@ export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promi
       functionName: 'allowance',
       args: [ownerAddress, PERPETUALS_CONTRACT_ADDRESS]
     });
-    return parseFloat(formatUnits(allowance, usdtContract.decimals));
+    return parseFloat(formatTokenAmount(allowance, usdtDecimals));
   } catch (error) {
     console.error('[BlockchainService] Failed to get collateral allowance:', error);
     return 0;

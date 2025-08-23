@@ -5,8 +5,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getWalletAssets, getCollateralAllowance, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, parseUnits, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits as viemFormatUnits } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits as viemFormatUnits } from 'viem';
 import { localhost } from 'viem/chains';
+import { parseTokenAmount } from '@/lib/format';
 
 // --- TYPE DEFINITIONS ---
 
@@ -39,6 +40,7 @@ export interface ChainAsset {
   symbol: string;
   name: string;
   balance: number;
+  decimals: number;
 }
 
 export interface VaultStrategy {
@@ -67,14 +69,15 @@ interface MarketData {
 }
 
 interface Balances {
-  [symbol:string]: number;
+  [symbol:string]: { balance: number; decimals: number };
 }
 
 interface WalletState {
   isConnected: boolean;
   isConnecting: boolean;
   walletAddress: string;
-  balances: Balances;
+  balances: { [symbol:string]: number };
+  decimals: { [symbol:string]: number };
   walletBalance: string;
   marketData: MarketData;
   isMarketDataLoaded: boolean;
@@ -91,7 +94,7 @@ interface WalletActions {
   connectWallet: () => void;
   disconnectWallet: () => void;
   updateBalance: (symbol: string, amount: number) => void;
-  setBalances: React.Dispatch<React.SetStateAction<Balances>>;
+  setBalances: React.Dispatch<React.SetStateAction<{ [symbol:string]: number }>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<void>;
   approveCollateral: (amount: string) => Promise<void>;
   openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
@@ -130,10 +133,6 @@ const anvilChain = defineChain({
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
-  pollingInterval: undefined,
-  batch: {
-    multicall: false, 
-  },
 });
 
 
@@ -171,8 +170,8 @@ const initialMarketData: MarketData = {
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '0xe3464d7B906F82Bcb546909B854c65784A0bf1cd', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
-    { id: '0xDbc59fE0d9a1a4FB63685F52Cf92fb8EbD9102F0', name: 'WETH/USDT', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '0x56639db16ac50a89228026e42a316b30179a5376', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '0x0665fbb86a3aceca91df68388ec4bbe11556ddce', name: 'USDT/WETH', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
 ];
 
 const initialProposals: Proposal[] = [
@@ -185,7 +184,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
-  const [balances, setBalances] = useState<Balances>({});
+  const [balances, setBalances] = useState<{ [symbol:string]: number }>({});
+  const [decimals, setDecimals] = useState<{ [symbol:string]: number }>({});
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
@@ -350,7 +350,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return createWalletClient({
         chain: anvilChain,
         transport: custom(window.ethereum),
-        pollingInterval: undefined,
     });
   };
 
@@ -385,8 +384,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 const newBalances = remoteAssets.reduce((acc, asset) => {
                     acc[asset.symbol] = asset.balance;
                     return acc;
-                }, {} as Balances);
+                }, {} as { [symbol: string]: number });
+                const newDecimals = remoteAssets.reduce((acc, asset) => {
+                    acc[asset.symbol] = asset.decimals;
+                    return acc;
+                }, {} as { [symbol: string]: number });
                 setBalances(newBalances);
+                setDecimals(newDecimals);
              }
           });
           
@@ -413,9 +417,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const newBalances = remoteAssets.reduce((acc, asset) => {
           acc[asset.symbol] = asset.balance;
           return acc;
-        }, {} as Balances);
+        }, {} as { [symbol: string]: number });
+        const newDecimals = remoteAssets.reduce((acc, asset) => {
+          acc[asset.symbol] = asset.decimals;
+          return acc;
+        }, {} as { [symbol: string]: number });
         
         setBalances(newBalances);
+        setDecimals(newDecimals);
         loadTransactions(address);
         setIsConnected(true);
 
@@ -432,6 +441,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setIsConnected(false);
     setWalletAddress('');
     setBalances({});
+    setDecimals({});
     setTransactions([]);
   }, []);
   
@@ -453,30 +463,33 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const [account] = await walletClient.getAddresses();
 
     const txFunction = async () => {
-      const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+      const tokenDecimals = decimals[tokenSymbol];
+      if (tokenDecimals === undefined) throw new Error(`Decimals for ${tokenSymbol} not found.`);
       
+      const onChainAmount = parseTokenAmount(amount.toString(), tokenDecimals);
+
       if (tokenSymbol === 'ETH') {
           return walletClient.sendTransaction({
               account,
               to: toAddress as `0x${string}`,
-              value: parseUnits(amount.toString(), 18)
+              value: onChainAmount
           });
-      } else if (!tokenInfo) {
-          throw new Error(`Unsupported token: ${tokenSymbol}`);
       } else {
+          const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+          if (!tokenInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
           const { request } = await publicClient.simulateContract({
                account,
                address: tokenInfo.address,
                abi: erc20Abi,
                functionName: 'transfer',
-               args: [toAddress as `0x${string}`, parseUnits(amount.toString(), tokenInfo.decimals)],
+               args: [toAddress as `0x${string}`, onChainAmount],
           });
           return walletClient.writeContract(request);
       }
     };
 
     await executeTransaction('Send', dialogDetails, txFunction);
-  }, [walletAddress]);
+  }, [walletAddress, decimals]);
   
   const approveTokenForRouter = useCallback(async (tokenSymbol: string, amount: number): Promise<boolean> => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -487,6 +500,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const tokenInfo = ERC20_CONTRACTS[tokenToApproveSymbol as keyof typeof ERC20_CONTRACTS];
     if (!tokenInfo || !tokenInfo.address) {
         toast({ variant: 'destructive', title: 'Configuration Error', description: `Token ${tokenToApproveSymbol} is not configured.` });
+        return false;
+    }
+    const tokenDecimals = decimals[tokenSymbol];
+    if (tokenDecimals === undefined) {
+        toast({ variant: 'destructive', title: 'Configuration Error', description: `Decimals for ${tokenSymbol} not found.` });
         return false;
     }
     
@@ -500,7 +518,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 address: tokenInfo.address!,
                 abi: erc20Abi,
                 functionName: "approve",
-                args: [DEX_CONTRACT_ADDRESS, parseUnits(amount.toString(), tokenInfo.decimals)],
+                args: [DEX_CONTRACT_ADDRESS, parseTokenAmount(amount.toString(), tokenDecimals)],
             });
             return await walletClient.writeContract(request);
         });
@@ -510,14 +528,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         console.error("Approval failed", e);
         return false;
     }
-  }, [walletAddress, toast, executeTransaction]);
+  }, [walletAddress, toast, executeTransaction, decimals]);
 
 
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
 
-    const tokenToApprove = fromToken;
-    const approvalSuccess = await approveTokenForRouter(tokenToApprove, amountIn);
+    const approvalSuccess = await approveTokenForRouter(fromToken, amountIn);
     
     if (!approvalSuccess) return;
 
@@ -531,7 +548,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       
       if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Invalid token path for swap.");
 
-      const amountInWei = parseUnits(amountIn.toString(), fromTokenInfo.decimals);
+      const fromTokenDecimals = decimals[fromToken];
+      if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
+      
+      const amountInWei = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 mins
 
       const { request } = await publicClient.simulateContract({
@@ -545,7 +565,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
       return await walletClient.writeContract(request);
     });
-  }, [walletAddress, approveTokenForRouter, executeTransaction]);
+  }, [walletAddress, approveTokenForRouter, executeTransaction, decimals]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
       if (!walletAddress) throw new Error("Wallet not connected");
@@ -566,8 +586,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for liquidity");
 
-        const amountADesired = parseUnits(amountA.toString(), tokenAInfo.decimals);
-        const amountBDesired = parseUnits(amountB.toString(), tokenBInfo.decimals);
+        const decimalsA = decimals[tokenA];
+        const decimalsB = decimals[tokenB];
+        if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
+
+        const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
+        const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
 
         const { request } = await publicClient.simulateContract({
@@ -580,7 +604,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
         return walletClient.writeContract(request);
       });
-  }, [walletAddress, approveTokenForRouter, executeTransaction]);
+  }, [walletAddress, approveTokenForRouter, executeTransaction, decimals]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
       if (!walletAddress) throw new Error("Wallet not connected");
@@ -595,8 +619,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for liquidity");
 
-        // This is a simplified calculation for demo purposes. A real app would get this from the LP token contract.
-        const liquidityToRemove = parseUnits((position.lpTokens * (percentage / 100)).toString(), 18);
+        const liquidityToRemove = parseTokenAmount((position.lpTokens * (percentage / 100)).toString(), 18);
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
 
         const { request } = await publicClient.simulateContract({
@@ -635,25 +658,27 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
+        const usdtDecimals = decimals['USDT'];
+        if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
+
         return walletClient.writeContract({
               address: contractInfo.address!,
               abi: erc20Abi,
               functionName: 'approve',
-              args: [PERPETUALS_CONTRACT_ADDRESS, parseUnits(amount, contractInfo.decimals)],
+              args: [PERPETUALS_CONTRACT_ADDRESS, parseTokenAmount(amount, usdtDecimals)],
               account
           });
       };
       await executeTransaction('Approve', dialogDetails, txFunction);
-  }, [executeTransaction]);
+  }, [executeTransaction, decimals]);
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
       const { side, size, collateral } = params;
-      const collateralContractInfo = ERC20_CONTRACTS['USDT'];
+      const usdtDecimals = decimals['USDT'];
+      if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
       
-      if (!collateralContractInfo) throw new Error("Collateral contract info (USDT) missing");
-      
-      const sizeInSmallestUnit = parseUnits(size, 6);
-      const collateralInSmallestUnit = parseUnits(collateral, collateralContractInfo.decimals);
+      const sizeInSmallestUnit = parseTokenAmount(size, usdtDecimals); // Size is in terms of the quote currency, USDT
+      const collateralInSmallestUnit = parseTokenAmount(collateral, usdtDecimals);
 
       const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract' };
       const txFunction = async () => {
@@ -668,7 +693,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
       };
       await executeTransaction('Open Position', dialogDetails, txFunction);
-  }, [executeTransaction]);
+  }, [executeTransaction, decimals]);
 
   const closePosition = useCallback(async () => {
       const dialogDetails = { to: 'Perpetuals Contract' };
@@ -691,14 +716,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
 
-        const wethInfo = ERC20_CONTRACTS['WETH'];
-        if (!wethInfo || !wethInfo.address) throw new Error("WETH contract not found");
+        const wethDecimals = decimals['WETH'];
+        if (wethDecimals === undefined) throw new Error("WETH decimals not found.");
         
-        const amountInWei = parseUnits(amount.toString(), wethInfo.decimals);
+        const amountInWei = parseTokenAmount(amount.toString(), wethDecimals);
         
         // Approve Vault
         const approveHash = await walletClient.writeContract({
-            address: wethInfo.address,
+            address: ERC20_CONTRACTS['WETH'].address,
             abi: erc20Abi,
             functionName: 'approve',
             args: [VAULT_CONTRACT_ADDRESS, amountInWei],
@@ -718,16 +743,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vault Deposit', dialogDetails, txFunction);
-  }, [executeTransaction]);
+  }, [executeTransaction, decimals]);
   
   const withdrawFromVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', details: 'Withdraw from AI Strategy Vault' };
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
-        const wethInfo = ERC20_CONTRACTS['WETH'];
-        if (!wethInfo) throw new Error("WETH contract not found");
-        const amountInWei = parseUnits(amount.toString(), wethInfo.decimals);
+        const wethDecimals = decimals['WETH'];
+        if (wethDecimals === undefined) throw new Error("WETH decimals not found.");
+        const amountInWei = parseTokenAmount(amount.toString(), wethDecimals);
 
         const { request } = await publicClient.simulateContract({
             account,
@@ -740,7 +765,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vault Withdraw', dialogDetails, txFunction);
-  }, [executeTransaction]);
+  }, [executeTransaction, decimals]);
 
   const voteOnProposal = useCallback(async (proposalId: string, support: number) => {
     const dialogDetails = { details: `Vote on proposal #${proposalId}` };
@@ -776,8 +801,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     const newBalances = remoteAssets.reduce((acc, asset) => {
                         acc[asset.symbol] = asset.balance;
                         return acc;
-                    }, {} as Balances);
+                    }, {} as { [symbol:string]: number });
+                     const newDecimals = remoteAssets.reduce((acc, asset) => {
+                        acc[asset.symbol] = asset.decimals;
+                        return acc;
+                    }, {} as { [symbol:string]: number });
                     setBalances(newBalances);
+                    setDecimals(newDecimals);
                 }
             } catch (error) {
                 console.warn("Poll for wallet updates failed. Retrying.", error);
@@ -795,7 +825,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const value: WalletContextType = {
       walletState: { 
-        isConnected, isConnecting, walletAddress, balances, walletBalance, marketData, isMarketDataLoaded,
+        isConnected, isConnecting, walletAddress, balances, decimals, walletBalance, marketData, isMarketDataLoaded,
         transactions, vaultWeth, activeStrategy, proposals, availablePools, userPositions, txStatusDialog,
       },
       walletActions: {
@@ -821,5 +851,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-    
-    

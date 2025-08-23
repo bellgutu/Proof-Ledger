@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 
 export default function PortfolioPage() {
   const { walletState } = useWallet();
-  const { isConnected, isMarketDataLoaded, marketData, balances } = walletState;
+  const { isConnected, isMarketDataLoaded, marketData, balances, decimals } = walletState;
   const router = useRouter();
 
   const [selectedAsset, setSelectedAsset] = useState<ChainAsset | null>(null);
@@ -27,8 +27,9 @@ export default function PortfolioPage() {
   const assets: ChainAsset[] = Object.entries(balances)
     .map(([symbol, balance]) => ({
       symbol,
-      balance: balance, // balance is a number
+      balance: balance,
       name: marketData[symbol]?.name || symbol,
+      decimals: decimals[symbol] || 18,
     }))
     .filter(asset => asset.balance > 0)
     .sort((a, b) => {

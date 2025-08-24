@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getWalletAssets, getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI } from '@/services/blockchain-service';
+import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets } from '@/services/blockchain-service';
 import type { VaultCollateral } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
@@ -98,6 +97,7 @@ interface WalletActions {
   withdrawCollateral: (amount: string) => Promise<void>;
   openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
   closePosition: () => Promise<void>;
+  updateVaultCollateral: () => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
@@ -827,6 +827,23 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     };
     await executeTransaction('Vote', dialogDetails, txFunction);
   }, [executeTransaction]);
+  
+  const updateVaultCollateral = useCallback(async () => {
+    if (!isConnected || !walletAddress) return;
+    
+    try {
+      const collateral = await getVaultCollateral(walletAddress as `0x${string}`);
+      setVaultCollateral(collateral);
+    } catch (error) {
+      console.error("Failed to update vault collateral:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update vault collateral",
+      });
+    }
+  }, [isConnected, walletAddress, toast]);
+
 
   // Effect for polling for external wallet updates
   useEffect(() => {
@@ -866,7 +883,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           updateTransactionStatus, setVaultWeth, setVaultCollateral, setActiveStrategy, setProposals, setAvailablePools,
           setUserPositions, setTxStatusDialog, openPosition, closePosition,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
-          claimRewards, depositCollateral, withdrawCollateral
+          claimRewards, depositCollateral, withdrawCollateral, updateVaultCollateral
       }
   }
 

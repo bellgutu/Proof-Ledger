@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
@@ -12,7 +11,7 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, getVaultCollateral } from '@/services/blockchain-service';
+import { getActivePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -20,12 +19,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Slider } from '../ui/slider';
-import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS, PRICE_DECIMALS } from '@/lib/format';
+import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals } = walletState;
-  const { depositCollateral, withdrawCollateral, openPosition, closePosition } = walletActions;
+  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral } = walletActions;
   const { toast } = useToast();
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
@@ -94,7 +93,7 @@ const TradingPageContent = () => {
     if (!isConnected || !walletAddress) return;
     setIsLoadingPosition(true);
     try {
-      const position = await getActivePosition(walletAddress);
+      const position = await getActivePosition(walletAddress as `0x${string}`);
       setActivePosition(position);
     } catch (e) {
       console.error("Failed to fetch active position:", e);
@@ -109,6 +108,18 @@ const TradingPageContent = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchPosition]);
+  
+  useEffect(() => {
+    if (activePosition) {
+      // This will trigger a re-render when the price changes
+      // and update the PnL calculation
+      const interval = setInterval(() => {
+        // Force re-render to update PnL
+        setCurrentPrice(prev => prev);
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [activePosition]);
   
   const handlePairChange = (pair: string) => {
     if(activePosition) {
@@ -217,7 +228,12 @@ const TradingPageContent = () => {
     try {
         await closePosition();
         setActivePosition(null); 
-        await fetchPosition(); 
+        
+        // Fetch updated position and vault collateral after closing
+        await fetchPosition();
+        // Add this line to update vault collateral with PnL
+        await updateVaultCollateral();
+        
     } catch(e: any) {
         // Error is handled by the wallet context dialog
     } finally {
@@ -228,8 +244,11 @@ const TradingPageContent = () => {
   const calculatePnl = (position: Position) => {
     if (!position.active) return 0;
     
+    // Position size is already in human-readable format from the service
+    const positionSizeInETH = position.size;
+    
     const priceDifference = currentPrice - position.entryPrice;
-    let pnl = position.size * priceDifference;
+    let pnl = positionSizeInETH * priceDifference;
     
     if (position.side === 'short') {
       pnl = -pnl;
@@ -265,7 +284,7 @@ const TradingPageContent = () => {
                       </SelectContent>
                   </Select>
               </div>
-            <span className="text-3xl font-bold text-foreground">${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
+            <span className="text-3xl font-bold text-foreground">${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-card rounded-md">

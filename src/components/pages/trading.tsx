@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Slider } from '../ui/slider';
+import { formatTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 
 
 const TradingPageContent = () => {
@@ -181,7 +182,7 @@ const TradingPageContent = () => {
     try {
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
-          size: tradeSize.toString(),
+          size: tradeSize,
           collateral: requiredCollateral.toString()
       });
       
@@ -478,5 +479,3 @@ export default function TradingPage() {
 
   return <TradingPageContent />;
 }
-
-    

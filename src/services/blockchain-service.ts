@@ -6,7 +6,7 @@
  */
 import { createPublicClient, http, parseAbi, defineChain } from 'viem';
 import { localhost } from 'viem/chains';
-import { formatTokenAmount } from '@/lib/format';
+import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 
 // --- Environment-loaded Contract Addresses ---
 export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) as `0x${string}`;
@@ -169,7 +169,6 @@ export interface VaultCollateral {
 }
 
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
-  const usdtDecimals = 6;
   try {
     const [total, locked] = await Promise.all([
       publicClient.readContract({
@@ -185,8 +184,8 @@ export async function getVaultCollateral(userAddress: `0x${string}`): Promise<Va
         args: [userAddress],
       })
     ]);
-    const totalF = parseFloat(formatTokenAmount(total, usdtDecimals));
-    const lockedF = parseFloat(formatTokenAmount(locked, usdtDecimals));
+    const totalF = parseFloat(formatTokenAmount(total, USDT_DECIMALS));
+    const lockedF = parseFloat(formatTokenAmount(locked, USDT_DECIMALS));
 
     return { total: totalF, locked: lockedF, available: totalF - lockedF };
 
@@ -203,8 +202,6 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
   }
  
   try {
-    const usdtDecimals = 6;
-    const priceDecimals = 8;
     const [side, size, collateral, entryPrice, active] = await publicClient.readContract({
         address: PERPETUALS_CONTRACT_ADDRESS,
         abi: perpetualsAbi,
@@ -218,9 +215,9 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
    
     return {
       side: side === 0 ? 'long' : 'short',
-      size: parseFloat(formatTokenAmount(size, usdtDecimals)),
-      collateral: parseFloat(formatTokenAmount(collateral, usdtDecimals)),
-      entryPrice: parseFloat(formatTokenAmount(entryPrice, priceDecimals)),
+      size: parseFloat(formatTokenAmount(size, ETH_DECIMALS)),
+      collateral: parseFloat(formatTokenAmount(collateral, USDT_DECIMALS)),
+      entryPrice: parseFloat(formatTokenAmount(entryPrice, PRICE_DECIMALS)),
       active: active
     };
 
@@ -232,8 +229,6 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
 
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
   const usdtContract = ERC20_CONTRACTS['USDT'];
-  const usdtDecimals = 6;
- 
   try {
     const allowance = await publicClient.readContract({
       address: usdtContract.address,
@@ -241,7 +236,7 @@ export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promi
       functionName: 'allowance',
       args: [ownerAddress, PERPETUALS_CONTRACT_ADDRESS]
     });
-    return parseFloat(formatTokenAmount(allowance, usdtDecimals));
+    return parseFloat(formatTokenAmount(allowance, USDT_DECIMALS));
   } catch (error) {
     console.error('[BlockchainService] Failed to get collateral allowance:', error);
     return 0;

@@ -8,7 +8,7 @@ import type { VaultCollateral } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
 import { localhost } from 'viem/chains';
-import { parseTokenAmount } from '@/lib/format';
+import { parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS } from '@/lib/format';
 
 // --- TYPE DEFINITIONS ---
 
@@ -489,7 +489,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     };
 
     await executeTransaction('Send', dialogDetails, txFunction);
-  }, [walletAddress, decimals]);
+  }, [walletAddress, decimals, executeTransaction]);
   
   const approveTokenForRouter = useCallback(async (tokenSymbol: string, amount: number): Promise<boolean> => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -685,35 +685,36 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [executeTransaction, decimals]);
   
   const withdrawCollateral = useCallback(async (amount: string) => {
-    const usdtDecimals = decimals['USDT'];
-    if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
+      const usdtDecimals = decimals['USDT'];
+      if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
-    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
-    const txFunction = async () => {
-        const walletClient = getWalletClient();
-        const [account] = await walletClient.getAddresses();
-        const amountOnChain = parseTokenAmount(amount, usdtDecimals);
-        
-        const { request } = await publicClient.simulateContract({
-            account,
-            address: VAULT_CONTRACT_ADDRESS,
-            abi: VAULT_ABI,
-            functionName: 'withdraw',
-            args: [amountOnChain]
-        });
-        return walletClient.writeContract(request);
-    };
-    await executeTransaction('Withdraw Collateral', dialogDetails, txFunction);
+      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
+      const txFunction = async () => {
+          const walletClient = getWalletClient();
+          const [account] = await walletClient.getAddresses();
+          const amountOnChain = parseTokenAmount(amount, usdtDecimals);
+          
+          const { request } = await publicClient.simulateContract({
+              account,
+              address: VAULT_CONTRACT_ADDRESS,
+              abi: VAULT_ABI,
+              functionName: 'withdraw',
+              args: [amountOnChain]
+          });
+          return walletClient.writeContract(request);
+      };
+      await executeTransaction('Withdraw Collateral', dialogDetails, txFunction);
   }, [executeTransaction, decimals]);
 
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
       const { side, size, collateral } = params;
-      const usdtDecimals = decimals['USDT'];
-      if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
       
-      const sizeInSmallestUnit = parseTokenAmount(size, usdtDecimals);
-      const collateralInSmallestUnit = parseTokenAmount(collateral, usdtDecimals);
+      const sizeDecimals = decimals['ETH'];
+      if (sizeDecimals === undefined) throw new Error("ETH decimals not found");
+      
+      const sizeOnChain = parseTokenAmount(size, sizeDecimals);
+      const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
 
       const dialogDetails = { 
         amount: parseFloat(collateral), 
@@ -728,7 +729,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: perpetualsAbi,
               functionName: 'openPosition',
-              args: [side, sizeInSmallestUnit, collateralInSmallestUnit],
+              args: [side, sizeOnChain, collateralOnChain],
               account
           });
           return walletClient.writeContract(request);

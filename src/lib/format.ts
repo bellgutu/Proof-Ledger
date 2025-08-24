@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Utility functions for handling token decimal conversions.
  */
@@ -62,3 +63,52 @@ export const parseTokenAmount = (humanReadableAmount: string, decimals: number):
   
   return BigInt(combinedStr);
 };
+
+
+/**
+ * Calculates the required collateral based on position size, current price, and leverage
+ * @param positionSize Position size (human-readable)
+ * @param currentPrice Current price (human-readable)
+ * @param leverage Leverage amount (e.g., 10 for 10x)
+ * @param priceDecimals The decimals of the price feed
+ * @param collateralDecimals The decimals of the collateral token (USDT)
+ * @returns Collateral amount in USDT (on-chain value)
+ */
+export const calculateRequiredCollateral = (
+  positionSize: string,
+  currentPrice: string,
+  leverage: number,
+  sizeDecimals: number,
+  collateralDecimals: number
+): bigint => {
+  const sizeNum = parseFloat(positionSize);
+  const priceNum = parseFloat(currentPrice);
+
+  if (isNaN(sizeNum) || isNaN(priceNum) || leverage === 0) {
+    return 0n;
+  }
+  
+  // Calculate collateral in human-readable USDT
+  const collateralValue = (sizeNum * priceNum) / leverage;
+  
+  // Convert to on-chain value with collateral token's decimals
+  return parseTokenAmount(collateralValue.toFixed(collateralDecimals), collateralDecimals);
+};
+
+/**
+ * Formats a signed token amount (like PnL) for display
+ * @param rawAmount The on-chain amount (can be negative)
+ * @param decimals The number of decimals for the token
+ * @returns Formatted string with sign
+ */
+export const formatSignedTokenAmount = (rawAmount: bigint | string, decimals: number): string => {
+  const amount = BigInt(rawAmount);
+  const sign = amount < 0n ? '-' : '';
+  const absAmount = amount < 0n ? -amount : amount;
+  return sign + formatTokenAmount(absAmount, decimals);
+};
+
+// Common decimal constants
+export const ETH_DECIMALS = 18;
+export const USDT_DECIMALS = 6;
+export const PRICE_DECIMALS = 8;

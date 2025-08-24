@@ -348,8 +348,8 @@ const TradingPageContent = () => {
             <CardContent>
                 <div className="p-4 rounded-lg bg-background border mb-4 text-center space-y-1">
                     <Label className="text-muted-foreground">Available to Trade</Label>
-                    <p className="text-2xl font-bold">${formatTokenAmount(vaultCollateral.available.toString(), USDT_DECIMALS)}</p>
-                    <p className="text-xs text-muted-foreground">Total: ${formatTokenAmount(vaultCollateral.total.toString(), USDT_DECIMALS)} | Locked: ${formatTokenAmount(vaultCollateral.locked.toString(), USDT_DECIMALS)}</p>
+                    <p className="text-2xl font-bold">${vaultCollateral.available.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    <p className="text-xs text-muted-foreground">Total: ${vaultCollateral.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} | Locked: ${vaultCollateral.locked.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                 </div>
                 <Tabs defaultValue="deposit">
                     <TabsList className="grid w-full grid-cols-2">

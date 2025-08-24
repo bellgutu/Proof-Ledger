@@ -1,10 +1,7 @@
-
 "use client";
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
 import { RefreshCcw, TrendingUp, TrendingDown, Loader2, Info, PlusCircle, MinusCircle, PiggyBank } from 'lucide-react';
-
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +11,7 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition } from '@/services/blockchain-service';
+import { getActivePosition, getVaultCollateral } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -22,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Slider } from '../ui/slider';
-import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
+import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS, PRICE_DECIMALS } from '@/lib/format';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
@@ -200,8 +197,8 @@ const TradingPageContent = () => {
     try {
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
-          size: tradeSizeOnChain.toString(),
-          collateral: requiredCollateralOnChain.toString()
+          size: tradeSize,
+          collateral: requiredCollateralDisplay
       });
       
       setTradeSize('');

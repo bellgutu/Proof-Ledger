@@ -14,7 +14,7 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, getVaultCollateral } from '@/services/blockchain-service';
+import { getActivePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -22,23 +22,19 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Slider } from '../ui/slider';
-import { formatTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
-
+import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals } = walletState;
   const { depositCollateral, withdrawCollateral, openPosition, closePosition } = walletActions;
   const { toast } = useToast();
-
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
   const [leverage, setLeverage] = useState([10]);
   const [tradeDirection, setTradeDirection] = useState<'long' | 'short'>('long');
-
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -47,22 +43,42 @@ const TradingPageContent = () => {
   const [isLoadingPosition, setIsLoadingPosition] = useState(true);
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
-
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const usdtBalance = balances['USDT'] || 0;
   
   const tradingViewSymbol = `BINANCE:${selectedPair.split('/')[0]}USDT`;
-
-  const requiredCollateral = useMemo(() => {
+  
+  const requiredCollateralDisplay = useMemo(() => {
     const sizeNum = parseFloat(tradeSize);
     const price = currentPrice;
-    if (!sizeNum || !price || leverage[0] === 0) return 0;
+    if (!sizeNum || !price || leverage[0] === 0) return '0.00';
     const positionValue = sizeNum * price;
-    return positionValue / leverage[0];
+    const collateral = positionValue / leverage[0];
+    return collateral.toFixed(2);
   }, [tradeSize, currentPrice, leverage]);
   
-
+  const requiredCollateralOnChain = useMemo(() => {
+    const sizeNum = parseFloat(tradeSize);
+    if (!sizeNum || !currentPrice || leverage[0] === 0) return BigInt(0);
+    try {
+      return calculateRequiredCollateral(tradeSize, currentPrice.toString(), leverage[0]);
+    } catch (error) {
+      console.error("Error calculating collateral:", error);
+      return BigInt(0);
+    }
+  }, [tradeSize, currentPrice, leverage]);
+  
+  const tradeSizeOnChain = useMemo(() => {
+    if (!tradeSize) return BigInt(0);
+    try {
+      return parseTokenAmount(tradeSize, ETH_DECIMALS);
+    } catch (error) {
+      console.error("Error parsing trade size:", error);
+      return BigInt(0);
+    }
+  }, [tradeSize]);
+  
   useEffect(() => {
     const pairAsset = selectedPair.split('/')[0];
     if (marketData[pairAsset]) {
@@ -74,9 +90,7 @@ const TradingPageContent = () => {
          }
     }, 2000);
     return () => clearInterval(interval);
-
   }, [marketData, selectedPair]);
-
 
   const fetchPosition = useCallback(async () => {
     if (!isConnected || !walletAddress) return;
@@ -89,7 +103,7 @@ const TradingPageContent = () => {
     }
     setIsLoadingPosition(false);
   }, [isConnected, walletAddress]);
-
+  
   useEffect(() => {
     fetchPosition();
     const interval = setInterval(() => {
@@ -97,7 +111,7 @@ const TradingPageContent = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchPosition]);
-
+  
   const handlePairChange = (pair: string) => {
     if(activePosition) {
       toast({ variant: 'destructive', title: "Action blocked", description: "Close your active position before changing pairs."});
@@ -110,7 +124,7 @@ const TradingPageContent = () => {
     }
     setTradeSize('');
   };
-
+  
   const handleDeposit = async () => {
     const amount = parseFloat(depositAmount);
     if(isNaN(amount) || amount <= 0) {
@@ -153,20 +167,26 @@ const TradingPageContent = () => {
       }
   }
 
-
   const handlePlaceTradeReview = () => {
     const sizeNum = parseFloat(tradeSize);
-
     if (isNaN(sizeNum) || sizeNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid trade size' });
         return;
     };
-    if (requiredCollateral <= 0) {
+    
+    if (requiredCollateralOnChain === BigInt(0)) {
         toast({ variant: 'destructive', title: 'Invalid collateral amount' });
         return;
     };
-    if (requiredCollateral > vaultCollateral.available) {
-      toast({ variant: 'destructive', title: 'Insufficient Available Collateral', description: `You need to have at least ${requiredCollateral.toFixed(2)} USDT deposited in the vault and available for this trade.` });
+    
+    const availableCollateralOnChain = parseTokenAmount(vaultCollateral.available.toString(), USDT_DECIMALS);
+    
+    if (requiredCollateralOnChain > availableCollateralOnChain) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Insufficient Available Collateral', 
+        description: `You need to have at least ${requiredCollateralDisplay} USDT deposited in the vault and available for this trade.` 
+      });
       return;
     }
     
@@ -175,27 +195,24 @@ const TradingPageContent = () => {
   
   const executeTrade = async () => {
     if (!walletAddress) return;
-
     setIsConfirmOpen(false);
     setIsProcessing(true);
-
     try {
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
-          size: tradeSize,
-          collateral: requiredCollateral.toString()
+          size: tradeSizeOnChain.toString(),
+          collateral: requiredCollateralOnChain.toString()
       });
       
       setTradeSize('');
       await fetchPosition();
-
     } catch(e: any) {
         // Error is handled by the wallet context dialog
     } finally {
         setIsProcessing(false);
     }
   };
-
+  
   const handleCloseTrade = async () => {
     if (!walletAddress || !activePosition) return;
     setIsProcessing(true);
@@ -209,7 +226,7 @@ const TradingPageContent = () => {
         setIsProcessing(false);
     }
   };
-
+  
   const calculatePnl = (position: Position) => {
     if (!position.active) return 0;
     
@@ -222,7 +239,6 @@ const TradingPageContent = () => {
     
     return pnl;
   };
-
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
   const initialPriceForChart = marketData[selectedPair.split('/')[0]]?.price;
@@ -230,7 +246,7 @@ const TradingPageContent = () => {
   if (!initialPriceForChart) {
     return null;
   }
-
+  
   return (
     <TooltipProvider>
     <WalletHeader />
@@ -306,7 +322,6 @@ const TradingPageContent = () => {
             </CardContent>
         </Card>
       </div>
-
       <div className="space-y-8">
         <Card>
             <CardHeader>
@@ -343,7 +358,6 @@ const TradingPageContent = () => {
                 </Tabs>
             </CardContent>
         </Card>
-
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-primary">Open Position</CardTitle>
@@ -382,7 +396,7 @@ const TradingPageContent = () => {
             <div className="p-3 bg-muted/50 rounded-md text-sm text-center">
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Required Collateral:</span>
-                    <span className="font-bold text-foreground">{requiredCollateral.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+                    <span className="font-bold text-foreground">{requiredCollateralDisplay} USDT</span>
                 </div>
             </div>
             
@@ -390,13 +404,11 @@ const TradingPageContent = () => {
               <Button onClick={() => setTradeDirection('long')} className={`w-full ${tradeDirection === 'long' ? 'bg-green-600 hover:bg-green-700' : 'bg-secondary hover:bg-green-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingUp size={16} className="mr-2" /> Long</Button>
               <Button onClick={() => setTradeDirection('short')} className={`w-full ${tradeDirection === 'short' ? 'bg-red-600 hover:bg-red-700' : 'bg-secondary hover:bg-red-600/50'}`} disabled={!isConnected || !!activePosition}><TrendingDown size={16} className="mr-2" /> Short</Button>
             </div>
-
             <Button onClick={handlePlaceTradeReview} disabled={!isConnected || isProcessing || !!activePosition} className="w-full">
                 {isProcessing ? <Loader2 className="animate-spin" /> : 'Open Position'}
             </Button>
           </CardContent>
         </Card>
-
         <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
         
         <OrderBook currentPrice={currentPrice} assetSymbol={selectedPair.split('/')[0]} />
@@ -428,7 +440,7 @@ const TradingPageContent = () => {
             </div>
              <div className="flex justify-between">
               <span className="text-muted-foreground">Required Collateral:</span>
-              <span className="font-mono">{requiredCollateral.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT</span>
+              <span className="font-mono">{requiredCollateralDisplay} USDT</span>
             </div>
              <div className="flex justify-between">
               <span className="text-muted-foreground">Leverage:</span>
@@ -452,11 +464,9 @@ const TradingPageContent = () => {
   );
 }
 
-
 export default function TradingPage() {
   const { walletState } = useWallet();
   const { isMarketDataLoaded } = walletState;
-
   if (!isMarketDataLoaded) {
     return (
       <div className="container mx-auto p-0 space-y-8">
@@ -476,6 +486,5 @@ export default function TradingPage() {
       </div>
     )
   }
-
   return <TradingPageContent />;
 }

@@ -1,8 +1,6 @@
-
 /**
  * @fileoverview Utility functions for handling token decimal conversions.
  */
-
 /**
  * Formats a raw, on-chain token amount (a large integer) into a human-readable string.
  * This is used for displaying balances on the front end.
@@ -11,26 +9,42 @@
  * @returns {string} The formatted, human-readable amount.
  */
 export const formatTokenAmount = (rawAmount: bigint | string, decimals: number): string => {
-  // Ensure the input is a string to handle BigInts correctly.
-  let amountStr = String(rawAmount);
-
-  // Handle the case where the amount is smaller than the number of decimals
-  if (amountStr.length <= decimals) {
-    amountStr = amountStr.padStart(decimals + 1, '0');
+  // Convert to BigInt if it's a string
+  const amount = typeof rawAmount === 'string' ? BigInt(rawAmount) : rawAmount;
+  
+  // If the amount is 0, return "0"
+  if (amount === 0n) {
+    return "0";
   }
   
-  // Split the string into the integer and decimal parts.
-  const integerPart = amountStr.slice(0, amountStr.length - decimals);
-  const decimalPart = amountStr.slice(amountStr.length - decimals);
-
-  // Return the formatted string, removing trailing zeros from the decimal part for cleaner display.
-  const trimmedDecimalPart = decimalPart.replace(/0+$/, '');
+  // Handle negative amounts
+  const isNegative = amount < 0n;
+  const absAmount = isNegative ? -amount : amount;
   
-  if (trimmedDecimalPart.length === 0) {
-    return integerPart;
+  // Calculate the divisor
+  const divisor = 10n ** BigInt(decimals);
+  const integerPart = absAmount / divisor;
+  const decimalPart = absAmount % divisor;
+  
+  // Format the integer part
+  let result = integerPart.toString();
+  
+  // Format the decimal part if it exists
+  if (decimalPart !== 0n) {
+    let decimalStr = decimalPart.toString();
+    // Pad with leading zeros to ensure we have `decimals` digits
+    decimalStr = decimalStr.padStart(decimals, '0');
+    // Remove trailing zeros
+    decimalStr = decimalStr.replace(/0+$/, '');
+    result += '.' + decimalStr;
   }
-
-  return `${integerPart}.${trimmedDecimalPart}`;
+  
+  // Add the negative sign if needed
+  if (isNegative) {
+    result = '-' + result;
+  }
+  
+  return result;
 };
 
 /**
@@ -44,55 +58,64 @@ export const parseTokenAmount = (humanReadableAmount: string, decimals: number):
   if (!humanReadableAmount || isNaN(parseFloat(humanReadableAmount))) {
     throw new Error('Invalid number format.');
   }
-
+  
+  // Check if negative
+  const isNegative = humanReadableAmount.startsWith('-');
+  const numericStr = isNegative ? humanReadableAmount.substring(1) : humanReadableAmount;
+  
   // Split the number at the decimal point.
-  const parts = humanReadableAmount.split('.');
+  const parts = numericStr.split('.');
   const integerPart = parts[0] || '0';
   let decimalPart = parts[1] || '';
-
+  
   // Ensure the decimal part is not longer than the allowed decimals.
   if (decimalPart.length > decimals) {
     decimalPart = decimalPart.substring(0, decimals);
   }
-
+  
   // Pad the decimal part with zeros to match the token's precision.
   decimalPart = decimalPart.padEnd(decimals, '0');
-
+  
   // Concatenate parts and create a BigInt.
   const combinedStr = integerPart + decimalPart;
   
-  return BigInt(combinedStr);
+  let result = BigInt(combinedStr);
+  if (isNegative) {
+    result = -result;
+  }
+  
+  return result;
 };
+
+// Token decimals constants
+export const ETH_DECIMALS = 18;
+export const USDT_DECIMALS = 6;
+export const PRICE_DECIMALS = 8;
 
 
 /**
  * Calculates the required collateral based on position size, current price, and leverage
- * @param positionSize Position size (human-readable)
- * @param currentPrice Current price (human-readable)
+ * @param positionSizeETH Position size in ETH (human-readable)
+ * @param currentPrice Current ETH price in USDT (human-readable)
  * @param leverage Leverage amount (e.g., 10 for 10x)
- * @param priceDecimals The decimals of the price feed
- * @param collateralDecimals The decimals of the collateral token (USDT)
  * @returns Collateral amount in USDT (on-chain value)
  */
 export const calculateRequiredCollateral = (
-  positionSize: string,
+  positionSizeETH: string,
   currentPrice: string,
-  leverage: number,
-  sizeDecimals: number,
-  collateralDecimals: number
+  leverage: number
 ): bigint => {
-  const sizeNum = parseFloat(positionSize);
-  const priceNum = parseFloat(currentPrice);
-
-  if (isNaN(sizeNum) || isNaN(priceNum) || leverage === 0) {
+  const positionSize = parseFloat(positionSizeETH);
+  const price = parseFloat(currentPrice);
+  if (isNaN(positionSize) || isNaN(price) || leverage === 0) {
     return 0n;
   }
   
-  // Calculate collateral in human-readable USDT
-  const collateralValue = (sizeNum * priceNum) / leverage;
+  // Calculate collateral in USDT (human-readable)
+  const collateralUSDT = (positionSize * price) / leverage;
   
-  // Convert to on-chain value with collateral token's decimals
-  return parseTokenAmount(collateralValue.toFixed(collateralDecimals), collateralDecimals);
+  // Convert to on-chain value with USDT decimals
+  return parseTokenAmount(collateralUSDT.toFixed(USDT_DECIMALS), USDT_DECIMALS);
 };
 
 /**
@@ -107,8 +130,3 @@ export const formatSignedTokenAmount = (rawAmount: bigint | string, decimals: nu
   const absAmount = amount < 0n ? -amount : amount;
   return sign + formatTokenAmount(absAmount, decimals);
 };
-
-// Common decimal constants
-export const ETH_DECIMALS = 18;
-export const USDT_DECIMALS = 6;
-export const PRICE_DECIMALS = 8;

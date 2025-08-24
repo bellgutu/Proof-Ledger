@@ -348,8 +348,8 @@ const TradingPageContent = () => {
             <CardContent>
                 <div className="p-4 rounded-lg bg-background border mb-4 text-center space-y-1">
                     <Label className="text-muted-foreground">Available to Trade</Label>
-                    <p className="text-2xl font-bold">${vaultCollateral.available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-muted-foreground">Total: ${vaultCollateral.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Locked: ${vaultCollateral.locked.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-2xl font-bold">${(vaultCollateral.available).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-muted-foreground">Total: ${(vaultCollateral.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Locked: ${(vaultCollateral.locked).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                 <Tabs defaultValue="deposit">
                     <TabsList className="grid w-full grid-cols-2">
@@ -367,7 +367,7 @@ const TradingPageContent = () => {
                     <TabsContent value="withdraw" className="pt-4 space-y-2">
                         <Label htmlFor="withdraw-amount">Amount to Withdraw (USDT)</Label>
                         <Input id="withdraw-amount" type="number" placeholder="0.0" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
-                        <p className="text-xs text-muted-foreground text-right">Available in Vault: {vaultCollateral.available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-xs text-muted-foreground text-right">Available in Vault: {(vaultCollateral.available).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         <Button onClick={handleWithdraw} disabled={isWithdrawing || !isConnected} variant="destructive" className="w-full">
                            {isWithdrawing ? <Loader2 className="animate-spin" /> : "Withdraw Collateral"}
                         </Button>

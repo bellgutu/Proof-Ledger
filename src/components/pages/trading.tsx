@@ -12,7 +12,7 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition } from '@/services/blockchain-service';
+import { getActivePosition, getOraclePrice } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -25,7 +25,7 @@ import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals } = walletState;
-  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral } = walletActions;
+  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral, updateOraclePrice } = walletActions;
   const { toast } = useToast();
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
@@ -42,6 +42,11 @@ const TradingPageContent = () => {
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  // New state variables for price oracle management
+  const [customPrice, setCustomPrice] = useState('');
+  const [showPriceAlert, setShowPriceAlert] = useState(false);
+  const [oraclePrice, setOraclePrice] = useState(3000); // Default oracle price
   
   const usdtBalance = balances['USDT'] || 0;
   
@@ -89,7 +94,7 @@ const TradingPageContent = () => {
     }, 2000);
     return () => clearInterval(interval);
   }, [marketData, selectedPair]);
-
+  
   const fetchPosition = useCallback(async () => {
     if (!isConnected || !walletAddress) return;
     setIsLoadingPosition(true);
@@ -121,6 +126,33 @@ const TradingPageContent = () => {
       return () => clearInterval(interval);
     }
   }, [activePosition, marketData, selectedPair]);
+  
+  // Effect to check if the oracle price is outdated
+  useEffect(() => {
+    const checkOraclePrice = async () => {
+      if (!isConnected) return;
+      
+      try {
+        const price = await getOraclePrice();
+        setOraclePrice(price);
+        
+        // If oracle price is more than 5% different from current price, show alert
+        const priceDifference = Math.abs(currentPrice - price) / currentPrice;
+        if (priceDifference > 0.05) {
+          setShowPriceAlert(true);
+        } else {
+          setShowPriceAlert(false);
+        }
+      } catch (error) {
+        console.error("Error checking oracle price:", error);
+      }
+    };
+    
+    checkOraclePrice();
+    const interval = setInterval(checkOraclePrice, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+
+  }, [isConnected, currentPrice]);
   
   const handlePairChange = (pair: string) => {
     if(activePosition) {
@@ -176,7 +208,7 @@ const TradingPageContent = () => {
           setIsWithdrawing(false);
       }
   }
-
+  
   const handlePlaceTradeReview = () => {
     const sizeNum = parseFloat(tradeSize);
     if (isNaN(sizeNum) || sizeNum <= 0) {
@@ -208,10 +240,15 @@ const TradingPageContent = () => {
     setIsConfirmOpen(false);
     setIsProcessing(true);
     try {
+      // First, update the oracle price to the current market price
+      await updateOraclePrice(currentPrice);
+      setOraclePrice(currentPrice);
+      
+      // Then open the position
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
           size: tradeSize,
-          collateral: requiredCollateralDisplay
+          collateral: requiredCollateralDisplay,
       });
       
       setTradeSize('');
@@ -230,9 +267,7 @@ const TradingPageContent = () => {
         await closePosition();
         setActivePosition(null); 
         
-        // Fetch updated position and vault collateral after closing
         await fetchPosition();
-        // Add this line to update vault collateral with PnL
         await updateVaultCollateral();
         
     } catch(e: any) {
@@ -245,9 +280,7 @@ const TradingPageContent = () => {
   const calculatePnl = (position: Position) => {
     if (!position.active) return 0;
     
-    // Position size is already in human-readable format from the service
     const positionSizeInETH = position.size;
-    
     const priceDifference = currentPrice - position.entryPrice;
     let pnl = positionSizeInETH * priceDifference;
     
@@ -256,6 +289,49 @@ const TradingPageContent = () => {
     }
     
     return pnl;
+  };
+  
+  const handleUpdatePrice = async () => {
+    if (!isConnected) return;
+    
+    try {
+      await updateOraclePrice(currentPrice);
+      setOraclePrice(currentPrice);
+      toast({
+        title: "Success",
+        description: `Price oracle updated to $${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      });
+      await fetchPosition();
+    } catch (error) {
+      console.error("Error updating price:", error);
+    }
+  };
+  
+  const handleSetCustomPrice = async () => {
+    if (!isConnected || !customPrice) return;
+    
+    try {
+      const price = parseFloat(customPrice);
+      if (isNaN(price) || price <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Price",
+          description: "Please enter a valid price greater than 0",
+        });
+        return;
+      }
+      
+      await updateOraclePrice(price);
+      setOraclePrice(price);
+      toast({
+        title: "Success",
+        description: `Price oracle updated to $${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      });
+      
+      setCustomPrice('');
+    } catch (error) {
+      console.error("Error setting custom price:", error);
+    }
   };
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
@@ -268,6 +344,23 @@ const TradingPageContent = () => {
   return (
     <TooltipProvider>
     <WalletHeader />
+    
+    {showPriceAlert && (
+      <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
+        <div className="flex">
+          <div className="py-1"><svg className="fill-current h-6 w-6 text-yellow-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zM9 5v6h2V5H9zm0 8h2v2H9v-2z"/></svg></div>
+          <div>
+            <p className="font-bold">Price Oracle Alert</p>
+            <p className="text-sm">The price oracle appears to be outdated. Current ETH price is ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, but the oracle is using ${oraclePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. </p>
+          </div>
+           <button onClick={() => setShowPriceAlert(false)} className="ml-auto -mx-1.5 -my-1.5 bg-yellow-100 text-yellow-500 rounded-lg focus:ring-2 focus:ring-yellow-400 p-1.5 hover:bg-yellow-200 inline-flex h-8 w-8" aria-label="Dismiss">
+            <span className="sr-only">Dismiss</span>
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
+          </button>
+        </div>
+      </div>
+    )}
+    
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
       <div className="lg:col-span-2 space-y-8">
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
@@ -296,7 +389,9 @@ const TradingPageContent = () => {
         
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader>
-                <CardTitle className="text-2xl font-bold text-primary">Active Position</CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="text-2xl font-bold text-primary">Active Position</CardTitle>
+                </div>
             </CardHeader>
             <CardContent>
                 {isLoadingPosition ? (
@@ -307,6 +402,7 @@ const TradingPageContent = () => {
                         const pnl = calculatePnl(pos);
                         const positionValue = pos.size * currentPrice;
                         const currentLeverage = pos.collateral > 0 ? positionValue / pos.collateral : 0;
+                        
                         return (
                             <div key={pos.entryPrice} className="p-4 bg-background rounded-md border">
                                 <div className="flex flex-wrap items-center justify-between mt-1 gap-4">
@@ -349,8 +445,11 @@ const TradingPageContent = () => {
             <CardContent>
                 <div className="p-4 rounded-lg bg-background border mb-4 text-center space-y-1">
                     <Label className="text-muted-foreground">Available to Trade</Label>
-                    <p className="text-2xl font-bold">${(vaultCollateral.available).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-muted-foreground">Total: ${(vaultCollateral.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Locked: ${(vaultCollateral.locked).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-2xl font-bold">${vaultCollateral.available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-muted-foreground">
+                        Total: ${vaultCollateral.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | 
+                        Locked: ${vaultCollateral.locked.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
                 </div>
                 <Tabs defaultValue="deposit">
                     <TabsList className="grid w-full grid-cols-2">
@@ -360,7 +459,9 @@ const TradingPageContent = () => {
                     <TabsContent value="deposit" className="pt-4 space-y-2">
                         <Label htmlFor="deposit-amount">Amount to Deposit (USDT)</Label>
                         <Input id="deposit-amount" type="number" placeholder="0.0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} />
-                        <p className="text-xs text-muted-foreground text-right">Wallet Balance: {usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-xs text-muted-foreground text-right">
+                          Wallet Balance: {usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
                         <Button onClick={handleDeposit} disabled={isDepositing || !isConnected} className="w-full">
                            {isDepositing ? <Loader2 className="animate-spin" /> : "Deposit Collateral"}
                         </Button>
@@ -368,7 +469,9 @@ const TradingPageContent = () => {
                     <TabsContent value="withdraw" className="pt-4 space-y-2">
                         <Label htmlFor="withdraw-amount">Amount to Withdraw (USDT)</Label>
                         <Input id="withdraw-amount" type="number" placeholder="0.0" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
-                        <p className="text-xs text-muted-foreground text-right">Available in Vault: {(vaultCollateral.available).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-xs text-muted-foreground text-right">
+                          Available in Vault: {vaultCollateral.available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
                         <Button onClick={handleWithdraw} disabled={isWithdrawing || !isConnected} variant="destructive" className="w-full">
                            {isWithdrawing ? <Loader2 className="animate-spin" /> : "Withdraw Collateral"}
                         </Button>
@@ -427,6 +530,51 @@ const TradingPageContent = () => {
             </Button>
           </CardContent>
         </Card>
+        
+        <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-primary">Price Oracle</CardTitle>
+            <CardDescription>Update the ETH price used for new positions</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 bg-muted/50 rounded-md text-sm text-center">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Current ETH Price:</span>
+                <span className="font-bold text-foreground">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Oracle Price:</span>
+                <span className="font-bold text-foreground">${oraclePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="custom-price">Set Custom Price (USD)</Label>
+              <Input
+                id="custom-price"
+                type="number"
+                placeholder="4800.00"
+                value={customPrice}
+                onChange={(e) => setCustomPrice(e.target.value)}
+              />
+            </div>
+            <Button 
+              onClick={handleSetCustomPrice} 
+              disabled={!isConnected || !customPrice}
+              className="w-full"
+            >
+              Set Custom Price
+            </Button>
+            <Button 
+              onClick={handleUpdatePrice} 
+              disabled={!isConnected}
+              variant="outline"
+              className="w-full"
+            >
+              <RefreshCcw className="h-4 w-4 mr-2" /> Use Current Market Price
+            </Button>
+          </CardContent>
+        </Card>
+        
         <WhaleWatch key={`whale-watch-${selectedPair}`} pair={selectedPair} />
         
         <OrderBook currentPrice={currentPrice} assetSymbol={selectedPair.split('/')[0]} />

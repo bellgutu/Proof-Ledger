@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets } from '@/services/blockchain-service';
+import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, getOraclePrice } from '@/services/blockchain-service';
 import type { VaultCollateral } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
@@ -13,7 +14,7 @@ import { parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS } from '@/
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral' | 'Update Oracle';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface Transaction {
@@ -98,6 +99,7 @@ interface WalletActions {
   openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
   closePosition: () => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
+  updateOraclePrice: (price: number) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
@@ -152,6 +154,7 @@ const erc20Abi = parseAbi([
 const perpetualsAbi = parseAbi([
     "function openPosition(uint8 side, uint256 size, uint256 collateral) external",
     "function closePosition() external",
+    "function updatePrice(uint256 newPrice) external",
 ]);
 
 
@@ -844,6 +847,27 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isConnected, walletAddress, toast]);
 
+  const updateOraclePrice = useCallback(async (price: number) => {
+    if (!walletAddress) throw new Error("Wallet not connected");
+    const dialogDetails = { details: `Update oracle price to $${price}` };
+    const txFunction = async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        const onChainPrice = parseTokenAmount(price.toString(), 8); // 8 decimals for price
+
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: PERPETUALS_CONTRACT_ADDRESS,
+            abi: perpetualsAbi,
+            functionName: 'updatePrice',
+            args: [onChainPrice]
+        });
+        
+        return walletClient.writeContract(request);
+    };
+    await executeTransaction('Update Oracle', dialogDetails, txFunction);
+  }, [walletAddress, executeTransaction]);
+
 
   // Effect for polling for external wallet updates
   useEffect(() => {
@@ -881,7 +905,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       walletActions: {
           connectWallet, disconnectWallet, updateBalance, setBalances, sendTokens, addTransaction,
           updateTransactionStatus, setVaultWeth, setVaultCollateral, setActiveStrategy, setProposals, setAvailablePools,
-          setUserPositions, setTxStatusDialog, openPosition, closePosition,
+          setUserPositions, setTxStatusDialog, openPosition, closePosition, updateOraclePrice,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
           claimRewards, depositCollateral, withdrawCollateral, updateVaultCollateral
       }

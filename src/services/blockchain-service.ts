@@ -78,6 +78,8 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, name
 const perpetualsAbi = parseAbi([
   "function openPosition(uint8 side, uint256 size, uint256 collateral) external",
   "function closePosition() external",
+  "function updatePrice(uint256 newPrice) external",
+  "function getPrice() view returns (uint256)",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
 ]);
 
@@ -240,5 +242,19 @@ export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promi
   } catch (error) {
     console.error('[BlockchainService] Failed to get collateral allowance:', error);
     return 0;
+  }
+}
+
+export async function getOraclePrice(): Promise<number> {
+  try {
+    const onChainPrice = await publicClient.readContract({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: perpetualsAbi,
+        functionName: 'getPrice'
+    });
+    return parseFloat(formatTokenAmount(onChainPrice, PRICE_DECIMALS));
+  } catch (error) {
+    console.error('[BlockchainService] Failed to get oracle price:', error);
+    return 3000; // Return a default fallback price on error
   }
 }

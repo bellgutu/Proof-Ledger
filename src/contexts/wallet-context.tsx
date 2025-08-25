@@ -99,7 +99,6 @@ interface WalletActions {
   openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
   closePosition: () => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
-  updateOraclePrice: (price: number) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
@@ -154,7 +153,6 @@ const erc20Abi = parseAbi([
 const perpetualsAbi = parseAbi([
     "function openPosition(uint8 side, uint256 size, uint256 collateral) external",
     "function closePosition() external",
-    "function updatePrice(uint256 newPrice) external",
 ]);
 
 
@@ -847,28 +845,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isConnected, walletAddress, toast]);
 
-  const updateOraclePrice = useCallback(async (price: number) => {
-    if (!walletAddress) throw new Error("Wallet not connected");
-    const dialogDetails = { details: `Update oracle price to $${price}` };
-    const txFunction = async () => {
-        const walletClient = getWalletClient();
-        const [account] = await walletClient.getAddresses();
-        const onChainPrice = parseTokenAmount(price.toString(), 8); // 8 decimals for price
-
-        const { request } = await publicClient.simulateContract({
-            account,
-            address: PERPETUALS_CONTRACT_ADDRESS,
-            abi: perpetualsAbi,
-            functionName: 'updatePrice',
-            args: [onChainPrice]
-        });
-        
-        return walletClient.writeContract(request);
-    };
-    await executeTransaction('Update Oracle', dialogDetails, txFunction);
-  }, [walletAddress, executeTransaction]);
-
-
   // Effect for polling for external wallet updates
   useEffect(() => {
     if (!isConnected || !walletAddress) return;
@@ -905,7 +881,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       walletActions: {
           connectWallet, disconnectWallet, updateBalance, setBalances, sendTokens, addTransaction,
           updateTransactionStatus, setVaultWeth, setVaultCollateral, setActiveStrategy, setProposals, setAvailablePools,
-          setUserPositions, setTxStatusDialog, openPosition, closePosition, updateOraclePrice,
+          setUserPositions, setTxStatusDialog, openPosition, closePosition,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
           claimRewards, depositCollateral, withdrawCollateral, updateVaultCollateral
       }

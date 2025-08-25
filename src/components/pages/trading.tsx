@@ -25,7 +25,7 @@ import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals } = walletState;
-  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral, updateOraclePrice } = walletActions;
+  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral } = walletActions;
   const { toast } = useToast();
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
@@ -102,12 +102,6 @@ const TradingPageContent = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchPosition]);
-  
-  useEffect(() => {
-    if (activePosition) {
-      // PnL updates are now driven by the onPriceUpdate callback from TradingView
-    }
-  }, [activePosition]);
   
   const handlePairChange = (pair: string) => {
     if(activePosition) {
@@ -195,8 +189,6 @@ const TradingPageContent = () => {
     setIsConfirmOpen(false);
     setIsProcessing(true);
     try {
-      await updateOraclePrice(currentPrice);
-      
       await openPosition({
           side: tradeDirection === 'long' ? 0 : 1,
           size: tradeSize,
@@ -332,8 +324,8 @@ const TradingPageContent = () => {
             <CardContent>
                 <div className="p-4 rounded-lg bg-background border mb-4 text-center space-y-1">
                     <Label className="text-muted-foreground">Available to Trade</Label>
-                    <p className="text-2xl font-bold">${vaultCollateral.available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-muted-foreground">Total: ${vaultCollateral.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Locked: ${vaultCollateral.locked.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-2xl font-bold">${(vaultCollateral.available || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-muted-foreground">Total: ${(vaultCollateral.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Locked: ${(vaultCollateral.locked || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                 <Tabs defaultValue="deposit">
                     <TabsList className="grid w-full grid-cols-2">
@@ -344,7 +336,7 @@ const TradingPageContent = () => {
                         <Label htmlFor="deposit-amount">Amount to Deposit (USDT)</Label>
                         <Input id="deposit-amount" type="number" placeholder="0.0" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} />
                         <p className="text-xs text-muted-foreground text-right">
-                          Wallet Balance: {usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Wallet Balance: {(usdtBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                         <Button onClick={handleDeposit} disabled={isDepositing || !isConnected} className="w-full">
                            {isDepositing ? <Loader2 className="animate-spin" /> : "Deposit Collateral"}
@@ -354,7 +346,7 @@ const TradingPageContent = () => {
                         <Label htmlFor="withdraw-amount">Amount to Withdraw (USDT)</Label>
                         <Input id="withdraw-amount" type="number" placeholder="0.0" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
                         <p className="text-xs text-muted-foreground text-right">
-                          Available in Vault: {vaultCollateral.available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Available in Vault: {(vaultCollateral.available || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                         <Button onClick={handleWithdraw} disabled={isWithdrawing || !isConnected} variant="destructive" className="w-full">
                            {isWithdrawing ? <Loader2 className="animate-spin" /> : "Withdraw Collateral"}

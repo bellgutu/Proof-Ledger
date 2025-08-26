@@ -72,9 +72,7 @@ const perpetualsAbi = parseAbi([
 const publicClient = createPublicClient({
   chain: anvilChain,
   transport: http(),
-  multicall: {
-    batch: false,
-  },
+  multicall: false, // Explicitly disable multicall
 })
 
 export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsset[]> {
@@ -85,23 +83,23 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
     const ethBalance = await publicClient.getBalance({ address });
     assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatTokenAmount(ethBalance, 18)), decimals: 18 });
 
+    // Sequentially fetch token data to avoid multicall/batching issues
     for (const symbol of tokenSymbols) {
       const contract = ERC20_CONTRACTS[symbol];
       if (!contract.address) continue;
       try {
-        const [balance, decimals] = await Promise.all([
-          publicClient.readContract({
-            address: contract.address,
-            abi: genericErc20Abi,
-            functionName: 'balanceOf',
-            args: [address],
-          }),
-          publicClient.readContract({
-            address: contract.address,
-            abi: genericErc20Abi,
-            functionName: 'decimals',
-          }),
-        ]);
+        const balance = await publicClient.readContract({
+          address: contract.address,
+          abi: genericErc20Abi,
+          functionName: 'balanceOf',
+          args: [address],
+        });
+
+        const decimals = await publicClient.readContract({
+          address: contract.address,
+          abi: genericErc20Abi,
+          functionName: 'decimals',
+        });
 
         assets.push({
           symbol,
@@ -159,20 +157,20 @@ export interface VaultCollateral {
 
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   try {
-    const [total, locked] = await Promise.all([
-      publicClient.readContract({
+    const total = await publicClient.readContract({
         address: VAULT_CONTRACT_ADDRESS,
         abi: VAULT_ABI,
         functionName: 'collateral',
         args: [userAddress],
-      }),
-      publicClient.readContract({
+    });
+    
+    const locked = await publicClient.readContract({
         address: VAULT_CONTRACT_ADDRESS,
         abi: VAULT_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],
-      })
-    ]);
+    });
+
     const totalF = parseFloat(formatTokenAmount(total, USDT_DECIMALS));
     const lockedF = parseFloat(formatTokenAmount(locked, USDT_DECIMALS));
 

@@ -289,7 +289,7 @@ const TradingPageContent = () => {
                                     {pos.side.toUpperCase()} {pos.size.toLocaleString('en-US', {maximumFractionDigits: 4})} {selectedPair.split('/')[0]}
                                 </span>
                                 <div className="flex items-center gap-4">
-                                  <span className="text-foreground font-semibold">Entry: ${pos.entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
+                                  <span className="text-foreground font-semibold">Entry: ${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
                                   <span className="text-foreground font-semibold">Leverage: {currentLeverage.toFixed(2)}x</span>
                                 </div>
                                 </div>

@@ -1,5 +1,5 @@
 
-import { createWalletClient, custom, http, defineChain, getContract, Address, PublicClient, WalletClient, createPublicClient } from 'viem';
+import { createWalletClient, custom, http, defineChain, getContract, Address, PublicClient, WalletClient, createPublicClient, parseAbi } from 'viem';
 import { localhost } from 'viem/chains';
 
 // --- CONTRACTS & ABI ---
@@ -11,6 +11,12 @@ const FACTORY_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
     { type: 'function', name: 'setFeeTo', inputs: [{ name: '_feeTo', type: 'address' }], outputs: [] },
 ] as const;
+
+const POOL_ABI = [
+    { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
+    { type: 'function', name: 'setFeeTo', inputs: [{ name: 'feeTo_', type: 'address' }], outputs: [] },
+] as const;
+
 
 const anvilChain = defineChain({ ...localhost, id: 31337 });
 
@@ -74,6 +80,43 @@ export async function setFactoryFeeTo(feeRecipient: Address = TREASURY_ADDRESS):
         account,
         address: FACTORY_ADDRESS,
         abi: FACTORY_ABI,
+        functionName: 'setFeeTo',
+        args: [feeRecipient],
+    });
+    
+    const hash = await walletClient.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash });
+    return { hash };
+}
+
+export async function getPoolFeeRecipient(poolAddress: Address): Promise<Address | 'Error'> {
+    try {
+        const feeTo = await publicClient.readContract({
+            address: poolAddress,
+            abi: POOL_ABI,
+            functionName: 'feeTo',
+        });
+        return feeTo;
+    } catch (e) {
+        console.error(`Error fetching feeTo for pool ${poolAddress}:`, e);
+        return 'Error';
+    }
+}
+
+export async function setPoolFeeRecipient(poolAddress: Address, feeRecipient: Address = TREASURY_ADDRESS): Promise<{hash: Address}> {
+    if (!walletClient) {
+        throw new Error("Wallet not connected.");
+    }
+     if (!TREASURY_ADDRESS) {
+        throw new Error("Treasury address is not configured in environment variables.");
+    }
+
+    const [account] = await walletClient.getAddresses();
+    
+    const { request } = await publicClient.simulateContract({
+        account,
+        address: poolAddress,
+        abi: POOL_ABI,
         functionName: 'setFeeTo',
         args: [feeRecipient],
     });

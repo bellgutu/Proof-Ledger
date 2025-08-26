@@ -1,6 +1,5 @@
 
 "use client";
-
 import React, { useState, useEffect, useCallback } from 'react';
 import * as feeFixer from '@/lib/feeFixer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -11,13 +10,20 @@ import { type Address } from 'viem';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+// Pool addresses from deployment
+const POOL_ADDRESSES = [
+  "0x56639dB16Ac50A89228026e42a316B30179A5376", // USDT/USDC
+  "0x0665FbB86a3acECa91Df68388EC4BBE11556DDce", // USDT/WETH
+];
+
 export const FeeFixerPanel = () => {
     const [account, setAccount] = useState<Address | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isFixing, setIsFixing] = useState(false);
     const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'fixing' | 'success' | 'error'>('idle');
     const [result, setResult] = useState<{ status: string, message: string } | null>(null);
-    const [feeToAddress, setFeeToAddress] = useState<Address | 'Error' | 'Not Connected' | 'Loading'>('Not Connected');
+    const [factoryFeeTo, setFactoryFeeTo] = useState<Address | 'Error' | 'Not Connected' | 'Loading'>('Not Connected');
+    const [poolFeeRecipients, setPoolFeeRecipients] = useState<Record<string, Address | 'Error' | 'Loading'>>({});
     
     const formatAddress = (address: string | undefined) => {
         if (!address) return 'N/A';
@@ -25,12 +31,32 @@ export const FeeFixerPanel = () => {
     };
 
     const fetchStatus = useCallback(async () => {
-        setFeeToAddress('Loading');
+        setFactoryFeeTo('Loading');
+        POOL_ADDRESSES.forEach(address => {
+            setPoolFeeRecipients(prev => ({...prev, [address]: 'Loading'}));
+        });
+        
         try {
-            const recipient = await feeFixer.getFactoryFeeTo();
-            setFeeToAddress(recipient);
+            // Fetch factory fee recipient
+            const factoryRecipient = await feeFixer.getFactoryFeeTo();
+            setFactoryFeeTo(factoryRecipient);
+            
+            // Fetch pool fee recipients
+            const poolRecipients: Record<string, Address | 'Error'> = {};
+            for (const poolAddress of POOL_ADDRESSES) {
+                try {
+                    const recipient = await feeFixer.getPoolFeeRecipient(poolAddress as Address);
+                    poolRecipients[poolAddress] = recipient;
+                } catch (e) {
+                    poolRecipients[poolAddress] = 'Error';
+                }
+            }
+            setPoolFeeRecipients(poolRecipients);
         } catch (e) {
-            setFeeToAddress('Error');
+            setFactoryFeeTo('Error');
+            POOL_ADDRESSES.forEach(address => {
+                setPoolFeeRecipients(prev => ({...prev, [address]: 'Error'}));
+            });
         }
     }, []);
     
@@ -54,7 +80,7 @@ export const FeeFixerPanel = () => {
         }
     };
 
-    const fixFeeRecipient = async () => {
+    const fixFeeRecipients = async () => {
         if (!isConnected) return;
         
         setIsFixing(true);
@@ -65,9 +91,24 @@ export const FeeFixerPanel = () => {
             const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS as Address;
             if(!treasuryAddress) throw new Error("Treasury address is not configured in environment variables.");
             
-            const { hash } = await feeFixer.setFactoryFeeTo(treasuryAddress);
+            // Fix factory fee recipient
+            const factoryTx = await feeFixer.setFactoryFeeTo(treasuryAddress);
             
-            setResult({ status: 'success', message: `Fee recipient set successfully! Tx: ${formatAddress(hash)}` });
+            // Fix pool fee recipients
+            const poolTxs: string[] = [];
+            for (const poolAddress of POOL_ADDRESSES) {
+                try {
+                    const { hash } = await feeFixer.setPoolFeeRecipient(poolAddress as Address, treasuryAddress);
+                    poolTxs.push(hash);
+                } catch (e) {
+                    console.error(`Failed to set fee recipient for pool ${poolAddress}:`, e);
+                }
+            }
+            
+            setResult({ 
+                status: 'success', 
+                message: `Fee recipients set successfully! Factory TX: ${formatAddress(factoryTx.hash)}${poolTxs.length > 0 ? `, Pools: ${poolTxs.map(formatAddress).join(', ')}` : ''}` 
+            });
             setStatus('success');
             
             await fetchStatus();
@@ -80,39 +121,72 @@ export const FeeFixerPanel = () => {
         }
     };
 
-    const StatusIndicator = () => {
-        if (feeToAddress === 'Loading') {
+    const FactoryStatusIndicator = () => {
+        if (factoryFeeTo === 'Loading') {
             return <span className="flex items-center text-muted-foreground"><Loader2 className="mr-2 animate-spin"/> Checking...</span>
         }
-        if (feeToAddress === 'Error' || feeToAddress === 'Not Connected') {
-            return <span className="flex items-center text-destructive"><XCircle className="mr-2"/> {feeToAddress}</span>
+        if (factoryFeeTo === 'Error' || factoryFeeTo === 'Not Connected') {
+            return <span className="flex items-center text-destructive"><XCircle className="mr-2"/> {factoryFeeTo}</span>
         }
-        if (feeToAddress === ZERO_ADDRESS) {
+        if (factoryFeeTo === ZERO_ADDRESS) {
             return <span className="flex items-center text-yellow-500"><AlertTriangle className="mr-2"/> Not Set (Zero Address)</span>
         }
-        return <span className="flex items-center text-green-500"><CheckCircle className="mr-2"/> Set: {formatAddress(feeToAddress)}</span>
+        return <span className="flex items-center text-green-500"><CheckCircle className="mr-2"/> Set: {formatAddress(factoryFeeTo)}</span>
     }
+
+    const PoolStatusIndicator = ({ poolAddress }: { poolAddress: string }) => {
+        const recipient = poolFeeRecipients[poolAddress];
+        
+        if (recipient === 'Loading') {
+            return <span className="flex items-center text-muted-foreground"><Loader2 className="mr-2 animate-spin"/> Checking...</span>
+        }
+        if (recipient === 'Error') {
+            return <span className="flex items-center text-destructive"><XCircle className="mr-2"/> Error</span>
+        }
+        if (!recipient || recipient === ZERO_ADDRESS) {
+            return <span className="flex items-center text-yellow-500"><AlertTriangle className="mr-2"/> Not Set</span>
+        }
+        return <span className="flex items-center text-green-500"><CheckCircle className="mr-2"/> Set</span>
+    }
+
+    const allPoolsFixed = Object.values(poolFeeRecipients).every(
+        recipient => recipient && recipient !== ZERO_ADDRESS && recipient !== 'Loading' && recipient !== 'Error'
+    );
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-3">
                     <HardHat className="text-primary"/>
-                    DEX Factory Fee Fixer
+                    DEX Fee Recipient Fixer
                 </CardTitle>
                 <CardDescription>
-                    This tool corrects the protocol fee destination for the DEX Factory contract. This is required for liquidity pools to function correctly.
+                    This tool corrects the fee recipient for both the DEX Factory and liquidity pools. This is required for liquidity pools to function correctly.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                {/* Factory Status */}
                 <div className="p-4 bg-background rounded-lg border">
                     <h4 className="font-semibold mb-2">Factory Status</h4>
                     <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Current Fee Recipient:</span>
-                        <StatusIndicator />
+                        <FactoryStatusIndicator />
                     </div>
                 </div>
-
+                
+                {/* Pool Statuses */}
+                <div className="p-4 bg-background rounded-lg border">
+                    <h4 className="font-semibold mb-2">Pool Statuses</h4>
+                    <div className="space-y-2">
+                        {POOL_ADDRESSES.map((poolAddress) => (
+                            <div key={poolAddress} className="flex justify-between items-center">
+                                <span className="text-muted-foreground">{formatAddress(poolAddress)}:</span>
+                                <PoolStatusIndicator poolAddress={poolAddress} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                
                 {!isConnected ? (
                     <Button onClick={connectWallet} disabled={status === 'connecting'} className="w-full">
                         {status === 'connecting' ? <Loader2 className="animate-spin" /> : 'Connect Wallet to Begin'}
@@ -121,13 +195,16 @@ export const FeeFixerPanel = () => {
                     <div className="text-center space-y-2">
                         <p className="text-sm text-muted-foreground">Connected as: <span className="font-mono">{formatAddress(account!)}</span></p>
                         <Button 
-                            onClick={fixFeeRecipient}
-                            disabled={isFixing || feeToAddress === 'Error' || (feeToAddress !== ZERO_ADDRESS && feeToAddress !== 'Loading')}
+                            onClick={fixFeeRecipients}
+                            disabled={isFixing || factoryFeeTo === 'Error' || Object.values(poolFeeRecipients).includes('Error')}
                             className="w-full"
                         >
                             {isFixing ? <Loader2 className="mr-2 animate-spin"/> : <HardHat className="mr-2"/>}
-                            {isFixing ? 'Setting Recipient...' : 'Set Fee Recipient to Treasury'}
+                            {isFixing ? 'Setting Recipients...' : 'Set All Fee Recipients to Treasury'}
                         </Button>
+                        {allPoolsFixed && factoryFeeTo !== ZERO_ADDRESS && factoryFeeTo !== 'Loading' && factoryFeeTo !== 'Error' && (
+                            <p className="text-sm text-green-600">All fee recipients are properly set!</p>
+                        )}
                     </div>
                 )}
                 

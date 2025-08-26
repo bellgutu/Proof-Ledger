@@ -2,7 +2,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
-import { RefreshCcw, TrendingUp, TrendingDown, Loader2, Info, PlusCircle, MinusCircle, PiggyBank, Lock } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, Loader2, Info, PlusCircle, MinusCircle, PiggyBank, Lock, CheckCircle2, XCircle, Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,8 @@ const TradingPageContent = () => {
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  
+  const [pnlDialogState, setPnlDialogState] = useState<{isOpen: boolean, pnl: number | null}>({isOpen: false, pnl: null});
 
   const usdtBalance = balances['USDT'] || 0;
   
@@ -206,12 +208,15 @@ const TradingPageContent = () => {
   
   const handleCloseTrade = async () => {
     if (!walletAddress || !activePosition) return;
+    
+    const finalPnl = calculatePnl(activePosition);
     setIsProcessing(true);
     try {
         await closePosition();
         setActivePosition(null); 
         await fetchPosition();
         await updateVaultCollateral();
+        setPnlDialogState({ isOpen: true, pnl: finalPnl });
         
     } catch(e: any) {
         // Error is handled by the wallet context dialog
@@ -289,7 +294,7 @@ const TradingPageContent = () => {
                                     {pos.side.toUpperCase()} {pos.size.toLocaleString('en-US', {maximumFractionDigits: 4})} {selectedPair.split('/')[0]}
                                 </span>
                                 <div className="flex items-center gap-4">
-                                  <span className="text-foreground font-semibold">Entry: ${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
+                                  <span className="text-foreground font-semibold">Entry: ${pos.entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</span>
                                   <span className="text-foreground font-semibold">Leverage: {currentLeverage.toFixed(2)}x</span>
                                 </div>
                                 </div>
@@ -455,6 +460,32 @@ const TradingPageContent = () => {
                 Confirm & Open Position
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={pnlDialogState.isOpen} onOpenChange={(open) => setPnlDialogState(prev => ({...prev, isOpen: open}))}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle className="text-center text-2xl">Position Closed</AlertDialogTitle>
+            </AlertDialogHeader>
+            <div className="flex flex-col items-center justify-center text-center space-y-4 py-4">
+              {(pnlDialogState.pnl ?? 0) >= 0 ? (
+                  <Trophy className="h-16 w-16 text-yellow-400"/>
+              ) : (
+                  <XCircle className="h-16 w-16 text-destructive"/>
+              )}
+               <div>
+                  <p className="text-sm text-muted-foreground">Final Profit & Loss</p>
+                  <p className={`text-4xl font-bold ${(pnlDialogState.pnl ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                     ${(pnlDialogState.pnl ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+               </div>
+            </div>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setPnlDialogState({isOpen: false, pnl: null})}>
+                    Close
+                </AlertDialogAction>
+            </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </TooltipProvider>

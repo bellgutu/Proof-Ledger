@@ -425,9 +425,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setIsConnecting(true);
     try {
         const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-        const address = accounts[0];
+        const address = accounts[0] as `0x${string}`;
         setWalletAddress(address);
+        
+        // Fetch all asset balances for the connected wallet
         await refreshAllBalances(address);
+        
         loadTransactions(address);
         setIsConnected(true);
 
@@ -482,7 +485,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           if (!tokenInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
           const { request } = await publicClient.simulateContract({
                account,
-               address: tokenInfo.address,
+               address: tokenInfo.address as `0x${string}`,
                abi: erc20Abi,
                functionName: 'transfer',
                args: [toAddress as `0x${string}`, onChainAmount],
@@ -667,7 +670,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const { request: approveRequest } = await publicClient.simulateContract({
             account,
-            address: ERC20_CONTRACTS['USDT'].address,
+            address: ERC20_CONTRACTS['USDT'].address as `0x${string}`,
             abi: erc20Abi,
             functionName: 'approve',
             args: [VAULT_CONTRACT_ADDRESS, amountOnChain]
@@ -769,7 +772,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         // Approve Vault
         const approveHash = await walletClient.writeContract({
-            address: ERC20_CONTRACTS['WETH'].address,
+            address: ERC20_CONTRACTS['WETH'].address as `0x${string}`,
             abi: erc20Abi,
             functionName: 'approve',
             args: [VAULT_CONTRACT_ADDRESS, amountInWei],

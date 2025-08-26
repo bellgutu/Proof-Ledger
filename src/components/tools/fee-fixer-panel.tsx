@@ -25,6 +25,7 @@ export const FeeFixerPanel = () => {
     };
 
     const fetchStatus = async () => {
+        if (!isConnected) return;
         setFeeToAddress('Loading');
         try {
             const recipient = await feeFixer.getFactoryFeeTo();
@@ -33,6 +34,12 @@ export const FeeFixerPanel = () => {
             setFeeToAddress('Error');
         }
     };
+    
+    useEffect(() => {
+        if (isConnected) {
+            fetchStatus();
+        }
+    }, [isConnected]);
 
     const connectWallet = async () => {
         setStatus('connecting');
@@ -41,7 +48,6 @@ export const FeeFixerPanel = () => {
             setAccount(address);
             setIsConnected(true);
             setStatus('connected');
-            await fetchStatus();
         } catch (error: any) {
             console.error('Connection error:', error);
             setStatus('error');

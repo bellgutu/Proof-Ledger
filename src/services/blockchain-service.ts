@@ -13,6 +13,8 @@ export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_C
 export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER) as `0x${string}`;
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS) as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
+export const USDT_USDC_POOL_ADDRESS = (process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS) as `0x${string}`;
+
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
     'USDT': { address: process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS as `0x${string}`, name: 'Tether' },
@@ -23,7 +25,7 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
     'SOL': { address: process.env.NEXT_PUBLIC_SOL_CONTRACT_ADDRESS as `0x${string}`, name: 'Solana' },
 };
 
-// Runtime guards
+// Runtime guards to ensure environment variables are loaded
 if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
   throw new Error("Perpetuals contract address not configured — check NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS");
 }

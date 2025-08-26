@@ -1,5 +1,5 @@
 
-import { createWalletClient, custom, http, defineChain, publicActions, getContract, Address, PublicClient, WalletClient, createPublicClient } from 'viem';
+import { createWalletClient, custom, http, defineChain, getContract, Address, PublicClient, WalletClient, createPublicClient } from 'viem';
 import { localhost } from 'viem/chains';
 
 // --- CONTRACTS & ABI ---
@@ -9,75 +9,76 @@ const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as Address;
 
 const FACTORY_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
-    { type: 'function', name: 'setFeeTo', inputs: [{ name: '_feeTo', type: 'address' }], outputs: [] }
+    { type: 'function', name: 'setFeeTo', inputs: [{ name: '_feeTo', type: 'address' }], outputs: [] },
 ] as const;
 
 const anvilChain = defineChain({ ...localhost, id: 31337 });
 
-class FeeFixer {
-    private publicClient: PublicClient;
-    private walletClient: WalletClient | null = null;
-    private factoryContract: any = null;
+let walletClient: WalletClient | null = null;
+const publicClient = createPublicClient({
+    chain: anvilChain,
+    transport: http(),
+});
 
-    constructor() {
-        this.publicClient = createPublicClient({
-            chain: anvilChain,
-            transport: http(),
-        });
+export async function connect(): Promise<Address> {
+    if (!window.ethereum) {
+        throw new Error("Browser wallet (like MetaMask) not installed");
     }
 
-    async connect(): Promise<Address> {
-        if (!window.ethereum) {
-            throw new Error("Browser wallet (like MetaMask) not installed");
-        }
+    walletClient = createWalletClient({
+        chain: anvilChain,
+        transport: custom(window.ethereum),
+    });
 
-        this.walletClient = createWalletClient({
-            chain: anvilChain,
-            transport: custom(window.ethereum),
-        });
+    const [address] = await walletClient.requestAddresses();
+    if (!address) {
+        throw new Error("Failed to get wallet address.");
+    }
 
-        const [address] = await this.walletClient.requestAddresses();
-        if (!address) {
-            throw new Error("Failed to get wallet address.");
-        }
-        
-        this.factoryContract = getContract({
+    return address;
+}
+
+export function isWalletConnected(): boolean {
+    return !!walletClient;
+}
+
+export async function getFactoryFeeTo(): Promise<Address | 'Error'> {
+    if (!FACTORY_ADDRESS) {
+        console.error("Factory address is not set in environment variables.");
+        return 'Error';
+    }
+    try {
+        const feeTo = await publicClient.readContract({
             address: FACTORY_ADDRESS,
             abi: FACTORY_ABI,
-            client: { public: this.publicClient, wallet: this.walletClient }
+            functionName: 'feeTo',
         });
-
-        return address;
-    }
-    
-    async getFactoryFeeTo(): Promise<Address | 'Error' | 'Not Connected'> {
-        if (!this.factoryContract) return 'Not Connected';
-        try {
-            return await this.factoryContract.read.feeTo();
-        } catch (e) {
-            console.error("Error fetching factory feeTo:", e);
-            return 'Error';
-        }
-    }
-
-    async setFactoryFeeTo(feeRecipient: Address = TREASURY_ADDRESS): Promise<{hash: Address}> {
-        if (!this.walletClient || !this.factoryContract) {
-            throw new Error("Wallet not connected or contract not initialized.");
-        }
-        const [account] = await this.walletClient.getAddresses();
-        
-        const { request } = await this.publicClient.simulateContract({
-            account,
-            address: FACTORY_ADDRESS,
-            abi: FACTORY_ABI,
-            functionName: 'setFeeTo',
-            args: [feeRecipient],
-        });
-        
-        const hash = await this.walletClient.writeContract(request);
-        await this.publicClient.waitForTransactionReceipt({ hash });
-        return { hash };
+        return feeTo;
+    } catch (e) {
+        console.error("Error fetching factory feeTo:", e);
+        return 'Error';
     }
 }
 
-export default new FeeFixer();
+export async function setFactoryFeeTo(feeRecipient: Address = TREASURY_ADDRESS): Promise<{hash: Address}> {
+    if (!walletClient) {
+        throw new Error("Wallet not connected.");
+    }
+    if (!FACTORY_ADDRESS || !TREASURY_ADDRESS) {
+        throw new Error("Contract addresses are not configured in environment variables.");
+    }
+    
+    const [account] = await walletClient.getAddresses();
+    
+    const { request } = await publicClient.simulateContract({
+        account,
+        address: FACTORY_ADDRESS,
+        abi: FACTORY_ABI,
+        functionName: 'setFeeTo',
+        args: [feeRecipient],
+    });
+    
+    const hash = await walletClient.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash });
+    return { hash };
+}

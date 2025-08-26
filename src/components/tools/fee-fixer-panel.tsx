@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import feeFixer from '@/lib/feeFixer';
+import React, { useState, useEffect, useCallback } from 'react';
+import * as feeFixer from '@/lib/feeFixer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
@@ -24,8 +24,7 @@ export const FeeFixerPanel = () => {
         return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
     };
 
-    const fetchStatus = async () => {
-        if (!isConnected) return;
+    const fetchStatus = useCallback(async () => {
         setFeeToAddress('Loading');
         try {
             const recipient = await feeFixer.getFactoryFeeTo();
@@ -33,13 +32,13 @@ export const FeeFixerPanel = () => {
         } catch (e) {
             setFeeToAddress('Error');
         }
-    };
+    }, []);
     
     useEffect(() => {
         if (isConnected) {
             fetchStatus();
         }
-    }, [isConnected]);
+    }, [isConnected, fetchStatus]);
 
     const connectWallet = async () => {
         setStatus('connecting');
@@ -71,7 +70,7 @@ export const FeeFixerPanel = () => {
             setResult({ status: 'success', message: `Fee recipient set successfully! Tx: ${formatAddress(hash)}` });
             setStatus('success');
             
-            await fetchStatus(); // Refresh status after fixing
+            await fetchStatus();
         } catch (error: any) {
             console.error('Fix error:', error);
             setStatus('error');

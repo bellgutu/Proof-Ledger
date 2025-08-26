@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getOraclePrice, getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS } from '@/services/blockchain-service';
+import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
@@ -96,7 +96,7 @@ interface WalletActions {
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<void>;
   depositCollateral: (amount: string) => Promise<void>;
   withdrawCollateral: (amount: string) => Promise<void>;
-  openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
+  openPosition: (params: { side: number; size: string; collateral: string; entryPrice: number; }) => Promise<void>;
   closePosition: (position: Position, pnl: number) => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
@@ -715,8 +715,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [executeTransaction, decimals]);
 
 
-  const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; }) => {
-      const { side, size, collateral } = params;
+  const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; entryPrice: number }) => {
+      const { side, size, collateral, entryPrice } = params;
       
       const sizeDecimals = decimals['ETH'];
       if (sizeDecimals === undefined) throw new Error("ETH decimals not found");
@@ -725,9 +725,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
 
       // Pin the entry price client-side before opening the position
-      const oraclePrice = await getOraclePrice();
-      if (oraclePrice > 0 && walletAddress) {
-        localStorage.setItem(`entryPrice_${walletAddress}`, oraclePrice.toString());
+      if (entryPrice > 0 && walletAddress) {
+        localStorage.setItem(`entryPrice_${walletAddress}`, entryPrice.toString());
       }
 
       const dialogDetails = { 
@@ -768,11 +767,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
       
       const onSuccess = async () => {
-          // Add the PnL to the vault's total collateral.
           setVaultCollateral(prev => {
             const newTotal = prev.total + pnl;
             const newAvailable = prev.available + pnl;
-            return { ...prev, total: newTotal, available: newAvailable };
+            return { ...prev, total: newTotal, available: newAvailable, locked: 0 };
           });
       };
       

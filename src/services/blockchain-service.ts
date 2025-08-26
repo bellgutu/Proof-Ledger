@@ -216,20 +216,6 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
   }
 }
 
-export async function getOraclePrice(): Promise<number> {
-    try {
-        const price = await publicClient.readContract({
-            address: PERPETUALS_CONTRACT_ADDRESS,
-            abi: perpetualsAbi,
-            functionName: 'getPrice'
-        });
-        return parseFloat(formatTokenAmount(price, PRICE_DECIMALS));
-    } catch (e) {
-        console.error("[BlockchainService] Failed to fetch oracle price", e);
-        return 0;
-    }
-}
-
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
   const usdtContract = ERC20_CONTRACTS['USDT'];
   if (!usdtContract.address) return 0;

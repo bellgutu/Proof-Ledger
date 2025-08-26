@@ -12,7 +12,7 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition, getOraclePrice } from '@/services/blockchain-service';
+import { getActivePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -207,6 +207,7 @@ const TradingPageContent = () => {
           side: tradeDirection === 'long' ? 0 : 1,
           size: tradeSize,
           collateral: requiredCollateralDisplay,
+          entryPrice: currentPrice,
       });
       
       setTradeSize('');
@@ -221,9 +222,9 @@ const TradingPageContent = () => {
   const calculatePnl = useCallback((position: Position) => {
     if (!position.active || !position.entryPrice) return 0;
     
-    const positionSizeInETH = position.size;
+    const positionSizeInAsset = position.size;
     const priceDifference = currentPrice - position.entryPrice;
-    let pnl = positionSizeInETH * priceDifference;
+    let pnl = positionSizeInAsset * priceDifference;
     
     if (position.side === 'short') {
       pnl = -pnl;
@@ -251,7 +252,7 @@ const TradingPageContent = () => {
     }
   };
   
-  const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
+  const tradeablePairs = ['ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];
   
   return (
     <TooltipProvider>
@@ -261,20 +262,22 @@ const TradingPageContent = () => {
       <div className="lg:col-span-2 space-y-8">
         <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
           <CardHeader>
-              <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-bold text-foreground">Futures</h2>
-                  <Select value={selectedPair} onValueChange={handlePairChange} disabled={!!activePosition}>
-                      <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select Pair" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          {tradeablePairs.map(pair => (
-                              <SelectItem key={pair} value={pair}>{pair}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
+              <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                      <h2 className="text-xl font-bold text-foreground">Futures</h2>
+                      <Select value={selectedPair} onValueChange={handlePairChange} disabled={!!activePosition}>
+                          <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Select Pair" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {tradeablePairs.map(pair => (
+                                  <SelectItem key={pair} value={pair}>{pair}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <span className="text-3xl font-bold text-foreground">${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
               </div>
-            <span className="text-3xl font-bold text-foreground">${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-card rounded-md">

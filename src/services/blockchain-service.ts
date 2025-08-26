@@ -25,26 +25,6 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
     'SOL': { address: process.env.NEXT_PUBLIC_SOL_CONTRACT_ADDRESS as `0x${string}`, name: 'Solana' },
 };
 
-// Runtime guards to ensure environment variables are loaded
-if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
-  throw new Error("Perpetuals contract address not configured — check NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS");
-}
-if (!DEX_CONTRACT_ADDRESS || !DEX_CONTRACT_ADDRESS.startsWith('0x')) {
-  throw new Error("DEX Router address not configured — check NEXT_PUBLIC_DEX_ROUTER");
-}
-if (!VAULT_CONTRACT_ADDRESS || !VAULT_CONTRACT_ADDRESS.startsWith('0x')) {
-  throw new Error("Vault contract address not configured — check NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS");
-}
-if (!GOVERNOR_CONTRACT_ADDRESS || !GOVERNOR_CONTRACT_ADDRESS.startsWith('0x')) {
-  throw new Error("Governor contract address not configured — check NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS");
-}
-Object.keys(ERC20_CONTRACTS).forEach(symbol => {
-    if (!ERC20_CONTRACTS[symbol].address || !ERC20_CONTRACTS[symbol].address!.startsWith('0x')) {
-        throw new Error(`Token contract address for ${symbol} not configured — check NEXT_PUBLIC_${symbol}_CONTRACT_ADDRESS`);
-    }
-})
-
-
 const anvilChain = defineChain({
   ...localhost,
   id: 31337,

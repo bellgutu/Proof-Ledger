@@ -17,7 +17,7 @@ export const FeeFixerPanel = () => {
     const [isFixing, setIsFixing] = useState(false);
     const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'fixing' | 'success' | 'error'>('idle');
     const [result, setResult] = useState<{ status: string, message: string } | null>(null);
-    const [feeToAddress, setFeeToAddress] = useState<Address | 'Error' | 'Not Connected' | 'Loading'>('Loading');
+    const [feeToAddress, setFeeToAddress] = useState<Address | 'Error' | 'Not Connected' | 'Loading'>('Not Connected');
     
     const formatAddress = (address: string | undefined) => {
         if (!address) return 'N/A';

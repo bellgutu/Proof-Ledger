@@ -1,5 +1,5 @@
 
-import { createWalletClient, custom, http, defineChain, publicActions, getContract, Address, PublicClient, WalletClient } from 'viem';
+import { createWalletClient, custom, http, defineChain, publicActions, getContract, Address, PublicClient, WalletClient, createPublicClient } from 'viem';
 import { localhost } from 'viem/chains';
 
 // --- CONTRACTS & ABI ---
@@ -31,7 +31,7 @@ class FeeFixer {
     private factoryContract: any = null;
 
     constructor() {
-        this.publicClient = createWalletClient({
+        this.publicClient = createPublicClient({
             chain: anvilChain,
             transport: http(),
         });

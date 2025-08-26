@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { FirebaseAuthHandler } from '@/components/firebase-auth-handler';
 import { WalletProvider } from '@/contexts/wallet-context';
 import AppShell from '@/components/app-shell';
 import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
+import { FirebaseAuthHandler } from '@/components/firebase-auth-handler';
+
 
 export const metadata: Metadata = {
   title: 'ProfitForge',

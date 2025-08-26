@@ -219,7 +219,7 @@ const TradingPageContent = () => {
   };
   
   const calculatePnl = useCallback((position: Position) => {
-    if (!position.active) return 0;
+    if (!position.active || !position.entryPrice) return 0;
     
     const positionSizeInETH = position.size;
     const priceDifference = currentPrice - position.entryPrice;
@@ -316,7 +316,7 @@ const TradingPageContent = () => {
                                 </div>
                                 <div className="mt-2 text-2xl font-bold">
                                 P&L: <span className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                    ${pnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                    ${pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                                 </div>
                                 <Button onClick={handleCloseTrade} className="w-full mt-4" variant="destructive" disabled={isProcessing}>

@@ -381,7 +381,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const executeTransaction = async (
     txType: TransactionType,
     dialogDetails: Partial<Transaction>,
-    txFunction: () => Promise<`0x${string}`>
+    txFunction: () => Promise<`0x${string}`>,
+    onSuccess?: (txHash: `0x${string}`) => void | Promise<void>
   ) => {
       isUpdatingStateRef.current = true;
       setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
@@ -396,9 +397,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           
           setTxStatusDialog(prev => ({ ...prev, state: 'success', transaction: { ...prev.transaction, txHash } }));
           
-          publicClient.waitForTransactionReceipt({ hash: txHash }).then(receipt => {
+          publicClient.waitForTransactionReceipt({ hash: txHash }).then(async (receipt) => {
               if (receipt.status === 'success') {
                   updateTransactionStatus(txHash, 'Completed');
+                  if(onSuccess) await onSuccess(txHash);
               } else {
                   updateTransactionStatus(txHash, 'Failed', 'Transaction was reverted by the contract.');
               }
@@ -764,6 +766,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       );
       
       const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
+      
+      const onSuccess = async () => {
+          // Add the PnL to the vault's total collateral.
+          setVaultCollateral(prev => {
+            const newTotal = prev.total + pnl;
+            const newAvailable = prev.available + pnl;
+            return { ...prev, total: newTotal, available: newAvailable };
+          });
+      };
+      
       const txFunction = async () => {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();
@@ -775,7 +787,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
           return walletClient.writeContract(request);
       }
-      await executeTransaction('Close Position', dialogDetails, txFunction);
+      await executeTransaction('Close Position', dialogDetails, txFunction, onSuccess);
   }, [executeTransaction, walletAddress]);
 
   const depositToVault = useCallback(async (amount: number) => {

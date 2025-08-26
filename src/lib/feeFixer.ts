@@ -5,23 +5,12 @@ import { localhost } from 'viem/chains';
 // --- CONTRACTS & ABI ---
 
 const TREASURY_ADDRESS = process.env.NEXT_PUBLIC_TREASURY_ADDRESS as Address;
-const POOL_ADDRESSES: Address[] = [
-    process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS as Address,
-    '0x0665FbB86a3acECa91Df68388EC4BBE11556DDce', // Static for now, as it's not in .env
-].filter(addr => !!addr); // Filter out any undefined addresses
+const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as Address;
 
-const POOL_ABI = [
-    { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
-    { type: 'function', name: 'setFeeTo', inputs: [{ name: '_feeTo', type: 'address' }], outputs: [] },
-] as const;
-
-// Using a slightly different ABI based on common Uniswap V2 forks
 const FACTORY_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
     { type: 'function', name: 'setFeeTo', inputs: [{ name: '_feeTo', type: 'address' }], outputs: [] }
 ] as const;
-const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as Address;
-
 
 const anvilChain = defineChain({ ...localhost, id: 31337 });
 

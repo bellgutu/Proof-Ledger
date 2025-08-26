@@ -14,6 +14,15 @@ export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER) as `0x$
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS) as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
 
+export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
+    'USDT': { address: process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS as `0x${string}`, name: 'Tether' },
+    'USDC': { address: process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS as `0x${string}`, name: 'USD Coin' },
+    'WETH': { address: process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS as `0x${string}`, name: 'Wrapped Ether' },
+    'LINK': { address: process.env.NEXT_PUBLIC_LINK_CONTRACT_ADDRESS as `0x${string}`, name: 'Chainlink' },
+    'BNB': { address: process.env.NEXT_PUBLIC_BNB_CONTRACT_ADDRESS as `0x${string}`, name: 'BNB' },
+    'SOL': { address: process.env.NEXT_PUBLIC_SOL_CONTRACT_ADDRESS as `0x${string}`, name: 'Solana' },
+};
+
 // Runtime guards
 if (!PERPETUALS_CONTRACT_ADDRESS || !PERPETUALS_CONTRACT_ADDRESS.startsWith('0x')) {
   throw new Error("Perpetuals contract address not configured — check NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS");
@@ -27,6 +36,12 @@ if (!VAULT_CONTRACT_ADDRESS || !VAULT_CONTRACT_ADDRESS.startsWith('0x')) {
 if (!GOVERNOR_CONTRACT_ADDRESS || !GOVERNOR_CONTRACT_ADDRESS.startsWith('0x')) {
   throw new Error("Governor contract address not configured — check NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS");
 }
+Object.keys(ERC20_CONTRACTS).forEach(symbol => {
+    if (!ERC20_CONTRACTS[symbol].address || !ERC20_CONTRACTS[symbol].address!.startsWith('0x')) {
+        throw new Error(`Token contract address for ${symbol} not configured — check NEXT_PUBLIC_${symbol}_CONTRACT_ADDRESS`);
+    }
+})
+
 
 const anvilChain = defineChain({
   ...localhost,
@@ -65,16 +80,6 @@ export const GOVERNOR_ABI = parseAbi([
   "function castVote(uint256,uint8) returns (uint256)"
 ]);
 
-export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}`, name: string } } = {
-    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether' },
-    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin' },
-    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether' },
-    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink' },
-    'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016', name: 'BNB' },
-    'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'Solana' },
-};
-
-
 const perpetualsAbi = parseAbi([
   "function openPosition(uint8 side, uint256 size, uint256 collateral) external",
   "function closePosition() external",
@@ -100,6 +105,7 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
 
     for (const symbol of tokenSymbols) {
       const contract = ERC20_CONTRACTS[symbol];
+      if (!contract.address) continue;
       try {
         const [balance, decimals] = await Promise.all([
           publicClient.readContract({
@@ -228,8 +234,23 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
   }
 }
 
+export async function getOraclePrice(): Promise<number> {
+    try {
+        const price = await publicClient.readContract({
+            address: PERPETUALS_CONTRACT_ADDRESS,
+            abi: perpetualsAbi,
+            functionName: 'getPrice'
+        });
+        return parseFloat(formatTokenAmount(price, PRICE_DECIMALS));
+    } catch (e) {
+        console.error("[BlockchainService] Failed to fetch oracle price", e);
+        return 0;
+    }
+}
+
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
   const usdtContract = ERC20_CONTRACTS['USDT'];
+  if (!usdtContract.address) return 0;
   try {
     const allowance = await publicClient.readContract({
       address: usdtContract.address,

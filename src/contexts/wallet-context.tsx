@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS } from '@/services/blockchain-service';
+import { getOraclePrice, getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
@@ -722,6 +722,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const sizeOnChain = parseTokenAmount(size, sizeDecimals);
       const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
 
+      // Pin the entry price client-side before opening the position
+      const oraclePrice = await getOraclePrice();
+      if (oraclePrice > 0 && walletAddress) {
+        localStorage.setItem(`entryPrice_${walletAddress}`, oraclePrice.toString());
+      }
+
       const dialogDetails = { 
         amount: parseFloat(collateral), 
         token: 'USDT', 
@@ -741,9 +747,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return walletClient.writeContract(request);
       };
       await executeTransaction('Open Position', dialogDetails, txFunction);
-  }, [executeTransaction, decimals]);
+  }, [executeTransaction, decimals, walletAddress]);
 
   const closePosition = useCallback(async (position: Position, pnl: number) => {
+       if (walletAddress) {
+         localStorage.removeItem(`entryPrice_${walletAddress}`);
+       }
       const detailsNode = (
         <div className="text-xs text-left">
           <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div>
@@ -767,7 +776,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return walletClient.writeContract(request);
       }
       await executeTransaction('Close Position', dialogDetails, txFunction);
-  }, [executeTransaction]);
+  }, [executeTransaction, walletAddress]);
 
   const depositToVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', to: 'AI Strategy Vault' };

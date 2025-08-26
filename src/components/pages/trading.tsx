@@ -93,6 +93,13 @@ const TradingPageContent = () => {
     setIsLoadingPosition(true);
     try {
       const position = await getActivePosition(walletAddress as `0x${string}`);
+      if (position) {
+         // Client-side entry price pinning logic
+        const pinnedEntryPrice = localStorage.getItem(`entryPrice_${walletAddress}`);
+        if (pinnedEntryPrice) {
+          position.entryPrice = parseFloat(pinnedEntryPrice);
+        }
+      }
       setActivePosition(position);
     } catch (e) {
       console.error("Failed to fetch active position:", e);

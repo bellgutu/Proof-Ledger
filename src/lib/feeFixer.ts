@@ -12,7 +12,7 @@ const POOL_ADDRESSES: Address[] = [
 
 const POOL_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
-    { type: 'function', name: 'setFeeTo',- inputs: [{ name: '_feeTo', type: 'address' }], outputs: [] },
+    { type: 'function', name: 'setFeeTo', inputs: [{ name: '_feeTo', type: 'address' }], outputs: [] },
 ] as const;
 
 // Using a slightly different ABI based on common Uniswap V2 forks

@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS } from '@/services/blockchain-service';
-import type { VaultCollateral } from '@/services/blockchain-service';
+import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
 import { localhost } from 'viem/chains';
@@ -97,7 +97,7 @@ interface WalletActions {
   depositCollateral: (amount: string) => Promise<void>;
   withdrawCollateral: (amount: string) => Promise<void>;
   openPosition: (params: { side: number; size: string; collateral: string; }) => Promise<void>;
-  closePosition: () => Promise<void>;
+  closePosition: (position: Position, pnl: number) => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
@@ -743,8 +743,18 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       await executeTransaction('Open Position', dialogDetails, txFunction);
   }, [executeTransaction, decimals]);
 
-  const closePosition = useCallback(async () => {
-      const dialogDetails = { to: 'Perpetuals Contract', details: 'Close active position' };
+  const closePosition = useCallback(async (position: Position, pnl: number) => {
+      const detailsNode = (
+        <div className="text-xs text-left">
+          <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div>
+          <div>Entry: ${position.entryPrice.toFixed(2)}</div>
+          <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+            Final PnL: ${pnl.toFixed(2)}
+          </div>
+        </div>
+      );
+      
+      const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
       const txFunction = async () => {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();

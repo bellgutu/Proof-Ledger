@@ -86,15 +86,20 @@ const TradingPageContent = () => {
   }, []);
   
   const fetchPosition = useCallback(async () => {
-    if (!isConnected || !walletAddress) return;
+    if (!isConnected || !walletAddress) {
+      setIsLoadingPosition(false);
+      return;
+    };
     setIsLoadingPosition(true);
     try {
       const position = await getActivePosition(walletAddress as `0x${string}`);
       setActivePosition(position);
     } catch (e) {
       console.error("Failed to fetch active position:", e);
+      setActivePosition(null);
+    } finally {
+      setIsLoadingPosition(false);
     }
-    setIsLoadingPosition(false);
   }, [isConnected, walletAddress]);
   
   useEffect(() => {
@@ -206,26 +211,7 @@ const TradingPageContent = () => {
     }
   };
   
-  const handleCloseTrade = async () => {
-    if (!walletAddress || !activePosition) return;
-    
-    const finalPnl = calculatePnl(activePosition);
-    setIsProcessing(true);
-    try {
-        await closePosition();
-        setActivePosition(null); 
-        await fetchPosition();
-        await updateVaultCollateral();
-        setPnlDialogState({ isOpen: true, pnl: finalPnl });
-        
-    } catch(e: any) {
-        // Error is handled by the wallet context dialog
-    } finally {
-        setIsProcessing(false);
-    }
-  };
-  
-  const calculatePnl = (position: Position) => {
+  const calculatePnl = useCallback((position: Position) => {
     if (!position.active) return 0;
     
     const positionSizeInETH = position.size;
@@ -237,6 +223,25 @@ const TradingPageContent = () => {
     }
     
     return pnl;
+  }, [currentPrice]);
+
+  const handleCloseTrade = async () => {
+    if (!walletAddress || !activePosition) return;
+    
+    const finalPnl = calculatePnl(activePosition);
+    setIsProcessing(true);
+    try {
+        await closePosition(activePosition, finalPnl);
+        setActivePosition(null); 
+        await fetchPosition();
+        await updateVaultCollateral();
+        setPnlDialogState({ isOpen: true, pnl: finalPnl });
+        
+    } catch(e: any) {
+        // Error is handled by the wallet context dialog
+    } finally {
+        setIsProcessing(false);
+    }
   };
   
   const tradeablePairs = ['ETH/USDT', 'WETH/USDC', 'BNB/USDT', 'SOL/USDT', 'LINK/USDT'];

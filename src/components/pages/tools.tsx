@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { FileSearch, Search, Loader2, GitBranch, ShieldCheck, ArrowRight, FileText } from 'lucide-react';
+import { FileSearch, Search, Loader2, GitBranch, ShieldCheck, ArrowRight, FileText, HardHat } from 'lucide-react';
+import { FeeFixerPanel } from '../tools/fee-fixer-panel';
 
 import { getBridgeTransactionDetails } from '@/ai/flows/bridge-narrator-flow';
 import { auditContract } from '@/ai/flows/contract-auditor-flow';
@@ -123,10 +124,11 @@ export default function ToolsPage() {
   return (
     <div className="space-y-8">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="bridge"><GitBranch className="mr-2"/>Cross-Chain Bridge</TabsTrigger>
           <TabsTrigger value="auditors"><ShieldCheck className="mr-2"/>Auditors</TabsTrigger>
           <TabsTrigger value="analyzer"><FileText className="mr-2"/>Doc Analyzer</TabsTrigger>
+          <TabsTrigger value="fixer"><HardHat className="mr-2"/>Fee Fixer</TabsTrigger>
         </TabsList>
         
         {/* Cross-Chain Bridge Tab */}
@@ -254,6 +256,12 @@ export default function ToolsPage() {
                 )}
             </div>
         </TabsContent>
+
+        {/* Fee Fixer Tab */}
+        <TabsContent value="fixer" className="mt-6">
+            <FeeFixerPanel />
+        </TabsContent>
+
       </Tabs>
         
       {/* Universal Alert Dialog */}

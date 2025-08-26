@@ -40,11 +40,6 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  env: {
-    CRYTOPANIC_API_KEY: process.env.CRYTOPANIC_API_KEY,
-    // Note: LOCAL_PRIVATE_KEY is a server-side variable and should not be exposed here.
-    // It is loaded directly via dotenv on the server.
-  }
 };
 
 export default nextConfig;

@@ -69,7 +69,8 @@ export const GOVERNOR_ABI = parseAbi([
 ]);
 
 export const FACTORY_ABI = parseAbi([
-    "function getPool(address, address, bool) view returns (address)",
+    "function getPool(address tokenA, address tokenB, bool stable) external view returns (address)",
+    "function createPool(address tokenA, address tokenB, bool stable) external returns (address pool)",
 ]);
 
 export const POOL_ABI = parseAbi([

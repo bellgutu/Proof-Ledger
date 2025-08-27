@@ -612,7 +612,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const factoryContract = getContract({
         address: FACTORY_CONTRACT_ADDRESS,
         abi: FACTORY_ABI,
-        client: publicClient
+        client: { public: publicClient }
     });
     const poolAddress = await factoryContract.read.getPool([fromTokenInfo.address, toTokenInfo.address, false]);
     if (poolAddress === '0x0000000000000000000000000000000000000000') {
@@ -702,38 +702,23 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
       
       if (!tokenAInfo?.address || !tokenBInfo?.address) {
-          throw new Error("Invalid tokens for liquidity");
+          throw new Error("Invalid tokens for liquidity. Contract addresses not found.");
       }
 
-      if (!FACTORY_CONTRACT_ADDRESS) {
-          throw new Error("DEX Factory address is not configured.");
-      }
-      
       const factoryContract = getContract({
           address: FACTORY_CONTRACT_ADDRESS,
           abi: FACTORY_ABI,
           client: { public: publicClient }
       });
       
-      const poolAddress = await factoryContract.read.getPool([tokenAInfo.address, tokenBInfo.address, stable]);
+      const tokens = [tokenAInfo.address, tokenBInfo.address];
+      const sortedTokens = tokens[0].toLowerCase() < tokens[1].toLowerCase() 
+        ? [tokens[0], tokens[1]] 
+        : [tokens[1], tokens[0]];
+
+      const poolAddress = await factoryContract.read.getPool(sortedTokens as [`0x${string}`, `0x${string}`, boolean]);
       if (poolAddress === '0x0000000000000000000000000000000000000000') {
           throw new Error("Pool does not exist. Please create the pool first.");
-      }
-
-      const poolContract = getContract({
-          address: poolAddress,
-          abi: POOL_ABI,
-          client: { public: publicClient }
-      });
-
-      try {
-          const lpTokenAddress = await poolContract.read.lpToken();
-          if (lpTokenAddress === '0x0000000000000000000000000000000000000000') {
-              throw new Error("Pool is not properly initialized. LP token address is zero.");
-          }
-      } catch (e) {
-          console.error("Error checking pool:", e);
-          throw new Error("Failed to verify pool state. The pool might not be properly initialized.");
       }
       
       await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
@@ -920,10 +905,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
           // Manually update the vault collateral with the PnL after a successful close
-          setVaultCollateral(prev => {
-              const newTotal = prev.total + pnl;
-              return { ...prev, total: newTotal, available: newTotal - prev.locked };
-          });
           await updateVaultCollateral();
       });
   }, [executeTransaction, walletAddress, updateVaultCollateral]);

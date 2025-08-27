@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, decodeErrorResult } from 'viem';
 import { localhost } from 'viem/chains';
 import { parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS } from '@/lib/format';
+import { isValidAddress } from '@/lib/utils';
 
 // --- TYPE DEFINITIONS ---
 
@@ -224,6 +225,23 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const { toast } = useToast();
   const isUpdatingStateRef = useRef(false);
+  
+  const updateVaultCollateral = useCallback(async () => {
+    if (!isConnected || !walletAddress) return;
+    
+    try {
+      const collateral = await getVaultCollateral(walletAddress as `0x${string}`);
+      setVaultCollateral(collateral);
+    } catch (error) {
+      console.error("Failed to update vault collateral:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update vault collateral",
+      });
+    }
+  }, [isConnected, walletAddress, toast]);
+
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
@@ -452,22 +470,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
       }
   };
-  
-  const updateVaultCollateral = useCallback(async () => {
-    if (!isConnected || !walletAddress) return;
-    
-    try {
-      const collateral = await getVaultCollateral(walletAddress as `0x${string}`);
-      setVaultCollateral(collateral);
-    } catch (error) {
-      console.error("Failed to update vault collateral:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update vault collateral",
-      });
-    }
-  }, [isConnected, walletAddress, toast]);
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
@@ -606,71 +608,86 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const checkPoolExists = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
     const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
     const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
+    
     if (!tokenAInfo?.address || !tokenBInfo?.address) {
         console.error("Token info not found for", tokenA, tokenB);
         return false;
     }
     
+    if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
+        console.error("Invalid factory contract address:", FACTORY_CONTRACT_ADDRESS);
+        throw new Error("Factory contract address is not properly configured.");
+    }
+    
     // Sort tokens by address
-    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
-    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
+    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() 
+        ? tokenAInfo.address 
+        : tokenBInfo.address;
+    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() 
+        ? tokenBInfo.address 
+        : tokenAInfo.address;
     
     console.log("Checking pool for sorted tokens:", token0, token1, stable);
-
-    const factoryContract = getContract({
-        address: FACTORY_CONTRACT_ADDRESS,
-        abi: FACTORY_ABI,
-        client: { public: publicClient }
-    });
-
+    
     try {
         const code = await publicClient.getCode({ address: FACTORY_CONTRACT_ADDRESS });
         if (code === '0x') {
             throw new Error('Factory contract not deployed');
         }
         
+        const factoryContract = getContract({
+            address: FACTORY_CONTRACT_ADDRESS,
+            abi: FACTORY_ABI,
+            client: publicClient
+        });
+        
         const poolAddress = await factoryContract.read.getPool([token0, token1, stable]);
         console.log("Pool address:", poolAddress);
         return poolAddress !== '0x0000000000000000000000000000000000000000';
-    } catch (error: any) {
-        console.error("Error checking pool existence with getPool:", error);
-
-        // Fallback approach
+    } catch (error) {
+        console.error("Error checking pool existence (direct call failed):", error);
+        
         try {
-            console.log("getPool failed, trying fallback: iterating all pools...");
+            const factoryContract = getContract({
+                address: FACTORY_CONTRACT_ADDRESS,
+                abi: FACTORY_ABI,
+                client: publicClient
+            });
+
             const allPoolsLength = await factoryContract.read.allPoolsLength();
+            console.log("Fallback: Total pools length:", allPoolsLength.toString());
             
             for (let i = 0; i < Number(allPoolsLength); i++) {
                 try {
                     const poolAddress = await factoryContract.read.allPools([BigInt(i)]);
-                    const poolContract = getContract({ address: poolAddress, abi: POOL_ABI, client: { public: publicClient } });
                     
-                    const [poolToken0, poolToken1, isStable] = await Promise.all([
-                        poolContract.read.token0(),
-                        poolContract.read.token1(),
-                        poolContract.read.stable()
-                    ]);
+                    const poolContract = getContract({
+                        address: poolAddress,
+                        abi: POOL_ABI,
+                        client: publicClient
+                    });
                     
-                    if (isStable === stable) {
-                        const poolToken0Lower = poolToken0.toLowerCase();
-                        const poolToken1Lower = poolToken1.toLowerCase();
-                        const token0Lower = token0.toLowerCase();
-                        const token1Lower = token1.toLowerCase();
-
-                        if ((poolToken0Lower === token0Lower && poolToken1Lower === token1Lower) ||
-                            (poolToken0Lower === token1Lower && poolToken1Lower === token0Lower)) {
-                            console.log("Found matching pool via fallback at address:", poolAddress);
-                            return true;
-                        }
+                    const poolToken0 = await poolContract.read.token0();
+                    const poolToken1 = await poolContract.read.token1();
+                    const isStable = await poolContract.read.stable();
+                    
+                    if (
+                        (poolToken0.toLowerCase() === token0.toLowerCase() && poolToken1.toLowerCase() === token1.toLowerCase() || 
+                         poolToken0.toLowerCase() === token1.toLowerCase() && poolToken1.toLowerCase() === token0.toLowerCase()) && 
+                        isStable === stable
+                    ) {
+                        console.log("Fallback: Found matching pool at address:", poolAddress);
+                        return true;
                     }
-                } catch (innerError) {
-                    console.error(`Error checking pool at index ${i}:`, innerError);
+                } catch (e) {
+                    console.error("Fallback: Error checking pool", i, ":", e);
                 }
             }
-            console.log("No matching pool found via fallback.");
+            
+            console.log("Fallback: No matching pool found");
             return false;
-        } catch (fallbackError) {
-            console.error("Fallback pool check also failed:", fallbackError);
+        } catch (e) {
+            console.error("Fallback approach also failed:", e);
             return false;
         }
     }
@@ -679,6 +696,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
 
+    if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
+        throw new Error("Factory contract address is not properly configured.");
+    }
+    
     const poolExists = await checkPoolExists(fromToken, toToken, false);
     if (!poolExists) {
       throw new Error("Liquidity pool does not exist for the selected token pair. Please select a different pair or create the pool first.");
@@ -797,6 +818,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       
       if (!tokenAInfo?.address || !tokenBInfo?.address) {
           throw new Error("Invalid tokens for liquidity. Contract addresses not found.");
+      }
+      
+      if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
+        throw new Error("Factory contract address is not properly configured.");
       }
 
       // Sort tokens
@@ -997,8 +1022,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return walletClient.writeContract(request);
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
-          // Manually update the vault collateral with the PnL after a successful close
           await updateVaultCollateral();
+          setVaultCollateral(prev => ({
+              ...prev,
+              available: prev.available + pnl,
+              total: prev.total + pnl,
+          }));
       });
   }, [executeTransaction, walletAddress, updateVaultCollateral]);
 

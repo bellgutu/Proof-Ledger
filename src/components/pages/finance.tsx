@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 import { useRouter } from 'next/navigation';
 import { ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS } from '@/services/blockchain-service';
+import { isValidAddress } from '@/lib/utils';
 
 export interface VaultStrategy {
     name: string;
@@ -38,9 +39,6 @@ export interface Proposal {
 
 
 type Token = 'ETH' | keyof typeof ERC20_CONTRACTS;
-
-const tokenNames: Token[] = ['ETH', ...Object.keys(ERC20_CONTRACTS) as Array<keyof typeof ERC20_CONTRACTS>];
-
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
@@ -78,10 +76,11 @@ export default function FinancePage() {
   const [toToken, setToToken] = useState<Token>('WETH');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false); // General processing state for swap/approve
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isCheckingPool, setIsCheckingPool] = useState(false);
   const [poolExists, setPoolExists] = useState(true);
+  const [swapError, setSwapError] = useState<string | null>(null);
 
   const fromAmountNum = useMemo(() => parseFloat(fromAmount) || 0, [fromAmount]);
   const allowance = useMemo(() => allowances[fromToken] || 0, [allowances, fromToken]);
@@ -98,14 +97,16 @@ export default function FinancePage() {
   
   useEffect(() => {
     const verifyPool = async () => {
+      setSwapError(null);
       if (fromToken && toToken && fromToken !== toToken) {
         setIsCheckingPool(true);
         try {
           const exists = await checkPoolExists(fromToken, toToken, false);
           setPoolExists(exists);
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error checking pool existence:", error);
           setPoolExists(false);
+          setSwapError(error.message || "Could not verify pool existence.");
         } finally {
           setIsCheckingPool(false);
         }
@@ -115,6 +116,9 @@ export default function FinancePage() {
     };
     verifyPool();
   }, [fromToken, toToken, checkPoolExists]);
+  
+  const tokenNames: Token[] = useMemo(() => ['ETH', ...Object.keys(ERC20_CONTRACTS)], []);
+
 
   const exchangeRates = useMemo(() => {
     return Object.keys(marketData).reduce((acc, key) => {
@@ -160,6 +164,7 @@ export default function FinancePage() {
   };
   
   const handleSwapOrApprove = async () => {
+    setSwapError(null);
     if (!fromToken || !toToken || fromAmountNum <= 0 || fromAmountNum > (balances[fromToken] || 0)) {
         toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
         return;
@@ -175,7 +180,7 @@ export default function FinancePage() {
       setToAmount('');
       toast({ title: "Swap Submitted!", description: `Your transaction is being processed.`});
     } catch(e: any) {
-        // Error is handled by the wallet context dialog, but we can log it too.
+        setSwapError(e.message || "An unknown error occurred during the swap.");
         console.error("Swap/Approve failed:", e);
     } finally {
       setIsProcessing(false);
@@ -189,7 +194,6 @@ export default function FinancePage() {
     try {
       await createPool(fromToken, toToken, false);
       toast({ title: "Pool Creation Submitted", description: `Your transaction to create the ${fromToken}/${toToken} pool is processing.`});
-      // After creation, re-check existence
       const exists = await checkPoolExists(fromToken, toToken, false);
       setPoolExists(exists);
     } catch (e: any) {
@@ -409,18 +413,25 @@ export default function FinancePage() {
                         {isProcessing ? <Loader2 className="animate-spin" /> : "Create Pool"}
                       </Button>
                     </div>
+                ) : swapError ? (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-md p-4 space-y-2 text-sm text-red-400">
+                    <div className="flex items-center gap-2 font-medium">
+                      <XCircleIcon className="h-5 w-5" /> Error
+                    </div>
+                    <p>{swapError}</p>
+                  </div>
                 ) : (
                   <Button
                     onClick={handleSwapOrApprove}
                     disabled={!isConnected || isProcessing || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
                     className="w-full mt-4"
                   >
-                    {isApproving ? (
+                    {isProcessing && needsApproval ? (
                       <><Loader2 size={16} className="mr-2 animate-spin" /> Approving...</>
+                    ) : isProcessing && !needsApproval ? (
+                       <><Loader2 size={16} className="mr-2 animate-spin" /> Swapping...</>
                     ) : needsApproval ? (
                       <><ShieldCheck size={16} className="mr-2" /> Approve & Swap</>
-                    ) : isProcessing ? (
-                       <><Loader2 size={16} className="mr-2 animate-spin" /> Swapping...</>
                     ) : (
                       <><RefreshCcw size={16} className="mr-2" /> Swap Tokens</>
                     )}

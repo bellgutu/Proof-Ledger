@@ -164,7 +164,24 @@ export default function FinancePage() {
     setToAmount(tempAmount);
   };
   
-  const handleSwapOrApprove = async () => {
+  const handleApprove = async () => {
+    setSwapError(null);
+    if (!fromToken || fromAmountNum <= 0) return;
+    
+    setIsApproving(true);
+    try {
+        await approveToken(fromToken, fromAmountNum, DEX_CONTRACT_ADDRESS);
+        await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
+        toast({ title: "Approval Successful", description: `You can now swap your ${fromToken}.` });
+    } catch(e: any) {
+        setSwapError(e.message || "An unknown error occurred during approval.");
+        console.error("Approve failed:", e);
+    } finally {
+        setIsApproving(false);
+    }
+  };
+  
+  const handleSwap = async () => {
     setSwapError(null);
     if (!fromToken || !toToken || fromAmountNum <= 0 || fromAmountNum > (balances[fromToken] || 0)) {
         toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
@@ -172,8 +189,6 @@ export default function FinancePage() {
     }
     
     setIsProcessing(true);
-    setIsApproving(needsApproval);
-
     try {
       await swapTokens(fromToken, toToken, fromAmountNum);
       
@@ -182,10 +197,9 @@ export default function FinancePage() {
       toast({ title: "Swap Submitted!", description: `Your transaction is being processed.`});
     } catch(e: any) {
         setSwapError(e.message || "An unknown error occurred during the swap.");
-        console.error("Swap/Approve failed:", e);
+        console.error("Swap failed:", e);
     } finally {
       setIsProcessing(false);
-      setIsApproving(false);
     }
   };
 
@@ -424,21 +438,17 @@ export default function FinancePage() {
                     <p>{swapError}</p>
                   </div>
                 ) : (
-                  <Button
-                    onClick={handleSwapOrApprove}
-                    disabled={!isConnected || isProcessing || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
-                    className="w-full mt-4"
-                  >
-                    {isProcessing && isApproving ? (
-                      <><Loader2 size={16} className="mr-2 animate-spin" /> Approving...</>
-                    ) : isProcessing && !isApproving ? (
-                       <><Loader2 size={16} className="mr-2 animate-spin" /> Swapping...</>
-                    ) : needsApproval ? (
-                      <><ShieldCheck size={16} className="mr-2" /> Approve & Swap</>
-                    ) : (
-                      <><RefreshCcw size={16} className="mr-2" /> Swap Tokens</>
-                    )}
-                  </Button>
+                    <div className="mt-4 flex flex-col gap-2">
+                        {needsApproval ? (
+                             <Button onClick={handleApprove} disabled={isApproving || !isConnected || !fromAmountNum} className="w-full">
+                                {isApproving ? <><Loader2 size={16} className="mr-2 animate-spin" />Approving...</> : <><ShieldCheck size={16} className="mr-2" />Approve {fromToken}</>}
+                            </Button>
+                        ) : (
+                            <Button onClick={handleSwap} disabled={!isConnected || isProcessing || !fromAmountNum || fromToken === toToken} className="w-full">
+                                {isProcessing ? <><Loader2 size={16} className="mr-2 animate-spin" />Swapping...</> : <><RefreshCcw size={16} className="mr-2" />Swap Tokens</>}
+                            </Button>
+                        )}
+                    </div>
                 )}
             </CardContent>
             </Card>

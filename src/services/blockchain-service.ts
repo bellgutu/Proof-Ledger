@@ -48,9 +48,13 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-  "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) returns (uint amountA, uint amountB, uint liquidity)",
-  "function removeLiquidity(address,address,bool,uint256,uint256,uint256,address,uint256) returns (uint256,uint256)",
-  "function swapExactTokensForTokens(uint256,uint256,address[],bool,address,uint256)"
+    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) returns (uint amountA, uint amountB, uint liquidity)",
+    "function removeLiquidity(address,address,bool,uint256,uint256,uint256,address,uint256) returns (uint256,uint256)",
+    "function swapExactTokensForTokens(uint256,uint256,address[],bool,address,uint256)",
+    "error InvalidPath()",
+    "error ZeroAddress()",
+    "error Expired()",
+    "error PoolNotFound()"
 ]);
 
 export const VAULT_ABI = parseAbi([

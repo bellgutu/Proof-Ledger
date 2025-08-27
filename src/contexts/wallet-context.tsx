@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -6,7 +7,7 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, decodeErrorResult } from 'viem';
 import { localhost } from 'viem/chains';
 import { parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS } from '@/lib/format';
 
@@ -406,15 +407,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                   updateTransactionStatus(txHash, 'Completed');
                   if(onSuccess) await onSuccess(txHash);
               } else {
-                  let revertReason = 'Transaction was reverted by the contract.';
-                   if (receipt.status === 'reverted') {
-                      if (txType === 'Add Liquidity') {
-                          revertReason = 'Liquidity addition failed. This could be due to an uninitialized pool or insufficient token amounts.';
-                      } else if (txType === 'Swap') {
-                          revertReason = 'Swap failed. This could be due to insufficient liquidity or slippage limits.';
-                      }
-                  }
-                  updateTransactionStatus(txHash, 'Failed', revertReason);
+                  updateTransactionStatus(txHash, 'Failed', 'Transaction was reverted by the contract.');
               }
           }).finally(async () => {
              // Refresh balances after any successful tx
@@ -426,19 +419,28 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       } catch (e: any) {
           console.error(`${txType} failed:`, e);
           let errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
-          
-          if (errorMessage.includes('ERC20: mint to the zero address')) {
-              errorMessage = 'The pool contract is trying to mint LP tokens to an invalid address. This usually means the pool is not properly initialized.';
-          } else if (errorMessage.includes('ERC20: insufficient allowance')) {
-              errorMessage = 'Insufficient token allowance. Please approve the tokens first.';
-          } else if (errorMessage.includes('PoolNotFound')) {
-              errorMessage = 'Liquidity pool does not exist. Please create it first.';
-          } else if (errorMessage.includes('InvalidPath')) {
-              errorMessage = 'Invalid token path. Only direct swaps are supported.';
-          } else if (errorMessage.includes('Expired')) {
-              errorMessage = 'Transaction expired. Please try again.';
-          } else if (errorMessage.includes('Pool is not properly initialized')) {
-              errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
+
+          if (e instanceof TransactionExecutionError && e.details) {
+            try {
+                const decodedError = decodeErrorResult({
+                    abi: DEX_ABI,
+                    data: e.details as `0x${string}`
+                });
+                
+                if (decodedError.errorName === 'PoolNotFound') {
+                    errorMessage = 'Liquidity pool does not exist for the selected token pair. Please select a different pair or create the pool first.';
+                } else if (decodedError.errorName === 'InvalidPath') {
+                    errorMessage = 'Invalid token path. Only direct swaps are supported.';
+                } else if (decodedError.errorName === 'Expired') {
+                    errorMessage = 'Transaction expired. Please try again.';
+                } else if (decodedError.errorName === 'ZeroAddress') {
+                    errorMessage = 'Invalid address provided.';
+                } else {
+                    errorMessage = `Contract error: ${decodedError.errorName}`;
+                }
+            } catch (decodeError) {
+                console.error('Failed to decode error:', decodeError);
+            }
           }
           
           setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
@@ -600,16 +602,29 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
-    if (fromToken === 'ETH') {
-      // ETH doesn't require approval, proceed directly to swap
-    } else {
-        const tokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
-        if (!tokenInfo?.address) throw new Error(`Token ${fromToken} is not configured.`);
+
+    const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
+    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
+    if (!fromTokenInfo?.address || !toTokenInfo?.address) {
+        throw new Error("Invalid token path for swap.");
+    }
+
+    const factoryContract = getContract({
+        address: FACTORY_CONTRACT_ADDRESS,
+        abi: FACTORY_ABI,
+        client: publicClient
+    });
+    const poolAddress = await factoryContract.read.getPool([fromTokenInfo.address, toTokenInfo.address, false]);
+    if (poolAddress === '0x0000000000000000000000000000000000000000') {
+        throw new Error("Liquidity pool does not exist for the selected token pair. Please select a different pair or create the pool first.");
+    }
+    
+    if (fromToken !== 'ETH') {
         const tokenDecimals = decimals[fromToken];
         if (tokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
 
         const currentAllowance = await publicClient.readContract({
-            address: tokenInfo.address!,
+            address: fromTokenInfo.address!,
             abi: erc20Abi,
             functionName: 'allowance',
             args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
@@ -629,7 +644,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
                 const newAllowanceResult = await publicClient.readContract({
-                    address: tokenInfo.address!,
+                    address: fromTokenInfo.address!,
                     abi: erc20Abi,
                     functionName: 'allowance',
                     args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
@@ -657,11 +672,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const walletClient = getWalletClient();
       const [account] = await walletClient.getAddresses();
       
-      const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
-      const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
-      
-      if (!fromTokenInfo?.address || !toTokenInfo?.address) throw new Error("Invalid token path for swap.");
-
       const fromTokenDecimals = decimals[fromToken];
       if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
       

@@ -17,6 +17,7 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 import { useRouter } from 'next/navigation';
+import { ERC20_CONTRACTS } from '@/services/blockchain-service';
 
 export interface VaultStrategy {
     name: string;
@@ -35,9 +36,10 @@ export interface Proposal {
 }
 
 
-type Token = 'ETH' | 'USDT' | 'WETH' | 'LINK' | 'USDC';
+type Token = 'ETH' | keyof typeof ERC20_CONTRACTS;
 
-const tokenNames: Token[] = ['ETH', 'USDT', 'USDC', 'WETH', 'LINK'];
+const tokenNames: Token[] = ['ETH', ...Object.keys(ERC20_CONTRACTS)];
+
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
@@ -288,7 +290,7 @@ export default function FinancePage() {
   
   useEffect(() => {
     handleAmountChange(fromAmount);
-  }, [fromToken, toToken, conversionRate, fromAmount, handleAmountChange]);
+  }, [fromToken, toToken, conversionRate, fromAmount]);
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -368,7 +370,7 @@ export default function FinancePage() {
                   ) : (
                     <Button
                       onClick={handleSwap}
-                      disabled={!isConnected || isSwapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken || needsApproval}
+                      disabled={!isConnected || isSwapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
                       className="w-full"
                       variant="default"
                     >

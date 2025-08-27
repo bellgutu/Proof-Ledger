@@ -15,7 +15,7 @@ export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER) as `0x$
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS) as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
 export const USDT_USDC_POOL_ADDRESS = (process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS) as `0x${string}`;
-export const DEX_FACTORY_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as `0x${string}`;
+export const FACTORY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as `0x${string}`;
 
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
@@ -63,6 +63,16 @@ export const VAULT_ABI = parseAbi([
 export const GOVERNOR_ABI = parseAbi([
   "function castVote(uint256,uint8) returns (uint256)"
 ]);
+
+export const FACTORY_ABI = parseAbi([
+    "function getPool(address, address, bool) view returns (address)",
+]);
+
+export const POOL_ABI = parseAbi([
+    "function lpToken() external view returns (address)",
+    "function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 liquidity)",
+]);
+
 
 const perpetualsAbi = parseAbi([
   "function openPosition(uint8 side, uint256 size, uint256 collateral) external",

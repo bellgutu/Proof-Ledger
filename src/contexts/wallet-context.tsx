@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS } from '@/services/blockchain-service';
+import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, USDT_USDC_POOL_ADDRESS, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits } from 'viem';
@@ -406,7 +406,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                   updateTransactionStatus(txHash, 'Completed');
                   if(onSuccess) await onSuccess(txHash);
               } else {
-                  updateTransactionStatus(txHash, 'Failed', 'Transaction was reverted by the contract.');
+                  let revertReason = 'Transaction was reverted by the contract.';
+                   if (receipt.status === 'reverted') {
+                      if (txType === 'Add Liquidity') {
+                          revertReason = 'Liquidity addition failed. This could be due to an uninitialized pool or insufficient token amounts.';
+                      } else if (txType === 'Swap') {
+                          revertReason = 'Swap failed. This could be due to insufficient liquidity or slippage limits.';
+                      }
+                  }
+                  updateTransactionStatus(txHash, 'Failed', revertReason);
               }
           }).finally(async () => {
              // Refresh balances after any successful tx
@@ -417,7 +425,21 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           
       } catch (e: any) {
           console.error(`${txType} failed:`, e);
-          const errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
+          let errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
+          
+          if (errorMessage.includes('ERC20: mint to the zero address')) {
+              errorMessage = 'The pool contract is trying to mint LP tokens to an invalid address. This usually means the pool is not properly initialized.';
+          } else if (errorMessage.includes('ERC20: insufficient allowance')) {
+              errorMessage = 'Insufficient token allowance. Please approve the tokens first.';
+          } else if (errorMessage.includes('PoolNotFound')) {
+              errorMessage = 'Liquidity pool does not exist. Please create it first.';
+          } else if (errorMessage.includes('InvalidPath')) {
+              errorMessage = 'Invalid token path. Only direct swaps are supported.';
+          } else if (errorMessage.includes('Expired')) {
+              errorMessage = 'Transaction expired. Please try again.';
+          } else if (errorMessage.includes('Pool is not properly initialized')) {
+              errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
+          }
           
           setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
           updateTransactionStatus(tempTxId, 'Failed', errorMessage);
@@ -510,6 +532,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, decimals]);
 
   const approveToken = useCallback(async (tokenSymbol: string, amount: number, spender: `0x${string}` = DEX_CONTRACT_ADDRESS) => {
+    if (!walletAddress) throw new Error("Wallet not connected");
+
     const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
     if (!tokenInfo || !tokenInfo.address) {
         throw new Error(`Token ${tokenSymbol} is not configured.`);
@@ -519,22 +543,33 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(`Decimals for ${tokenSymbol} not found.`);
     }
 
-    const dialogDetails = { amount, token: tokenSymbol, to: spender };
-    await executeTransaction('Approve', dialogDetails, async () => {
-        const walletClient = getWalletClient();
-        const [account] = await walletClient.getAddresses();
-        const { request } = await publicClient.simulateContract({
-            account,
-            address: tokenInfo.address!,
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [spender, parseTokenAmount(amount.toString(), tokenDecimals)],
-        });
-        return await walletClient.writeContract(request);
-    }, async () => {
-        await checkAllowance(tokenSymbol, spender);
+    const currentAllowance = await publicClient.readContract({
+        address: tokenInfo.address!,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [walletAddress as `0x${string}`, spender]
     });
-  }, [executeTransaction, decimals, checkAllowance]);
+    
+    const currentAllowanceFormatted = parseFloat(formatUnits(currentAllowance, tokenDecimals));
+    
+    if (currentAllowanceFormatted < amount) {
+        const dialogDetails = { amount, token: tokenSymbol, to: spender };
+        await executeTransaction('Approve', dialogDetails, async () => {
+            const walletClient = getWalletClient();
+            const [account] = await walletClient.getAddresses();
+            const { request } = await publicClient.simulateContract({
+                account,
+                address: tokenInfo.address!,
+                abi: erc20Abi,
+                functionName: "approve",
+                args: [spender, parseTokenAmount(amount.toString(), tokenDecimals)],
+            });
+            return await walletClient.writeContract(request);
+        }, async () => {
+            await checkAllowance(tokenSymbol, spender);
+        });
+    }
+  }, [executeTransaction, decimals, checkAllowance, walletAddress]);
   
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -575,6 +610,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
 
+    await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
+
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     await executeTransaction('Swap', dialogDetails, async () => {
       const walletClient = getWalletClient();
@@ -604,24 +641,58 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }, async () => {
         await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
     });
-  }, [walletAddress, executeTransaction, decimals, checkAllowance]);
+  }, [walletAddress, executeTransaction, decimals, checkAllowance, approveToken]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
       if (!walletAddress) throw new Error("Wallet not connected");
 
-      await approveToken(tokenA, amountA);
-      await approveToken(tokenB, amountB);
+      const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
+      const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
+      
+      if (!tokenAInfo?.address || !tokenBInfo?.address) {
+          throw new Error("Invalid tokens for liquidity");
+      }
+
+      if (!FACTORY_CONTRACT_ADDRESS) {
+          throw new Error("DEX Factory address is not configured.");
+      }
+      
+      const factoryContract = getContract({
+          address: FACTORY_CONTRACT_ADDRESS,
+          abi: FACTORY_ABI,
+          client: { public: publicClient }
+      });
+      
+      const poolAddress = await factoryContract.read.getPool([tokenAInfo.address, tokenBInfo.address, stable]);
+      if (poolAddress === '0x0000000000000000000000000000000000000000') {
+          throw new Error("Pool does not exist. Please create the pool first.");
+      }
+
+      const poolContract = getContract({
+          address: poolAddress,
+          abi: POOL_ABI,
+          client: { public: publicClient }
+      });
+
+      try {
+          const lpTokenAddress = await poolContract.read.lpToken();
+          if (lpTokenAddress === '0x0000000000000000000000000000000000000000') {
+              throw new Error("Pool is not properly initialized. LP token address is zero.");
+          }
+      } catch (e) {
+          console.error("Error checking pool:", e);
+          throw new Error("Failed to verify pool state. The pool might not be properly initialized.");
+      }
+      
+      // Approve the POOL to spend tokens, not the router
+      await approveToken(tokenA, amountA, poolAddress);
+      await approveToken(tokenB, amountB, poolAddress);
       
       const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
       await executeTransaction('Add Liquidity', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         
-        const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
-        const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
-        
-        if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for liquidity");
-
         const decimalsA = decimals[tokenA];
         const decimalsB = decimals[tokenB];
         if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");

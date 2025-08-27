@@ -75,8 +75,7 @@ export default function FinancePage() {
   const [toToken, setToToken] = useState<Token>('WETH');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
-  const [isApproving, setIsApproving] = useState(false);
-  const [isSwapping, setIsSwapping] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // General processing state for swap/approve
 
   const fromAmountNum = useMemo(() => parseFloat(fromAmount) || 0, [fromAmount]);
   const allowance = useMemo(() => allowances[fromToken] || 0, [allowances, fromToken]);
@@ -134,39 +133,28 @@ export default function FinancePage() {
     setToAmount(tempAmount);
   };
   
-  const handleApprove = async () => {
-    if (!fromToken || fromToken === 'ETH' || fromAmountNum <= 0) return;
-    setIsApproving(true);
-    try {
-      await approveToken(fromToken, fromAmountNum, DEX_CONTRACT_ADDRESS);
-      toast({ title: "Approval Submitted!", description: "Your transaction is processing. The swap button will be enabled shortly."});
-    } catch(e) {
-      // Error handled by context
-    } finally {
-      setIsApproving(false);
-    }
-  };
-
-  const handleSwap = async () => {
+  const handleSwapOrApprove = async () => {
     if (!fromToken || !toToken || fromAmountNum <= 0 || fromAmountNum > (balances[fromToken] || 0)) {
         toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
         return;
     }
     
-    setIsSwapping(true);
+    setIsProcessing(true);
     try {
+      // The swapTokens function now handles the approval check internally.
       await swapTokens(fromToken, toToken, fromAmountNum);
       
       setFromAmount('');
       setToAmount('');
       toast({ title: "Swap Submitted!", description: `Your transaction is being processed.`});
     } catch(e: any) {
-        // Error is handled by the wallet context dialog
+        // Error is handled by the wallet context dialog, but we can log it too.
+        console.error("Swap/Approve failed:", e);
     } finally {
-      setIsSwapping(false);
+      setIsProcessing(false);
     }
   };
-  
+
   const handleVote = async (proposalId: string, vote: 'for' | 'against') => {
     const support = vote === 'for' ? 1 : 0;
     try {
@@ -361,22 +349,20 @@ export default function FinancePage() {
                     </div>
                 </div>
                 <div className="flex gap-2 mt-4">
-                  {needsApproval ? (
-                    <Button onClick={handleApprove} disabled={isApproving || !isConnected} className="w-full">
-                      {isApproving ? <Loader2 className="animate-spin mr-2"/> : <ShieldCheck className="mr-2"/>}
-                      Approve {fromToken}
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleSwap}
-                      disabled={!isConnected || isSwapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
-                      className="w-full"
-                      variant="default"
-                    >
-                      {isSwapping ? <Loader2 size={16} className="mr-2 animate-spin" /> : <RefreshCcw size={16} className="mr-2" />}
-                       Swap Tokens
-                    </Button>
-                  )}
+                  <Button
+                    onClick={handleSwapOrApprove}
+                    disabled={!isConnected || isProcessing || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
+                    className="w-full"
+                    variant="default"
+                  >
+                    {isProcessing ? (
+                      <><Loader2 size={16} className="mr-2 animate-spin" /> Processing...</>
+                    ) : needsApproval ? (
+                      <><ShieldCheck size={16} className="mr-2" /> Approve & Swap</>
+                    ) : (
+                      <><RefreshCcw size={16} className="mr-2" /> Swap Tokens</>
+                    )}
+                  </Button>
                 </div>
             </CardContent>
             </Card>

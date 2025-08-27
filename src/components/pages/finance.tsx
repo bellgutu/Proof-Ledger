@@ -429,9 +429,9 @@ export default function FinancePage() {
                     disabled={!isConnected || isProcessing || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
                     className="w-full mt-4"
                   >
-                    {isProcessing && needsApproval ? (
+                    {isProcessing && isApproving ? (
                       <><Loader2 size={16} className="mr-2 animate-spin" /> Approving...</>
-                    ) : isProcessing && !needsApproval ? (
+                    ) : isProcessing && !isApproving ? (
                        <><Loader2 size={16} className="mr-2 animate-spin" /> Swapping...</>
                     ) : needsApproval ? (
                       <><ShieldCheck size={16} className="mr-2" /> Approve & Swap</>

@@ -520,7 +520,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const dialogDetails = { amount, token: tokenSymbol, to: spender };
-
     await executeTransaction('Approve', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
@@ -576,12 +575,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
 
-    // First, approve the router to spend the input token
-    if (fromToken !== 'ETH') {
-      await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
-    }
-    
-    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${fromToken} for ${toToken}` };
+    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     await executeTransaction('Swap', dialogDetails, async () => {
       const walletClient = getWalletClient();
       const [account] = await walletClient.getAddresses();
@@ -610,7 +604,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }, async () => {
         await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
     });
-  }, [walletAddress, executeTransaction, decimals, checkAllowance, approveToken]);
+  }, [walletAddress, executeTransaction, decimals, checkAllowance]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
       if (!walletAddress) throw new Error("Wallet not connected");

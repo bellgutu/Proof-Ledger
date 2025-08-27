@@ -17,7 +17,7 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 import { useRouter } from 'next/navigation';
-import { ERC20_CONTRACTS } from '@/services/blockchain-service';
+import { ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS } from '@/services/blockchain-service';
 
 export interface VaultStrategy {
     name: string;
@@ -86,8 +86,8 @@ export default function FinancePage() {
   }, [allowance, fromAmountNum, fromToken]);
   
   useEffect(() => {
-    if (isConnected && fromToken !== 'ETH') {
-      checkAllowance(fromToken);
+    if (isConnected && fromToken !== 'ETH' && fromAmountNum > 0) {
+      checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
     }
   }, [isConnected, fromToken, fromAmountNum, checkAllowance]);
   
@@ -135,12 +135,11 @@ export default function FinancePage() {
   };
   
   const handleApprove = async () => {
-    const amountToApprove = parseFloat(fromAmount);
-    if (!fromToken || fromToken === 'ETH' || isNaN(amountToApprove) || amountToApprove <= 0) return;
+    if (!fromToken || fromToken === 'ETH' || fromAmountNum <= 0) return;
     setIsApproving(true);
     try {
-      await approveToken(fromToken, amountToApprove);
-      toast({ title: "Approval Submitted!", description: "Your transaction is processing."});
+      await approveToken(fromToken, fromAmountNum, DEX_CONTRACT_ADDRESS);
+      toast({ title: "Approval Submitted!", description: "Your transaction is processing. The swap button will be enabled shortly."});
     } catch(e) {
       // Error handled by context
     } finally {
@@ -149,15 +148,14 @@ export default function FinancePage() {
   };
 
   const handleSwap = async () => {
-    const amountToSwap = parseFloat(fromAmount);
-    if (!fromToken || !toToken || isNaN(amountToSwap) || amountToSwap <= 0 || amountToSwap > (balances[fromToken] || 0)) {
+    if (!fromToken || !toToken || fromAmountNum <= 0 || fromAmountNum > (balances[fromToken] || 0)) {
         toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
         return;
     }
     
     setIsSwapping(true);
     try {
-      await swapTokens(fromToken, toToken, amountToSwap);
+      await swapTokens(fromToken, toToken, fromAmountNum);
       
       setFromAmount('');
       setToAmount('');
@@ -500,5 +498,3 @@ export default function FinancePage() {
     </div>
   );
 };
-
-    

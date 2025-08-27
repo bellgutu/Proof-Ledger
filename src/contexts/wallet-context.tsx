@@ -841,9 +841,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [executeTransaction, decimals, walletAddress]);
 
   const closePosition = useCallback(async (position: Position, pnl: number) => {
-       if (walletAddress) {
-         localStorage.removeItem(`entryPrice_${walletAddress}`);
-       }
+      if (walletAddress) {
+        localStorage.removeItem(`entryPrice_${walletAddress}`);
+      }
       const detailsNode = (
         <div className="text-xs text-left">
           <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div>
@@ -1002,3 +1002,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp, Handshake, Vote, CheckCircle, XCircle, Loader2, Send } from 'lucide-react';
+import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp, Handshake, Vote, CheckCircle, XCircle, Loader2, Send, ShieldCheck } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 import { getRebalanceAction, type RebalanceAction } from '@/ai/flows/rebalance-narrator-flow';
 
@@ -38,7 +38,7 @@ export interface Proposal {
 
 type Token = 'ETH' | keyof typeof ERC20_CONTRACTS;
 
-const tokenNames: Token[] = ['ETH', ...Object.keys(ERC20_CONTRACTS)];
+const tokenNames: Token[] = ['ETH', ...Object.keys(ERC20_CONTRACTS) as Array<keyof typeof ERC20_CONTRACTS>];
 
 
 export default function FinancePage() {
@@ -71,24 +71,25 @@ export default function FinancePage() {
   const [vaultLoading, setVaultLoading] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
 
-  const [fromToken, setFromToken] = useState<Token>('ETH');
-  const [toToken, setToToken] = useState<Token>('USDT');
+  const [fromToken, setFromToken] = useState<Token>('USDT');
+  const [toToken, setToToken] = useState<Token>('WETH');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [isApproving, setIsApproving] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
 
+  const fromAmountNum = useMemo(() => parseFloat(fromAmount) || 0, [fromAmount]);
   const allowance = useMemo(() => allowances[fromToken] || 0, [allowances, fromToken]);
   const needsApproval = useMemo(() => {
-    if (fromToken === 'ETH' || !fromAmount) return false;
-    return allowance < parseFloat(fromAmount);
-  }, [allowance, fromAmount, fromToken]);
+    if (fromToken === 'ETH' || fromAmountNum <= 0) return false;
+    return allowance < fromAmountNum;
+  }, [allowance, fromAmountNum, fromToken]);
   
   useEffect(() => {
     if (isConnected && fromToken !== 'ETH') {
       checkAllowance(fromToken);
     }
-  }, [isConnected, fromToken, checkAllowance]);
+  }, [isConnected, fromToken, fromAmountNum, checkAllowance]);
   
   const exchangeRates = useMemo(() => {
     return Object.keys(marketData).reduce((acc, key) => {
@@ -364,7 +365,7 @@ export default function FinancePage() {
                 <div className="flex gap-2 mt-4">
                   {needsApproval ? (
                     <Button onClick={handleApprove} disabled={isApproving || !isConnected} className="w-full">
-                      {isApproving ? <Loader2 className="animate-spin mr-2"/> : null}
+                      {isApproving ? <Loader2 className="animate-spin mr-2"/> : <ShieldCheck className="mr-2"/>}
                       Approve {fromToken}
                     </Button>
                   ) : (

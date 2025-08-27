@@ -468,6 +468,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => { isUpdatingStateRef.current = false }, 3000);
   }, []);
 
+  const updateVaultCollateral = useCallback(async () => {
+    if (!isConnected || !walletAddress) return;
+    
+    try {
+      const collateral = await getVaultCollateral(walletAddress as `0x${string}`);
+      setVaultCollateral(collateral);
+    } catch (error) {
+      console.error("Failed to update vault collateral:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update vault collateral",
+      });
+    }
+  }, [isConnected, walletAddress, toast]);
+  
   const checkAllowance = useCallback(async (tokenSymbol: string, spender: `0x${string}` = DEX_CONTRACT_ADDRESS) => {
     if (!walletAddress || tokenSymbol === 'ETH') {
         setAllowances(prev => ({ ...prev, [tokenSymbol]: Infinity }));
@@ -492,22 +508,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         console.error(`Failed to check allowance for ${tokenSymbol}`, e);
     }
   }, [walletAddress, decimals]);
-
-  const updateVaultCollateral = useCallback(async () => {
-    if (!isConnected || !walletAddress) return;
-    
-    try {
-      const collateral = await getVaultCollateral(walletAddress as `0x${string}`);
-      setVaultCollateral(collateral);
-    } catch (error) {
-      console.error("Failed to update vault collateral:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update vault collateral",
-      });
-    }
-  }, [isConnected, walletAddress, toast]);
 
   const approveToken = useCallback(async (tokenSymbol: string, amount: number, spender: `0x${string}` = DEX_CONTRACT_ADDRESS) => {
     const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
@@ -932,5 +932,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

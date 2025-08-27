@@ -47,7 +47,8 @@ export default function FinancePage() {
     marketData,
     vaultWeth,
     activeStrategy,
-    proposals
+    proposals,
+    allowances
   } = walletState;
   const { 
     updateBalance,
@@ -59,6 +60,8 @@ export default function FinancePage() {
     depositToVault,
     withdrawFromVault,
     voteOnProposal,
+    approveToken,
+    checkAllowance
   } = walletActions;
   const { toast } = useToast();
   const router = useRouter();
@@ -70,7 +73,20 @@ export default function FinancePage() {
   const [toToken, setToToken] = useState<Token>('USDT');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
-  const [swapping, setSwapping] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
+
+  const allowance = useMemo(() => allowances[fromToken] || 0, [allowances, fromToken]);
+  const needsApproval = useMemo(() => {
+    if (fromToken === 'ETH' || !fromAmount) return false;
+    return allowance < parseFloat(fromAmount);
+  }, [allowance, fromAmount, fromToken]);
+  
+  useEffect(() => {
+    if (isConnected && fromToken !== 'ETH') {
+      checkAllowance(fromToken);
+    }
+  }, [isConnected, fromToken, checkAllowance]);
   
   const exchangeRates = useMemo(() => {
     return Object.keys(marketData).reduce((acc, key) => {
@@ -115,6 +131,20 @@ export default function FinancePage() {
     setToAmount(tempAmount);
   };
   
+  const handleApprove = async () => {
+    const amountToApprove = parseFloat(fromAmount);
+    if (!fromToken || fromToken === 'ETH' || isNaN(amountToApprove) || amountToApprove <= 0) return;
+    setIsApproving(true);
+    try {
+      await approveToken(fromToken, amountToApprove);
+      toast({ title: "Approval Submitted!", description: "Your transaction is processing."});
+    } catch(e) {
+      // Error handled by context
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   const handleSwap = async () => {
     const amountToSwap = parseFloat(fromAmount);
     if (!fromToken || !toToken || isNaN(amountToSwap) || amountToSwap <= 0 || amountToSwap > (balances[fromToken] || 0)) {
@@ -122,7 +152,7 @@ export default function FinancePage() {
         return;
     }
     
-    setSwapping(true);
+    setIsSwapping(true);
     try {
       await swapTokens(fromToken, toToken, amountToSwap);
       
@@ -132,7 +162,7 @@ export default function FinancePage() {
     } catch(e: any) {
         // Error is handled by the wallet context dialog
     } finally {
-      setSwapping(false);
+      setIsSwapping(false);
     }
   };
   
@@ -329,20 +359,24 @@ export default function FinancePage() {
                     </Select>
                     </div>
                 </div>
-                <Button
-                onClick={handleSwap}
-                disabled={!isConnected || swapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
-                className="w-full mt-6"
-                variant="default"
-                >
-                {swapping ? (
-                    <span className="flex items-center">
-                    <RefreshCcw size={16} className="mr-2 animate-spin" /> Swapping...
-                    </span>
-                ) : (
-                    'Swap Tokens'
-                )}
-                </Button>
+                <div className="flex gap-2 mt-4">
+                  {needsApproval ? (
+                    <Button onClick={handleApprove} disabled={isApproving || !isConnected} className="w-full">
+                      {isApproving ? <Loader2 className="animate-spin mr-2"/> : null}
+                      Approve {fromToken}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleSwap}
+                      disabled={!isConnected || isSwapping || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken || needsApproval}
+                      className="w-full"
+                      variant="default"
+                    >
+                      {isSwapping ? <Loader2 size={16} className="mr-2 animate-spin" /> : <RefreshCcw size={16} className="mr-2" />}
+                       Swap Tokens
+                    </Button>
+                  )}
+                </div>
             </CardContent>
             </Card>
 

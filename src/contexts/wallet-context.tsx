@@ -15,7 +15,7 @@ import { parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS } from '@/
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral' | 'Create Pool';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface Transaction {
@@ -112,7 +112,9 @@ interface WalletActions {
   setTxStatusDialog: React.Dispatch<React.SetStateAction<TxStatusDialogInfo>>;
   approveToken: (tokenSymbol: string, amount: number, spender?: `0x${string}`) => Promise<void>;
   checkAllowance: (tokenSymbol: string, spender?: `0x${string}`) => Promise<void>;
+  checkPoolExists: (tokenA: string, tokenB: string, stable?: boolean) => Promise<boolean>;
   swapTokens: (fromToken: string, toToken: string, amountIn: number) => Promise<void>;
+  createPool: (tokenA: string, tokenB: string, stable?: boolean) => Promise<void>;
   depositToVault: (amount: number) => Promise<void>;
   withdrawFromVault: (amount: number) => Promise<void>;
   voteOnProposal: (proposalId: string, support: number) => Promise<void>;
@@ -450,6 +452,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
       }
   };
+  
+  const updateVaultCollateral = useCallback(async () => {
+    if (!isConnected || !walletAddress) return;
+    
+    try {
+      const collateral = await getVaultCollateral(walletAddress as `0x${string}`);
+      setVaultCollateral(collateral);
+    } catch (error) {
+      console.error("Failed to update vault collateral:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update vault collateral",
+      });
+    }
+  }, [isConnected, walletAddress, toast]);
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
@@ -492,21 +510,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => { isUpdatingStateRef.current = false }, 3000);
   }, []);
 
-  const updateVaultCollateral = useCallback(async () => {
-    if (!isConnected || !walletAddress) return;
-    
-    try {
-      const collateral = await getVaultCollateral(walletAddress as `0x${string}`);
-      setVaultCollateral(collateral);
-    } catch (error) {
-      console.error("Failed to update vault collateral:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update vault collateral",
-      });
-    }
-  }, [isConnected, walletAddress, toast]);
   
   const checkAllowance = useCallback(async (tokenSymbol: string, spender: `0x${string}` = DEX_CONTRACT_ADDRESS) => {
     if (!walletAddress || tokenSymbol === 'ETH') {
@@ -600,29 +603,92 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     await executeTransaction('Send', dialogDetails, txFunction);
   }, [walletAddress, decimals, executeTransaction]);
 
-  const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
-    if (!walletAddress) throw new Error("Wallet not connected");
-
-    const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
-    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
-    if (!fromTokenInfo?.address || !toTokenInfo?.address) {
-        throw new Error("Invalid token path for swap.");
+  const checkPoolExists = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
+    const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
+    const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
+    if (!tokenAInfo?.address || !tokenBInfo?.address) {
+        console.error("Token info not found for", tokenA, tokenB);
+        return false;
     }
+    
+    // Sort tokens by address
+    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
+    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
+    
+    console.log("Checking pool for sorted tokens:", token0, token1, stable);
 
     const factoryContract = getContract({
         address: FACTORY_CONTRACT_ADDRESS,
         abi: FACTORY_ABI,
         client: { public: publicClient }
     });
-    const poolAddress = await factoryContract.read.getPool([fromTokenInfo.address, toTokenInfo.address, false]);
-    if (poolAddress === '0x0000000000000000000000000000000000000000') {
-        throw new Error("Liquidity pool does not exist for the selected token pair. Please select a different pair or create the pool first.");
+
+    try {
+        const code = await publicClient.getCode({ address: FACTORY_CONTRACT_ADDRESS });
+        if (code === '0x') {
+            throw new Error('Factory contract not deployed');
+        }
+        
+        const poolAddress = await factoryContract.read.getPool([token0, token1, stable]);
+        console.log("Pool address:", poolAddress);
+        return poolAddress !== '0x0000000000000000000000000000000000000000';
+    } catch (error: any) {
+        console.error("Error checking pool existence with getPool:", error);
+
+        // Fallback approach
+        try {
+            console.log("getPool failed, trying fallback: iterating all pools...");
+            const allPoolsLength = await factoryContract.read.allPoolsLength();
+            
+            for (let i = 0; i < Number(allPoolsLength); i++) {
+                try {
+                    const poolAddress = await factoryContract.read.allPools([BigInt(i)]);
+                    const poolContract = getContract({ address: poolAddress, abi: POOL_ABI, client: { public: publicClient } });
+                    
+                    const [poolToken0, poolToken1, isStable] = await Promise.all([
+                        poolContract.read.token0(),
+                        poolContract.read.token1(),
+                        poolContract.read.stable()
+                    ]);
+                    
+                    if (isStable === stable) {
+                        const poolToken0Lower = poolToken0.toLowerCase();
+                        const poolToken1Lower = poolToken1.toLowerCase();
+                        const token0Lower = token0.toLowerCase();
+                        const token1Lower = token1.toLowerCase();
+
+                        if ((poolToken0Lower === token0Lower && poolToken1Lower === token1Lower) ||
+                            (poolToken0Lower === token1Lower && poolToken1Lower === token0Lower)) {
+                            console.log("Found matching pool via fallback at address:", poolAddress);
+                            return true;
+                        }
+                    }
+                } catch (innerError) {
+                    console.error(`Error checking pool at index ${i}:`, innerError);
+                }
+            }
+            console.log("No matching pool found via fallback.");
+            return false;
+        } catch (fallbackError) {
+            console.error("Fallback pool check also failed:", fallbackError);
+            return false;
+        }
+    }
+  }, []);
+
+  const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
+    if (!walletAddress) throw new Error("Wallet not connected");
+
+    const poolExists = await checkPoolExists(fromToken, toToken, false);
+    if (!poolExists) {
+      throw new Error("Liquidity pool does not exist for the selected token pair. Please select a different pair or create the pool first.");
     }
     
     if (fromToken !== 'ETH') {
+        const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
         const tokenDecimals = decimals[fromToken];
-        if (tokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
-
+        if (!fromTokenInfo?.address || tokenDecimals === undefined) throw new Error(`Configuration for ${fromToken} is missing.`);
+        
         const currentAllowance = await publicClient.readContract({
             address: fromTokenInfo.address!,
             abi: erc20Abi,
@@ -672,9 +738,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const walletClient = getWalletClient();
       const [account] = await walletClient.getAddresses();
       
+      const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
+      const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
       const fromTokenDecimals = decimals[fromToken];
-      if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
-      
+      if (!fromTokenInfo?.address || !toTokenInfo?.address || fromTokenDecimals === undefined) throw new Error("Token config error.");
+
       const amountInWei = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10); // 10 mins
 
@@ -693,7 +761,33 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
         }
     });
-  }, [walletAddress, executeTransaction, decimals, checkAllowance, approveToken]);
+  }, [walletAddress, executeTransaction, decimals, checkAllowance, approveToken, checkPoolExists]);
+
+  const createPool = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
+    if (!walletAddress) throw new Error("Wallet not connected");
+
+    const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
+    const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
+    if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for pool creation.");
+    
+    // Sort tokens by address
+    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
+    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
+
+    const dialogDetails = { details: `Create pool for ${tokenA}/${tokenB}` };
+    await executeTransaction('Create Pool', dialogDetails, async () => {
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: FACTORY_CONTRACT_ADDRESS,
+            abi: FACTORY_ABI,
+            functionName: 'createPool',
+            args: [token0, token1, stable]
+        });
+        return walletClient.writeContract(request);
+    });
+  }, [walletAddress, executeTransaction]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
       if (!walletAddress) throw new Error("Wallet not connected");
@@ -705,18 +799,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           throw new Error("Invalid tokens for liquidity. Contract addresses not found.");
       }
 
+      // Sort tokens
+      const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
+      const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
+
       const factoryContract = getContract({
           address: FACTORY_CONTRACT_ADDRESS,
           abi: FACTORY_ABI,
           client: { public: publicClient }
       });
       
-      const tokens = [tokenAInfo.address, tokenBInfo.address];
-      const sortedTokens = tokens[0].toLowerCase() < tokens[1].toLowerCase() 
-        ? [tokens[0], tokens[1]] 
-        : [tokens[1], tokens[0]];
-
-      const poolAddress = await factoryContract.read.getPool(sortedTokens as [`0x${string}`, `0x${string}`, boolean]);
+      const poolAddress = await factoryContract.read.getPool([token0, token1, stable]);
       if (poolAddress === '0x0000000000000000000000000000000000000000') {
           throw new Error("Pool does not exist. Please create the pool first.");
       }
@@ -1016,7 +1109,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           setUserPositions, setTxStatusDialog, openPosition, closePosition,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
           claimRewards, depositCollateral, withdrawCollateral, updateVaultCollateral,
-          approveToken, checkAllowance
+          approveToken, checkAllowance, checkPoolExists, createPool
       }
   }
 

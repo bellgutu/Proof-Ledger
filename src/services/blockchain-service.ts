@@ -15,7 +15,7 @@ export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER) as `0x$
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS) as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
 export const USDT_USDC_POOL_ADDRESS = (process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS) as `0x${string}`;
-export const FACTORY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as `0x${string}`;
+export const FACTORY_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS) as `0x${string}`;
 
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
@@ -50,7 +50,7 @@ const genericErc20Abi = parseAbi([
 export const DEX_ABI = parseAbi([
     "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) returns (uint amountA, uint amountB, uint liquidity)",
     "function removeLiquidity(address,address,bool,uint256,uint256,uint256,address,uint256) returns (uint256,uint256)",
-    "function swapExactTokensForTokens(uint256,uint256,address[],bool,address,uint256)",
+    "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, bool stable, address to, uint256 deadline) external",
     "error InvalidPath()",
     "error ZeroAddress()",
     "error Expired()",
@@ -71,9 +71,14 @@ export const GOVERNOR_ABI = parseAbi([
 export const FACTORY_ABI = parseAbi([
     "function getPool(address tokenA, address tokenB, bool stable) external view returns (address)",
     "function createPool(address tokenA, address tokenB, bool stable) external returns (address pool)",
+    "function allPools(uint256) external view returns (address)",
+    "function allPoolsLength() external view returns (uint256)"
 ]);
 
 export const POOL_ABI = parseAbi([
+    "function token0() external view returns (address)",
+    "function token1() external view returns (address)",
+    "function stable() external view returns (bool)",
     "function lpToken() external view returns (address)",
     "function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 liquidity)",
 ]);

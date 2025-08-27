@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp, Handshake, Vote, CheckCircle, XCircle, Loader2, Send, ShieldCheck } from 'lucide-react';
+import { RefreshCcw, ArrowDown, History, ChevronsUpDown, BrainCircuit, ArrowUp, Handshake, Vote, CheckCircle, XCircle, Loader2, Send, ShieldCheck, AlertTriangle, XCircleIcon } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 import { getRebalanceAction, type RebalanceAction } from '@/ai/flows/rebalance-narrator-flow';
 
@@ -63,7 +64,9 @@ export default function FinancePage() {
     withdrawFromVault,
     voteOnProposal,
     approveToken,
-    checkAllowance
+    checkAllowance,
+    checkPoolExists,
+    createPool,
   } = walletActions;
   const { toast } = useToast();
   const router = useRouter();
@@ -76,6 +79,9 @@ export default function FinancePage() {
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false); // General processing state for swap/approve
+  const [isApproving, setIsApproving] = useState(false);
+  const [isCheckingPool, setIsCheckingPool] = useState(false);
+  const [poolExists, setPoolExists] = useState(true);
 
   const fromAmountNum = useMemo(() => parseFloat(fromAmount) || 0, [fromAmount]);
   const allowance = useMemo(() => allowances[fromToken] || 0, [allowances, fromToken]);
@@ -90,6 +96,26 @@ export default function FinancePage() {
     }
   }, [isConnected, fromToken, fromAmountNum, checkAllowance]);
   
+  useEffect(() => {
+    const verifyPool = async () => {
+      if (fromToken && toToken && fromToken !== toToken) {
+        setIsCheckingPool(true);
+        try {
+          const exists = await checkPoolExists(fromToken, toToken, false);
+          setPoolExists(exists);
+        } catch (error) {
+          console.error("Error checking pool existence:", error);
+          setPoolExists(false);
+        } finally {
+          setIsCheckingPool(false);
+        }
+      } else {
+        setPoolExists(true); // No check needed if tokens are same or not selected
+      }
+    };
+    verifyPool();
+  }, [fromToken, toToken, checkPoolExists]);
+
   const exchangeRates = useMemo(() => {
     return Object.keys(marketData).reduce((acc, key) => {
         acc[key as Token] = marketData[key].price;
@@ -140,8 +166,9 @@ export default function FinancePage() {
     }
     
     setIsProcessing(true);
+    setIsApproving(needsApproval);
+
     try {
-      // The swapTokens function now handles the approval check internally.
       await swapTokens(fromToken, toToken, fromAmountNum);
       
       setFromAmount('');
@@ -150,6 +177,23 @@ export default function FinancePage() {
     } catch(e: any) {
         // Error is handled by the wallet context dialog, but we can log it too.
         console.error("Swap/Approve failed:", e);
+    } finally {
+      setIsProcessing(false);
+      setIsApproving(false);
+    }
+  };
+
+  const handleCreatePool = async () => {
+    if (!fromToken || !toToken) return;
+    setIsProcessing(true);
+    try {
+      await createPool(fromToken, toToken, false);
+      toast({ title: "Pool Creation Submitted", description: `Your transaction to create the ${fromToken}/${toToken} pool is processing.`});
+      // After creation, re-check existence
+      const exists = await checkPoolExists(fromToken, toToken, false);
+      setPoolExists(exists);
+    } catch (e: any) {
+       console.error("Create pool failed:", e);
     } finally {
       setIsProcessing(false);
     }
@@ -348,22 +392,40 @@ export default function FinancePage() {
                     </Select>
                     </div>
                 </div>
-                <div className="flex gap-2 mt-4">
+
+                {isCheckingPool ? (
+                    <div className="flex items-center justify-center p-4 text-muted-foreground text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" /> Checking pool...
+                    </div>
+                ) : !poolExists && fromToken !== toToken ? (
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-yellow-400">
+                        <AlertTriangle className="h-5 w-5" /> Pool Not Found
+                      </div>
+                      <p className="text-xs text-yellow-500">
+                        A liquidity pool for {fromToken}/{toToken} does not exist. You can create one.
+                      </p>
+                      <Button onClick={handleCreatePool} variant="outline" size="sm" className="w-full" disabled={isProcessing}>
+                        {isProcessing ? <Loader2 className="animate-spin" /> : "Create Pool"}
+                      </Button>
+                    </div>
+                ) : (
                   <Button
                     onClick={handleSwapOrApprove}
                     disabled={!isConnected || isProcessing || !fromAmount || parseFloat(fromAmount) <= 0 || fromToken === toToken}
-                    className="w-full"
-                    variant="default"
+                    className="w-full mt-4"
                   >
-                    {isProcessing ? (
-                      <><Loader2 size={16} className="mr-2 animate-spin" /> Processing...</>
+                    {isApproving ? (
+                      <><Loader2 size={16} className="mr-2 animate-spin" /> Approving...</>
                     ) : needsApproval ? (
                       <><ShieldCheck size={16} className="mr-2" /> Approve & Swap</>
+                    ) : isProcessing ? (
+                       <><Loader2 size={16} className="mr-2 animate-spin" /> Swapping...</>
                     ) : (
                       <><RefreshCcw size={16} className="mr-2" /> Swap Tokens</>
                     )}
                   </Button>
-                </div>
+                )}
             </CardContent>
             </Card>
 

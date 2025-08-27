@@ -6,6 +6,8 @@ import { localhost } from 'viem/chains';
 
 const TREASURY_ADDRESS = process.env.NEXT_PUBLIC_TREASURY_ADDRESS as Address;
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as Address;
+const WETH_ADDRESS = process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS as Address;
+
 
 const FACTORY_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
@@ -16,6 +18,10 @@ const POOL_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
     { type: 'function', name: 'setFeeTo', inputs: [{ name: 'feeTo_', type: 'address' }], outputs: [] },
 ] as const;
+
+const WETH_ABI = parseAbi([
+    "function _closeCircuitBreaker()"
+]);
 
 
 const anvilChain = defineChain({ ...localhost, id: 31337 });
@@ -119,6 +125,29 @@ export async function setPoolFeeRecipient(poolAddress: Address, feeRecipient: Ad
         abi: POOL_ABI,
         functionName: 'setFeeTo',
         args: [feeRecipient],
+    });
+    
+    const hash = await walletClient.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash });
+    return { hash };
+}
+
+
+export async function resetWethCircuitBreaker(): Promise<{hash: Address}> {
+    if (!walletClient) {
+        throw new Error("Wallet not connected.");
+    }
+    if (!WETH_ADDRESS) {
+        throw new Error("WETH contract address is not configured in environment variables.");
+    }
+    
+    const [account] = await walletClient.getAddresses();
+    
+    const { request } = await publicClient.simulateContract({
+        account,
+        address: WETH_ADDRESS,
+        abi: WETH_ABI,
+        functionName: '_closeCircuitBreaker',
     });
     
     const hash = await walletClient.writeContract(request);

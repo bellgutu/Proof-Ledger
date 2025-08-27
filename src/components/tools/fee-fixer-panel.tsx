@@ -5,7 +5,7 @@ import * as feeFixer from '@/lib/feeFixer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { CheckCircle, AlertTriangle, XCircle, Loader2, HardHat } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Loader2, HardHat, Zap } from 'lucide-react';
 import { type Address } from 'viem';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -20,6 +20,7 @@ export const FeeFixerPanel = () => {
     const [account, setAccount] = useState<Address | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isFixing, setIsFixing] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
     const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'fixing' | 'success' | 'error'>('idle');
     const [result, setResult] = useState<{ status: string, message: string } | null>(null);
     const [factoryFeeTo, setFactoryFeeTo] = useState<Address | 'Error' | 'Not Connected' | 'Loading'>('Not Connected');
@@ -121,6 +122,21 @@ export const FeeFixerPanel = () => {
         }
     };
 
+    const handleResetCircuitBreaker = async () => {
+        if (!isConnected) return;
+        setIsResetting(true);
+        setResult(null);
+        try {
+            const { hash } = await feeFixer.resetWethCircuitBreaker();
+            setResult({ status: 'success', message: `WETH circuit breaker reset successfully! TX: ${formatAddress(hash)}` });
+        } catch (error: any) {
+            console.error('Reset error:', error);
+            setResult({ status: 'error', message: error.shortMessage || error.message });
+        } finally {
+            setIsResetting(false);
+        }
+    }
+
     const FactoryStatusIndicator = () => {
         if (factoryFeeTo === 'Loading') {
             return <span className="flex items-center text-muted-foreground"><Loader2 className="mr-2 animate-spin"/> Checking...</span>
@@ -154,68 +170,92 @@ export const FeeFixerPanel = () => {
     );
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                    <HardHat className="text-primary"/>
-                    DEX Fee Recipient Fixer
-                </CardTitle>
-                <CardDescription>
-                    This tool corrects the fee recipient for both the DEX Factory and liquidity pools. This is required for liquidity pools to function correctly.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {/* Factory Status */}
-                <div className="p-4 bg-background rounded-lg border">
-                    <h4 className="font-semibold mb-2">Factory Status</h4>
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Current Fee Recipient:</span>
-                        <FactoryStatusIndicator />
+        <div className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3">
+                        <HardHat className="text-primary"/>
+                        DEX Fee Recipient Fixer
+                    </CardTitle>
+                    <CardDescription>
+                        This tool corrects the fee recipient for both the DEX Factory and liquidity pools. This is required for liquidity pools to function correctly.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Factory Status */}
+                    <div className="p-4 bg-background rounded-lg border">
+                        <h4 className="font-semibold mb-2">Factory Status</h4>
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Current Fee Recipient:</span>
+                            <FactoryStatusIndicator />
+                        </div>
                     </div>
-                </div>
-                
-                {/* Pool Statuses */}
-                <div className="p-4 bg-background rounded-lg border">
-                    <h4 className="font-semibold mb-2">Pool Statuses</h4>
-                    <div className="space-y-2">
-                        {POOL_ADDRESSES.map((poolAddress) => (
-                            <div key={poolAddress} className="flex justify-between items-center">
-                                <span className="text-muted-foreground">{formatAddress(poolAddress)}:</span>
-                                <PoolStatusIndicator poolAddress={poolAddress} />
-                            </div>
-                        ))}
+                    
+                    {/* Pool Statuses */}
+                    <div className="p-4 bg-background rounded-lg border">
+                        <h4 className="font-semibold mb-2">Pool Statuses</h4>
+                        <div className="space-y-2">
+                            {POOL_ADDRESSES.map((poolAddress) => (
+                                <div key={poolAddress} className="flex justify-between items-center">
+                                    <span className="text-muted-foreground">{formatAddress(poolAddress)}:</span>
+                                    <PoolStatusIndicator poolAddress={poolAddress} />
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
-                
-                {!isConnected ? (
-                    <Button onClick={connectWallet} disabled={status === 'connecting'} className="w-full">
-                        {status === 'connecting' ? <Loader2 className="animate-spin" /> : 'Connect Wallet to Begin'}
-                    </Button>
-                ) : (
-                    <div className="text-center space-y-2">
-                        <p className="text-sm text-muted-foreground">Connected as: <span className="font-mono">{formatAddress(account!)}</span></p>
-                        <Button 
-                            onClick={fixFeeRecipients}
-                            disabled={isFixing || factoryFeeTo === 'Error' || Object.values(poolFeeRecipients).includes('Error')}
-                            className="w-full"
-                        >
-                            {isFixing ? <Loader2 className="mr-2 animate-spin"/> : <HardHat className="mr-2"/>}
-                            {isFixing ? 'Setting Recipients...' : 'Set All Fee Recipients to Treasury'}
+                    
+                    {!isConnected ? (
+                        <Button onClick={connectWallet} disabled={status === 'connecting'} className="w-full">
+                            {status === 'connecting' ? <Loader2 className="animate-spin" /> : 'Connect Wallet to Begin'}
                         </Button>
-                        {allPoolsFixed && factoryFeeTo !== ZERO_ADDRESS && factoryFeeTo !== 'Loading' && factoryFeeTo !== 'Error' && (
-                            <p className="text-sm text-green-600">All fee recipients are properly set!</p>
-                        )}
-                    </div>
-                )}
-                
-                {result && (
-                    <Alert variant={result.status === 'error' ? 'destructive' : 'default'} className={result.status === 'success' ? 'bg-green-500/10 border-green-500/30 text-green-700' : ''}>
-                        {result.status === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                        <AlertTitle>{result.status === 'success' ? 'Success' : 'Error'}</AlertTitle>
-                        <AlertDescription>{result.message}</AlertDescription>
-                    </Alert>
-                )}
-            </CardContent>
-        </Card>
+                    ) : (
+                        <div className="text-center space-y-2">
+                            <p className="text-sm text-muted-foreground">Connected as: <span className="font-mono">{formatAddress(account!)}</span></p>
+                            <Button 
+                                onClick={fixFeeRecipients}
+                                disabled={isFixing || factoryFeeTo === 'Error' || Object.values(poolFeeRecipients).includes('Error')}
+                                className="w-full"
+                            >
+                                {isFixing ? <Loader2 className="mr-2 animate-spin"/> : <HardHat className="mr-2"/>}
+                                {isFixing ? 'Setting Recipients...' : 'Set All Fee Recipients to Treasury'}
+                            </Button>
+                            {allPoolsFixed && factoryFeeTo !== ZERO_ADDRESS && factoryFeeTo !== 'Loading' && factoryFeeTo !== 'Error' && (
+                                <p className="text-sm text-green-600">All fee recipients are properly set!</p>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3">
+                        <Zap className="text-primary"/>
+                        WETH Contract Tools
+                    </CardTitle>
+                    <CardDescription>
+                        Use these tools to manage special states on the WETH contract.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                     {!isConnected ? (
+                        <p className="text-sm text-muted-foreground text-center">Connect wallet to use tools.</p>
+                     ) : (
+                        <Button onClick={handleResetCircuitBreaker} disabled={isResetting} variant="destructive" className="w-full">
+                            {isResetting ? <Loader2 className="animate-spin mr-2" /> : <Zap className="mr-2"/>}
+                            Reset Circuit Breaker
+                        </Button>
+                     )}
+                </CardContent>
+            </Card>
+
+            {result && (
+                <Alert variant={result.status === 'error' ? 'destructive' : 'default'} className={result.status === 'success' ? 'bg-green-500/10 border-green-500/30 text-green-700' : ''}>
+                    {result.status === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                    <AlertTitle>{result.status === 'success' ? 'Success' : 'Error'}</AlertTitle>
+                    <AlertDescription>{result.message}</AlertDescription>
+                </Alert>
+            )}
+        </div>
     );
 };

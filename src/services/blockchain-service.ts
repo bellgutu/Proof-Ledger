@@ -5,27 +5,30 @@
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
-import { createPublicClient, http, parseAbi, defineChain } from 'viem';
+import { createPublicClient, http, parseAbi, defineChain, Address } from 'viem';
 import { localhost } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
+import { isValidAddress } from '@/lib/utils';
 
 // --- Environment-loaded Contract Addresses ---
-export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS) as `0x${string}`;
-export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_ROUTER) as `0x${string}`;
-export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS) as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
-export const USDT_USDC_POOL_ADDRESS = (process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS) as `0x${string}`;
-export const FACTORY_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS) as `0x${string}`;
+export const FACTORY_CONTRACT_ADDRESS = '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44';
+export const DEX_CONTRACT_ADDRESS = '0xc5a5C42992dECbae36851359345FE25997F5C42d';
+export const VAULT_CONTRACT_ADDRESS = '0x4A679253410272dd5232B3Ff7cF5dbB88f295319';
+export const PERPETUALS_CONTRACT_ADDRESS = '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F';
+export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`; // Keep as is if not provided
+export const USDT_USDC_POOL_ADDRESS = (process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS) as `0x${string}`; // Keep as is if not provided
 
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
-    'USDT': { address: process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS as `0x${string}`, name: 'Tether' },
-    'USDC': { address: process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS as `0x${string}`, name: 'USD Coin' },
-    'WETH': { address: process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS as `0x${string}`, name: 'Wrapped Ether' },
-    'LINK': { address: process.env.NEXT_PUBLIC_LINK_CONTRACT_ADDRESS as `0x${string}`, name: 'Chainlink' },
-    'BNB': { address: process.env.NEXT_PUBLIC_BNB_CONTRACT_ADDRESS as `0x${string}`, name: 'BNB' },
-    'SOL': { address: process.env.NEXT_PUBLIC_SOL_CONTRACT_ADDRESS as `0x${string}`, name: 'Solana' },
+    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', name: 'Tether' },
+    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', name: 'USD Coin' },
+    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318', name: 'Wrapped Ether' },
+    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0', name: 'Chainlink' },
+    'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016', name: 'BNB' },
+    'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed', name: 'Solana' },
+    // ETH is native, so no contract address
 };
+
 
 const anvilChain = defineChain({
   ...localhost,
@@ -68,20 +71,48 @@ export const GOVERNOR_ABI = parseAbi([
   "function castVote(uint256,uint8) returns (uint256)"
 ]);
 
-export const FACTORY_ABI = parseAbi([
-    "function getPool(address tokenA, address tokenB, bool stable) external view returns (address)",
-    "function createPool(address tokenA, address tokenB, bool stable) external returns (address pool)",
-    "function allPools(uint256) external view returns (address)",
-    "function allPoolsLength() external view returns (uint256)"
-]);
+export const FACTORY_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" },
+      { "internalType": "bool", "name": "stable", "type": "bool" }
+    ],
+    "name": "getPool",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view", "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" },
+      { "internalType": "bool", "name": "stable", "type": "bool" }
+    ],
+    "name": "createPool",
+    "outputs": [{ "internalType": "address", "name": "pool", "type": "address" }],
+    "stateMutability": "nonpayable", "type": "function"
+  },
+   {
+    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "name": "allPools",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view", "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "allPoolsLength",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view", "type": "function"
+  }
+] as const;
 
-export const POOL_ABI = parseAbi([
-    "function token0() external view returns (address)",
-    "function token1() external view returns (address)",
-    "function stable() external view returns (bool)",
-    "function lpToken() external view returns (address)",
-    "function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 liquidity)",
-]);
+export const POOL_ABI = [
+    { "inputs": [], "name": "token0", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [], "name": "token1", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [], "name": "stable", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [], "name": "lpToken", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [ { "internalType": "uint256", "name": "amountA", "type": "uint256" }, { "internalType": "uint256", "name": "amountB", "type": "uint256" } ], "name": "addLiquidity", "outputs": [{ "internalType": "uint256", "name": "liquidity", "type": "uint256" }], "stateMutability": "nonpayable", "type": "function" }
+] as const;
 
 
 const perpetualsAbi = parseAbi([
@@ -251,4 +282,39 @@ export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promi
     console.error('[BlockchainService] Failed to get collateral allowance:', error);
     return 0;
   }
+}
+
+export async function checkAllContracts() {
+    const coreContracts = [
+        { name: "Factory", address: FACTORY_CONTRACT_ADDRESS },
+        { name: "DEX Router", address: DEX_CONTRACT_ADDRESS },
+        { name: "Vault", address: VAULT_CONTRACT_ADDRESS },
+        { name: "Perpetuals", address: PERPETUALS_CONTRACT_ADDRESS },
+    ];
+
+    const checkAddress = async (address: Address) => {
+        if (!isValidAddress(address)) return false;
+        const code = await publicClient.getCode({ address });
+        return code !== '0x';
+    };
+
+    const contracts = await Promise.all(
+        coreContracts.map(async (c) => ({
+            name: c.name,
+            address: c.address,
+            deployed: await checkAddress(c.address as Address),
+        }))
+    );
+
+    const tokens = await Promise.all(
+        Object.entries(ERC20_CONTRACTS).map(async ([name, token]) => ({
+            name,
+            address: token.address,
+            deployed: await checkAddress(token.address as Address),
+        }))
+    );
+
+    const allDeployed = [...contracts, ...tokens].every(c => c.deployed);
+
+    return { contracts, tokens, allDeployed };
 }

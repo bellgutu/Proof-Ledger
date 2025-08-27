@@ -20,6 +20,7 @@ import { Progress } from '../ui/progress';
 import { useRouter } from 'next/navigation';
 import { ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS } from '@/services/blockchain-service';
 import { isValidAddress } from '@/lib/utils';
+import { ContractStatusPanel } from '../shared/ContractStatusPanel';
 
 export interface VaultStrategy {
     name: string;
@@ -331,6 +332,8 @@ export default function FinancePage() {
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
       
+      <ContractStatusPanel />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader className="flex flex-row justify-between items-center">

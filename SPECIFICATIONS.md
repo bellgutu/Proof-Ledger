@@ -16,7 +16,7 @@ The platform is architected as a modern, full-stack web application built on a r
 - **Web3 News Feed**: An AI-curated news feed showcasing recent articles and developments in the blockchain industry.
 
 ### 2.2. Trading & DeFi
-- **Perpetuals Trading**: A full-featured trading interface for ETH/USDC perpetual futures, including an order book, collateral management, and P&L tracking.
+- **Perpetuals Trading**: A full-featured trading interface for perpetual futures on major assets (e.g., ETH/USDT), including an order book, collateral management, and P&L tracking.
 - **Token Swap**: On-chain token swaps leveraging a DEX router architecture.
 - **Liquidity Provisioning**: Functionality to add and manage liquidity in V2, V3, and stable-swap pools.
 - **AI Strategy Vault**: A DeFi vault where users can deposit WETH and allow an AI agent to suggest and execute rebalancing strategies.

@@ -437,35 +437,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
           
       } catch (e: any) {
-          console.error(`${txType} failed:`, e);
-          let errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
-
-          if (e instanceof TransactionExecutionError && e.details) {
-            try {
-                const decodedError = decodeErrorResult({
-                    abi: DEX_ABI,
-                    data: e.details as `0x${string}`
-                });
-                
-                if (decodedError.errorName === 'PoolNotFound') {
-                    errorMessage = 'Liquidity pool does not exist for the selected token pair. Please select a different pair or create the pool first.';
-                } else if (decodedError.errorName === 'InvalidPath') {
-                    errorMessage = 'Invalid token path. Only direct swaps are supported.';
-                } else if (decodedError.errorName === 'Expired') {
-                    errorMessage = 'Transaction expired. Please try again.';
-                } else if (decodedError.errorName === 'ZeroAddress') {
-                    errorMessage = 'Invalid address provided.';
-                } else {
-                    errorMessage = `Contract error: ${decodedError.errorName}`;
-                }
-            } catch (decodeError) {
-                console.error('Failed to decode error:', decodeError);
-            }
-          }
+        console.error(`${txType} failed:`, e);
+        let errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
+        
+        if (errorMessage.includes('ERC20: mint to the zero address')) {
+            errorMessage = 'The pool contract is trying to mint LP tokens to an invalid address. This usually means the pool is not properly initialized.';
+        } else if (errorMessage.includes('ERC20: insufficient allowance')) {
+            errorMessage = 'Insufficient token allowance. Please approve the tokens first.';
+        } else if (errorMessage.includes('PoolNotFound')) {
+            errorMessage = 'Liquidity pool does not exist. Please create it first.';
+        } else if (errorMessage.includes('InvalidPath')) {
+            errorMessage = 'Invalid token path. Only direct swaps are supported.';
+        } else if (errorMessage.includes('Expired')) {
+            errorMessage = 'Transaction expired. Please try again.';
+        } else if (errorMessage.includes('Pool is not properly initialized')) {
+            errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
+        }
           
-          setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
-          updateTransactionStatus(tempTxId, 'Failed', errorMessage);
-          throw e; // Re-throw for the UI component to catch
+        setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
+        updateTransactionStatus(tempTxId, 'Failed', errorMessage);
+        throw e;
       } finally {
           setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
       }
@@ -700,8 +691,59 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const fromTokenDecimals = decimals[fromToken];
     if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
     
-    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
+    // Check and set allowance before swapping
+    console.log(`Checking allowance for ${fromToken}...`);
+    const currentAllowance = await publicClient.readContract({
+        address: fromTokenInfo.address!,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
+    });
     
+    const currentAllowanceFormatted = parseFloat(formatUnits(currentAllowance, fromTokenDecimals));
+    console.log(`Current allowance for ${fromToken}: ${currentAllowanceFormatted}`);
+    console.log(`Required amount: ${amountIn}`);
+    
+    if (currentAllowanceFormatted < amountIn) {
+        console.log(`Approving ${amountIn} ${fromToken} for router...`);
+        await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
+        
+        let attempts = 0;
+        const maxAttempts = 10;
+        const pollInterval = 1000;
+        
+        while (attempts < maxAttempts) {
+            attempts++;
+            console.log(`Verifying approval (attempt ${attempts})...`);
+            
+            const newAllowance = await publicClient.readContract({
+                address: fromTokenInfo.address!,
+                abi: erc20Abi,
+                functionName: 'allowance',
+                args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
+            });
+            const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, fromTokenDecimals));
+            
+            console.log(`New allowance: ${newAllowanceFormatted}`);
+            
+            if (newAllowanceFormatted >= amountIn) {
+                console.log("Approval confirmed. Proceeding with swap.");
+                break;
+            }
+            
+            if (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
+        }
+        
+        if (attempts >= maxAttempts) {
+            throw new Error(`Approval transaction was sent but allowance is still insufficient. Please wait and try again.`);
+        }
+    } else {
+        console.log(`Sufficient allowance already exists (${currentAllowanceFormatted}). Skipping approval.`);
+    }
+
+    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     await executeTransaction('Swap', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
@@ -721,8 +763,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         });
         
         return walletClient.writeContract(request);
+    }, async () => {
+        await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
     });
-  }, [walletAddress, executeTransaction, decimals]);
+  }, [walletAddress, executeTransaction, decimals, checkAllowance, approveToken]);
 
   const createPool = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -777,6 +821,24 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           throw new Error("Pool does not exist. Please create the pool first.");
       }
       
+      const poolContract = getContract({
+        address: poolAddress,
+        abi: POOL_ABI,
+        client: publicClient
+      });
+    
+      try {
+          const lpTokenAddress = await poolContract.read.lpToken();
+          if (lpTokenAddress === '0x0000000000000000000000000000000000000000') {
+              throw new Error("Pool is not properly initialized. LP token address is zero.");
+          }
+          console.log(`Pool LP token address: ${lpTokenAddress}`);
+      } catch (error) {
+          console.error("Error checking pool initialization:", error);
+          throw new Error("Failed to verify pool state. The pool might not be properly initialized.");
+      }
+
+      // Approve tokens for the POOL contract, not the router
       await approveToken(tokenA, amountA, poolAddress);
       await approveToken(tokenB, amountB, poolAddress);
       
@@ -961,13 +1023,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
           // Manually update the vault collateral after PnL is realized.
-          setVaultCollateral(prev => {
-              const newTotal = prev.total + pnl;
-              const newAvailable = prev.available + pnl;
-              return { ...prev, total: newTotal, available: newAvailable };
-          });
+          await updateVaultCollateral();
       });
-  }, [executeTransaction, walletAddress, setVaultCollateral]);
+  }, [executeTransaction, walletAddress, updateVaultCollateral]);
 
   const depositToVault = useCallback(async (amount: number) => {
     await approveToken('WETH', amount, VAULT_CONTRACT_ADDRESS);

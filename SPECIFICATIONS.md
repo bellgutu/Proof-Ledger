@@ -3,7 +3,7 @@
 
 ## 1. Project Overview
 
-**ProfitForge** is an AI-powered cryptocurrency trading and portfolio management platform designed to provide users with a competitive edge in the DeFi market. It combines real-time market data, simulated trading environments, direct DeFi protocol interaction, and a suite of advanced AI-powered analytical tools.
+**ProfitForge** is an AI-powered cryptocurrency trading and portfolio management platform designed to provide users with a competitive edge in the DeFi market. It combines real-time market data, on-chain trading environments, direct DeFi protocol interaction, and a suite of advanced AI-powered analytical tools.
 
 The platform is architected as a modern, full-stack web application built on a robust and scalable technology stack, prioritizing user experience, security, and performance.
 
@@ -16,7 +16,7 @@ The platform is architected as a modern, full-stack web application built on a r
 - **Web3 News Feed**: An AI-curated news feed showcasing recent articles and developments in the blockchain industry.
 
 ### 2.2. Trading & DeFi
-- **Simulated Perpetuals Trading**: A full-featured simulated trading interface for ETH/USDC perpetual futures, including an order book, collateral management, and P&L tracking.
+- **Perpetuals Trading**: A full-featured trading interface for ETH/USDC perpetual futures, including an order book, collateral management, and P&L tracking.
 - **Token Swap**: On-chain token swaps leveraging a DEX router architecture.
 - **Liquidity Provisioning**: Functionality to add and manage liquidity in V2, V3, and stable-swap pools.
 - **AI Strategy Vault**: A DeFi vault where users can deposit WETH and allow an AI agent to suggest and execute rebalancing strategies.

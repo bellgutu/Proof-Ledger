@@ -15,7 +15,7 @@ export const FACTORY_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_CONTRAC
 export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_CONTRACT_ADDRESS || '0xc5a5C42992dECbae36851359345FE25997F5C42d') as `0x${string}`;
 export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0x4A679253410272dd5232B3Ff7cF5dbB88f295319') as `0x${string}`;
 export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F') as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS) as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707') as `0x${string}`;
 export const USDT_USDC_POOL_ADDRESS = (process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS) as `0x${string}`;
 
 
@@ -318,3 +318,5 @@ export async function checkAllContracts() {
 
     return { contracts, tokens, allDeployed };
 }
+
+      

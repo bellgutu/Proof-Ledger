@@ -7,20 +7,35 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getWhaleWatchData, type WhaleWatchData } from '@/ai/flows/whale-watcher-flow';
 import { Badge } from '../ui/badge';
-import { Bot, ArrowRight, RefreshCcw, Loader2 } from 'lucide-react';
+import { Bot, ArrowRight, RefreshCcw, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { isValidAddress } from '@/lib/utils';
 
 export function WhaleWatch({ pair }: { pair: string }) {
   const [data, setData] = useState<WhaleWatchData | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start loading on mount
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [monitoredWallets, setMonitoredWallets] = useState<string[]>([
+      '0xA1c2E3F4B5D6C7D8E9F0A1B2C3D4E5F6A7B8C9D0',
+      '0xB2d3E4F5A6B7C8D9E0F1A2B3C4D5E6F7A8B9C0D1'
+  ]);
+  const [newWalletAddress, setNewWalletAddress] = useState('');
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
+    if (monitoredWallets.length === 0) {
+        setData(null);
+        setError("Add at least one wallet address to monitor.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getWhaleWatchData(pair);
+      const result = await getWhaleWatchData({ wallets: monitoredWallets });
       if (!result) {
         throw new Error("AI failed to return whale data.");
       }
@@ -32,11 +47,28 @@ export function WhaleWatch({ pair }: { pair: string }) {
     } finally {
       setIsLoading(false);
     }
-  }, [pair]);
-
+  }, [monitoredWallets]);
+  
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleAddWallet = () => {
+    if (!isValidAddress(newWalletAddress)) {
+        toast({ variant: 'destructive', title: 'Invalid Address' });
+        return;
+    }
+    if (monitoredWallets.includes(newWalletAddress)) {
+        toast({ variant: 'destructive', title: 'Address already added' });
+        return;
+    }
+    setMonitoredWallets(prev => [...prev, newWalletAddress]);
+    setNewWalletAddress('');
+  };
+
+  const handleRemoveWallet = (addressToRemove: string) => {
+    setMonitoredWallets(prev => prev.filter(addr => addr !== addressToRemove));
+  };
 
   const getSentimentVariant = (sentiment: 'Bullish' | 'Bearish' | 'Neutral' | undefined) => {
     switch (sentiment) {
@@ -57,6 +89,28 @@ export function WhaleWatch({ pair }: { pair: string }) {
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">Monitored Wallets</p>
+            <div className="flex items-center gap-2">
+                <Input 
+                    placeholder="0x..." 
+                    value={newWalletAddress} 
+                    onChange={e => setNewWalletAddress(e.target.value)}
+                />
+                <Button onClick={handleAddWallet} size="icon"><PlusCircle/></Button>
+            </div>
+            <div className="space-y-1">
+                {monitoredWallets.map(addr => (
+                    <div key={addr} className="flex items-center justify-between p-1 text-xs rounded-md bg-background">
+                       <span className="font-mono">{`${addr.slice(0, 8)}...${addr.slice(-6)}`}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveWallet(addr)}>
+                            <Trash2 size={14} className="text-destructive"/>
+                        </Button>
+                    </div>
+                ))}
+            </div>
+        </div>
+
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-8 w-1/3" />
@@ -102,3 +156,5 @@ export function WhaleWatch({ pair }: { pair: string }) {
     </Card>
   );
 }
+
+    

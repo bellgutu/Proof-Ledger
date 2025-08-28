@@ -27,7 +27,7 @@ The platform is architected as a modern, full-stack web application built on a r
 - **AI Auditors**:
   - **Smart Contract Auditor**: Provides a simulated security analysis of a given contract address.
   - **Token Auditor**: Analyzes a token address for risks associated with "meme coins" or scams.
-- **Whale Watcher**: Simulates and analyzes significant on-chain "whale" movements to derive market sentiment.
+- **Whale Watcher**: Monitors user-specified wallet addresses and uses AI to analyze significant on-chain movements to derive market sentiment.
 
 ### 2.4. Portfolio Management
 - **Connected Wallet Dashboard**: A comprehensive view of the user's on-chain asset holdings, balances, and values.
@@ -53,7 +53,7 @@ The platform is architected as a modern, full-stack web application built on a r
 - **Deployment**: Genkit flows are defined as server-side TypeScript modules (`.ts` files with `'use server';`), seamlessly integrated with the Next.js application. Ready for deployment to a serverless environment like Google Cloud Functions.
 - **Key Flows**:
   - `trading-strategy-assistant.ts`: Generates trading strategies.
-  - `whale-watcher-flow.ts`: Simulates whale transactions.
+  - `whale-watcher-flow.ts`: Analyzes transactions for a list of wallet addresses.
   - `whitepaper-analyzer-flow.ts`: Analyzes documents from URLs.
   - `contract-auditor-flow.ts`: Simulates contract security audits.
 
@@ -74,3 +74,5 @@ The platform is architected as a modern, full-stack web application built on a r
 - **Type Safety**: TypeScript is used across the stack to minimize runtime errors.
 - **On-chain Logic**: The application correctly defers all state-changing blockchain operations (swaps, deposits) to the user's wallet for signing, ensuring the user maintains control of their assets.
 - **Error Handling**: The application includes UI components and toast notifications to provide clear feedback to the user on transaction status (pending, success, failed).
+
+    

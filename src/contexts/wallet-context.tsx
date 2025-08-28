@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -403,6 +402,53 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setVaultCollateral(collateral);
   }, []);
 
+  const executeTransactionAndWaitForConfirmation = async (
+    txType: TransactionType,
+    dialogDetails: Partial<Transaction>,
+    txFunction: () => Promise<`0x${string}`>
+  ): Promise<`0x${string}`> => {
+      isUpdatingStateRef.current = true;
+      setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
+      
+      const tempTxId = `temp_${Date.now()}`;
+      addTransaction({ id: tempTxId, type: txType, ...dialogDetails });
+      
+      try {
+          const txHash = await txFunction();
+          
+          setTransactions(prev => prev.map(tx => tx.id === tempTxId ? { ...tx, id: txHash, txHash: txHash } : tx));
+          
+          setTxStatusDialog(prev => ({ ...prev, state: 'success', transaction: { ...prev.transaction, txHash } }));
+          
+          // Wait for transaction confirmation
+          console.log(`Waiting for transaction confirmation for ${txHash}...`);
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+          
+          if (receipt.status === 'success') {
+              console.log(`✅ Transaction ${txHash} confirmed successfully`);
+              updateTransactionStatus(txHash, 'Completed');
+          } else {
+              console.error(`❌ Transaction ${txHash} failed`);
+              updateTransactionStatus(txHash, 'Failed', 'Transaction was reverted by the contract.');
+              throw new Error('Transaction reverted');
+          }
+          
+          return txHash;
+      } catch (e: any) {
+          console.error(`❌ ${txType} failed:`, e);
+          const errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
+          
+          setTxStatusDialog(prev => ({ 
+              ...prev, state: 'error', 
+              error: errorMessage 
+          }));
+          updateTransactionStatus(tempTxId, 'Failed', errorMessage);
+          throw e;
+      } finally {
+          setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
+      }
+  };
+
   const executeTransaction = async (
     txType: TransactionType,
     dialogDetails: Partial<Transaction>,
@@ -424,39 +470,61 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           
           publicClient.waitForTransactionReceipt({ hash: txHash }).then(async (receipt) => {
               if (receipt.status === 'success') {
+                  console.log(`✅ ${txType} transaction ${txHash} completed successfully`);
                   updateTransactionStatus(txHash, 'Completed');
                   if(onSuccess) await onSuccess(txHash);
               } else {
-                  updateTransactionStatus(txHash, 'Failed', 'Transaction was reverted by the contract.');
+                  console.error(`❌ ${txType} transaction ${txHash} failed`);
+                  // Try to decode revert reason
+                  let revertReason = 'Transaction was reverted by the contract.';
+                  try {
+                      if (receipt.status === 'reverted') {
+                          // More specific error messages based on transaction type
+                          if (txType === 'Add Liquidity') {
+                              revertReason = 'Liquidity addition failed. This could be due to an uninitialized pool or insufficient token amounts.';
+                          } else if (txType === 'Swap') {
+                              revertReason = 'Swap failed. This could be due to insufficient liquidity or slippage limits.';
+                          } else if (txType === 'Approve') {
+                              revertReason = 'Token approval failed. Please try again.';
+                          }
+                      }
+                  } catch (e) {
+                      console.error('Failed to decode revert reason:', e);
+                  }
+                  updateTransactionStatus(txHash, 'Failed', revertReason);
               }
           }).finally(async () => {
-             // Refresh balances after any successful tx
              if(walletAddress) {
+                console.log("Refreshing balances after transaction...");
                 await refreshAllBalances(walletAddress as `0x${string}`);
              }
           });
           
       } catch (e: any) {
-        console.error(`${txType} failed:`, e);
-        let errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
-        
-        if (errorMessage.includes('ERC20: mint to the zero address')) {
-            errorMessage = 'The pool contract is trying to mint LP tokens to an invalid address. This usually means the pool is not properly initialized.';
-        } else if (errorMessage.includes('ERC20: insufficient allowance')) {
-            errorMessage = 'Insufficient token allowance. Please approve the tokens first.';
-        } else if (errorMessage.includes('PoolNotFound')) {
-            errorMessage = 'Liquidity pool does not exist. Please create it first.';
-        } else if (errorMessage.includes('InvalidPath')) {
-            errorMessage = 'Invalid token path. Only direct swaps are supported.';
-        } else if (errorMessage.includes('Expired')) {
-            errorMessage = 'Transaction expired. Please try again.';
-        } else if (errorMessage.includes('Pool is not properly initialized')) {
-            errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
-        }
+          console.error(`❌ ${txType} failed:`, e);
+          let errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
           
-        setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
-        updateTransactionStatus(tempTxId, 'Failed', errorMessage);
-        throw e;
+          // More specific error messages
+          if (errorMessage.includes('ERC20: mint to the zero address')) {
+              errorMessage = 'The pool contract is trying to mint LP tokens to an invalid address. This usually means the pool is not properly initialized.';
+          } else if (errorMessage.includes('ERC20: insufficient allowance')) {
+              errorMessage = 'Insufficient token allowance. Please approve the tokens first.';
+          } else if (errorMessage.includes('PoolNotFound')) {
+              errorMessage = 'Liquidity pool does not exist. Please create it first.';
+          } else if (errorMessage.includes('InvalidPath')) {
+              errorMessage = 'Invalid token path. Only direct swaps are supported.';
+          } else if (errorMessage.includes('Expired')) {
+              errorMessage = 'Transaction expired. Please try again.';
+          } else if (errorMessage.includes('Pool is not properly initialized')) {
+              errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
+          }
+          
+          setTxStatusDialog(prev => ({ 
+              ...prev, state: 'error', 
+              error: errorMessage 
+          }));
+          updateTransactionStatus(tempTxId, 'Failed', errorMessage);
+          throw e;
       } finally {
           setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
       }
@@ -541,9 +609,34 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(`Decimals for ${tokenSymbol} not found.`);
     }
     
+    // Check current allowance first
+    let currentAllowance: bigint;
+    try {
+        currentAllowance = await publicClient.readContract({
+            address: tokenInfo.address!,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [walletAddress as `0x${string}`, spender]
+        });
+    } catch (error: any) {
+        console.error(`Error checking current allowance for ${tokenSymbol}:`, error);
+        throw new Error(`Failed to check current allowance for ${tokenSymbol}: ${error.message}`);
+    }
+    
+    const currentAllowanceFormatted = parseFloat(formatUnits(currentAllowance, tokenDecimals));
+    
+    // Only approve if current allowance is insufficient
+    if (currentAllowanceFormatted >= amount) {
+        console.log(`✅ Sufficient allowance already exists (${currentAllowanceFormatted}). Skipping approval.`);
+        return;
+    }
+    
+    console.log(`Approving ${amount} ${tokenSymbol} for spender ${spender}...`);
+    
     const dialogDetails = { amount, token: tokenSymbol, to: spender };
     
-    await executeTransaction('Approve', dialogDetails, async () => {
+    // Use executeTransactionAndWaitForConfirmation to ensure the approval is confirmed
+    const txHash = await executeTransactionAndWaitForConfirmation('Approve', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         const { request } = await publicClient.simulateContract({
@@ -554,10 +647,40 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             args: [spender, parseTokenAmount(amount.toString(), tokenDecimals)],
         });
         return walletClient.writeContract(request);
-    }, async () => {
-        await checkAllowance(tokenSymbol, spender);
     });
-  }, [executeTransaction, decimals, checkAllowance, walletAddress]);
+    
+    console.log(`✅ Approval transaction sent: ${txHash}`);
+    
+    // Wait for the transaction to be confirmed
+    console.log("Waiting for transaction confirmation...");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    
+    if (receipt.status !== 'success') {
+        throw new Error('Approval transaction failed');
+    }
+    
+    console.log("✅ Approval transaction confirmed");
+    
+    // Update the allowance in state
+    await checkAllowance(tokenSymbol, spender);
+    
+    // Additional verification
+    console.log("Verifying approval after confirmation...");
+    const newAllowance = await publicClient.readContract({
+        address: tokenInfo.address!,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [walletAddress as `0x${string}`, spender]
+    });
+    const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, tokenDecimals));
+    console.log(`✅ New allowance confirmed: ${newAllowanceFormatted}`);
+    
+    if (newAllowanceFormatted < amount) {
+        throw new Error(`Approval confirmed but allowance is still insufficient. Expected: ${amount}, Got: ${newAllowanceFormatted}`);
+    }
+    
+    console.log(`✅ Approval fully confirmed for ${tokenSymbol}`);
+  }, [executeTransactionAndWaitForConfirmation, decimals, checkAllowance, walletAddress]);
   
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -691,44 +814,64 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const fromTokenDecimals = decimals[fromToken];
     if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
     
-    // Check and set allowance before swapping
+    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
+    
+    // CRITICAL FIX: Check and set allowance before swapping
     console.log(`Checking allowance for ${fromToken}...`);
-    const currentAllowance = await publicClient.readContract({
-        address: fromTokenInfo.address!,
-        abi: erc20Abi,
-        functionName: 'allowance',
-        args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
-    });
+    let currentAllowance: bigint;
+    try {
+        currentAllowance = await publicClient.readContract({
+            address: fromTokenInfo.address!,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
+        });
+    } catch (error: any) {
+        console.error("Error checking allowance:", error);
+        throw new Error(`Failed to check allowance for ${fromToken}: ${error.message}`);
+    }
     
     const currentAllowanceFormatted = parseFloat(formatUnits(currentAllowance, fromTokenDecimals));
     console.log(`Current allowance for ${fromToken}: ${currentAllowanceFormatted}`);
     console.log(`Required amount: ${amountIn}`);
     
+    // Only approve if current allowance is insufficient
     if (currentAllowanceFormatted < amountIn) {
         console.log(`Approving ${amountIn} ${fromToken} for router...`);
+        
+        // First, get the current nonce to track our transaction
+        const walletClient = getWalletClient();
+        const [account] = await walletClient.getAddresses();
+        
+        // Approve the router to spend the tokens
         await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
         
+        // Wait for approval to be confirmed and verify
         let attempts = 0;
-        const maxAttempts = 10;
-        const pollInterval = 1000;
+        const maxAttempts = 15;
+        const pollInterval = 2000; // 2 seconds
         
         while (attempts < maxAttempts) {
             attempts++;
-            console.log(`Verifying approval (attempt ${attempts})...`);
+            console.log(`Verifying approval (attempt ${attempts}/${maxAttempts})...`);
             
-            const newAllowance = await publicClient.readContract({
-                address: fromTokenInfo.address!,
-                abi: erc20Abi,
-                functionName: 'allowance',
-                args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
-            });
-            const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, fromTokenDecimals));
-            
-            console.log(`New allowance: ${newAllowanceFormatted}`);
-            
-            if (newAllowanceFormatted >= amountIn) {
-                console.log("Approval confirmed. Proceeding with swap.");
-                break;
+            try {
+                const newAllowance = await publicClient.readContract({
+                    address: fromTokenInfo.address!,
+                    abi: erc20Abi,
+                    functionName: 'allowance',
+                    args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
+                });
+                const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, fromTokenDecimals));
+                
+                console.log(`New allowance: ${newAllowanceFormatted}`);
+                
+                if (newAllowanceFormatted >= amountIn) {
+                    console.log("✅ Approval confirmed. Proceeding with swap.");
+                    break;
+                }
+            } catch (error) {
+                console.error(`Error checking allowance on attempt ${attempts}:`, error);
             }
             
             if (attempts < maxAttempts) {
@@ -737,13 +880,28 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
         
         if (attempts >= maxAttempts) {
-            throw new Error(`Approval transaction was sent but allowance is still insufficient. Please wait and try again.`);
+            throw new Error(`Approval transaction was sent but allowance is still insufficient after ${maxAttempts} attempts. Please wait and try again.`);
         }
     } else {
-        console.log(`Sufficient allowance already exists (${currentAllowanceFormatted}). Skipping approval.`);
+        console.log(`✅ Sufficient allowance already exists (${currentAllowanceFormatted}). Skipping approval.`);
     }
-
-    const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
+    
+    // Final check before proceeding with swap
+    console.log("Final allowance check before swap...");
+    const finalAllowance = await publicClient.readContract({
+        address: fromTokenInfo.address!,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
+    });
+    const finalAllowanceFormatted = parseFloat(formatUnits(finalAllowance, fromTokenDecimals));
+    
+    if (finalAllowanceFormatted < amountIn) {
+        throw new Error(`Final allowance check failed. Allowance: ${finalAllowanceFormatted}, Required: ${amountIn}`);
+    }
+    
+    console.log("✅ Final allowance check passed. Proceeding with swap.");
+    
     await executeTransaction('Swap', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
@@ -753,6 +911,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const amountInWei = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
+        
+        console.log(`Executing swap with amountIn: ${amountInWei.toString()}`);
         
         const { request } = await publicClient.simulateContract({
             account,
@@ -764,6 +924,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         return walletClient.writeContract(request);
     }, async () => {
+        // Refresh allowance after successful swap
         await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
     });
   }, [walletAddress, executeTransaction, decimals, checkAllowance, approveToken]);
@@ -794,56 +955,85 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, executeTransaction]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
-      if (!walletAddress) throw new Error("Wallet not connected");
+    if (!walletAddress) throw new Error("Wallet not connected");
 
-      const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
-      const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
-      
-      if (!tokenAInfo?.address || !tokenBInfo?.address) {
-          throw new Error("Invalid tokens for liquidity. Contract addresses not found.");
-      }
-      
-      if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
+    const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
+    const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
+    
+    if (!tokenAInfo?.address || !tokenBInfo?.address) {
+        throw new Error("Invalid tokens for liquidity. Contract addresses not found.");
+    }
+    
+    if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
         throw new Error("Factory contract address is not properly configured.");
-      }
+    }
 
-      const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
-      const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
+    // Sort tokens by address (required by many DEXs)
+    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
+    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
 
-      const factoryContract = getContract({
-          address: FACTORY_CONTRACT_ADDRESS,
-          abi: FACTORY_ABI,
-          client: { public: publicClient }
-      });
-      
-      const poolAddress = await factoryContract.read.getPool([token0, token1, stable]);
-      if (poolAddress === '0x0000000000000000000000000000000000000000') {
-          throw new Error("Pool does not exist. Please create the pool first.");
-      }
-      
-      const poolContract = getContract({
+    // Get pool address from factory
+    const factoryContract = getContract({
+        address: FACTORY_CONTRACT_ADDRESS,
+        abi: FACTORY_ABI,
+        client: publicClient
+    });
+    
+    let poolAddress: `0x${string}`;
+    try {
+        poolAddress = await factoryContract.read.getPool([token0, token1, stable]);
+        if (poolAddress === '0x0000000000000000000000000000000000000000') {
+            throw new Error("Pool does not exist. Please create the pool first.");
+        }
+        console.log(`Found pool at address: ${poolAddress}`);
+    } catch (error) {
+        console.error("Error getting pool address:", error);
+        throw new Error("Failed to get pool address from factory.");
+    }
+    
+    // CRITICAL: Check if the pool is properly initialized
+    const poolContract = getContract({
         address: poolAddress,
         abi: POOL_ABI,
         client: publicClient
-      });
+    });
     
-      try {
-          const lpTokenAddress = await poolContract.read.lpToken();
-          if (lpTokenAddress === '0x0000000000000000000000000000000000000000') {
-              throw new Error("Pool is not properly initialized. LP token address is zero.");
-          }
-          console.log(`Pool LP token address: ${lpTokenAddress}`);
-      } catch (error) {
-          console.error("Error checking pool initialization:", error);
-          throw new Error("Failed to verify pool state. The pool might not be properly initialized.");
-      }
-
-      // Approve tokens for the POOL contract, not the router
-      await approveToken(tokenA, amountA, poolAddress);
-      await approveToken(tokenB, amountB, poolAddress);
-      
-      const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
-      await executeTransaction('Add Liquidity', dialogDetails, async () => {
+    let lpTokenAddress: `0x${string}`;
+    try {
+        lpTokenAddress = await poolContract.read.lpToken();
+        console.log(`Pool LP token address: ${lpTokenAddress}`);
+        
+        if (lpTokenAddress === '0x0000000000000000000000000000000000000000') {
+            throw new Error("Pool is not properly initialized. LP token address is zero.");
+        }
+        
+        // Additional check: try to get token0 and token1 from the pool to verify it's properly set up
+        const poolToken0 = await poolContract.read.token0();
+        const poolToken1 = await poolContract.read.token1();
+        console.log(`Pool tokens: ${poolToken0}, ${poolToken1}`);
+        
+        if (poolToken0 === '0x0000000000000000000000000000000000000000' || 
+            poolToken1 === '0x0000000000000000000000000000000000000000') {
+            throw new Error("Pool tokens are not properly configured.");
+        }
+    } catch (error) {
+        console.error("Error checking pool initialization:", error);
+        throw new Error("Failed to verify pool state. The pool might not be properly initialized.");
+    }
+    
+    // Approve tokens for the POOL contract, not the router
+    console.log(`Approving ${amountA} ${tokenA} for pool ${poolAddress}...`);
+    await approveToken(tokenA, amountA, poolAddress);
+    
+    console.log(`Approving ${amountB} ${tokenB} for pool ${poolAddress}...`);
+    await approveToken(tokenB, amountB, poolAddress);
+    
+    // Wait a moment for approvals to be processed
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
+    
+    await executeTransaction('Add Liquidity', dialogDetails, async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
         
@@ -855,6 +1045,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
 
+        console.log(`Adding liquidity with amounts: ${amountADesired.toString()}, ${amountBDesired.toString()}`);
+
         const { request } = await publicClient.simulateContract({
             account,
             address: DEX_CONTRACT_ADDRESS,
@@ -864,7 +1056,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return walletClient.writeContract(request);
-      });
+    });
   }, [walletAddress, approveToken, executeTransaction, decimals]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
@@ -1152,3 +1344,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

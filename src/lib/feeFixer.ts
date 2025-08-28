@@ -1,12 +1,13 @@
 
+
 import { createWalletClient, custom, http, defineChain, getContract, Address, PublicClient, WalletClient, createPublicClient, parseAbi } from 'viem';
 import { localhost } from 'viem/chains';
 
 // --- CONTRACTS & ABI ---
 
-const TREASURY_ADDRESS = process.env.NEXT_PUBLIC_TREASURY_ADDRESS as Address;
-const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as Address;
-const WETH_ADDRESS = process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS as Address;
+const TREASURY_ADDRESS = (process.env.NEXT_PUBLIC_TREASURY_ADDRESS) as Address;
+const FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS || '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44') as Address;
+const WETH_ADDRESS = (process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS || '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318') as Address;
 
 
 const FACTORY_ABI = [

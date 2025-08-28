@@ -471,47 +471,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-  const executeTransactionAndWaitForConfirmation = async (
-    txType: TransactionType,
-    dialogDetails: Partial<Transaction>,
-    txFunction: () => Promise<`0x${string}`>
-  ): Promise<`0x${string}`> => {
-      isUpdatingStateRef.current = true;
-      setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
-      
-      const tempTxId = `temp_${Date.now()}`;
-      addTransaction({ id: tempTxId, type: txType, ...dialogDetails });
-      
-      try {
-          const txHash = await txFunction();
-          
-          setTransactions(prev => prev.map(tx => tx.id === tempTxId ? { ...tx, id: txHash, txHash: txHash } : tx));
-          
-          setTxStatusDialog(prev => ({ ...prev, state: 'success', transaction: { ...prev.transaction, txHash } }));
-          
-          // Wait for transaction confirmation
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-          
-          if (receipt.status === 'success') {
-              updateTransactionStatus(txHash, 'Completed');
-          } else {
-              updateTransactionStatus(txHash, 'Failed', 'Transaction was reverted by the contract.');
-              throw new Error('Transaction reverted');
-          }
-          
-          return txHash;
-      } catch (e: any) {
-          console.error(`${txType} failed:`, e);
-          const errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
-          
-          setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
-          updateTransactionStatus(tempTxId, 'Failed', errorMessage);
-          throw e;
-      } finally {
-          setTimeout(() => { isUpdatingStateRef.current = false; }, 5000);
-      }
-  };
-
   const connectWallet = useCallback(async () => {
     setIsConnecting(true);
     try {
@@ -1002,11 +961,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
           await updateVaultCollateral();
-          setVaultCollateral(prev => ({
-              ...prev,
-              available: prev.available + pnl,
-              total: prev.total + pnl,
-          }));
       });
   }, [executeTransaction, walletAddress, updateVaultCollateral]);
 

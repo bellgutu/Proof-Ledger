@@ -624,24 +624,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         }
         
         // Check current allowance first
-        let currentAllowance: bigint;
-        try {
-            currentAllowance = await publicClient.readContract({
-                address: tokenInfo.address!,
-                abi: erc20Abi,
-                functionName: 'allowance',
-                args: [walletAddress as `0x${string}`, spender]
-            });
-        } catch (error) {
-            console.error(`Error checking current allowance for ${tokenSymbol}:`, error);
-            throw new Error(`Failed to check current allowance for ${tokenSymbol}: ${(error as any).message}`);
-        }
-        
+        const currentAllowance = await publicClient.readContract({
+            address: tokenInfo.address!,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [walletAddress as `0x${string}`, spender]
+        });
         const currentAllowanceFormatted = parseFloat(formatUnits(currentAllowance, tokenDecimals));
         
         // Only approve if current allowance is insufficient
         if (currentAllowanceFormatted >= amount) {
-            console.log(`✅ Sufficient allowance already exists (${currentAllowanceFormatted}). Skipping approval.`);
+            console.log(`Sufficient allowance already exists (${currentAllowanceFormatted}). Skipping approval.`);
             return;
         }
         
@@ -649,8 +642,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const dialogDetails = { amount, token: tokenSymbol, to: spender };
         
-        // Use executeTransactionAndWaitForConfirmation to ensure the approval is confirmed
-        const txHash = await executeTransactionAndWaitForConfirmation('Approve', dialogDetails, async () => {
+        // Use a modified version of executeTransaction that waits for confirmation
+        const txHash = await executeTransaction('Approve', dialogDetails, async () => {
             const walletClient = getWalletClient();
             const [account] = await walletClient.getAddresses();
             const { request } = await publicClient.simulateContract({
@@ -660,41 +653,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 functionName: "approve",
                 args: [spender, parseTokenAmount(amount.toString(), tokenDecimals)],
             });
-            return walletClient.writeContract(request);
+            return await walletClient.writeContract(request);
         });
         
-        console.log(`✅ Approval transaction sent: ${txHash}`);
-        
         // Wait for the transaction to be confirmed
-        console.log("Waiting for transaction confirmation...");
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-        
-        if (receipt.status !== 'success') {
-            throw new Error('Approval transaction failed');
-        }
-        
-        console.log("✅ Approval transaction confirmed");
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
         
         // Update the allowance in state
         await checkAllowance(tokenSymbol, spender);
         
-        // Additional verification
-        console.log("Verifying approval after confirmation...");
-        const newAllowance = await publicClient.readContract({
-            address: tokenInfo.address!,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [walletAddress as `0x${string}`, spender]
-        });
-        const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, tokenDecimals));
-        console.log(`✅ New allowance confirmed: ${newAllowanceFormatted}`);
-        
-        if (newAllowanceFormatted < amount) {
-            throw new Error(`Approval confirmed but allowance is still insufficient. Expected: ${amount}, Got: ${newAllowanceFormatted}`);
-        }
-        
-        console.log(`✅ Approval fully confirmed for ${tokenSymbol}`);
-    }, [executeTransactionAndWaitForConfirmation, decimals, checkAllowance, walletAddress]);
+        console.log(`Approval confirmed for ${tokenSymbol}`);
+    }, [executeTransaction, decimals, checkAllowance, walletAddress]);
   
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -839,9 +808,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             functionName: 'allowance',
             args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error checking allowance:", error);
-        throw new Error(`Failed to check allowance for ${fromToken}: ${(error as any).message}`);
+        throw new Error(`Failed to check allowance for ${fromToken}: ${error.message}`);
     }
     
     const currentAllowanceFormatted = parseFloat(formatUnits(currentAllowance, fromTokenDecimals));
@@ -876,7 +845,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                     console.log("✅ Approval confirmed. Proceeding with swap.");
                     break;
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error(`Error checking allowance on attempt ${attempts}:`, error);
             }
             

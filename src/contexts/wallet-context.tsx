@@ -699,7 +699,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (!fromTokenInfo?.address) throw new Error(`Token ${fromToken} is not configured.`);
     const fromTokenDecimals = decimals[fromToken];
     if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
-
+    
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     
     await executeTransaction('Swap', dialogDetails, async () => {
@@ -777,8 +777,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           throw new Error("Pool does not exist. Please create the pool first.");
       }
       
-      await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
-      await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
+      await approveToken(tokenA, amountA, poolAddress);
+      await approveToken(tokenB, amountB, poolAddress);
       
       const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
       await executeTransaction('Add Liquidity', dialogDetails, async () => {
@@ -960,9 +960,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return walletClient.writeContract(request);
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
-          await updateVaultCollateral();
+          // Manually update the vault collateral after PnL is realized.
+          setVaultCollateral(prev => {
+              const newTotal = prev.total + pnl;
+              const newAvailable = prev.available + pnl;
+              return { ...prev, total: newTotal, available: newAvailable };
+          });
       });
-  }, [executeTransaction, walletAddress, updateVaultCollateral]);
+  }, [executeTransaction, walletAddress, setVaultCollateral]);
 
   const depositToVault = useCallback(async (amount: number) => {
     await approveToken('WETH', amount, VAULT_CONTRACT_ADDRESS);

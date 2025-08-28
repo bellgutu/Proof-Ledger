@@ -51,8 +51,8 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) returns (uint amountA, uint amountB, uint liquidity)",
-    "function removeLiquidity(address,address,bool,uint256,uint256,uint256,address,uint256) returns (uint256,uint256)",
+    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) returns (uint256 liquidity)",
+    "function removeLiquidity(address tokenA, address tokenB, bool stable, uint256 liquidity, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) external returns (uint256 amountA, uint256 amountB)",
     "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, bool stable, address to, uint256 deadline) external",
     "error InvalidPath()",
     "error ZeroAddress()",
@@ -72,38 +72,38 @@ export const GOVERNOR_ABI = parseAbi([
 ]);
 
 export const FACTORY_ABI = [
-  {
-    "inputs": [
-      { "internalType": "address", "name": "tokenA", "type": "address" },
-      { "internalType": "address", "name": "tokenB", "type": "address" },
-      { "internalType": "bool", "name": "stable", "type": "bool" }
-    ],
-    "name": "getPool",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view", "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "tokenA", "type": "address" },
-      { "internalType": "address", "name": "tokenB", "type": "address" },
-      { "internalType": "bool", "name": "stable", "type": "bool" }
-    ],
-    "name": "createPool",
-    "outputs": [{ "internalType": "address", "name": "pool", "type": "address" }],
-    "stateMutability": "nonpayable", "type": "function"
-  },
-   {
-    "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "name": "allPools",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view", "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "allPoolsLength",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view", "type": "function"
-  }
+    {
+        "inputs": [
+            { "internalType": "address", "name": "tokenA", "type": "address" },
+            { "internalType": "address", "name": "tokenB", "type": "address" },
+            { "internalType": "bool", "name": "stable", "type": "bool" }
+        ],
+        "name": "getPool",
+        "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+        "stateMutability": "view", "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "address", "name": "tokenA", "type": "address" },
+            { "internalType": "address", "name": "tokenB", "type": "address" },
+            { "internalType": "bool", "name": "stable", "type": "bool" }
+        ],
+        "name": "createPool",
+        "outputs": [{ "internalType": "address", "name": "pool", "type": "address" }],
+        "stateMutability": "nonpayable", "type": "function"
+    },
+    {
+        "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "name": "allPools",
+        "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+        "stateMutability": "view", "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "allPoolsLength",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view", "type": "function"
+    }
 ] as const;
 
 export const POOL_ABI = [

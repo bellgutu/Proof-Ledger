@@ -19,14 +19,14 @@ const getAdminWalletClient = () => {
     return createWalletClient({
         account,
         chain: anvilChain,
-        transport: http('http://127.0.0.1:8545'),
+        transport: http('http://localhost:8545'),
     });
 }
 
 const getAdminPublicClient = () => {
     return createPublicClient({
         chain: anvilChain,
-        transport: http('http://127.0.0.1:8545'),
+        transport: http('http://localhost:8545'),
     });
 }
 

@@ -133,8 +133,6 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-const USE_PRIVATE_KEY_CONNECTION = true; 
-
 const anvilChain = defineChain({
   ...localhost,
   id: 31337,
@@ -335,61 +333,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => {
-    if(!walletAddress) return '';
-    const newTxId = transaction.id || transaction.txHash || `local_${Date.now()}_${Math.random()}`;
-    const newTx: Transaction = {
-        id: newTxId, status: 'Pending', from: walletAddress,
-        to: transaction.to || '0x0000000000000000000000000000000000000000', 
-        timestamp: Date.now(), txHash: transaction.txHash || '',
-        ...transaction
-    };
-    
-    setTransactions(prevTxs => {
-      // Avoid adding duplicates
-      if (prevTxs.some(tx => tx.id === newTxId)) return prevTxs;
-      const newTxs = [newTx, ...prevTxs];
-      persistTransactions(newTxs, walletAddress);
-      return newTxs;
-    });
-
-    return newTxId;
-  }, [walletAddress, persistTransactions]);
-  
-  const updateTransactionStatus = useCallback((id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => {
-    setTransactions(prev => {
-        const newTxs = prev.map(tx => {
-            if (tx.id === id) {
-                return { ...tx, status, ...(details && { details }), ...(txHash && { txHash }) };
-            }
-            return tx;
-        });
-        if (walletAddress) persistTransactions(newTxs, walletAddress);
-        return newTxs;
-    });
-  }, [walletAddress, persistTransactions]);
-
   const getWalletClient = () => {
-    if (USE_PRIVATE_KEY_CONNECTION) {
-        // Using a hardcoded, default Anvil private key for maximum reliability in development.
-        // This key corresponds to the account 0x70997970C51812dc3A010C7d01b50e0d17dc79C8.
-        const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
-        const account = privateKeyToAccount(privateKey);
-        
-        return createWalletClient({
-            account,
-            chain: anvilChain,
-            transport: http(),
-        });
-    } else {
-        if (typeof window.ethereum === 'undefined') {
-            throw new Error("MetaMask is not installed.");
-        }
-        return createWalletClient({
-            chain: anvilChain,
-            transport: custom(window.ethereum),
-        });
-    }
+    // This is the default private key for the first account in Anvil/Hardhat.
+    // Using this directly ensures the most stable connection for development.
+    const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
+    const account = privateKeyToAccount(privateKey);
+    
+    return createWalletClient({
+        account,
+        chain: anvilChain,
+        transport: http(),
+    });
   };
 
 
@@ -411,6 +365,47 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setVaultCollateral(collateral);
   }, []);
 
+  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => {
+    const newTx: Transaction = {
+        id: transaction.id || `temp_${Date.now()}`,
+        txHash: transaction.txHash || 'N/A',
+        type: transaction.type,
+        status: 'Pending',
+        timestamp: Date.now(),
+        from: walletAddress,
+        to: transaction.to || 'Unknown Contract',
+        details: transaction.details,
+        token: transaction.token,
+        amount: transaction.amount,
+    };
+    setTransactions(prev => {
+        const newTxs = [newTx, ...prev];
+        persistTransactions(newTxs, walletAddress);
+        return newTxs;
+    });
+    return newTx.id;
+  }, [transactions, walletAddress, persistTransactions]);
+
+
+  const updateTransactionStatus = useCallback((id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => {
+      setTransactions(prev => {
+          const newTxs = prev.map(tx => {
+              if (tx.id === id) {
+                  return { 
+                      ...tx, 
+                      status, 
+                      ...(details && { details }),
+                      ...(txHash && { txHash, id: txHash })
+                  };
+              }
+              return tx;
+          });
+          persistTransactions(newTxs, walletAddress);
+          return newTxs;
+      });
+  }, [walletAddress, persistTransactions]);
+
+
   const executeTransaction = async (
     txType: TransactionType,
     dialogDetails: Partial<Transaction>,
@@ -420,8 +415,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       isUpdatingStateRef.current = true;
       setTxStatusDialog({ isOpen: true, state: 'processing', transaction: dialogDetails });
       
-      const tempTxId = `temp_${Date.now()}`;
-      addTransaction({ id: tempTxId, type: txType, ...dialogDetails });
+      const tempTxId = addTransaction({ type: txType, ...dialogDetails });
       
       try {
           const txHash = await txFunction();
@@ -625,8 +619,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    await executeTransaction('Send', dialogDetails, txFunction);
-  }, [walletAddress, decimals, executeTransaction]);
+    await executeTransaction('Send', dialogDetails, txFunction, async () => {
+        await refreshAllBalances(walletAddress as `0x${string}`);
+    });
+  }, [walletAddress, decimals, executeTransaction, refreshAllBalances]);
 
   const checkPoolExists = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
     const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
@@ -937,7 +933,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         });
         return walletClient.writeContract(depositRequest);
     };
-    await executeTransaction('Deposit Collateral', dialogDetails, txFunction, updateVaultCollateral);
+    await executeTransaction('Deposit Collateral', dialogDetails, txFunction, async () => {
+        await updateVaultCollateral();
+    });
   }, [executeTransaction, decimals, approveToken, updateVaultCollateral]);
   
   const withdrawCollateral = useCallback(async (amount: string) => {
@@ -959,7 +957,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
           return walletClient.writeContract(request);
       };
-      await executeTransaction('Withdraw Collateral', dialogDetails, txFunction, updateVaultCollateral);
+      await executeTransaction('Withdraw Collateral', dialogDetails, txFunction, async () => {
+          await updateVaultCollateral();
+      });
   }, [executeTransaction, decimals, updateVaultCollateral]);
 
 
@@ -1049,7 +1049,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
             functionName: 'deposit',
-            args: [amountInWei]
+            args: [amountInWei, account]
         });
         
         return walletClient.writeContract(request);
@@ -1156,5 +1156,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

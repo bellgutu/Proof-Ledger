@@ -129,9 +129,6 @@ interface WalletActions {
   checkPoolExists: (tokenA: string, tokenB: string, stable?: boolean) => Promise<boolean>;
   swapTokens: (fromToken: string, toToken: string, amountIn: number) => Promise<void>;
   createPool: (tokenA: string, tokenB: string, stable?: boolean) => Promise<void>;
-  depositToVault: (amount: number) => Promise<void>;
-  withdrawFromVault: (amount: number) => Promise<void>;
-  voteOnProposal: (proposalId: string, support: number) => Promise<void>;
   addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => Promise<void>;
   removeLiquidity: (position: UserPosition, percentage: number) => Promise<void>;
   claimRewards: (position: UserPosition) => Promise<void>;
@@ -775,12 +772,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [addTransaction, updateBalance, toast, walletAddress]);
   
   const depositCollateral = useCallback(async (amount: string) => {
+    if(!walletClient) throw new Error("Wallet not connected");
+    
     const usdtDecimals = decimals['USDT'];
     if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
+    await approveToken('USDT', parseFloat(amount), VAULT_CONTRACT_ADDRESS);
+
     const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
     const txFunction = async () => {
-        if (!walletClient) throw new Error("Wallet not connected");
         const amountOnChain = parseTokenAmount(amount, usdtDecimals);
         const { request } = await publicClient.simulateContract({
             account: walletClient.account,
@@ -794,15 +794,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     await executeTransaction('Deposit Collateral', dialogDetails, txFunction, async () => {
         await updateVaultCollateral();
     });
-  }, [executeTransaction, decimals, walletClient, updateVaultCollateral]);
+  }, [executeTransaction, decimals, walletClient, updateVaultCollateral, approveToken]);
   
   const withdrawCollateral = useCallback(async (amount: string) => {
+      if(!walletClient) throw new Error("Wallet not connected");
+      
       const usdtDecimals = decimals['USDT'];
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
       const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
       const txFunction = async () => {
-          if(!walletClient) throw new Error("Wallet not connected");
           const amountOnChain = parseTokenAmount(amount, usdtDecimals);
           
           const { request } = await publicClient.simulateContract({

@@ -13,7 +13,7 @@ const getAdminWalletClient = () => {
     if (!localKey) {
         throw new Error('LOCAL_PRIVATE_KEY is not set in the environment variables.');
     }
-    const account = privateKeyToAccount(`0x${localKey}`);
+    const account = privateKeyToAccount(localKey as `0x${string}`);
     const anvilChain = { ...localhost, id: 31337 };
 
     return createWalletClient({

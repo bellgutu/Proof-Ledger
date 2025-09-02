@@ -968,6 +968,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; entryPrice: number }) => {
+      if (!walletAddress) throw new Error("Wallet not connected");
       const { side, size, collateral, entryPrice } = params;
       
       const sizeDecimals = decimals['ETH'];
@@ -994,7 +995,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: PERPETUALS_ABI,
               functionName: 'openPosition',
-              args: [side, sizeOnChain, collateralOnChain],
+              args: [account, side, sizeOnChain, collateralOnChain],
               account
           });
           return walletClient.writeContract(request);

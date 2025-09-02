@@ -117,11 +117,9 @@ export const POOL_ABI = [
 
 
 export const PERPETUALS_ABI = parseAbi([
-  "function collateral(address) view returns (uint256)",
-  "function lockedCollateral(address) view returns (uint256)",
   "function depositCollateral(uint256 amount)",
   "function withdrawCollateral(uint256 amount)",
-  "function openPosition(uint8 side, uint256 size, uint256 collateral)",
+  "function openPosition(address user, uint8 side, uint256 size, uint256 collateral)",
   "function closePosition(address user) external",
   "function getPrice() view returns (uint256)",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
@@ -216,15 +214,15 @@ export interface VaultCollateral {
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   try {
     const total = await publicClient.readContract({
-        address: PERPETUALS_CONTRACT_ADDRESS,
-        abi: PERPETUALS_ABI,
+        address: VAULT_CONTRACT_ADDRESS,
+        abi: VAULT_ABI,
         functionName: 'collateral',
         args: [userAddress],
     });
     
     const locked = await publicClient.readContract({
-        address: PERPETUALS_CONTRACT_ADDRESS,
-        abi: PERPETUALS_ABI,
+        address: VAULT_CONTRACT_ADDRESS,
+        abi: VAULT_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],
     });

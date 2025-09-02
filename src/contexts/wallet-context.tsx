@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -8,7 +9,7 @@ import {
     DEX_CONTRACT_ADDRESS, 
     VAULT_CONTRACT_ADDRESS, 
     PERPETUALS_CONTRACT_ADDRESS, 
-    GOVERNOR_ABI, DEX_ABI, VAULT_ABI, 
+    GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, 
     PERPETUALS_ABI, 
     FACTORY_CONTRACT_ADDRESS, 
     FACTORY_ABI, POOL_ABI, 
@@ -129,7 +130,7 @@ interface WalletActions {
   checkPoolExists: (tokenA: string, tokenB: string, stable?: boolean) => Promise<boolean>;
   swapTokens: (fromToken: string, toToken: string, amountIn: number) => Promise<void>;
   createPool: (tokenA: string, tokenB: string, stable?: boolean) => Promise<void>;
-  addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number) => Promise<void>;
+  addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => Promise<void>;
   removeLiquidity: (position: UserPosition, percentage: number) => Promise<void>;
   claimRewards: (position: UserPosition) => Promise<void>;
 }
@@ -698,7 +699,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [walletAddress, walletClient, executeTransaction]);
   
-    const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number) => {
+    const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
         if (!walletAddress || !walletClient) throw new Error("Wallet not connected");
 
         const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
@@ -724,7 +725,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               address: DEX_CONTRACT_ADDRESS,
               abi: DEX_ABI,
               functionName: 'addLiquidity',
-              args: [ tokenAInfo.address!, tokenBInfo.address!, amountADesired, amountBDesired, 0n, 0n, walletClient.account.address, BigInt(Math.floor(Date.now() / 1000) + 60 * 20)]
+              args: [ tokenAInfo.address!, tokenBInfo.address!, stable, amountADesired, amountBDesired, 0n, 0n, walletClient.account.address, BigInt(Math.floor(Date.now() / 1000) + 60 * 20)]
             });
             return await walletClient.writeContract(request);
         };
@@ -769,7 +770,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         details: `Claimed $${position.unclaimedRewards.toFixed(2)} rewards from ${position.name} pool.`
       });
       toast({ title: 'Rewards Claimed!', description: `$${position.unclaimedRewards.toFixed(2)} has been added to your wallet.`});
-  }, [addTransaction, updateBalance, toast, walletAddress]);
+  }, [addTransaction, walletAddress, updateBalance, toast]);
   
   const depositCollateral = useCallback(async (amount: string) => {
     if(!walletClient) throw new Error("Wallet not connected");
@@ -976,3 +977,4 @@ export const useWallet = (): WalletContextType => {
 };
 
     
+

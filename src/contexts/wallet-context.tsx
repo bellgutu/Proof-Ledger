@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -601,12 +600,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       if (tokenSymbol === 'ETH') {
           const ethDecimals = decimals['ETH'] ?? 18;
           const onChainAmount = parseTokenAmount(amount.toString(), ethDecimals);
-          const { request } = await publicClient.simulateContract({
+          return await walletClient.sendTransaction({
             account: walletClient.account,
             to: toAddress as `0x${string}`,
             value: onChainAmount
           });
-          return walletClient.writeContract(request);
       } else {
           const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
           if (!tokenInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
@@ -988,3 +986,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

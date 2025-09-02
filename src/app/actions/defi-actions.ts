@@ -8,26 +8,25 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_ABI } from '@/services/blockchain-service';
 
 const localKey = process.env.LOCAL_PRIVATE_KEY;
+const anvilChain = { ...localhost, id: 31337 };
 
 const getAdminWalletClient = () => {
     if (!localKey) {
         throw new Error('LOCAL_PRIVATE_KEY is not set in the environment variables.');
     }
     const account = privateKeyToAccount(localKey as `0x${string}`);
-    const anvilChain = { ...localhost, id: 31337 };
 
     return createWalletClient({
         account,
         chain: anvilChain,
-        transport: http(),
+        transport: http('http://127.0.0.1:8545'),
     });
 }
 
 const getAdminPublicClient = () => {
-    const anvilChain = { ...localhost, id: 31337 };
     return createPublicClient({
         chain: anvilChain,
-        transport: http(),
+        transport: http('http://127.0.0.1:8545'),
     });
 }
 

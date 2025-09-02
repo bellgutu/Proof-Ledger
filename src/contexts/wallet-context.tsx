@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI } from '@/services/blockchain-service';
+import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI, PERPETUALS_ABI } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, decodeErrorResult, type Address, type PrivateKeyAccount } from 'viem';
@@ -157,14 +157,6 @@ const erc20Abi = parseAbi([
     "function transfer(address to, uint256 amount) external returns (bool)"
 ]);
 
-const perpetualsAbi = parseAbi([
-    "function openPosition(uint8 side, uint256 size, uint256 collateral, address user) external",
-    "function closePosition(address user) external",
-    "function getPrice() view returns (uint256)",
-    "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
-]);
-
-
 // --- INITIAL STATE ---
 
 const initialMarketData: MarketData = {
@@ -183,8 +175,8 @@ const initialMarketData: MarketData = {
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '0x56639db16ac50a89228026e42a316b30179a5376', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
-    { id: '0x0665fbb86a3aceca91df68388ec4bbe11556ddce', name: 'WETH/USDT', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '0x56639dB16Ac50A89228026e42a316B30179A5376', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '0x0665FbB86a3acECa91Df68388EC4BBE11556DDce', name: 'WETH/USDT', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
 ];
 
 const initialProposals: Proposal[] = [
@@ -470,6 +462,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 errorMessage = 'Transaction expired. Please try again.';
             } else if (errorMessage.includes('Pool is not properly initialized')) {
                 errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
+            } else if (errorMessage.includes('function selector was not recognized')) {
+                errorMessage = 'The contract function was not found. The ABI might be incorrect or the contract address is wrong.';
             }
           
           setTxStatusDialog(prev => ({ 
@@ -577,35 +571,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             return await walletClient.writeContract(request);
         };
         
-        await executeTransaction('Approve', dialogDetails, txFunction, async () => {
-            // After successful tx, poll for allowance change
-            let attempts = 0;
-            const maxAttempts = 10;
-            const pollInterval = 2000;
-
-            const poll = async () => {
-                while(attempts < maxAttempts) {
-                    const newAllowance = await publicClient.readContract({
-                        address: tokenInfo.address!,
-                        abi: erc20Abi,
-                        functionName: 'allowance',
-                        args: [walletAddress as `0x${string}`, spender]
-                    });
-                    const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, tokenDecimals));
-                    if (newAllowanceFormatted >= amount) {
-                        setAllowances(prev => ({...prev, [tokenSymbol]: newAllowanceFormatted}));
-                        console.log(`Approval confirmed for ${tokenSymbol}`);
-                        return;
-                    }
-                    attempts++;
-                    await new Promise(resolve => setTimeout(resolve, pollInterval));
-                }
-                throw new Error("Allowance did not update in time.");
-            };
-            await poll();
+        await executeTransaction('Approve', dialogDetails, txFunction, async (txHash) => {
+            console.log(`Approval transaction ${txHash} sent. Waiting for confirmation to update allowance.`);
+            await publicClient.waitForTransactionReceipt({ hash: txHash });
+            console.log(`Approval transaction ${txHash} confirmed. Re-checking allowance.`);
+            await checkAllowance(tokenSymbol, spender);
         });
         
-    }, [executeTransaction, decimals, walletAddress]);
+    }, [executeTransaction, decimals, checkAllowance]);
   
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -741,82 +714,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     
-    console.log(`Checking allowance for ${fromToken}...`);
-    let currentAllowance: bigint;
-    try {
-        currentAllowance = await publicClient.readContract({
-            address: fromTokenInfo.address!,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
-        });
-    } catch (error: any) {
-        console.error("Error checking allowance:", error);
-        throw new Error(`Failed to check allowance for ${fromToken}: ${error.message}`);
-    }
-    
-    const currentAllowanceFormatted = parseFloat(formatUnits(currentAllowance, fromTokenDecimals));
-    console.log(`Current allowance for ${fromToken}: ${currentAllowanceFormatted}`);
-    console.log(`Required amount: ${amountIn}`);
-    
-    if (currentAllowanceFormatted < amountIn) {
-        console.log(`Approving ${amountIn} ${fromToken} for router...`);
-        
-        await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
-        
-        let attempts = 0;
-        const maxAttempts = 15;
-        const pollInterval = 2000;
-        
-        while (attempts < maxAttempts) {
-            attempts++;
-            console.log(`Verifying approval (attempt ${attempts}/${maxAttempts})...`);
-            
-            try {
-                const newAllowance = await publicClient.readContract({
-                    address: fromTokenInfo.address!,
-                    abi: erc20Abi,
-                    functionName: 'allowance',
-                    args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
-                });
-                const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, fromTokenDecimals));
-                
-                console.log(`New allowance: ${newAllowanceFormatted}`);
-                
-                if (newAllowanceFormatted >= amountIn) {
-                    console.log("✅ Approval confirmed. Proceeding with swap.");
-                    break;
-                }
-            } catch (error: any) {
-                console.error(`Error checking allowance on attempt ${attempts}:`, error);
-            }
-            
-            if (attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, pollInterval));
-            }
-        }
-        
-        if (attempts >= maxAttempts) {
-            throw new Error(`Approval transaction was sent but allowance is still insufficient after ${maxAttempts} attempts. Please wait and try again.`);
-        }
-    } else {
-        console.log(`✅ Sufficient allowance already exists (${currentAllowanceFormatted}). Skipping approval.`);
-    }
-    
-    console.log("Final allowance check before swap...");
-    const finalAllowance = await publicClient.readContract({
-        address: fromTokenInfo.address!,
-        abi: erc20Abi,
-        functionName: 'allowance',
-        args: [walletAddress as `0x${string}`, DEX_CONTRACT_ADDRESS]
-    });
-    const finalAllowanceFormatted = parseFloat(formatUnits(finalAllowance, fromTokenDecimals));
-    
-    if (finalAllowanceFormatted < amountIn) {
-        throw new Error(`Final allowance check failed. Allowance: ${finalAllowanceFormatted}, Required: ${amountIn}`);
-    }
-    
-    console.log("✅ Final allowance check passed. Proceeding with swap.");
+    await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
     
     await executeTransaction('Swap', dialogDetails, async () => {
         const walletClient = getWalletClient();
@@ -930,10 +828,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             throw new Error("Failed to verify pool state. The pool might not be properly initialized.");
         }
         
-        console.log(`Approving ${amountA} ${tokenA} for router ${DEX_CONTRACT_ADDRESS}...`);
         await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
-        
-        console.log(`Approving ${amountB} ${tokenB} for router ${DEX_CONTRACT_ADDRESS}...`);
         await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
         
         const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
@@ -1013,9 +908,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const depositCollateral = useCallback(async (amount: string) => {
     const usdtDecimals = decimals['USDT'];
     if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
-    await approveToken('USDT', parseFloat(amount), VAULT_CONTRACT_ADDRESS);
+    await approveToken('USDT', parseFloat(amount), PERPETUALS_CONTRACT_ADDRESS);
 
-    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
+    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
     const txFunction = async () => {
         const walletClient = getWalletClient();
         const [account] = await walletClient.getAddresses();
@@ -1023,10 +918,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const { request: depositRequest } = await publicClient.simulateContract({
             account,
-            address: VAULT_CONTRACT_ADDRESS,
-            abi: VAULT_ABI,
+            address: PERPETUALS_CONTRACT_ADDRESS,
+            abi: PERPETUALS_ABI,
             functionName: 'depositCollateral',
-            args: [amountOnChain, account]
+            args: [amountOnChain]
         });
         return walletClient.writeContract(depositRequest);
     };
@@ -1037,7 +932,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const usdtDecimals = decimals['USDT'];
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
-      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
+      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
       const txFunction = async () => {
           const walletClient = getWalletClient();
           const [account] = await walletClient.getAddresses();
@@ -1045,10 +940,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           
           const { request } = await publicClient.simulateContract({
               account,
-              address: VAULT_CONTRACT_ADDRESS,
-              abi: VAULT_ABI,
-              functionName: 'withdraw',
-              args: [amountOnChain, account]
+              address: PERPETUALS_CONTRACT_ADDRESS,
+              abi: PERPETUALS_ABI,
+              functionName: 'withdrawCollateral',
+              args: [amountOnChain]
           });
           return walletClient.writeContract(request);
       };
@@ -1081,9 +976,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           const [account] = await walletClient.getAddresses();
           const { request } = await publicClient.simulateContract({
               address: PERPETUALS_CONTRACT_ADDRESS,
-              abi: perpetualsAbi,
+              abi: PERPETUALS_ABI,
               functionName: 'openPosition',
-              args: [side, sizeOnChain, collateralOnChain, account],
+              args: [side, sizeOnChain, collateralOnChain],
               account
           });
           return walletClient.writeContract(request);
@@ -1112,7 +1007,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           const [account] = await walletClient.getAddresses();
           const { request } = await publicClient.simulateContract({
               address: PERPETUALS_CONTRACT_ADDRESS,
-              abi: perpetualsAbi,
+              abi: PERPETUALS_ABI,
               functionName: 'closePosition',
               args: [account],
               account
@@ -1120,7 +1015,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return walletClient.writeContract(request);
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
-          // Manually update the vault collateral after PnL is realized.
           await updateVaultCollateral();
       });
   }, [executeTransaction, walletAddress, updateVaultCollateral]);
@@ -1137,12 +1031,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const amountInWei = parseTokenAmount(amount.toString(), wethDecimals);
         
-        // Deposit
         const { request } = await publicClient.simulateContract({
             account,
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
-            functionName: 'depositCollateral',
+            functionName: 'deposit',
             args: [amountInWei, account]
         });
         

@@ -23,7 +23,7 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
     'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`, name: 'Tether' },
     'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9' as `0x${string}`, name: 'USD Coin' },
     'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318' as `0x${string}`, name: 'Wrapped Ether' },
-    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0' as `0-x${string}`, name: 'Chainlink' },
+    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0' as `0x${string}`, name: 'Chainlink' },
     'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016' as `0x${string}`, name: 'BNB' },
     'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed' as `0x${string}`, name: 'Solana' },
     // ETH is native, so no contract address
@@ -61,7 +61,7 @@ export const DEX_ABI = parseAbi([
 ]);
 
 export const VAULT_ABI = parseAbi([
-  "function depositCollateral(uint256 amount, address to)",
+  "function deposit(uint256 amount, address to)",
   "function withdraw(uint256, address)",
   "function collateral(address) view returns (uint256)",
   "function lockedCollateral(address) view returns (uint256)"
@@ -115,11 +115,13 @@ export const POOL_ABI = [
 ] as const;
 
 
-const perpetualsAbi = parseAbi([
-  "function openPosition(uint8 side, uint256 size, uint256 collateral, address user) external",
+export const PERPETUALS_ABI = parseAbi([
+  "function openPosition(uint8 side, uint256 size, uint256 collateral)",
   "function closePosition(address user) external",
   "function getPrice() view returns (uint256)",
-  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
+  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
+  "function depositCollateral(uint256 amount)",
+  "function withdrawCollateral(uint256 amount)"
 ]);
 
 const publicClient = createPublicClient({
@@ -211,15 +213,15 @@ export interface VaultCollateral {
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   try {
     const total = await publicClient.readContract({
-        address: VAULT_CONTRACT_ADDRESS,
-        abi: VAULT_ABI,
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
         functionName: 'collateral',
         args: [userAddress],
     });
     
     const locked = await publicClient.readContract({
-        address: VAULT_CONTRACT_ADDRESS,
-        abi: VAULT_ABI,
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],
     });
@@ -244,7 +246,7 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
   try {
     const [side, size, collateral, entryPrice, active] = await publicClient.readContract({
         address: PERPETUALS_CONTRACT_ADDRESS,
-        abi: perpetualsAbi,
+        abi: PERPETUALS_ABI,
         functionName: 'positions',
         args: [userAddress]
     });

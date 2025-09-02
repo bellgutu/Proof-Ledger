@@ -5,7 +5,7 @@
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
-import { createPublicClient, http, parseAbi, defineChain, Address } from 'viem';
+import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom } from 'viem';
 import { localhost } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
@@ -51,13 +51,14 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) payable returns (uint256)",
-    "function removeLiquidity(address tokenA, address tokenB, bool stable, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint amountA, uint amountB)",
-    "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, bool stable, address to, uint deadline) external returns (uint[] memory amounts)"
+    "function addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256) payable returns (uint256)",
+    "function removeLiquidity(address,address,bool,uint256,uint256,uint256,address,uint256) returns (uint256,uint256)",
+    "function swapExactTokensForTokens(uint256,uint256,address[],bool,address,uint256) returns (uint256[])",
+    "function factory() view returns (address)"
 ]);
 
 export const VAULT_ABI = parseAbi([
-  "function deposit(uint256 amount, address to)",
+  "function deposit(uint256 amount) returns (uint256)",
   "function withdraw(uint256 shares, address receiver, address owner) returns (uint256)",
   "function setProtocol(address)",
   "function collateral(address account) external view returns (uint256)",
@@ -316,4 +317,137 @@ export async function checkAllContracts() {
     const allDeployed = [...contracts, ...tokens].every(c => c.deployed);
 
     return { contracts, tokens, allDeployed };
+}
+
+
+// new helpers for wallet interactions (write operations)
+export function getWalletClient(): ReturnType<typeof createWalletClient> | null {
+  if (typeof (window as any).ethereum === "undefined") return null;
+  return createWalletClient({
+    chain: anvilChain,
+    transport: custom((window as any).ethereum),
+  });
+}
+
+/**
+ * Ensure token allowance exists. If not, send approve(max) and wait for it to be mined.
+ * - tokenAddress: ERC20 token contract
+ * - ownerAddress: wallet address (string)
+ * - spender: contract address to approve (router or pool)
+ * - minAmount: bigint minimum required
+ */
+export async function ensureApproval(
+  tokenAddress: `0x${string}`,
+  ownerAddress: `0x${string}`,
+  spender: `0x${string}`,
+  minAmount: bigint
+): Promise<void> {
+  const allowance: bigint = await publicClient.readContract({
+    address: tokenAddress,
+    abi: genericErc20Abi,
+    functionName: "allowance",
+    args: [ownerAddress, spender],
+  });
+
+  if (allowance >= minAmount) return;
+
+  const walletClient = getWalletClient();
+  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
+
+  // use max uint256 for convenience
+  const MAX = (1n << 256n) - 1n;
+  const txHash = await walletClient.writeContract({
+    address: tokenAddress,
+    abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
+    functionName: "approve",
+    args: [spender, MAX],
+  });
+
+  // wait for the approval to be mined
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+}
+
+/**
+ * addLiquidity wrapper that:
+ *  - ensures both token approvals to router
+ *  - calls router.addLiquidity(...) using wallet client
+ *  - waits for tx to be mined and returns tx hash
+ */
+export async function addLiquidityViaRouter(params: {
+  signerAddress: `0x${string}`,
+  tokenA: `0x${string}`,
+  tokenB: `0x${string}`,
+  stable: boolean,
+  amountADesired: bigint,
+  amountBDesired: bigint,
+  amountAMin: bigint,
+  amountBMin: bigint,
+  to: `0x${string}`,
+  deadlineSecondsFromNow?: number
+}): Promise<string> {
+  const {
+    signerAddress, tokenA, tokenB, stable,
+    amountADesired, amountBDesired, amountAMin, amountBMin, to,
+    deadlineSecondsFromNow = 60 * 20
+  } = params;
+
+  const walletClient = getWalletClient();
+  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
+
+  // ensure user approved router to pull tokens
+  await ensureApproval(tokenA, signerAddress, DEX_CONTRACT_ADDRESS, amountADesired);
+  await ensureApproval(tokenB, signerAddress, DEX_CONTRACT_ADDRESS, amountBDesired);
+
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
+
+  const txHash = await walletClient.writeContract({
+    address: DEX_CONTRACT_ADDRESS,
+    abi: DEX_ABI,
+    functionName: "addLiquidity",
+    args: [tokenA, tokenB, stable, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline],
+    value: 0n,
+  });
+
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+  return txHash;
+}
+
+/**
+ * swapExactTokensForTokens wrapper that:
+ *  - ensures approval to router for input token
+ *  - calls router.swapExactTokensForTokens(...)
+ */
+export async function swapExactTokensForTokensViaRouter(params: {
+  signerAddress: `0x${string}`,
+  amountIn: bigint,
+  amountOutMin: bigint,
+  path: `0x${string}`[],
+  stable: boolean,
+  to: `0x${string}`,
+  deadlineSecondsFromNow?: number
+}): Promise<string> {
+  const { signerAddress, amountIn, amountOutMin, path, stable, to, deadlineSecondsFromNow = 60 * 20 } = params;
+  const walletClient = getWalletClient();
+  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
+
+  // approve first token in path to router
+  await ensureApproval(path[0], signerAddress, DEX_CONTRACT_ADDRESS, amountIn);
+
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
+
+  const txHash = await walletClient.writeContract({
+    address: DEX_CONTRACT_ADDRESS,
+    abi: DEX_ABI,
+    functionName: "swapExactTokensForTokens",
+    args: [amountIn, amountOutMin, path, stable, to, deadline],
+    value: 0n,
+  });
+
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+  return txHash;
+}
+
+// Small helper to convert human amounts to bigint using decimals (keeps frontend consistent)
+export function toTokenUnits(amount: string, decimals = 18): bigint {
+  return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
 }

@@ -1013,7 +1013,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const depositCollateral = useCallback(async (amount: string) => {
     const usdtDecimals = decimals['USDT'];
     if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
-    await approveToken('USDT', parseFloat(amount), PERPETUALS_CONTRACT_ADDRESS);
+    await approveToken('USDT', parseFloat(amount), VAULT_CONTRACT_ADDRESS);
 
     const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
     const txFunction = async () => {
@@ -1025,7 +1025,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             account,
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
-            functionName: 'deposit',
+            functionName: 'depositCollateral',
             args: [amountOnChain, account]
         });
         return walletClient.writeContract(depositRequest);
@@ -1142,7 +1142,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             account,
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
-            functionName: 'deposit',
+            functionName: 'depositCollateral',
             args: [amountInWei, account]
         });
         

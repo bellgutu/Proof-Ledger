@@ -321,9 +321,10 @@ export async function checkAllContracts() {
 
 
 // new helpers for wallet interactions (write operations)
-export function getWalletClient(): ReturnType<typeof createWalletClient> | null {
+export function getWalletClient(signerAddress: `0x${string}`): ReturnType<typeof createWalletClient> | null {
   if (typeof (window as any).ethereum === "undefined") return null;
   return createWalletClient({
+    account: signerAddress,
     chain: anvilChain,
     transport: custom((window as any).ethereum),
   });
@@ -351,17 +352,19 @@ export async function ensureApproval(
 
   if (allowance >= minAmount) return;
 
-  const walletClient = getWalletClient();
+  const walletClient = getWalletClient(ownerAddress);
   if (!walletClient) throw new Error("No wallet available (window.ethereum)");
 
   // use max uint256 for convenience
   const MAX = (1n << 256n) - 1n;
-  const txHash = await walletClient.writeContract({
-    address: tokenAddress,
-    abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
-    functionName: "approve",
-    args: [spender, MAX],
+  const { request } = await publicClient.simulateContract({
+      account: ownerAddress,
+      address: tokenAddress,
+      abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
+      functionName: "approve",
+      args: [spender, MAX],
   });
+  const txHash = await walletClient.writeContract(request);
 
   // wait for the approval to be mined
   await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -391,7 +394,7 @@ export async function addLiquidityViaRouter(params: {
     deadlineSecondsFromNow = 60 * 20
   } = params;
 
-  const walletClient = getWalletClient();
+  const walletClient = getWalletClient(signerAddress);
   if (!walletClient) throw new Error("No wallet available (window.ethereum)");
 
   // ensure user approved router to pull tokens
@@ -400,13 +403,16 @@ export async function addLiquidityViaRouter(params: {
 
   const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
 
-  const txHash = await walletClient.writeContract({
+  const { request } = await publicClient.simulateContract({
+    account: signerAddress,
     address: DEX_CONTRACT_ADDRESS,
     abi: DEX_ABI,
     functionName: "addLiquidity",
     args: [tokenA, tokenB, stable, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline],
     value: 0n,
   });
+
+  const txHash = await walletClient.writeContract(request);
 
   await publicClient.waitForTransactionReceipt({ hash: txHash });
   return txHash;
@@ -427,21 +433,24 @@ export async function swapExactTokensForTokensViaRouter(params: {
   deadlineSecondsFromNow?: number
 }): Promise<string> {
   const { signerAddress, amountIn, amountOutMin, path, stable, to, deadlineSecondsFromNow = 60 * 20 } = params;
-  const walletClient = getWalletClient();
+  const walletClient = getWalletClient(signerAddress);
   if (!walletClient) throw new Error("No wallet available (window.ethereum)");
 
   // approve first token in path to router
   await ensureApproval(path[0], signerAddress, DEX_CONTRACT_ADDRESS, amountIn);
 
   const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
-
-  const txHash = await walletClient.writeContract({
-    address: DEX_CONTRACT_ADDRESS,
-    abi: DEX_ABI,
-    functionName: "swapExactTokensForTokens",
-    args: [amountIn, amountOutMin, path, stable, to, deadline],
-    value: 0n,
+  
+  const { request } = await publicClient.simulateContract({
+      account: signerAddress,
+      address: DEX_CONTRACT_ADDRESS,
+      abi: DEX_ABI,
+      functionName: "swapExactTokensForTokens",
+      args: [amountIn, amountOutMin, path, stable, to, deadline],
+      value: 0n,
   });
+
+  const txHash = await walletClient.writeContract(request);
 
   await publicClient.waitForTransactionReceipt({ hash: txHash });
   return txHash;
@@ -454,7 +463,7 @@ export function toTokenUnits(amount: string, decimals = 18): bigint {
 
 /** Deposit collateral into the Vault (user must approve USDT to Vault or Perpetuals depending on flow) */
 export async function depositCollateralToVault(signerAddress: `0x${string}`, amount: bigint): Promise<string> {
-  const walletClient = getWalletClient();
+  const walletClient = getWalletClient(signerAddress);
   if (!walletClient) throw new Error("No wallet available (window.ethereum)");
 
   // Ensure user approved the Vault to pull USDT (if vault expects transferFrom)
@@ -462,13 +471,15 @@ export async function depositCollateralToVault(signerAddress: `0x${string}`, amo
   await ensureApproval(usdt, signerAddress, VAULT_CONTRACT_ADDRESS, amount);
 
   // call vault.deposit(amount, to)
-  const txHash = await walletClient.writeContract({
+  const { request } = await publicClient.simulateContract({
+    account: signerAddress,
     address: VAULT_CONTRACT_ADDRESS,
     abi: VAULT_ABI,
     functionName: "deposit",
     args: [amount, signerAddress],
     value: 0n,
   });
+  const txHash = await walletClient.writeContract(request);
   await publicClient.waitForTransactionReceipt({ hash: txHash });
   return txHash;
 }
@@ -480,17 +491,19 @@ export async function openPerpetualPosition(
   size: bigint,
   collateral: bigint
 ): Promise<string> {
-  const walletClient = getWalletClient();
+  const walletClient = getWalletClient(signerAddress);
   if (!walletClient) throw new Error("No wallet available (window.ethereum)");
 
   // collateral should already be in the Vault; if PerpetualProtocol expects tokens, ensure approval flow accordingly
-  const txHash = await walletClient.writeContract({
-    address: PERPETUALS_CONTRACT_ADDRESS,
-    abi: PERPETUALS_ABI,
-    functionName: "openPosition",
-    args: [side, size, collateral],
-    value: 0n,
-  });
+  const { request } = await publicClient.simulateContract({
+      account: signerAddress,
+      address: PERPETUALS_CONTRACT_ADDRESS,
+      abi: PERPETUALS_ABI,
+      functionName: "openPosition",
+      args: [side, size, collateral],
+      value: 0n,
+    });
+  const txHash = await walletClient.writeContract(request);
   await publicClient.waitForTransactionReceipt({ hash: txHash });
   return txHash;
 }

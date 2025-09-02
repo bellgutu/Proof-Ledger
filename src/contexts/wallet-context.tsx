@@ -7,15 +7,11 @@ import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, decodeErrorResult } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, decodeErrorResult, type Address, type PrivateKeyAccount } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { localhost } from 'viem/chains';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
-import { Web3Auth } from '@web3auth/modal';
-import { Web3AuthOptions } from '@web3auth/modal';
-import { OpenloginAdapter } from '@web3auth/openlogin-adapter';
-import { ADAPTER_EVENTS, CHAIN_NAMESPACES, SafeEventEmitterProvider } from '@web3auth/base';
 
 
 // --- TYPE DEFINITIONS ---
@@ -137,11 +133,6 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-// --- CONFIG & CONSTANTS ---
-const USE_PRIVATE_KEY_CONNECTION = true; // Set to `false` to use Web3Auth for real wallet connections
-const clientId = process.env.NEXT_PUBLIC_WEB3AUTH_CLIENT_ID || 'BBP_6GOu3EJGGws9jdL2_83aD5Z1D3b5x4-fLrx4fL-sWHyvX2SNG2jRsoi4iCeLMvV2G433A2wz-Pq2xVvG6sE';
-
-
 const anvilChain = defineChain({
   ...localhost,
   id: 31337,
@@ -209,8 +200,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [balances, setBalances] = useState<{ [symbol:string]: number }>({});
   const [decimals, setDecimals] = useState<{ [symbol:string]: number }>({});
   const [allowances, setAllowances] = useState<{ [symbol: string]: number }>({});
-  const [web3auth, setWeb3auth] = useState<Web3Auth | null>(null);
-  const [provider, setProvider] = useState<SafeEventEmitterProvider | null>(null);
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
@@ -237,46 +226,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const isUpdatingStateRef = useRef(false);
 
-    useEffect(() => {
-    if (USE_PRIVATE_KEY_CONNECTION) return;
-
-    const initWeb3Auth = async () => {
-      try {
-        const web3authInstance = new Web3Auth({
-          clientId,
-          web3AuthNetwork: "sapphire_mainnet",
-          chainConfig: {
-            chainNamespace: CHAIN_NAMESPACES.EIP155,
-            chainId: "0x7A69", // 31337 in hex
-            rpcTarget: "http://localhost:8545",
-            displayName: "Anvil Localhost",
-            blockExplorer: "https://etherscan.io",
-            ticker: "ETH",
-            tickerName: "Ethereum",
-          },
-        });
-
-        const openloginAdapter = new OpenloginAdapter({
-          adapterSettings: {
-            uxMode: 'popup',
-          },
-        });
-        web3authInstance.configureAdapter(openloginAdapter);
-        setWeb3auth(web3authInstance);
-
-        await web3authInstance.initModal();
-        if (web3authInstance.provider) {
-          setProvider(web3authInstance.provider);
-        }
-      } catch (error) {
-        console.error("Web3Auth initialization error:", error);
-        toast({ variant: 'destructive', title: 'Wallet Initialization Failed', description: 'Could not initialize Web3Auth.' });
-      }
-    };
-
-    initWeb3Auth();
-  }, []);
-  
   const updateVaultCollateral = useCallback(async () => {
     if (!isConnected || !walletAddress) return;
     
@@ -427,26 +376,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, persistTransactions]);
 
   const getWalletClient = () => {
-    if (USE_PRIVATE_KEY_CONNECTION) {
-        const localKey = process.env.NEXT_PUBLIC_LOCAL_PRIVATE_KEY_USER1;
-        if (!localKey) {
-            throw new Error("Private key is not set in environment variables, but USE_PRIVATE_KEY_CONNECTION is true.");
-        }
-        const privateKey = localKey.startsWith('0x') ? localKey : `0x${localKey}`;
-        const account = privateKeyToAccount(privateKey as `0x${string}`);
-        return createWalletClient({
-            account,
-            chain: anvilChain,
-            transport: http(),
-        });
-    }
-
-    if (!provider) {
-        throw new Error("Web3Auth provider not initialized. Cannot create wallet client.");
+    if (typeof window.ethereum === 'undefined') {
+        throw new Error("MetaMask is not installed.");
     }
     return createWalletClient({
         chain: anvilChain,
-        transport: custom(provider),
+        transport: custom(window.ethereum),
     });
   };
 
@@ -549,10 +484,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const connectWallet = useCallback(async () => {
+    if (typeof window.ethereum === 'undefined') {
+        toast({ variant: 'destructive', title: 'MetaMask not found', description: 'Please install the MetaMask browser extension.' });
+        return;
+    }
     setIsConnecting(true);
     try {
-      const walletClient = getWalletClient();
-      const [address] = await walletClient.getAddresses();
+      const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
       
       setWalletAddress(address);
       await refreshAllBalances(address);
@@ -565,32 +503,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsConnecting(false);
     }
-  }, [loadTransactions, toast, refreshAllBalances, provider, web3auth]);
+  }, [loadTransactions, toast, refreshAllBalances]);
 
   const disconnectWallet = useCallback(async () => {
-    if (USE_PRIVATE_KEY_CONNECTION) {
-      setIsConnected(false);
-      setWalletAddress('');
-      setBalances({});
-      setDecimals({});
-      setAllowances({});
-      setTransactions([]);
-      return;
-    }
-
-    if (!web3auth) {
-      console.error("Web3Auth not initialized");
-      return;
-    }
-    await web3auth.logout();
-    setProvider(null);
     setIsConnected(false);
     setWalletAddress('');
     setBalances({});
     setDecimals({});
     setAllowances({});
     setTransactions([]);
-  }, [web3auth]);
+  }, []);
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
     isUpdatingStateRef.current = true;
@@ -642,7 +564,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const dialogDetails = { amount, token: tokenSymbol, to: spender };
         
-        const txHash = await executeTransaction('Approve', dialogDetails, async () => {
+        const txFunction = async () => {
             const walletClient = getWalletClient();
             const [account] = await walletClient.getAddresses();
             const { request } = await publicClient.simulateContract({
@@ -653,16 +575,37 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 args: [spender, parseTokenAmount(amount.toString(), tokenDecimals)],
             });
             return await walletClient.writeContract(request);
+        };
+        
+        await executeTransaction('Approve', dialogDetails, txFunction, async () => {
+            // After successful tx, poll for allowance change
+            let attempts = 0;
+            const maxAttempts = 10;
+            const pollInterval = 2000;
+
+            const poll = async () => {
+                while(attempts < maxAttempts) {
+                    const newAllowance = await publicClient.readContract({
+                        address: tokenInfo.address!,
+                        abi: erc20Abi,
+                        functionName: 'allowance',
+                        args: [walletAddress as `0x${string}`, spender]
+                    });
+                    const newAllowanceFormatted = parseFloat(formatUnits(newAllowance, tokenDecimals));
+                    if (newAllowanceFormatted >= amount) {
+                        setAllowances(prev => ({...prev, [tokenSymbol]: newAllowanceFormatted}));
+                        console.log(`Approval confirmed for ${tokenSymbol}`);
+                        return;
+                    }
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, pollInterval));
+                }
+                throw new Error("Allowance did not update in time.");
+            };
+            await poll();
         });
         
-        // Wait for the transaction to be confirmed
-        await publicClient.waitForTransactionReceipt({ hash: txHash });
-        
-        // Update the allowance in state
-        await checkAllowance(tokenSymbol, spender);
-        
-        console.log(`Approval confirmed for ${tokenSymbol}`);
-    }, [executeTransaction, decimals, checkAllowance]);
+    }, [executeTransaction, decimals, walletAddress]);
   
   const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -1307,5 +1250,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-      

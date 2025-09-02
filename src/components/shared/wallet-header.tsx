@@ -5,7 +5,6 @@
 import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Wallet, RefreshCcw, CircleDollarSign } from 'lucide-react';
 import Image from 'next/image';
 
@@ -48,37 +47,15 @@ export function WalletHeader() {
                   <p className="text-sm text-muted-foreground">To view and manage your assets.</p>
                </div>
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                 <Button disabled={isConnecting} variant="default" size="lg" className="animate-pulse-strong">
-                    {isConnecting ? (
-                      <span className="flex items-center">
-                        <RefreshCcw size={16} className="mr-2 animate-spin" /> Connecting...
-                      </span>
-                    ) : (
-                      'Connect Wallet'
-                    )}
-                  </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle className="text-center text-2xl">Connect a Wallet</DialogTitle>
-                  <DialogDescription className="text-center text-muted-foreground">
-                    Select a provider to connect your Web3 wallet.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
-                    <Wallet className="mr-4" size={28} />
-                    Browser Wallet
-                  </Button>
-                   <Button variant="outline" className="h-16 text-lg" onClick={connectWallet}>
-                    <Wallet className="mr-4" size={28} />
-                    WalletConnect
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={connectWallet} disabled={isConnecting} variant="default" size="lg" className="animate-pulse-strong">
+                {isConnecting ? (
+                  <span className="flex items-center">
+                    <RefreshCcw size={16} className="mr-2 animate-spin" /> Connecting...
+                  </span>
+                ) : (
+                  'Connect Wallet'
+                )}
+              </Button>
           </>
         )}
       </CardContent>

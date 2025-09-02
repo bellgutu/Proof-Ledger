@@ -18,8 +18,6 @@ import {
     getVaultCollateral,
     depositCollateralToVault,
     openPerpetualPosition,
-    addLiquidityViaRouter,
-    swapExactTokensForTokensViaRouter,
     toTokenUnits
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
@@ -746,13 +744,18 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     
     const txFunction = async () => {
-        return await swapExactTokensForTokensViaRouter({
-            signerAddress: walletAddress as Address,
-            amountIn: toTokenUnits(amountIn.toString(), fromTokenDecimals),
-            amountOutMin: 0n,
-            path: [fromTokenInfo.address!, toTokenInfo.address!],
-            to: walletAddress as Address,
-        });
+      const walletClient = getWalletClient();
+      const [account] = await walletClient.getAddresses();
+        
+      const onChainAmount = toTokenUnits(amountIn.toString(), fromTokenDecimals);
+      const { request } = await publicClient.simulateContract({
+        account,
+        address: DEX_CONTRACT_ADDRESS,
+        abi: DEX_ABI,
+        functionName: 'swapExactTokensForTokens',
+        args: [onChainAmount, 0n, [fromTokenInfo.address!, toTokenInfo.address!], walletAddress as Address, BigInt(Math.floor(Date.now() / 1000) + 60 * 20)]
+      });
+      return await walletClient.writeContract(request);
     };
 
     await executeTransaction('Swap', dialogDetails, txFunction, async (txHash) => {
@@ -803,20 +806,30 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
         
         const txFunction = async () => {
+            const walletClient = getWalletClient();
+            const [account] = await walletClient.getAddresses();
+            
             const decimalsA = decimals[tokenA];
             const decimalsB = decimals[tokenB];
             if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
 
-            return await addLiquidityViaRouter({
-                signerAddress: walletAddress as Address,
-                tokenA: tokenAInfo.address!,
-                tokenB: tokenBInfo.address!,
-                amountADesired: toTokenUnits(amountA.toString(), decimalsA),
-                amountBDesired: toTokenUnits(amountB.toString(), decimalsB),
-                amountAMin: 0n,
-                amountBMin: 0n,
-                to: walletAddress as Address
+            const { request } = await publicClient.simulateContract({
+              account,
+              address: DEX_CONTRACT_ADDRESS,
+              abi: DEX_ABI,
+              functionName: 'addLiquidity',
+              args: [
+                tokenAInfo.address!,
+                tokenBInfo.address!,
+                toTokenUnits(amountA.toString(), decimalsA),
+                toTokenUnits(amountB.toString(), decimalsB),
+                0n,
+                0n,
+                walletAddress as Address,
+                BigInt(Math.floor(Date.now() / 1000) + 60 * 20)
+              ]
             });
+            return await walletClient.writeContract(request);
         };
         
         await executeTransaction('Add Liquidity', dialogDetails, txFunction);
@@ -897,10 +910,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           
           const { request } = await publicClient.simulateContract({
               account,
-              address: VAULT_CONTRACT_ADDRESS,
-              abi: VAULT_ABI,
-              functionName: 'withdraw',
-              args: [amountOnChain, account, account]
+              address: PERPETUALS_CONTRACT_ADDRESS,
+              abi: PERPETUALS_ABI,
+              functionName: 'withdrawCollateral',
+              args: [amountOnChain]
           });
           return walletClient.writeContract(request);
       };

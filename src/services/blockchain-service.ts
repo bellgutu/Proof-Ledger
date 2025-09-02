@@ -48,6 +48,7 @@ const genericErc20Abi = parseAbi([
   "function decimals() view returns (uint8)",
   "function balanceOf(address account) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) external returns (bool)",
 ]);
 
 export const DEX_ABI = parseAbi([
@@ -121,7 +122,9 @@ export const PERPETUALS_ABI = parseAbi([
   "function openPosition(uint8 side, uint256 size, uint256 collateral)",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
   "function priceOracle() view returns (address)",
-  "function vault() view returns (address)"
+  "function vault() view returns (address)",
+  "function depositCollateral(uint256 amount)",
+  "function withdrawCollateral(uint256 amount)"
 ]);
 
 const publicClient = createPublicClient({
@@ -322,178 +325,26 @@ export async function checkAllContracts() {
 }
 
 
-// new helpers for wallet interactions (write operations)
-export async function connectWallet(): Promise<`0x${string}`> {
-  if (typeof (window as any).ethereum === "undefined") throw new Error("No wallet found");
-  // prompt user to authorize accounts
-  const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
-  if (!accounts || accounts.length === 0) throw new Error("Wallet not connected");
-  return accounts[0] as `0x${string}`;
-}
-
-
-export function getWalletClient(signerAddress?: `0x${string}`): ReturnType<typeof createWalletClient> | null {
-  if (typeof (window as any).ethereum === "undefined") return null;
-  const client = createWalletClient({
-    chain: anvilChain,
-    transport: custom((window as any).ethereum),
-  });
-  if (signerAddress) {
-    const [account] = (client.account ? [client.account] : []) as Address[];
-    if (!account || account.toLowerCase() !== signerAddress.toLowerCase()) {
-        return createWalletClient({
-            account: signerAddress,
-            chain: anvilChain,
-            transport: custom((window as any).ethereum),
-        });
-    }
-  }
-  return client;
-}
-
-/**
- * Ensure token allowance exists. If not, send approve(max) and wait for it to be mined.
- * - tokenAddress: ERC20 token contract
- * - ownerAddress: wallet address (string)
- * - spender: contract address to approve (router or pool)
- * - minAmount: bigint minimum required
- */
-export async function ensureApproval(
-  tokenAddress: `0x${string}`,
-  ownerAddress: `0x${string}`,
-  spender: `0x${string}`,
-  minAmount: bigint
-): Promise<void> {
-  // make sure wallet is connected so the wallet UI will prompt
-  await connectWallet();
-
-  const allowance: bigint = await publicClient.readContract({
-    address: tokenAddress,
-    abi: genericErc20Abi,
-    functionName: "allowance",
-    args: [ownerAddress, spender],
-  });
-
-  if (allowance >= minAmount) return;
-
-  const walletClient = getWalletClient(ownerAddress);
-  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
-
-  const MAX = (1n << 256n) - 1n;
-  const { request } = await publicClient.simulateContract({
-      account: ownerAddress,
-      address: tokenAddress,
-      abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
-      functionName: "approve",
-      args: [spender, MAX],
-  });
-  const txHash = await walletClient.writeContract(request);
-
-  await publicClient.waitForTransactionReceipt({ hash: txHash });
-}
-
-
-/**
- * addLiquidity wrapper that:
- *  - ensures both token approvals to router
- *  - calls router.addLiquidity(...) using wallet client
- */
-export async function addLiquidityViaRouter(params: {
-  signerAddress: `0x${string}`,
-  tokenA: `0x${string}`,
-  tokenB: `0x${string}`,
-  amountADesired: bigint,
-  amountBDesired: bigint,
-  amountAMin: bigint,
-  amountBMin: bigint,
-  to: `0x${string}`,
-  deadlineSecondsFromNow?: number
-}): Promise<string> {
-  const {
-    signerAddress, tokenA, tokenB,
-    amountADesired, amountBDesired, amountAMin, amountBMin, to,
-    deadlineSecondsFromNow = 60 * 20
-  } = params;
-
-  const walletClient = getWalletClient(signerAddress);
-  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
-
-  // ensure user approved router to pull tokens
-  await ensureApproval(tokenA, signerAddress, DEX_CONTRACT_ADDRESS, amountADesired);
-  await ensureApproval(tokenB, signerAddress, DEX_CONTRACT_ADDRESS, amountBDesired);
-
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
-  const { request } = await publicClient.simulateContract({
-    account: signerAddress,
-    address: DEX_CONTRACT_ADDRESS,
-    abi: DEX_ABI,
-    functionName: "addLiquidity",
-    // new order: tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline
-    args: [tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline],
-    value: 0n,
-  });
-
-  const txHash = await walletClient.writeContract(request);
-
-  await publicClient.waitForTransactionReceipt({ hash: txHash });
-  return txHash;
-}
-
-/**
- * swapExactTokensForTokens wrapper that matches deployed router signature
- */
-export async function swapExactTokensForTokensViaRouter(params: {
-  signerAddress: `0x${string}`,
-  amountIn: bigint,
-  amountOutMin: bigint,
-  path: `0x${string}`[],
-  to: `0x${string}`,
-  deadlineSecondsFromNow?: number
-}): Promise<string> {
-  const { signerAddress, amountIn, amountOutMin, path, to, deadlineSecondsFromNow = 60 * 20 } = params;
-  const walletClient = getWalletClient(signerAddress);
-  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
-
-  // approve first token in path to router
-  await ensureApproval(path[0], signerAddress, DEX_CONTRACT_ADDRESS, amountIn);
-
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
-  const { request } = await publicClient.simulateContract({
-    account: signerAddress,
-    address: DEX_CONTRACT_ADDRESS,
-    abi: DEX_ABI,
-    functionName: "swapExactTokensForTokens",
-    // new order: amountIn, amountOutMin, path, to, deadline
-    args: [amountIn, amountOutMin, path, to, deadline],
-    value: 0n,
-  });
-  const txHash = await walletClient.writeContract(request);
-
-  await publicClient.waitForTransactionReceipt({ hash: txHash });
-  return txHash;
-}
-
 // Small helper to convert human amounts to bigint using decimals (keeps frontend consistent)
 export function toTokenUnits(amount: string, decimals = 18): bigint {
   return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
 }
 
 /** Deposit collateral into the Vault (user must approve USDT to Vault or Perpetuals depending on flow) */
-export async function depositCollateralToVault(signerAddress: `0x${string}`, amount: bigint): Promise<string> {
-  const walletClient = getWalletClient(signerAddress);
-  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
-
-  // Ensure user approved the Vault to pull USDT (if vault expects transferFrom)
-  const usdt = ERC20_CONTRACTS['USDT'].address!;
-  await ensureApproval(usdt, signerAddress, VAULT_CONTRACT_ADDRESS, amount);
-
+export async function depositCollateralToVault(signerAddress: `0x${string}`, amount: bigint): Promise<`0x${string}`> {
+    const walletClient = createWalletClient({
+        account: signerAddress,
+        chain: anvilChain,
+        transport: http(),
+    });
+  
   // call vault.deposit(amount, to)
   const { request } = await publicClient.simulateContract({
       account: signerAddress,
-      address: VAULT_CONTRACT_ADDRESS,
-      abi: VAULT_ABI,
-      functionName: "deposit",
-      args: [amount, signerAddress]
+      address: PERPETUALS_CONTRACT_ADDRESS,
+      abi: PERPETUALS_ABI,
+      functionName: "depositCollateral",
+      args: [amount]
   });
   const txHash = await walletClient.writeContract(request);
   await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -507,8 +358,11 @@ export async function openPerpetualPosition(
   size: bigint,
   collateral: bigint
 ): Promise<string> {
-  const walletClient = getWalletClient(signerAddress);
-  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
+    const walletClient = createWalletClient({
+        account: signerAddress,
+        chain: anvilChain,
+        transport: http(),
+    });
 
   // collateral should already be in the Vault; if PerpetualProtocol expects tokens, ensure approval flow accordingly
   const { request } = await publicClient.simulateContract({
@@ -516,8 +370,7 @@ export async function openPerpetualPosition(
       address: PERPETUALS_CONTRACT_ADDRESS,
       abi: PERPETUALS_ABI,
       functionName: "openPosition",
-      args: [side, size, collateral],
-      value: 0n,
+      args: [BigInt(side), size, collateral],
     });
   const txHash = await walletClient.writeContract(request);
   await publicClient.waitForTransactionReceipt({ hash: txHash });

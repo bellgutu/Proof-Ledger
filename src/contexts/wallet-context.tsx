@@ -20,7 +20,6 @@ import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
 import { localhost } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
 
@@ -788,7 +787,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
             functionName: "deposit",
-            args: [amountOnChain, walletClient.account.address],
+            args: [amountOnChain],
         });
         return await walletClient.writeContract(request);
     };
@@ -883,7 +882,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
             functionName: 'deposit',
-            args: [amountInWei, walletClient.account.address]
+            args: [amountInWei]
         });
         return walletClient.writeContract(request);
     };

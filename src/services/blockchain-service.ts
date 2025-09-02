@@ -61,7 +61,7 @@ export const DEX_ABI = parseAbi([
 
 
 export const VAULT_ABI = parseAbi([
-  "function deposit(uint256 amount, address to)",
+  "function deposit(uint256 amount)",
   "function withdraw(uint256 shares, address receiver, address owner) returns (uint256)",
   "function setProtocol(address)",
   "function collateral(address account) external view returns (uint256)",
@@ -122,8 +122,7 @@ export const PERPETUALS_ABI = parseAbi([
   "function openPosition(uint8 side, uint256 size, uint256 collateral)",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
   "function priceOracle() view returns (address)",
-  "function vault() view returns (address)",
-  "function withdrawCollateral(uint256 amount)"
+  "function vault() view returns (address)"
 ]);
 
 const publicClient = createPublicClient({
@@ -327,51 +326,4 @@ export async function checkAllContracts() {
 // Small helper to convert human amounts to bigint using decimals (keeps frontend consistent)
 export function toTokenUnits(amount: string, decimals = 18): bigint {
   return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
-}
-
-/** Deposit collateral into the Vault (user must approve USDT to Vault or Perpetuals depending on flow) */
-export async function depositCollateralToVault(signerAddress: `0x${string}`, amount: bigint): Promise<`0x${string}`> {
-    const walletClient = createWalletClient({
-        account: signerAddress,
-        chain: anvilChain,
-        transport: http(),
-    });
-  
-  // call vault.deposit(amount, to)
-  const { request } = await publicClient.simulateContract({
-      account: signerAddress,
-      address: PERPETUALS_CONTRACT_ADDRESS,
-      abi: PERPETUALS_ABI,
-      functionName: "depositCollateral",
-      args: [amount]
-  });
-  const txHash = await walletClient.writeContract(request);
-  await publicClient.waitForTransactionReceipt({ hash: txHash });
-  return txHash;
-}
-
-/** Open a perpetual position on-chain */
-export async function openPerpetualPosition(
-  signerAddress: `0x${string}`,
-  side: 0 | 1, // 0 = long, 1 = short (match contract)
-  size: bigint,
-  collateral: bigint
-): Promise<string> {
-    const walletClient = createWalletClient({
-        account: signerAddress,
-        chain: anvilChain,
-        transport: http(),
-    });
-
-  // collateral should already be in the Vault; if PerpetualProtocol expects tokens, ensure approval flow accordingly
-  const { request } = await publicClient.simulateContract({
-      account: signerAddress,
-      address: PERPETUALS_CONTRACT_ADDRESS,
-      abi: PERPETUALS_ABI,
-      functionName: "openPosition",
-      args: [BigInt(side), size, collateral],
-    });
-  const txHash = await walletClient.writeContract(request);
-  await publicClient.waitForTransactionReceipt({ hash: txHash });
-  return txHash;
 }

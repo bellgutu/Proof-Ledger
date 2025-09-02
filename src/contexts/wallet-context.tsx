@@ -20,6 +20,7 @@ import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
 import { localhost } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
 
@@ -129,7 +130,7 @@ interface WalletActions {
   checkPoolExists: (tokenA: string, tokenB: string, stable?: boolean) => Promise<boolean>;
   swapTokens: (fromToken: string, toToken: string, amountIn: number) => Promise<void>;
   createPool: (tokenA: string, tokenB: string, stable?: boolean) => Promise<void>;
-  addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => Promise<void>;
+  addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number) => Promise<void>;
   removeLiquidity: (position: UserPosition, percentage: number) => Promise<void>;
   claimRewards: (position: UserPosition) => Promise<void>;
 }
@@ -698,7 +699,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [walletAddress, walletClient, executeTransaction]);
   
-    const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
+    const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number) => {
         if (!walletAddress || !walletClient) throw new Error("Wallet not connected");
 
         const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];

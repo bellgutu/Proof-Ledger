@@ -51,11 +51,13 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-    "function addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256) payable returns (uint256)",
-    "function removeLiquidity(address,address,bool,uint256,uint256,uint256,address,uint256) returns (uint256,uint256)",
-    "function swapExactTokensForTokens(uint256,uint256,address[],bool,address,uint256) returns (uint256[])",
-    "function factory() view returns (address)"
+  // matches contracts/Router.sol:DEXRouter (deployed)
+  "function addLiquidity(address tokenA, address tokenB, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) payable returns (uint256,uint256,uint256)",
+  "function removeLiquidity(address tokenA, address tokenB, bool stable, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint amountA, uint amountB)",
+  // deployed swap signature: no 'stable' param, 'to' sits before deadline
+  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint256 deadline) payable returns (uint256[])"
 ]);
+
 
 export const VAULT_ABI = parseAbi([
   "function deposit(uint256 amount, address to)",
@@ -321,13 +323,32 @@ export async function checkAllContracts() {
 
 
 // new helpers for wallet interactions (write operations)
-export function getWalletClient(signerAddress: `0x${string}`): ReturnType<typeof createWalletClient> | null {
+export async function connectWallet(): Promise<`0x${string}`> {
+  if (typeof (window as any).ethereum === "undefined") throw new Error("No wallet found");
+  // prompt user to authorize accounts
+  const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
+  if (!accounts || accounts.length === 0) throw new Error("Wallet not connected");
+  return accounts[0] as `0x${string}`;
+}
+
+
+export function getWalletClient(signerAddress?: `0x${string}`): ReturnType<typeof createWalletClient> | null {
   if (typeof (window as any).ethereum === "undefined") return null;
-  return createWalletClient({
-    account: signerAddress,
+  const client = createWalletClient({
     chain: anvilChain,
     transport: custom((window as any).ethereum),
   });
+  if (signerAddress) {
+    const [account] = (client.account ? [client.account] : []) as Address[];
+    if (!account || account.toLowerCase() !== signerAddress.toLowerCase()) {
+        return createWalletClient({
+            account: signerAddress,
+            chain: anvilChain,
+            transport: custom((window as any).ethereum),
+        });
+    }
+  }
+  return client;
 }
 
 /**
@@ -343,6 +364,9 @@ export async function ensureApproval(
   spender: `0x${string}`,
   minAmount: bigint
 ): Promise<void> {
+  // make sure wallet is connected so the wallet UI will prompt
+  await connectWallet();
+
   const allowance: bigint = await publicClient.readContract({
     address: tokenAddress,
     abi: genericErc20Abi,
@@ -355,7 +379,6 @@ export async function ensureApproval(
   const walletClient = getWalletClient(ownerAddress);
   if (!walletClient) throw new Error("No wallet available (window.ethereum)");
 
-  // use max uint256 for convenience
   const MAX = (1n << 256n) - 1n;
   const { request } = await publicClient.simulateContract({
       account: ownerAddress,
@@ -366,21 +389,19 @@ export async function ensureApproval(
   });
   const txHash = await walletClient.writeContract(request);
 
-  // wait for the approval to be mined
   await publicClient.waitForTransactionReceipt({ hash: txHash });
 }
+
 
 /**
  * addLiquidity wrapper that:
  *  - ensures both token approvals to router
  *  - calls router.addLiquidity(...) using wallet client
- *  - waits for tx to be mined and returns tx hash
  */
 export async function addLiquidityViaRouter(params: {
   signerAddress: `0x${string}`,
   tokenA: `0x${string}`,
   tokenB: `0x${string}`,
-  stable: boolean,
   amountADesired: bigint,
   amountBDesired: bigint,
   amountAMin: bigint,
@@ -389,7 +410,7 @@ export async function addLiquidityViaRouter(params: {
   deadlineSecondsFromNow?: number
 }): Promise<string> {
   const {
-    signerAddress, tokenA, tokenB, stable,
+    signerAddress, tokenA, tokenB,
     amountADesired, amountBDesired, amountAMin, amountBMin, to,
     deadlineSecondsFromNow = 60 * 20
   } = params;
@@ -402,13 +423,13 @@ export async function addLiquidityViaRouter(params: {
   await ensureApproval(tokenB, signerAddress, DEX_CONTRACT_ADDRESS, amountBDesired);
 
   const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
-
   const { request } = await publicClient.simulateContract({
     account: signerAddress,
     address: DEX_CONTRACT_ADDRESS,
     abi: DEX_ABI,
     functionName: "addLiquidity",
-    args: [tokenA, tokenB, stable, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline],
+    // new order: tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline
+    args: [tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline],
     value: 0n,
   });
 
@@ -419,20 +440,17 @@ export async function addLiquidityViaRouter(params: {
 }
 
 /**
- * swapExactTokensForTokens wrapper that:
- *  - ensures approval to router for input token
- *  - calls router.swapExactTokensForTokens(...)
+ * swapExactTokensForTokens wrapper that matches deployed router signature
  */
 export async function swapExactTokensForTokensViaRouter(params: {
   signerAddress: `0x${string}`,
   amountIn: bigint,
   amountOutMin: bigint,
   path: `0x${string}`[],
-  stable: boolean,
   to: `0x${string}`,
   deadlineSecondsFromNow?: number
 }): Promise<string> {
-  const { signerAddress, amountIn, amountOutMin, path, stable, to, deadlineSecondsFromNow = 60 * 20 } = params;
+  const { signerAddress, amountIn, amountOutMin, path, to, deadlineSecondsFromNow = 60 * 20 } = params;
   const walletClient = getWalletClient(signerAddress);
   if (!walletClient) throw new Error("No wallet available (window.ethereum)");
 
@@ -440,16 +458,15 @@ export async function swapExactTokensForTokensViaRouter(params: {
   await ensureApproval(path[0], signerAddress, DEX_CONTRACT_ADDRESS, amountIn);
 
   const deadline = BigInt(Math.floor(Date.now() / 1000) + deadlineSecondsFromNow);
-  
   const { request } = await publicClient.simulateContract({
-      account: signerAddress,
-      address: DEX_CONTRACT_ADDRESS,
-      abi: DEX_ABI,
-      functionName: "swapExactTokensForTokens",
-      args: [amountIn, amountOutMin, path, stable, to, deadline],
-      value: 0n,
+    account: signerAddress,
+    address: DEX_CONTRACT_ADDRESS,
+    abi: DEX_ABI,
+    functionName: "swapExactTokensForTokens",
+    // new order: amountIn, amountOutMin, path, to, deadline
+    args: [amountIn, amountOutMin, path, to, deadline],
+    value: 0n,
   });
-
   const txHash = await walletClient.writeContract(request);
 
   await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -472,12 +489,11 @@ export async function depositCollateralToVault(signerAddress: `0x${string}`, amo
 
   // call vault.deposit(amount, to)
   const { request } = await publicClient.simulateContract({
-    account: signerAddress,
-    address: VAULT_CONTRACT_ADDRESS,
-    abi: VAULT_ABI,
-    functionName: "deposit",
-    args: [amount, signerAddress],
-    value: 0n,
+      account: signerAddress,
+      address: VAULT_CONTRACT_ADDRESS,
+      abi: VAULT_ABI,
+      functionName: "deposit",
+      args: [amount, signerAddress]
   });
   const txHash = await walletClient.writeContract(request);
   await publicClient.waitForTransactionReceipt({ hash: txHash });

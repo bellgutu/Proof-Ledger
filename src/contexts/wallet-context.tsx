@@ -17,7 +17,10 @@ import {
     checkAllContracts,
     getVaultCollateral,
     depositCollateralToVault,
-    openPerpetualPosition
+    openPerpetualPosition,
+    addLiquidityViaRouter,
+    swapExactTokensForTokensViaRouter,
+    toTokenUnits
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -505,7 +508,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setIsConnecting(true);
     try {
         const walletClient = getWalletClient();
-        const [address] = await walletClient.getAddresses();
+        const [address] = await walletClient.requestAddresses();
         setWalletAddress(address);
         await refreshAllBalances(address);
         loadTransactions(address);
@@ -607,9 +610,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
     const walletClient = getWalletClient();
      if(!walletClient) throw new Error("Wallet not connected");
-    const [account] = await walletClient.getAddresses();
-
+    
     const txFunction = async () => {
+      const [account] = await walletClient.getAddresses();
       if (tokenSymbol === 'ETH') {
           const ethDecimals = decimals['ETH'] ?? 18;
           const onChainAmount = parseTokenAmount(amount.toString(), ethDecimals);
@@ -737,36 +740,25 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const fromTokenDecimals = decimals[fromToken];
     if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
     
+    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
+    if (!toTokenInfo?.address) throw new Error("Invalid token path for swap.");
+
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     
-    await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
-    
-    await executeTransaction('Swap', dialogDetails, async () => {
-        const walletClient = getWalletClient();
-         if(!walletClient) throw new Error("Wallet not connected");
-        const [account] = await walletClient.getAddresses();
-        const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
-        
-        if (!toTokenInfo?.address) throw new Error("Invalid token path for swap.");
-        
-        const amountInWei = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
-        
-        console.log(`Executing swap with amountIn: ${amountInWei.toString()}`);
-        
-        const { request } = await publicClient.simulateContract({
-            account,
-            address: DEX_CONTRACT_ADDRESS,
-            abi: DEX_ABI,
-            functionName: 'swapExactTokensForTokens',
-            args: [amountInWei, 0n, [fromTokenInfo.address!, toTokenInfo.address!], false, account, deadline],
+    const txFunction = async () => {
+        return await swapExactTokensForTokensViaRouter({
+            signerAddress: walletAddress as Address,
+            amountIn: toTokenUnits(amountIn.toString(), fromTokenDecimals),
+            amountOutMin: 0n,
+            path: [fromTokenInfo.address!, toTokenInfo.address!],
+            to: walletAddress as Address,
         });
-        
-        return walletClient.writeContract(request);
-    }, async () => {
+    };
+
+    await executeTransaction('Swap', dialogDetails, txFunction, async (txHash) => {
         await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
     });
-  }, [walletAddress, executeTransaction, decimals, checkAllowance, approveToken]);
+  }, [walletAddress, executeTransaction, decimals, checkAllowance]);
 
   const createPool = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
     if (!walletAddress) throw new Error("Wallet not connected");
@@ -807,38 +799,28 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         if (!isValidAddress(DEX_CONTRACT_ADDRESS)) {
             throw new Error("DEX Router contract address is not properly configured.");
         }
-
-        await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
-        await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
         
         const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
         
-        await executeTransaction('Add Liquidity', dialogDetails, async () => {
-            const walletClient = getWalletClient();
-             if(!walletClient) throw new Error("Wallet not connected");
-            const [account] = await walletClient.getAddresses();
-            
+        const txFunction = async () => {
             const decimalsA = decimals[tokenA];
             const decimalsB = decimals[tokenB];
             if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
 
-            const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
-            const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
-            const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
-
-            console.log(`Adding liquidity with amounts: ${amountADesired.toString()}, ${amountBDesired.toString()}`);
-
-            const { request } = await publicClient.simulateContract({
-                account,
-                address: DEX_CONTRACT_ADDRESS,
-                abi: DEX_ABI,
-                functionName: "addLiquidity",
-                args: [ tokenAInfo.address, tokenBInfo.address, stable, amountADesired, amountBDesired, 0n, 0n, account, deadline ]
+            return await addLiquidityViaRouter({
+                signerAddress: walletAddress as Address,
+                tokenA: tokenAInfo.address!,
+                tokenB: tokenBInfo.address!,
+                amountADesired: toTokenUnits(amountA.toString(), decimalsA),
+                amountBDesired: toTokenUnits(amountB.toString(), decimalsB),
+                amountAMin: 0n,
+                amountBMin: 0n,
+                to: walletAddress as Address
             });
-
-            return walletClient.writeContract(request);
-        });
-    }, [walletAddress, approveToken, executeTransaction, decimals]);
+        };
+        
+        await executeTransaction('Add Liquidity', dialogDetails, txFunction);
+    }, [walletAddress, executeTransaction, decimals]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
       if (!walletAddress) throw new Error("Wallet not connected");

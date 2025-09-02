@@ -133,9 +133,6 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-// THIS IS THE PRIMARY FLAG FOR DEVELOPMENT VS PRODUCTION
-// true = uses the private key from .env for a consistent dev wallet
-// false = uses the user's browser wallet (MetaMask, etc.)
 const USE_PRIVATE_KEY_CONNECTION = true; 
 
 const anvilChain = defineChain({
@@ -373,28 +370,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, persistTransactions]);
 
   const getWalletClient = () => {
-      if (USE_PRIVATE_KEY_CONNECTION) {
-          // Fallback to a default Anvil test key if the env var is not set.
-          // This makes the development environment more robust.
-          const localKey = process.env.NEXT_PUBLIC_LOCAL_PRIVATE_KEY_USER1 || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
-          
-          const privateKey = localKey.startsWith('0x') ? localKey : `0x${localKey}`;
-          const account = privateKeyToAccount(privateKey as `0x${string}`);
-
-          return createWalletClient({
-              account,
-              chain: anvilChain,
-              transport: http(),
-          });
-      } else {
-          if (typeof window.ethereum === 'undefined') {
-              throw new Error("MetaMask is not installed.");
-          }
-          return createWalletClient({
-              chain: anvilChain,
-              transport: custom(window.ethereum),
-          });
-      }
+    if (USE_PRIVATE_KEY_CONNECTION) {
+        // Using a hardcoded, default Anvil private key for maximum reliability in development.
+        // This key corresponds to the account 0x70997970C51812dc3A010C7d01b50e0d17dc79C8.
+        const privateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
+        const account = privateKeyToAccount(privateKey);
+        
+        return createWalletClient({
+            account,
+            chain: anvilChain,
+            transport: http(),
+        });
+    } else {
+        if (typeof window.ethereum === 'undefined') {
+            throw new Error("MetaMask is not installed.");
+        }
+        return createWalletClient({
+            chain: anvilChain,
+            transport: custom(window.ethereum),
+        });
+    }
   };
 
 
@@ -1161,3 +1156,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

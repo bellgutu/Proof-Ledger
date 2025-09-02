@@ -594,20 +594,21 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const [account] = await walletClient.getAddresses();
 
     const txFunction = async () => {
-      const tokenDecimals = decimals[tokenSymbol];
-      if (tokenDecimals === undefined) throw new Error(`Decimals for ${tokenSymbol} not found.`);
-      
-      const onChainAmount = parseTokenAmount(amount.toString(), tokenDecimals);
-
       if (tokenSymbol === 'ETH') {
-          return walletClient.sendTransaction({
-              account,
-              to: toAddress as `0x${string}`,
-              value: onChainAmount
+          const ethDecimals = decimals['ETH'] ?? 18;
+          const onChainAmount = parseTokenAmount(amount.toString(), ethDecimals);
+          const { request } = await publicClient.simulateContract({
+            account,
+            to: toAddress as `0x${string}`,
+            value: onChainAmount
           });
+          return walletClient.writeContract(request);
       } else {
           const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
           if (!tokenInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
+          const tokenDecimals = decimals[tokenSymbol];
+          if (tokenDecimals === undefined) throw new Error(`Decimals for ${tokenSymbol} not found.`);
+          const onChainAmount = parseTokenAmount(amount.toString(), tokenDecimals);
           const { request } = await publicClient.simulateContract({
                account,
                address: tokenInfo.address as `0x${string}`,
@@ -741,7 +742,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             address: DEX_CONTRACT_ADDRESS,
             abi: DEX_ABI,
             functionName: 'swapExactTokensForTokens',
-            args: [amountInWei, 0n, [fromTokenInfo.address!, toTokenInfo.address], false, account, deadline],
+            args: [amountInWei, 0n, [fromTokenInfo.address!, toTokenInfo.address!], false, account, deadline],
         });
         
         return walletClient.writeContract(request);
@@ -785,57 +786,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             throw new Error("Invalid tokens for liquidity. Contract addresses not found.");
         }
         
-        if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
-            throw new Error("Factory contract address is not properly configured.");
+        if (!isValidAddress(DEX_CONTRACT_ADDRESS)) {
+            throw new Error("DEX Router contract address is not properly configured.");
         }
 
-        const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
-        const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
-
-        const factoryContract = getContract({
-            address: FACTORY_CONTRACT_ADDRESS,
-            abi: FACTORY_ABI,
-            client: publicClient
-        });
-        
-        let poolAddress: `0x${string}`;
-        try {
-            poolAddress = await factoryContract.read.getPool([token0, token1, stable]);
-            if (poolAddress === '0x0000000000000000000000000000000000000000') {
-                throw new Error("Pool does not exist. Please create the pool first.");
-            }
-            console.log(`Found pool at address: ${poolAddress}`);
-        } catch (error) {
-            console.error("Error getting pool address:", error);
-            throw new Error("Failed to get pool address from factory.");
-        }
-        
-        const poolContract = getContract({
-            address: poolAddress,
-            abi: POOL_ABI,
-            client: publicClient
-        });
-        
-        try {
-            const lpTokenAddress = await poolContract.read.lpToken();
-            if (lpTokenAddress === '0x0000000000000000000000000000000000000000') {
-                throw new Error("Pool is not properly initialized. LP token address is zero.");
-            }
-            console.log(`Pool LP token address: ${lpTokenAddress}`);
-            
-            const poolToken0 = await poolContract.read.token0();
-            const poolToken1 = await poolContract.read.token1();
-            console.log(`Pool tokens: ${poolToken0}, ${poolToken1}`);
-            
-            if (poolToken0 === '0x0000000000000000000000000000000000000000' || 
-                poolToken1 === '0x0000000000000000000000000000000000000000') {
-                throw new Error("Pool tokens are not properly configured.");
-            }
-        } catch (error) {
-            console.error("Error checking pool initialization:", error);
-            throw new Error("Failed to verify pool state. The pool might not be properly initialized.");
-        }
-        
         await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
         await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
         

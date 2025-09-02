@@ -51,13 +51,9 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) payable returns (uint256 amountA, uint256 amountB, uint256 liquidity)",
-    "function removeLiquidity(address tokenA, address tokenB, bool stable, uint256 liquidity, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) external returns (uint256 amountA, uint256 amountB)",
-    "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, bool stable, address to, uint256 deadline) external",
-    "error InvalidPath()",
-    "error ZeroAddress()",
-    "error Expired()",
-    "error PoolNotFound()"
+    "function addLiquidity(address tokenA, address tokenB, bool stable, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity)",
+    "function removeLiquidity(address tokenA, address tokenB, bool stable, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint amountA, uint amountB)",
+    "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, bool stable, address to, uint deadline) external returns (uint[] memory amounts)"
 ]);
 
 export const VAULT_ABI = parseAbi([
@@ -122,7 +118,9 @@ export const PERPETUALS_ABI = parseAbi([
   "function openPosition(address user, uint8 side, uint256 size, uint256 collateral)",
   "function closePosition(address user) external",
   "function getPrice() view returns (uint256)",
-  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
+  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
+  "function collateral(address) view returns (uint256)",
+  "function lockedCollateral(address) view returns (uint256)"
 ]);
 
 const publicClient = createPublicClient({
@@ -214,15 +212,15 @@ export interface VaultCollateral {
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   try {
     const total = await publicClient.readContract({
-        address: VAULT_CONTRACT_ADDRESS,
-        abi: VAULT_ABI,
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
         functionName: 'collateral',
         args: [userAddress],
     });
     
     const locked = await publicClient.readContract({
-        address: VAULT_CONTRACT_ADDRESS,
-        abi: VAULT_ABI,
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],
     });

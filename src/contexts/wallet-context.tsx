@@ -17,13 +17,11 @@ import {
     checkAllContracts,
     getVaultCollateral,
     depositCollateralToVault,
-    openPerpetualPosition,
-    toTokenUnits
+    openPerpetualPosition
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import { localhost } from 'viem/chains';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
@@ -349,15 +347,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const getWalletClient = () => {
-    // This is the default private key for the first account in Anvil/Hardhat.
-    // Using this directly ensures the most stable connection for development.
-    const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
-    const account = privateKeyToAccount(privateKey);
-    
+    if (typeof window.ethereum === 'undefined') {
+        toast({ variant: "destructive", title: "Wallet not found", description: "Please install a browser wallet like MetaMask." });
+        return null;
+    }
     return createWalletClient({
-        account,
         chain: anvilChain,
-        transport: http(),
+        transport: custom(window.ethereum),
     });
   };
 
@@ -424,7 +420,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const executeTransaction = async (
     txType: TransactionType,
     dialogDetails: Partial<Transaction>,
-    txFunction: () => Promise<`0x${string}`>,
+    txFunction: (walletClient: ReturnType<typeof createWalletClient>) => Promise<`0x${string}`>,
     onSuccess?: (txHash: `0x${string}`) => void | Promise<void>
   ) => {
       isUpdatingStateRef.current = true;
@@ -433,7 +429,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const tempTxId = addTransaction({ type: txType, ...dialogDetails });
       
       try {
-          const txHash = await txFunction();
+          const walletClient = getWalletClient();
+          if (!walletClient) throw new Error("Wallet not connected");
+
+          const txHash = await txFunction(walletClient);
           
           setTransactions(prev => prev.map(tx => tx.id === tempTxId ? { ...tx, id: txHash, txHash: txHash } : tx));
           
@@ -446,22 +445,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                   if(onSuccess) await onSuccess(txHash);
               } else {
                   console.error(`❌ ${txType} transaction ${txHash} failed`);
-                  // Try to decode revert reason
                   let revertReason = 'Transaction was reverted by the contract.';
                   try {
                       if (receipt.status === 'reverted') {
-                          // More specific error messages based on transaction type
-                          if (txType === 'Add Liquidity') {
-                              revertReason = 'Liquidity addition failed. This could be due to an uninitialized pool or insufficient token amounts.';
-                          } else if (txType === 'Swap') {
-                              revertReason = 'Swap failed. This could be due to insufficient liquidity or slippage limits.';
-                          } else if (txType === 'Approve') {
-                              revertReason = 'Token approval failed. Please try again.';
-                          }
+                          if (txType === 'Add Liquidity') revertReason = 'Liquidity addition failed. This could be due to an uninitialized pool or insufficient token amounts.';
+                          else if (txType === 'Swap') revertReason = 'Swap failed. This could be due to insufficient liquidity or slippage limits.';
+                          else if (txType === 'Approve') revertReason = 'Token approval failed. Please try again.';
                       }
-                  } catch (e) {
-                      console.error('Failed to decode revert reason:', e);
-                  }
+                  } catch (e) { console.error('Failed to decode revert reason:', e); }
                   updateTransactionStatus(txHash, 'Failed', revertReason);
               }
           }).finally(async () => {
@@ -475,26 +466,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           console.error(`❌ ${txType} failed:`, e);
           let errorMessage = e instanceof TransactionExecutionError ? e.shortMessage : (e.message || 'An unknown transaction error occurred.');
           
-            if (errorMessage.includes('ERC20: mint to the zero address')) {
-                errorMessage = 'The pool contract is trying to mint LP tokens to an invalid address. This usually means the pool is not properly initialized.';
-            } else if (errorMessage.includes('ERC20: insufficient allowance')) {
-                errorMessage = 'Insufficient token allowance. Please approve the tokens first.';
-            } else if (errorMessage.includes('PoolNotFound')) {
-                errorMessage = 'Liquidity pool does not exist. Please create it first.';
-            } else if (errorMessage.includes('InvalidPath')) {
-                errorMessage = 'Invalid token path. Only direct swaps are supported.';
-            } else if (errorMessage.includes('Expired')) {
-                errorMessage = 'Transaction expired. Please try again.';
-            } else if (errorMessage.includes('Pool is not properly initialized')) {
-                errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
-            } else if (errorMessage.includes('function selector was not recognized')) {
-                errorMessage = 'The contract function was not found. The ABI might be incorrect or the contract address is wrong.';
-            }
+            if (errorMessage.includes('ERC20: mint to the zero address')) errorMessage = 'The pool contract is trying to mint LP tokens to an invalid address. This usually means the pool is not properly initialized.';
+            else if (errorMessage.includes('ERC20: insufficient allowance')) errorMessage = 'Insufficient token allowance. Please approve the tokens first.';
+            else if (errorMessage.includes('PoolNotFound')) errorMessage = 'Liquidity pool does not exist. Please create it first.';
+            else if (errorMessage.includes('InvalidPath')) errorMessage = 'Invalid token path. Only direct swaps are supported.';
+            else if (errorMessage.includes('Expired')) errorMessage = 'Transaction expired. Please try again.';
+            else if (errorMessage.includes('Pool is not properly initialized')) errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
+            else if (errorMessage.includes('function selector was not recognized')) errorMessage = 'The contract function was not found. The ABI might be incorrect or the contract address is wrong.';
           
-          setTxStatusDialog(prev => ({ 
-              ...prev, state: 'error', 
-              error: errorMessage 
-          }));
+          setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
           updateTransactionStatus(tempTxId, 'Failed', errorMessage);
           throw e;
       } finally {
@@ -503,9 +483,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const connectWallet = useCallback(async () => {
+    if (typeof window.ethereum === 'undefined') {
+        toast({ variant: "destructive", title: "Wallet not found", description: "Please install a browser wallet like MetaMask." });
+        return;
+    }
     setIsConnecting(true);
     try {
         const walletClient = getWalletClient();
+        if (!walletClient) throw new Error("Wallet connection failed.");
+
         const [address] = await walletClient.requestAddresses();
         setWalletAddress(address);
         await refreshAllBalances(address);
@@ -579,8 +565,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const dialogDetails = { amount, token: tokenSymbol, to: spender };
         
-        const txFunction = async () => {
-            const walletClient = getWalletClient();
+        const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
             if(!walletClient) throw new Error("Wallet not connected");
             const [account] = await walletClient.getAddresses();
             const { request } = await publicClient.simulateContract({
@@ -606,10 +591,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (!walletAddress) throw new Error("Wallet not connected");
     
     const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
-    const walletClient = getWalletClient();
-     if(!walletClient) throw new Error("Wallet not connected");
     
-    const txFunction = async () => {
+    const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+      if(!walletClient) throw new Error("Wallet not connected");
       const [account] = await walletClient.getAddresses();
       if (tokenSymbol === 'ETH') {
           const ethDecimals = decimals['ETH'] ?? 18;
@@ -656,77 +640,19 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Factory contract address is not properly configured.");
     }
     
-    // Sort tokens by address
-    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() 
-        ? tokenAInfo.address 
-        : tokenBInfo.address;
-    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() 
-        ? tokenBInfo.address 
-        : tokenAInfo.address;
-    
-    console.log("Checking pool for sorted tokens:", token0, token1, stable);
+    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
+    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
     
     try {
         const code = await publicClient.getCode({ address: FACTORY_CONTRACT_ADDRESS });
-        if (code === '0x') {
-            throw new Error('Factory contract not deployed');
-        }
+        if (code === '0x') { throw new Error('Factory contract not deployed'); }
         
-        const factoryContract = getContract({
-            address: FACTORY_CONTRACT_ADDRESS,
-            abi: FACTORY_ABI,
-            client: publicClient
-        });
-        
+        const factoryContract = getContract({ address: FACTORY_CONTRACT_ADDRESS, abi: FACTORY_ABI, client: publicClient });
         const poolAddress = await factoryContract.read.getPool([token0, token1, stable]);
-        console.log("Pool address:", poolAddress);
         return poolAddress !== '0x0000000000000000000000000000000000000000';
     } catch (error) {
         console.error("Error checking pool existence (direct call failed):", error);
-        
-        try {
-            const factoryContract = getContract({
-                address: FACTORY_CONTRACT_ADDRESS,
-                abi: FACTORY_ABI,
-                client: publicClient
-            });
-
-            const allPoolsLength = await factoryContract.read.allPoolsLength();
-            console.log("Fallback: Total pools length:", allPoolsLength.toString());
-            
-            for (let i = 0; i < Number(allPoolsLength); i++) {
-                try {
-                    const poolAddress = await factoryContract.read.allPools([BigInt(i)]);
-                    
-                    const poolContract = getContract({
-                        address: poolAddress,
-                        abi: POOL_ABI,
-                        client: publicClient
-                    });
-                    
-                    const poolToken0 = await poolContract.read.token0();
-                    const poolToken1 = await poolContract.read.token1();
-                    const isStable = await poolContract.read.stable();
-                    
-                    if (
-                        (poolToken0.toLowerCase() === token0.toLowerCase() && poolToken1.toLowerCase() === token1.toLowerCase() || 
-                         poolToken0.toLowerCase() === token1.toLowerCase() && poolToken1.toLowerCase() === token0.toLowerCase()) && 
-                        isStable === stable
-                    ) {
-                        console.log("Fallback: Found matching pool at address:", poolAddress);
-                        return true;
-                    }
-                } catch (e) {
-                    console.error("Fallback: Error checking pool", i, ":", e);
-                }
-            }
-            
-            console.log("Fallback: No matching pool found");
-            return false;
-        } catch (e) {
-            console.error("Fallback approach also failed:", e);
-            return false;
-        }
+        return false;
     }
   }, []);
 
@@ -743,19 +669,18 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     const dialogDetails = { amount: amountIn, token: fromToken, details: `Swap ${amountIn} ${fromToken} for ${toToken}` };
     
-    const txFunction = async () => {
-      const walletClient = getWalletClient();
-      const [account] = await walletClient.getAddresses();
-        
-      const onChainAmount = toTokenUnits(amountIn.toString(), fromTokenDecimals);
-      const { request } = await publicClient.simulateContract({
-        account,
-        address: DEX_CONTRACT_ADDRESS,
-        abi: DEX_ABI,
-        functionName: 'swapExactTokensForTokens',
-        args: [onChainAmount, 0n, [fromTokenInfo.address!, toTokenInfo.address!], walletAddress as Address, BigInt(Math.floor(Date.now() / 1000) + 60 * 20)]
-      });
-      return await walletClient.writeContract(request);
+    const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+        if(!walletClient) throw new Error("Wallet not connected");
+        const [account] = await walletClient.getAddresses();
+        const onChainAmount = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
+        const { request } = await publicClient.simulateContract({
+            account,
+            address: DEX_CONTRACT_ADDRESS,
+            abi: DEX_ABI,
+            functionName: 'swapExactTokensForTokens',
+            args: [onChainAmount, 0n, [fromTokenInfo.address!, toTokenInfo.address!], walletAddress as Address, BigInt(Math.floor(Date.now() / 1000) + 60 * 20)]
+        });
+        return await walletClient.writeContract(request);
     };
 
     await executeTransaction('Swap', dialogDetails, txFunction, async (txHash) => {
@@ -774,9 +699,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
 
     const dialogDetails = { details: `Create pool for ${tokenA}/${tokenB}` };
-    await executeTransaction('Create Pool', dialogDetails, async () => {
-        const walletClient = getWalletClient();
-         if(!walletClient) throw new Error("Wallet not connected");
+    await executeTransaction('Create Pool', dialogDetails, async (walletClient) => {
+        if(!walletClient) throw new Error("Wallet not connected");
         const [account] = await walletClient.getAddresses();
         const { request } = await publicClient.simulateContract({
             account,
@@ -795,61 +719,48 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
         const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
         
-        if (!tokenAInfo?.address || !tokenBInfo?.address) {
-            throw new Error("Invalid tokens for liquidity. Contract addresses not found.");
-        }
-        
-        if (!isValidAddress(DEX_CONTRACT_ADDRESS)) {
-            throw new Error("DEX Router contract address is not properly configured.");
-        }
+        if (!tokenAInfo?.address || !tokenBInfo?.address) { throw new Error("Invalid tokens for liquidity."); }
+        if (!isValidAddress(DEX_CONTRACT_ADDRESS)) { throw new Error("DEX Router contract address is not properly configured.");}
         
         const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
         
-        const txFunction = async () => {
-            const walletClient = getWalletClient();
+        const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+            if(!walletClient) throw new Error("Wallet not connected");
             const [account] = await walletClient.getAddresses();
-            
             const decimalsA = decimals[tokenA];
             const decimalsB = decimals[tokenB];
             if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
+            const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
+            const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
+
+            await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
+            await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
 
             const { request } = await publicClient.simulateContract({
               account,
               address: DEX_CONTRACT_ADDRESS,
               abi: DEX_ABI,
               functionName: 'addLiquidity',
-              args: [
-                tokenAInfo.address!,
-                tokenBInfo.address!,
-                toTokenUnits(amountA.toString(), decimalsA),
-                toTokenUnits(amountB.toString(), decimalsB),
-                0n,
-                0n,
-                walletAddress as Address,
-                BigInt(Math.floor(Date.now() / 1000) + 60 * 20)
-              ]
+              args: [ tokenAInfo.address!, tokenBInfo.address!, amountADesired, amountBDesired, 0n, 0n, account, BigInt(Math.floor(Date.now() / 1000) + 60 * 20)]
             });
             return await walletClient.writeContract(request);
         };
         
         await executeTransaction('Add Liquidity', dialogDetails, txFunction);
-    }, [walletAddress, executeTransaction, decimals]);
+    }, [walletAddress, executeTransaction, decimals, approveToken]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
       if (!walletAddress) throw new Error("Wallet not connected");
-
       const dialogDetails = { details: `Remove ${percentage}% of liquidity from ${position.name} pool`};
-      await executeTransaction('Remove Liquidity', dialogDetails, async () => {
-        const walletClient = getWalletClient();
-         if(!walletClient) throw new Error("Wallet not connected");
+      
+      const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+        if(!walletClient) throw new Error("Wallet not connected");
         const [account] = await walletClient.getAddresses();
-        
         const tokenAInfo = ERC20_CONTRACTS[position.token1 as keyof typeof ERC20_CONTRACTS];
         const tokenBInfo = ERC20_CONTRACTS[position.token2 as keyof typeof ERC20_CONTRACTS];
-        
         if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for liquidity");
         
-        const lpDecimals = 18; // LP tokens are standard
+        const lpDecimals = 18;
         const liquidityToRemove = parseTokenAmount((position.lpTokens * (percentage / 100)).toString(), lpDecimals);
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
 
@@ -860,19 +771,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             functionName: "removeLiquidity",
             args: [ tokenAInfo.address, tokenBInfo.address, position.type === 'Stable', liquidityToRemove, 0n, 0n, account, deadline ]
         });
-
         return walletClient.writeContract(request);
-      });
+      };
+      await executeTransaction('Remove Liquidity', dialogDetails, txFunction);
   }, [walletAddress, executeTransaction]);
 
   const claimRewards = useCallback(async (position: UserPosition) => {
       if (!walletAddress) return;
-
       updateBalance('USDT', position.unclaimedRewards);
       setUserPositions(prev => prev.map(p => {
-        if (p.id === position.id) {
-          return { ...p, unclaimedRewards: 0 };
-        }
+        if (p.id === position.id) { return { ...p, unclaimedRewards: 0 }; }
         return p;
       }));
       addTransaction({
@@ -902,9 +810,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
       const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
-      const txFunction = async () => {
-          const walletClient = getWalletClient();
-           if(!walletClient) throw new Error("Wallet not connected");
+      const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+          if(!walletClient) throw new Error("Wallet not connected");
           const [account] = await walletClient.getAddresses();
           const amountOnChain = parseTokenAmount(amount, usdtDecimals);
           
@@ -933,45 +840,20 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const sizeOnChain = parseTokenAmount(size, sizeDecimals);
       const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
 
-      // Pin the entry price client-side before opening the position
-      if (entryPrice > 0 && walletAddress) {
-        localStorage.setItem(`entryPrice_${walletAddress}`, entryPrice.toString());
-      }
+      if (entryPrice > 0 && walletAddress) { localStorage.setItem(`entryPrice_${walletAddress}`, entryPrice.toString()); }
 
-      const dialogDetails = { 
-        amount: parseFloat(collateral), 
-        token: 'USDT', 
-        to: 'Perpetuals Contract',
-        details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH`
-      };
-      const txFunction = () => openPerpetualPosition(
-          walletAddress as `0x${string}`, 
-          side as 0 | 1, 
-          sizeOnChain, 
-          collateralOnChain
-      );
+      const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract', details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH` };
+      const txFunction = () => openPerpetualPosition( walletAddress as `0x${string}`, side as 0 | 1, sizeOnChain, collateralOnChain );
       await executeTransaction('Open Position', dialogDetails, txFunction);
   }, [executeTransaction, decimals, walletAddress]);
 
   const closePosition = useCallback(async (position: Position, pnl: number) => {
-      if (walletAddress) {
-        localStorage.removeItem(`entryPrice_${walletAddress}`);
-      }
-      const detailsNode = (
-        <div className="text-xs text-left">
-          <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div>
-          <div>Entry: ${position.entryPrice.toFixed(2)}</div>
-          <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-            Final PnL: ${pnl.toFixed(2)}
-          </div>
-        </div>
-      );
-      
+      if (walletAddress) { localStorage.removeItem(`entryPrice_${walletAddress}`); }
+      const detailsNode = ( <div className="text-xs text-left"> <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div> <div>Entry: ${position.entryPrice.toFixed(2)}</div> <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}> Final PnL: ${pnl.toFixed(2)} </div> </div> );
       const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
       
-      const txFunction = async () => {
-          const walletClient = getWalletClient();
-           if(!walletClient) throw new Error("Wallet not connected");
+      const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+          if(!walletClient) throw new Error("Wallet not connected");
           const [account] = await walletClient.getAddresses();
           const { request } = await publicClient.simulateContract({
               address: PERPETUALS_CONTRACT_ADDRESS,
@@ -989,14 +871,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const depositToVault = useCallback(async (amount: number) => {
     await approveToken('WETH', amount, VAULT_CONTRACT_ADDRESS);
     const dialogDetails = { amount, token: 'WETH', to: 'AI Strategy Vault' };
-    const txFunction = async () => {
-        const walletClient = getWalletClient();
-         if(!walletClient) throw new Error("Wallet not connected");
+    const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+        if(!walletClient) throw new Error("Wallet not connected");
         const [account] = await walletClient.getAddresses();
-
         const wethDecimals = decimals['WETH'];
         if (wethDecimals === undefined) throw new Error("WETH decimals not found.");
-        
         const amountInWei = parseTokenAmount(amount.toString(), wethDecimals);
         
         const { request } = await publicClient.simulateContract({
@@ -1006,7 +885,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             functionName: 'deposit',
             args: [amountInWei, account]
         });
-        
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vault Deposit', dialogDetails, txFunction);
@@ -1014,14 +892,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const withdrawFromVault = useCallback(async (amount: number) => {
     const dialogDetails = { amount, token: 'WETH', details: 'Withdraw from AI Strategy Vault' };
-    const txFunction = async () => {
-        const walletClient = getWalletClient();
-         if(!walletClient) throw new Error("Wallet not connected");
+    const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+        if(!walletClient) throw new Error("Wallet not connected");
         const [account] = await walletClient.getAddresses();
         const wethDecimals = decimals['WETH'];
         if (wethDecimals === undefined) throw new Error("WETH decimals not found.");
         const amountInWei = parseTokenAmount(amount.toString(), wethDecimals);
-
         const { request } = await publicClient.simulateContract({
             account,
             address: VAULT_CONTRACT_ADDRESS,
@@ -1029,7 +905,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             functionName: 'withdraw',
             args: [amountInWei, account, account]
         });
-        
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vault Withdraw', dialogDetails, txFunction);
@@ -1037,9 +912,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const voteOnProposal = useCallback(async (proposalId: string, support: number) => {
     const dialogDetails = { details: `Vote on proposal #${proposalId}` };
-    const txFunction = async () => {
-        const walletClient = getWalletClient();
-         if(!walletClient) throw new Error("Wallet not connected");
+    const txFunction = async (walletClient: ReturnType<typeof createWalletClient>) => {
+        if(!walletClient) throw new Error("Wallet not connected");
         const [account] = await walletClient.getAddresses();
         const { request } = await publicClient.simulateContract({
             account,
@@ -1048,7 +922,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             functionName: 'castVote',
             args: [BigInt(proposalId), support]
         });
-
         return walletClient.writeContract(request);
     };
     await executeTransaction('Vote', dialogDetails, txFunction);
@@ -1063,22 +936,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     
     const poll = async () => {
         if (isCancelled) return;
-        
         if (!isUpdatingStateRef.current) {
-            try {
-                if (!isCancelled) {
-                    await refreshAllBalances(walletAddress as `0x${string}`);
-                }
-            } catch (error) {
-                console.warn("Poll for wallet updates failed. Retrying.", error);
-            }
+            try { if (!isCancelled) { await refreshAllBalances(walletAddress as `0x${string}`); }
+            } catch (error) { console.warn("Poll for wallet updates failed. Retrying.", error); }
         }
-        
         if (!isCancelled) setTimeout(poll, 5000);
     };
-
     poll();
-
     return () => { isCancelled = true; };
   }, [isConnected, walletAddress, refreshAllBalances]);
 

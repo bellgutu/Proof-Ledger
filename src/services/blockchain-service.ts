@@ -51,10 +51,8 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-  // matches contracts/Router.sol:DEXRouter (deployed)
-  "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) payable returns (uint256,uint256,uint256)",
+  "function addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256) payable returns (uint256)",
   "function removeLiquidity(address tokenA, address tokenB, bool stable, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint amountA, uint amountB)",
-  // deployed swap signature: no 'stable' param, 'to' sits before deadline
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint256 deadline) payable returns (uint256[])"
 ]);
 

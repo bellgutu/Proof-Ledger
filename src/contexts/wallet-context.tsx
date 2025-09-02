@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -16,6 +17,7 @@ import {
     getVaultCollateral,
     getWalletAssets
 } from '@/services/blockchain-service';
+import { addLiquidityAction } from '@/app/actions/defi-actions';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
@@ -348,20 +350,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const newBalances: { [symbol: string]: number } = {};
     const newDecimals: { [symbol: string]: number } = {};
 
-    // Special handling for native ETH
-    const ethAsset = assets.find(a => a.symbol === 'ETH');
-    if (ethAsset) {
-      newBalances['ETH'] = ethAsset.balance;
-      newDecimals['ETH'] = ethAsset.decimals;
-    } else {
-      // Add a fallback in case getWalletAssets fails to return ETH
-      newBalances['ETH'] = 0;
-      newDecimals['ETH'] = 18;
-    }
-
-    // Process ERC20 tokens
-    const erc20Assets = assets.filter(a => a.symbol !== 'ETH');
-    erc20Assets.forEach(asset => {
+    assets.forEach(asset => {
         newBalances[asset.symbol] = asset.balance;
         newDecimals[asset.symbol] = asset.decimals;
     });
@@ -511,6 +500,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             else if (errorMessage.includes('Expired')) errorMessage = 'Transaction expired. Please try again.';
             else if (errorMessage.includes('Pool is not properly initialized')) errorMessage = 'The selected pool is not properly initialized. Please try a different pool or create a new one.';
             else if (errorMessage.includes('function selector was not recognized')) errorMessage = 'The contract function was not found. The ABI might be incorrect or the contract address is wrong.';
+            else if (errorMessage.includes('Ownable: caller is not the owner')) errorMessage = 'This function can only be called by the contract owner.';
           
           setTxStatusDialog(prev => ({ ...prev, state: 'error', error: errorMessage }));
           updateTransactionStatus(tempTxId, 'Failed', errorMessage);
@@ -607,7 +597,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
       } else {
           const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-          if (!tokenInfo) throw new Error(`Unsupported token: ${tokenSymbol}`);
+          if (!tokenInfo?.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
           const tokenDecimals = decimals[tokenSymbol];
           if (tokenDecimals === undefined) throw new Error(`Decimals for ${tokenSymbol} not found.`);
           const onChainAmount = parseTokenAmount(amount.toString(), tokenDecimals);
@@ -730,15 +720,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
             await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
             await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
-
-            const { request } = await publicClient.simulateContract({
-              account: walletClient.account,
-              address: DEX_CONTRACT_ADDRESS,
-              abi: DEX_ABI,
-              functionName: 'addLiquidity',
-              args: [ tokenAInfo.address!, tokenBInfo.address!, stable, amountADesired, amountBDesired, 0n, 0n, walletClient.account.address, BigInt(Math.floor(Date.now() / 1000) + 60 * 20)]
+            
+            const { result } = await addLiquidityAction({
+                tokenA: tokenAInfo.address!,
+                tokenB: tokenBInfo.address!,
+                stable,
+                amountADesired,
+                amountBDesired,
             });
-            return await walletClient.writeContract(request);
+
+            return result;
         };
         
         await executeTransaction('Add Liquidity', dialogDetails, txFunction);
@@ -986,5 +977,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

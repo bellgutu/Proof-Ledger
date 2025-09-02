@@ -7,11 +7,6 @@ import { localhost } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, GOVERNOR_ABI } from '@/services/blockchain-service';
 
-// This file is being kept for potential future use or for admin-only functions,
-// but the core user-facing DeFi logic has been moved to the client-side WalletContext
-// to properly integrate with MetaMask. The functions below are effectively deprecated
-// for the main user flow.
-
 const localKey = process.env.LOCAL_PRIVATE_KEY;
 
 const getAdminWalletClient = () => {
@@ -35,6 +30,48 @@ const getAdminPublicClient = () => {
         transport: http(),
     });
 }
+
+export async function addLiquidityAction(params: {
+    tokenA: `0x${string}`;
+    tokenB: `0x${string}`;
+    stable: boolean;
+    amountADesired: bigint;
+    amountBDesired: bigint;
+}): Promise<{ success: boolean; txHash: `0x${string}` }> {
+    const adminWalletClient = getAdminWalletClient();
+    const publicClient = getAdminPublicClient();
+    
+    const { tokenA, tokenB, stable, amountADesired, amountBDesired } = params;
+
+    try {
+        const { request } = await publicClient.simulateContract({
+            account: adminWalletClient.account,
+            address: DEX_CONTRACT_ADDRESS,
+            abi: DEX_ABI,
+            functionName: 'addLiquidity',
+            args: [
+                tokenA,
+                tokenB,
+                stable,
+                amountADesired,
+                amountBDesired,
+                0n, // amountAMin
+                0n, // amountBMin
+                adminWalletClient.account.address,
+                BigInt(Math.floor(Date.now() / 1000) + 60 * 20) // deadline
+            ]
+        });
+
+        const txHash = await adminWalletClient.writeContract(request);
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+        return { success: true, txHash };
+    } catch (e: any) {
+        console.error("addLiquidityAction failed:", e);
+        throw new Error(e.shortMessage || e.message || "An unknown error occurred.");
+    }
+}
+
 
 export async function swapTokensAction(
     fromToken: string,

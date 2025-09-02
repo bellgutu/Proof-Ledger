@@ -26,7 +26,7 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
     'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0' as `0x${string}`, name: 'Chainlink' },
     'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016' as `0x${string}`, name: 'BNB' },
     'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed' as `0x${string}`, name: 'Solana' },
-    // ETH is native, so no contract address
+    'ETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F' as `0x${string}`, name: 'Ethereum' },
 };
 
 
@@ -62,7 +62,8 @@ export const DEX_ABI = parseAbi([
 
 export const VAULT_ABI = parseAbi([
   "function deposit(uint256 amount, address to)",
-  "function withdraw(uint256, address)",
+  "function withdraw(uint256 shares, address receiver, address owner) returns (uint256)",
+  "function setProtocol(address)",
   "function collateral(address) view returns (uint256)",
   "function lockedCollateral(address) view returns (uint256)"
 ]);
@@ -116,12 +117,14 @@ export const POOL_ABI = [
 
 
 export const PERPETUALS_ABI = parseAbi([
+  "function collateral(address) view returns (uint256)",
+  "function lockedCollateral(address) view returns (uint256)",
+  "function depositCollateral(uint256 amount)",
+  "function withdrawCollateral(uint256 amount)",
   "function openPosition(uint8 side, uint256 size, uint256 collateral)",
   "function closePosition(address user) external",
   "function getPrice() view returns (uint256)",
-  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
-  "function depositCollateral(uint256 amount)",
-  "function withdrawCollateral(uint256 amount)"
+  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
 ]);
 
 const publicClient = createPublicClient({

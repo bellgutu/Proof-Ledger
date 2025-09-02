@@ -133,6 +133,11 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+// THIS IS THE PRIMARY FLAG FOR DEVELOPMENT VS PRODUCTION
+// true = uses the private key from .env for a consistent dev wallet
+// false = uses Web3Auth to allow users to connect their own wallet (MetaMask, etc.)
+const USE_PRIVATE_KEY_CONNECTION = true; 
+
 const anvilChain = defineChain({
   ...localhost,
   id: 31337,
@@ -368,14 +373,29 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, persistTransactions]);
 
   const getWalletClient = () => {
-    if (typeof window.ethereum === 'undefined') {
-        throw new Error("MetaMask is not installed.");
-    }
-    return createWalletClient({
-        chain: anvilChain,
-        transport: custom(window.ethereum),
-    });
+      if (USE_PRIVATE_KEY_CONNECTION) {
+          const localKey = process.env.NEXT_PUBLIC_LOCAL_PRIVATE_KEY_USER1;
+          if (!localKey) {
+              throw new Error("Private key is not set in environment variables, but USE_PRIVATE_KEY_CONNECTION is true.");
+          }
+          const privateKey = localKey.startsWith('0x') ? localKey : `0x${localKey}`;
+          const account = privateKeyToAccount(privateKey as `0x${string}`);
+          return createWalletClient({
+              account,
+              chain: anvilChain,
+              transport: http(),
+          });
+      } else {
+          if (typeof window.ethereum === 'undefined') {
+              throw new Error("MetaMask is not installed.");
+          }
+          return createWalletClient({
+              chain: anvilChain,
+              transport: custom(window.ethereum),
+          });
+      }
   };
+
 
   const refreshAllBalances = useCallback(async (address: `0x${string}`) => {
     const remoteAssets = await getWalletAssets(address);
@@ -478,24 +498,20 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const connectWallet = useCallback(async () => {
-    if (typeof window.ethereum === 'undefined') {
-        toast({ variant: 'destructive', title: 'MetaMask not found', description: 'Please install the MetaMask browser extension.' });
-        return;
-    }
     setIsConnecting(true);
     try {
-      const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
-      setWalletAddress(address);
-      await refreshAllBalances(address);
-      loadTransactions(address);
-      setIsConnected(true);
+        const walletClient = getWalletClient();
+        const [address] = await walletClient.getAddresses();
+        setWalletAddress(address);
+        await refreshAllBalances(address);
+        loadTransactions(address);
+        setIsConnected(true);
     } catch (e: any) {
-      console.error("Failed to connect wallet:", e);
-      toast({ variant: "destructive", title: "Connection Failed", description: e.message || "An unknown error occurred." });
-      setIsConnected(false);
+        console.error("Failed to connect wallet:", e);
+        toast({ variant: "destructive", title: "Connection Failed", description: e.message || "An unknown error occurred." });
+        setIsConnected(false);
     } finally {
-      setIsConnecting(false);
+        setIsConnecting(false);
     }
   }, [loadTransactions, toast, refreshAllBalances]);
 
@@ -1058,7 +1074,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
             functionName: 'withdraw',
-            args: [amountInWei, account]
+            args: [amountInWei, account, account]
         });
         
         return walletClient.writeContract(request);

@@ -10,25 +10,6 @@ import { ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR
 const localKey = process.env.LOCAL_PRIVATE_KEY;
 const anvilChain = { ...localhost, id: 31337 };
 
-const getAdminWalletClient = () => {
-    if (!localKey) {
-        throw new Error('LOCAL_PRIVATE_KEY is not set in the environment variables.');
-    }
-    const account = privateKeyToAccount(localKey as `0x${string}`);
-
-    return createWalletClient({
-        account,
-        chain: anvilChain,
-        transport: http('http://localhost:8545'),
-    });
-}
-
-const getAdminPublicClient = () => {
-    return createPublicClient({
-        chain: anvilChain,
-        transport: http('http://localhost:8545'),
-    });
-}
 
 export async function addLiquidityAction(params: {
     tokenA: `0x${string}`;
@@ -37,38 +18,7 @@ export async function addLiquidityAction(params: {
     amountADesired: bigint;
     amountBDesired: bigint;
 }): Promise<{ success: boolean; txHash: `0x${string}` }> {
-    const adminWalletClient = getAdminWalletClient();
-    const publicClient = getAdminPublicClient();
-    
-    const { tokenA, tokenB, stable, amountADesired, amountBDesired } = params;
-
-    try {
-        const { request } = await publicClient.simulateContract({
-            account: adminWalletClient.account,
-            address: DEX_CONTRACT_ADDRESS,
-            abi: DEX_ABI,
-            functionName: 'addLiquidity',
-            args: [
-                tokenA,
-                tokenB,
-                stable,
-                amountADesired,
-                amountBDesired,
-                0n, // amountAMin
-                0n, // amountBMin
-                adminWalletClient.account.address,
-                BigInt(Math.floor(Date.now() / 1000) + 60 * 20) // deadline
-            ]
-        });
-
-        const txHash = await adminWalletClient.writeContract(request);
-        await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-        return { success: true, txHash };
-    } catch (e: any) {
-        console.error("addLiquidityAction failed:", e);
-        throw new Error(e.shortMessage || e.message || "An unknown error occurred.");
-    }
+    throw new Error("This server action is deprecated. Liquidity is now added on the client-side via WalletContext.");
 }
 
 

@@ -58,7 +58,7 @@ export const DEX_ABI = parseAbi([
 ]);
 
 export const VAULT_ABI = parseAbi([
-  "function deposit(uint256 amount) returns (uint256)",
+  "function deposit(uint256 amount, address to)",
   "function withdraw(uint256 shares, address receiver, address owner) returns (uint256)",
   "function setProtocol(address)",
   "function collateral(address account) external view returns (uint256)",
@@ -114,12 +114,12 @@ export const POOL_ABI = [
 
 
 export const PERPETUALS_ABI = parseAbi([
-  "function depositCollateral(uint256 amount)",
-  "function withdrawCollateral(uint256 amount)",
-  "function openPosition(address user, uint8 side, uint256 size, uint256 collateral)",
-  "function closePosition(address user) external",
-  "function getPrice() view returns (uint256)",
-  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
+  "function calculatePnl(address user, uint256 idx) view returns (int256)",
+  "function closePosition()",
+  "function openPosition(uint8 side, uint256 size, uint256 collateral)",
+  "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
+  "function priceOracle() view returns (address)",
+  "function vault() view returns (address)"
 ]);
 
 const publicClient = createPublicClient({
@@ -450,4 +450,47 @@ export async function swapExactTokensForTokensViaRouter(params: {
 // Small helper to convert human amounts to bigint using decimals (keeps frontend consistent)
 export function toTokenUnits(amount: string, decimals = 18): bigint {
   return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
+}
+
+/** Deposit collateral into the Vault (user must approve USDT to Vault or Perpetuals depending on flow) */
+export async function depositCollateralToVault(signerAddress: `0x${string}`, amount: bigint): Promise<string> {
+  const walletClient = getWalletClient();
+  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
+
+  // Ensure user approved the Vault to pull USDT (if vault expects transferFrom)
+  const usdt = ERC20_CONTRACTS['USDT'].address!;
+  await ensureApproval(usdt, signerAddress, VAULT_CONTRACT_ADDRESS, amount);
+
+  // call vault.deposit(amount, to)
+  const txHash = await walletClient.writeContract({
+    address: VAULT_CONTRACT_ADDRESS,
+    abi: VAULT_ABI,
+    functionName: "deposit",
+    args: [amount, signerAddress],
+    value: 0n,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+  return txHash;
+}
+
+/** Open a perpetual position on-chain */
+export async function openPerpetualPosition(
+  signerAddress: `0x${string}`,
+  side: 0 | 1, // 0 = long, 1 = short (match contract)
+  size: bigint,
+  collateral: bigint
+): Promise<string> {
+  const walletClient = getWalletClient();
+  if (!walletClient) throw new Error("No wallet available (window.ethereum)");
+
+  // collateral should already be in the Vault; if PerpetualProtocol expects tokens, ensure approval flow accordingly
+  const txHash = await walletClient.writeContract({
+    address: PERPETUALS_CONTRACT_ADDRESS,
+    abi: PERPETUALS_ABI,
+    functionName: "openPosition",
+    args: [side, size, collateral],
+    value: 0n,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+  return txHash;
 }

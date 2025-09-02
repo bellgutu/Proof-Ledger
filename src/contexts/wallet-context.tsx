@@ -4,7 +4,21 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, PERPETUALS_CONTRACT_ADDRESS, GOVERNOR_ABI, DEX_ABI, VAULT_ABI, PERPETUALS_ABI, getWalletAssets, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI, checkAllContracts } from '@/services/blockchain-service';
+import { 
+    getWalletAssets,
+    ERC20_CONTRACTS, 
+    DEX_CONTRACT_ADDRESS, 
+    VAULT_CONTRACT_ADDRESS, 
+    PERPETUALS_CONTRACT_ADDRESS, 
+    GOVERNOR_ABI, DEX_ABI, VAULT_ABI, 
+    PERPETUALS_ABI, 
+    FACTORY_CONTRACT_ADDRESS, 
+    FACTORY_ABI, POOL_ABI, 
+    checkAllContracts,
+    getVaultCollateral,
+    depositCollateralToVault,
+    openPerpetualPosition
+} from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address } from 'viem';
@@ -870,27 +884,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const depositCollateral = useCallback(async (amount: string) => {
     const usdtDecimals = decimals['USDT'];
     if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
-    await approveToken('USDT', parseFloat(amount), PERPETUALS_CONTRACT_ADDRESS);
 
     const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
     const txFunction = async () => {
-        const walletClient = getWalletClient();
-        const [account] = await walletClient.getAddresses();
         const amountOnChain = parseTokenAmount(amount, usdtDecimals);
-        
-        const { request: depositRequest } = await publicClient.simulateContract({
-            account,
-            address: PERPETUALS_CONTRACT_ADDRESS,
-            abi: PERPETUALS_ABI,
-            functionName: 'depositCollateral',
-            args: [amountOnChain]
-        });
-        return walletClient.writeContract(depositRequest);
+        return depositCollateralToVault(walletAddress as `0x${string}`, amountOnChain);
     };
     await executeTransaction('Deposit Collateral', dialogDetails, txFunction, async () => {
         await updateVaultCollateral();
     });
-  }, [executeTransaction, decimals, approveToken, updateVaultCollateral]);
+  }, [executeTransaction, decimals, walletAddress, updateVaultCollateral]);
   
   const withdrawCollateral = useCallback(async (amount: string) => {
       const usdtDecimals = decimals['USDT'];
@@ -904,10 +907,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           
           const { request } = await publicClient.simulateContract({
               account,
-              address: PERPETUALS_CONTRACT_ADDRESS,
-              abi: PERPETUALS_ABI,
-              functionName: 'withdrawCollateral',
-              args: [amountOnChain]
+              address: VAULT_CONTRACT_ADDRESS,
+              abi: VAULT_ABI,
+              functionName: 'withdraw',
+              args: [amountOnChain, account, account]
           });
           return walletClient.writeContract(request);
       };
@@ -938,18 +941,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         to: 'Perpetuals Contract',
         details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH`
       };
-      const txFunction = async () => {
-          const walletClient = getWalletClient();
-          const [account] = await walletClient.getAddresses();
-          const { request } = await publicClient.simulateContract({
-              address: PERPETUALS_CONTRACT_ADDRESS,
-              abi: PERPETUALS_ABI,
-              functionName: 'openPosition',
-              args: [account, side, sizeOnChain, collateralOnChain],
-              account
-          });
-          return walletClient.writeContract(request);
-      };
+      const txFunction = () => openPerpetualPosition(
+          walletAddress as `0x${string}`, 
+          side as 0 | 1, 
+          sizeOnChain, 
+          collateralOnChain
+      );
       await executeTransaction('Open Position', dialogDetails, txFunction);
   }, [executeTransaction, decimals, walletAddress]);
 
@@ -976,7 +973,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               address: PERPETUALS_CONTRACT_ADDRESS,
               abi: PERPETUALS_ABI,
               functionName: 'closePosition',
-              args: [account],
               account
           });
           return walletClient.writeContract(request);

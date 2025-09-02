@@ -4,10 +4,10 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
-import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, GOVERNOR_ABI, PERPETUALS_CONTRACT_ADDRESS, DEX_ABI, GOVERNOR_CONTRACT_ADDRESS as GOVERNOR_ADDR, VAULT_ABI, getWalletAssets, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI, PERPETUALS_ABI } from '@/services/blockchain-service';
+import { getVaultCollateral, ERC20_CONTRACTS, DEX_CONTRACT_ADDRESS, VAULT_CONTRACT_ADDRESS, PERPETUALS_CONTRACT_ADDRESS, GOVERNOR_ABI, DEX_ABI, VAULT_ABI, PERPETUALS_ABI, getWalletAssets, FACTORY_CONTRACT_ADDRESS, FACTORY_ABI, POOL_ABI, checkAllContracts } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, decodeErrorResult, type Address, type PrivateKeyAccount } from 'viem';
+import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { localhost } from 'viem/chains';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
@@ -135,7 +135,7 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 // THIS IS THE PRIMARY FLAG FOR DEVELOPMENT VS PRODUCTION
 // true = uses the private key from .env for a consistent dev wallet
-// false = uses Web3Auth to allow users to connect their own wallet (MetaMask, etc.)
+// false = uses the user's browser wallet (MetaMask, etc.)
 const USE_PRIVATE_KEY_CONNECTION = true; 
 
 const anvilChain = defineChain({
@@ -374,12 +374,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const getWalletClient = () => {
       if (USE_PRIVATE_KEY_CONNECTION) {
-          const localKey = process.env.NEXT_PUBLIC_LOCAL_PRIVATE_KEY_USER1;
-          if (!localKey) {
-              throw new Error("Private key is not set in environment variables, but USE_PRIVATE_KEY_CONNECTION is true.");
-          }
+          // Fallback to a default Anvil test key if the env var is not set.
+          // This makes the development environment more robust.
+          const localKey = process.env.NEXT_PUBLIC_LOCAL_PRIVATE_KEY_USER1 || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+          
           const privateKey = localKey.startsWith('0x') ? localKey : `0x${localKey}`;
           const account = privateKeyToAccount(privateKey as `0x${string}`);
+
           return createWalletClient({
               account,
               chain: anvilChain,
@@ -1053,7 +1054,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
             functionName: 'deposit',
-            args: [amountInWei, account]
+            args: [amountInWei]
         });
         
         return walletClient.writeContract(request);
@@ -1090,7 +1091,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const [account] = await walletClient.getAddresses();
         const { request } = await publicClient.simulateContract({
             account,
-            address: GOVERNOR_ADDR,
+            address: GOVERNOR_CONTRACT_ADDRESS,
             abi: GOVERNOR_ABI,
             functionName: 'castVote',
             args: [BigInt(proposalId), support]

@@ -26,7 +26,6 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
     'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0' as `0x${string}`, name: 'Chainlink' },
     'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016' as `0x${string}`, name: 'BNB' },
     'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed' as `0x${string}`, name: 'Solana' },
-    'ETH': { address: '0x0165878A594ca255338adfa4d48449f69242Eb8F' as `0x${string}`, name: 'Ethereum' },
 };
 
 
@@ -53,8 +52,7 @@ const genericErc20Abi = parseAbi([
 
 export const DEX_ABI = parseAbi([
   // matches contracts/Router.sol:DEXRouter (deployed)
-  "function addLiquidity(address,address,bool,uint256,uint256,uint256,uint256,address,uint256) payable returns (uint256)",
-  "function factory() view returns (address)",
+  "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) payable returns (uint256,uint256,uint256)",
   "function removeLiquidity(address tokenA, address tokenB, bool stable, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint amountA, uint amountB)",
   // deployed swap signature: no 'stable' param, 'to' sits before deadline
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint256 deadline) payable returns (uint256[])"
@@ -328,4 +326,3 @@ export async function checkAllContracts() {
 export function toTokenUnits(amount: string, decimals = 18): bigint {
   return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
 }
-

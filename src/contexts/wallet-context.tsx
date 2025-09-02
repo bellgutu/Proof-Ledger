@@ -21,6 +21,7 @@ import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
 import { localhost } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
 
@@ -344,15 +345,27 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const refreshAllBalances = useCallback(async (address: `0x${string}`) => {
-    const remoteAssets = await getWalletAssets(address);
-    const newBalances = remoteAssets.reduce((acc, asset) => {
-        acc[asset.symbol] = asset.balance;
-        return acc;
-    }, {} as { [symbol: string]: number });
-    const newDecimals = remoteAssets.reduce((acc, asset) => {
-        acc[asset.symbol] = asset.decimals;
-        return acc;
-    }, {} as { [symbol: string]: number });
+    const assets = await getWalletAssets(address);
+    const newBalances: { [symbol: string]: number } = {};
+    const newDecimals: { [symbol: string]: number } = {};
+
+    // Special handling for native ETH
+    const ethAsset = assets.find(a => a.symbol === 'ETH');
+    if (ethAsset) {
+      newBalances['ETH'] = ethAsset.balance;
+      newDecimals['ETH'] = ethAsset.decimals;
+    } else {
+      // Add a fallback in case getWalletAssets fails to return ETH
+      newBalances['ETH'] = 0;
+      newDecimals['ETH'] = 18;
+    }
+
+    // Process ERC20 tokens
+    const erc20Assets = assets.filter(a => a.symbol !== 'ETH');
+    erc20Assets.forEach(asset => {
+        newBalances[asset.symbol] = asset.balance;
+        newDecimals[asset.symbol] = asset.decimals;
+    });
 
     const collateral = await getVaultCollateral(address);
 
@@ -822,7 +835,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [executeTransaction, decimals, walletClient, updateVaultCollateral]);
 
 
-  const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; entryPrice: number }) => {
+  const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; entryPrice: number; }) => {
       if (!walletAddress || !walletClient) throw new Error("Wallet not connected");
       const { side, size, collateral, entryPrice } = params;
       
@@ -975,6 +988,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    
-

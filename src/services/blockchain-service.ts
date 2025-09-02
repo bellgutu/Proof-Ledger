@@ -11,21 +11,21 @@ import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '
 import { isValidAddress } from '@/lib/utils';
 
 // --- Environment-loaded Contract Addresses ---
-export const FACTORY_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_CONTRACT_ADDRESS || '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44') as `0x${string}`;
-export const DEX_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_DEX_CONTRACT_ADDRESS || '0xc5a5C42992dECbae36851359345FE25997F5C42d') as `0x${string}`;
-export const VAULT_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS || '0x4A679253410272dd5232B3Ff7cF5dbB88f295319') as `0x${string}`;
-export const PERPETUALS_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS || '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F') as `0x${string}`;
+export const FACTORY_CONTRACT_ADDRESS = '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44' as `0x${string}`;
+export const DEX_CONTRACT_ADDRESS = '0xc5a5C42992dECbae36851359345FE25997F5C42d' as `0x${string}`;
+export const VAULT_CONTRACT_ADDRESS = '0x4A679253410272dd5232B3Ff7cF5dbB88f295319' as `0x${string}`;
+export const PERPETUALS_CONTRACT_ADDRESS = '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F' as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS || '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707') as `0x${string}`;
-export const USDT_USDC_POOL_ADDRESS = (process.env.NEXT_PUBLIC_USDT_USDC_POOL_ADDRESS) as `0x${string}`;
+export const USDT_USDC_POOL_ADDRESS = '0x56639dB16Ac50A89228026e42a316B30179A5376' as `0x${string}`;
 
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
-    'USDT': { address: (process.env.NEXT_PUBLIC_USDT_CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3') as `0x${string}`, name: 'Tether' },
-    'USDC': { address: (process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS || '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9') as `0x${string}`, name: 'USD Coin' },
-    'WETH': { address: (process.env.NEXT_PUBLIC_WETH_CONTRACT_ADDRESS || '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318') as `0x${string}`, name: 'Wrapped Ether' },
-    'LINK': { address: (process.env.NEXT_PUBLIC_LINK_CONTRACT_ADDRESS || '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0') as `0x${string}`, name: 'Chainlink' },
-    'BNB': { address: (process.env.NEXT_PUBLIC_BNB_CONTRACT_ADDRESS || '0x0B306BF915C4d645ff596e518fAf3F9669b97016') as `0x${string}`, name: 'BNB' },
-    'SOL': { address: (process.env.NEXT_PUBLIC_SOL_CONTRACT_ADDRESS || '0x68B1D87F95878fE05B998F19b66F4baba5De1aed') as `0x${string}`, name: 'Solana' },
+    'USDT': { address: '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`, name: 'Tether' },
+    'USDC': { address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9' as `0x${string}`, name: 'USD Coin' },
+    'WETH': { address: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318' as `0x${string}`, name: 'Wrapped Ether' },
+    'LINK': { address: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0' as `0x${string}`, name: 'Chainlink' },
+    'BNB': { address: '0x0B306BF915C4d645ff596e518fAf3F9669b97016' as `0x${string}`, name: 'BNB' },
+    'SOL': { address: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed' as `0x${string}`, name: 'Solana' },
     // ETH is native, so no contract address
 };
 
@@ -51,7 +51,7 @@ const genericErc20Abi = parseAbi([
 ]);
 
 export const DEX_ABI = parseAbi([
-    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) returns (uint256 liquidity)",
+    "function addLiquidity(address tokenA, address tokenB, bool stable, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) payable returns (uint256 amountA, uint256 amountB, uint256 liquidity)",
     "function removeLiquidity(address tokenA, address tokenB, bool stable, uint256 liquidity, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) external returns (uint256 amountA, uint256 amountB)",
     "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, bool stable, address to, uint256 deadline) external",
     "error InvalidPath()",
@@ -61,8 +61,8 @@ export const DEX_ABI = parseAbi([
 ]);
 
 export const VAULT_ABI = parseAbi([
-  "function deposit(uint256)",
-  "function withdraw(uint256)",
+  "function deposit(uint256, address)",
+  "function withdraw(uint256, address)",
   "function collateral(address) view returns (uint256)",
   "function lockedCollateral(address) view returns (uint256)"
 ]);
@@ -116,8 +116,8 @@ export const POOL_ABI = [
 
 
 const perpetualsAbi = parseAbi([
-  "function openPosition(uint8 side, uint256 size, uint256 collateral) external",
-  "function closePosition() external",
+  "function openPosition(uint8 side, uint256 size, uint256 collateral, address user) external",
+  "function closePosition(address user) external",
   "function getPrice() view returns (uint256)",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)"
 ]);
@@ -318,5 +318,3 @@ export async function checkAllContracts() {
 
     return { contracts, tokens, allDeployed };
 }
-
-      

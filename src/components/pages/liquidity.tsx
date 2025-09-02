@@ -58,7 +58,7 @@ export default function LiquidityPage() {
   const [newFeeTier, setNewFeeTier] = useState<number | undefined>(0.3);
   const [newPriceRange, setNewPriceRange] = useState({ min: '', max: '' });
   
-  const tokenOptions = Object.keys(marketData);
+  const tokenOptions = Object.keys(marketData).filter(t => t !== 'ETH');
 
   const handleAddPosition = (pool: Pool, lpTokens: number, share: number, amount1: number, amount2: number) => {
     setUserPositions(prev => {
@@ -71,12 +71,6 @@ export default function LiquidityPage() {
       }
       return [...prev, { ...pool, lpTokens, share, unclaimedRewards: Math.random() * 50, impermanentLoss: Math.random() * -5 }];
     });
-
-    // The transaction is now added via executeTransaction in the context, so this is redundant
-    // addTransaction({
-    //   type: 'Add Liquidity',
-    //   details: `Added ${amount1.toFixed(2)} ${pool.token1} and ${amount2.toFixed(2)} ${pool.token2} to ${pool.name} pool`,
-    // });
   };
 
 

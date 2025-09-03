@@ -261,12 +261,6 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
       active: active
     };
     
-    // Client-side entry price pinning logic
-    const pinnedEntryPrice = localStorage.getItem(`entryPrice_${userAddress}`);
-    if (pinnedEntryPrice) {
-      position.entryPrice = parseFloat(pinnedEntryPrice);
-    }
-    
     return position;
 
   } catch (error) {
@@ -332,5 +326,3 @@ export async function checkAllContracts() {
 export function toTokenUnits(amount: string, decimals = 18): bigint {
   return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
 }
-
-    

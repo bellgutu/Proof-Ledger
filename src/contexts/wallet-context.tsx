@@ -119,7 +119,7 @@ interface WalletActions {
   openPosition: (params: { side: number; size: string; collateral: string; entryPrice: number; }) => Promise<void>;
   closePosition: (position: Position, pnl: number) => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
-  getActivePosition: (address: `0x${string}`) => Promise<Position | null>;
+  getActivePosition: (address: `0x${string}`) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
@@ -842,6 +842,24 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       });
   }, [executeTransaction, decimals, walletClient, updateVaultCollateral]);
 
+  const getActivePosition = useCallback(async (address: `0x${string}`) => {
+    try {
+        const position = await getActivePositionFromService(address);
+        if (position) {
+            // Check for a pinned entry price in localStorage and overwrite if it exists
+            const pinnedEntryPrice = localStorage.getItem(`entryPrice_${address}`);
+            if (pinnedEntryPrice) {
+                position.entryPrice = parseFloat(pinnedEntryPrice);
+            }
+            setActivePosition(position);
+        } else {
+            setActivePosition(null);
+        }
+    } catch (e) {
+        console.error("Failed to get and set active position:", e);
+        setActivePosition(null);
+    }
+  }, []);
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; entryPrice: number; }) => {
       if (!walletAddress || !walletClient) throw new Error("Wallet not connected");
@@ -852,8 +870,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       
       const sizeOnChain = parseTokenAmount(size, sizeDecimals);
       const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
-
-      if (entryPrice > 0 && walletAddress) { localStorage.setItem(`entryPrice_${walletAddress}`, entryPrice.toString()); }
 
       const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract', details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH` };
       const txFunction = async () => {
@@ -868,16 +884,15 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return await walletClient.writeContract(request);
       }
       await executeTransaction('Open Position', dialogDetails, txFunction, async () => {
-        setActivePosition(await getActivePosition(walletAddress as `0x${string}`))
+        // Pin the entry price on successful transaction
+        if (entryPrice > 0 && walletAddress) {
+          localStorage.setItem(`entryPrice_${walletAddress}`, entryPrice.toString());
+        }
+        await getActivePosition(walletAddress as `0x${string}`);
       });
-  }, [executeTransaction, decimals, walletAddress, walletClient]);
+  }, [executeTransaction, decimals, walletAddress, walletClient, getActivePosition]);
   
-  const getActivePosition = useCallback(async (address: `0x${string}`) => {
-    return await getActivePositionFromService(address);
-  }, []);
-
   const closePosition = useCallback(async (position: Position, pnl: number) => {
-      if (walletAddress) { localStorage.removeItem(`entryPrice_${walletAddress}`); }
       const detailsNode = ( <div className="text-xs text-left"> <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div> <div>Entry: ${position.entryPrice.toFixed(2)}</div> <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}> Final PnL: ${pnl.toFixed(2)} </div> </div> );
       const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
       
@@ -892,6 +907,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return walletClient.writeContract(request);
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
+          if (walletAddress) {
+            localStorage.removeItem(`entryPrice_${walletAddress}`);
+          }
           await updateVaultCollateral();
           setActivePosition(null);
       });
@@ -1003,5 +1021,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

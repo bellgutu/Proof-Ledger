@@ -16,15 +16,17 @@ import {
     checkAllContracts,
     getVaultCollateral,
     getWalletAssets,
-    getActivePosition as getActivePositionFromService
+    getActivePosition as getActivePositionFromService,
+    publicClient,
+    anvilChain
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
 import { localhost } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
+import { addLiquidityAction } from '@/app/actions/defi-actions';
 
 
 // --- TYPE DEFINITIONS ---
@@ -156,20 +158,6 @@ interface WalletContextType {
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
-
-const anvilChain = defineChain({
-  ...localhost,
-  id: 31337,
-})
-
-const publicClient = createPublicClient({
-  chain: anvilChain,
-  transport: http(),
-  multicall: {
-    batch: false,
-  },
-});
-
 
 const erc20Abi = parseAbi([
     "function name() view returns (string)",
@@ -775,37 +763,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     
     const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
     
-    const txFunction = async () => {
-        if(!walletClient) throw new Error("Wallet not connected");
-
-        const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
-        const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
-        
-        const { request } = await publicClient.simulateContract({
-            account: walletClient.account,
-            address: DEX_CONTRACT_ADDRESS,
-            abi: DEX_ABI,
-            functionName: 'addLiquidity',
-            args: [
-                tokenAInfo.address as Address,
-                tokenBInfo.address as Address,
-                stable,
-                amountADesired,
-                amountBDesired,
-                0n,
-                0n,
-                walletAddress as Address,
-                BigInt(Math.floor(Date.now() / 1000) + 60 * 10)
-            ]
-        });
-
-        return await walletClient.writeContract(request);
-    };
-
-    await executeTransaction('Add Liquidity', dialogDetails, txFunction, async (txHash) => {
-        console.log(`Add liquidity transaction ${txHash} confirmed.`);
-        await checkAllowance(tokenA, DEX_CONTRACT_ADDRESS);
-        await checkAllowance(tokenB, DEX_CONTRACT_ADDRESS);
+    await executeTransaction('Add Liquidity', dialogDetails, async () => {
+      const { success, txHash } = await addLiquidityAction({tokenA, tokenB, amountA, amountB, stable});
+      if (!success) {
+        throw new Error("Server action for addLiquidity failed");
+      }
+      return txHash;
     });
       
   }, [walletClient, walletAddress, decimals, approveToken, executeTransaction, checkAllowance]);

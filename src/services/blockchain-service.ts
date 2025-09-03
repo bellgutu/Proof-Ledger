@@ -6,7 +6,7 @@
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
 import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom } from 'viem';
-import { localhost } from 'viem/chains';
+import { localhost, sepolia } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
 
@@ -29,10 +29,23 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
 };
 
 
-const anvilChain = defineChain({
-  ...localhost,
-  id: 31337,
-})
+const getRpcUrl = () => {
+    return process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
+}
+
+const getTargetChain = () => {
+    const rpcUrl = getRpcUrl();
+    if (rpcUrl.includes('sepolia')) {
+        return sepolia;
+    }
+    // Default to local anvil chain
+    return defineChain({
+        ...localhost,
+        id: 31337,
+    });
+}
+
+export const anvilChain = getTargetChain();
 
 export interface ChainAsset {
   symbol: string;
@@ -122,9 +135,9 @@ export const PERPETUALS_ABI = parseAbi([
   "function vault() view returns (address)"
 ]);
 
-const publicClient = createPublicClient({
+export const publicClient = createPublicClient({
   chain: anvilChain,
-  transport: http(),
+  transport: http(getRpcUrl()),
   multicall: false, // Explicitly disable multicall
 })
 

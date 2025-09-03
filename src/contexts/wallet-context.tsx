@@ -18,6 +18,7 @@ import {
     getWalletAssets
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
+import { addLiquidityAction } from '@/app/actions/defi-actions';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
 import { localhost } from 'viem/chains';
@@ -587,12 +588,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     
     const txFunction = async () => {
       if (tokenSymbol === 'ETH') {
-          const ethDecimals = decimals['ETH'] ?? 18;
-          const onChainAmount = parseTokenAmount(amount.toString(), ethDecimals);
           return await walletClient.sendTransaction({
             account: walletClient.account,
             to: toAddress as `0x${string}`,
-            value: onChainAmount
+            value: parseTokenAmount(amount.toString(), 18)
           });
       } else {
           const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
@@ -716,32 +715,28 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       
       const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
       
-      const txFunction = async () => {
-          const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
-          const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
-          
-          const { request } = await publicClient.simulateContract({
-              account: walletClient.account,
-              address: DEX_CONTRACT_ADDRESS,
-              abi: DEX_ABI,
-              functionName: 'addLiquidity',
-              args: [
-                  tokenAInfo.address!,
-                  tokenBInfo.address!,
-                  stable,
-                  amountADesired,
-                  amountBDesired,
-                  0n, // amountAMin
-                  0n, // amountBMin
-                  walletClient.account.address,
-                  BigInt(Math.floor(Date.now() / 1000) + 60 * 20) // deadline
-              ]
-          });
-          return await walletClient.writeContract(request);
-      };
+      const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
+      const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
+
+      const { success, txHash } = await addLiquidityAction({
+        tokenA: tokenAInfo.address,
+        tokenB: tokenBInfo.address,
+        stable: stable,
+        amountADesired,
+        amountBDesired,
+        to: walletAddress as Address,
+      });
+
+      if (success && txHash) {
+          const tempTxId = addTransaction({ type: 'Add Liquidity', ...dialogDetails, txHash, id: txHash });
+          updateTransactionStatus(tempTxId, 'Completed');
+          await refreshAllBalances(walletAddress as Address);
+      } else {
+         const tempTxId = addTransaction({ type: 'Add Liquidity', ...dialogDetails });
+         updateTransactionStatus(tempTxId, 'Failed', 'Server action for adding liquidity failed.');
+      }
       
-      await executeTransaction('Add Liquidity', dialogDetails, txFunction);
-  }, [walletClient, walletAddress, decimals, approveToken, executeTransaction]);
+  }, [walletClient, walletAddress, decimals, approveToken, addTransaction, updateTransactionStatus, refreshAllBalances]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
       if (!walletAddress || !walletClient) throw new Error("Wallet not connected");
@@ -824,7 +819,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
               functionName: 'withdrawCollateral',
               args: [amountOnChain]
           });
-          return walletClient.writeContract(request);
+          return await walletClient.writeContract(request);
       };
       await executeTransaction('Withdraw Collateral', dialogDetails, txFunction, async () => {
           await updateVaultCollateral();

@@ -253,13 +253,21 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
       return null;
     }
    
-    return {
+    let position: Position = {
       side: side === 0 ? 'long' : 'short',
       size: parseFloat(formatTokenAmount(size, ETH_DECIMALS)),
       collateral: parseFloat(formatTokenAmount(collateral, USDT_DECIMALS)),
       entryPrice: parseFloat(formatTokenAmount(entryPrice, PRICE_DECIMALS)),
       active: active
     };
+    
+    // Client-side entry price pinning logic
+    const pinnedEntryPrice = localStorage.getItem(`entryPrice_${userAddress}`);
+    if (pinnedEntryPrice) {
+      position.entryPrice = parseFloat(pinnedEntryPrice);
+    }
+    
+    return position;
 
   } catch (error) {
     console.error(`[BlockchainService] Failed to get active position:`, error);
@@ -324,3 +332,5 @@ export async function checkAllContracts() {
 export function toTokenUnits(amount: string, decimals = 18): bigint {
   return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
 }
+
+    

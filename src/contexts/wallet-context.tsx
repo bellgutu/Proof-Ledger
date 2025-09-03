@@ -15,7 +15,8 @@ import {
     FACTORY_ABI, POOL_ABI, 
     checkAllContracts,
     getVaultCollateral,
-    getWalletAssets
+    getWalletAssets,
+    getActivePosition as getActivePositionFromService
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -99,6 +100,7 @@ interface WalletState {
   transactions: Transaction[];
   vaultWeth: number;
   vaultCollateral: VaultCollateral;
+  activePosition: Position | null;
   activeStrategy: VaultStrategy | null;
   proposals: Proposal[];
   availablePools: Pool[];
@@ -117,6 +119,7 @@ interface WalletActions {
   openPosition: (params: { side: number; size: string; collateral: string; entryPrice: number; }) => Promise<void>;
   closePosition: (position: Position, pnl: number) => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
+  getActivePosition: (address: `0x${string}`) => Promise<Position | null>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
@@ -214,6 +217,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [vaultCollateral, setVaultCollateral] = useState<VaultCollateral>({ total: 0, locked: 0, available: 0 });
   const [activeStrategy, setActiveStrategy] = useState<VaultStrategy | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>(initialProposals);
+  const [activePosition, setActivePosition] = useState<Position | null>(null);
+
 
   // Liquidity State
   const [availablePools, setAvailablePools] = useState<Pool[]>(initialAvailablePools);
@@ -862,8 +867,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
           return await walletClient.writeContract(request);
       }
-      await executeTransaction('Open Position', dialogDetails, txFunction);
+      await executeTransaction('Open Position', dialogDetails, txFunction, async () => {
+        setActivePosition(await getActivePosition(walletAddress as `0x${string}`))
+      });
   }, [executeTransaction, decimals, walletAddress, walletClient]);
+  
+  const getActivePosition = useCallback(async (address: `0x${string}`) => {
+    return await getActivePositionFromService(address);
+  }, []);
 
   const closePosition = useCallback(async (position: Position, pnl: number) => {
       if (walletAddress) { localStorage.removeItem(`entryPrice_${walletAddress}`); }
@@ -882,6 +893,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       }
       await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
           await updateVaultCollateral();
+          setActivePosition(null);
       });
   }, [executeTransaction, walletAddress, walletClient, updateVaultCollateral]);
 
@@ -965,7 +977,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       walletState: { 
         isConnected, isConnecting, walletAddress, walletClient, balances, decimals, walletBalance, marketData, isMarketDataLoaded,
         transactions, vaultWeth, vaultCollateral, activeStrategy, proposals, availablePools, userPositions, txStatusDialog,
-        allowances
+        allowances, activePosition
       },
       walletActions: {
           connectWallet, disconnectWallet, updateBalance, setBalances, sendTokens, addTransaction,
@@ -973,7 +985,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           setUserPositions, setTxStatusDialog, openPosition, closePosition,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
           claimRewards, depositCollateral, withdrawCollateral, updateVaultCollateral,
-          approveToken, checkAllowance, checkPoolExists, createPool
+          approveToken, checkAllowance, checkPoolExists, createPool, getActivePosition
       }
   }
 
@@ -991,3 +1003,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

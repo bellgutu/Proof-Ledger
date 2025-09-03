@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@/contexts/wallet-context';
@@ -12,7 +13,6 @@ import TradingViewWidget from '@/components/trading/tradingview-widget';
 import { OrderBook } from '@/components/trading/order-book';
 import { WhaleWatch } from '@/components/trading/whale-watch';
 import { Skeleton } from '../ui/skeleton';
-import { getActivePosition } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import type { Position } from '@/services/blockchain-service';
 import { Label } from '../ui/label';
@@ -24,8 +24,8 @@ import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
-  const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals } = walletState;
-  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral } = walletActions;
+  const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals, activePosition } = walletState;
+  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral, getActivePosition } = walletActions;
   const { toast } = useToast();
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
@@ -37,7 +37,6 @@ const TradingPageContent = () => {
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   
-  const [activePosition, setActivePosition] = useState<Position | null>(null);
   const [isLoadingPosition, setIsLoadingPosition] = useState(true);
   
   const [currentPrice, setCurrentPrice] = useState(marketData['ETH']?.price || 0);
@@ -92,22 +91,13 @@ const TradingPageContent = () => {
     };
     setIsLoadingPosition(true);
     try {
-      const position = await getActivePosition(walletAddress as `0x${string}`);
-      if (position) {
-         // Client-side entry price pinning logic
-        const pinnedEntryPrice = localStorage.getItem(`entryPrice_${walletAddress}`);
-        if (pinnedEntryPrice) {
-          position.entryPrice = parseFloat(pinnedEntryPrice);
-        }
-      }
-      setActivePosition(position);
+      await getActivePosition(walletAddress as `0x${string}`);
     } catch (e) {
       console.error("Failed to fetch active position:", e);
-      setActivePosition(null);
     } finally {
       setIsLoadingPosition(false);
     }
-  }, [isConnected, walletAddress]);
+  }, [isConnected, walletAddress, getActivePosition]);
   
   useEffect(() => {
     fetchPosition();
@@ -240,7 +230,7 @@ const TradingPageContent = () => {
     setIsProcessing(true);
     try {
         await closePosition(activePosition, finalPnl);
-        setActivePosition(null); 
+        
         await fetchPosition();
         await updateVaultCollateral();
         setPnlDialogState({ isOpen: true, pnl: finalPnl });
@@ -531,3 +521,5 @@ export default function TradingPage() {
   }
   return <TradingPageContent />;
 }
+
+    

@@ -26,7 +26,6 @@ import { createWalletClient, custom, createPublicClient, http, defineChain, Tran
 import { localhost } from 'viem/chains';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
-import { addLiquidityAction } from '@/app/actions/defi-actions';
 
 
 // --- TYPE DEFINITIONS ---
@@ -763,12 +762,35 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     
     const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
     
-    await executeTransaction('Add Liquidity', dialogDetails, async () => {
-      const { success, txHash } = await addLiquidityAction({tokenA, tokenB, amountA, amountB, stable});
-      if (!success) {
-        throw new Error("Server action for addLiquidity failed");
-      }
-      return txHash;
+    const txFunction = async () => {
+        if(!walletClient) throw new Error("Wallet not connected");
+        
+        const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
+        const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
+        
+        const { request } = await publicClient.simulateContract({
+            account: walletClient.account,
+            address: DEX_CONTRACT_ADDRESS,
+            abi: DEX_ABI,
+            functionName: "addLiquidity",
+            args: [
+                tokenAInfo.address!,
+                tokenBInfo.address!,
+                stable,
+                amountADesired,
+                amountBDesired,
+                0n, // amountAMin
+                0n, // amountBMin
+                walletClient.account!.address,
+                BigInt(Math.floor(Date.now() / 1000) + 60 * 20), // deadline
+            ],
+        });
+        return await walletClient.writeContract(request);
+    };
+
+    await executeTransaction('Add Liquidity', dialogDetails, txFunction, async (txHash) => {
+        await checkAllowance(tokenA, DEX_CONTRACT_ADDRESS);
+        await checkAllowance(tokenB, DEX_CONTRACT_ADDRESS);
     });
       
   }, [walletClient, walletAddress, decimals, approveToken, executeTransaction, checkAllowance]);

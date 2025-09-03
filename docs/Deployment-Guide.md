@@ -40,22 +40,23 @@ The application uses a `.env.local` file to manage all environment-specific conf
 
 The application is architected for a seamless transition from local development to testnet and finally to a full mainnet launch.
 
-### Stage 1: Local Development (Current Setup)
-- **Network**: **Hardhat / Anvil** - Used as the local blockchain development and testing network.
-- **Configuration**: The application defaults to using the local Hardhat network (`http://localhost:8545`). All contracts are deployed via a local script (`npx hardhat run scripts/deploy.js --network localhost`), and the resulting addresses should be placed in the `.env.local` file.
+### Stage 1: Local Development
+- **Network**: **Hardhat / Anvil** - The application defaults to using a local Hardhat network (`http://localhost:8545`) if the `NEXT_PUBLIC_CHAIN_RPC_URL` environment variable is not set. All contracts should be deployed via a local script (`npx hardhat run scripts/deploy.js --network localhost`), and the resulting addresses should be updated in the `src/services/blockchain-service.ts` file or loaded via environment variables.
 
-### Stage 2: Testnet Deployment
+### Stage 2: Testnet Deployment (Ready)
 - **Recommended Network**: **Sepolia** (or another public Ethereum testnet).
+- **Configuration Status**: The application is now configured to dynamically switch to a testnet.
 - **Process**:
-    1. Deploy the full suite of smart contracts to the chosen testnet using a service like Remix, Hardhat, or Foundry.
-    2. Obtain a testnet RPC URL from a node provider like Infura or Alchemy.
-    3. Update the `.env.local` file with the new contract addresses and the testnet RPC URL.
-    4. The application will automatically connect to the testnet, allowing for full end-to-end testing in a public environment.
+    1. Deploy the full suite of smart contracts to your chosen testnet.
+    2. Create a `.env.local` file in the project root.
+    3. Add the `NEXT_PUBLIC_CHAIN_RPC_URL` variable to your `.env.local` file with the RPC URL from a node provider (e.g., Infura or Alchemy).
+    4. Update the contract addresses in `src/services/blockchain-service.ts` to match your new testnet deployment.
+    5. Restart the application. It will now be connected to the testnet, ready for full end-to-end testing in a public environment.
 
 ### Stage 3: Mainnet Launch
 - **Network**: **Ethereum Mainnet** (or other target EVM-compatible chain).
 - **Process**:
     1. Conduct a final, comprehensive security audit of the smart contracts.
     2. Deploy the audited contracts to the mainnet.
-    3. Update the `.env.local` file with the final mainnet contract addresses and a mainnet RPC URL from a reliable node provider.
+    3. Update your production environment variables with the final mainnet contract addresses and a mainnet RPC URL from a reliable node provider.
     4. The application will be fully operational on the mainnet, ready for public use.

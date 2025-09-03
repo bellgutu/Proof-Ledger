@@ -18,7 +18,6 @@ import {
     getWalletAssets
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
-import { addLiquidityAction } from '@/app/actions/defi-actions';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
 import { localhost } from 'viem/chains';
@@ -699,44 +698,56 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [walletAddress, walletClient, executeTransaction]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
-      if (!walletClient || !walletAddress) throw new Error("Wallet not connected");
+    if (!walletClient || !walletAddress) throw new Error("Wallet not connected");
 
-      const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
-      const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
-      if (!tokenAInfo?.address || !tokenBInfo?.address) { throw new Error("Invalid tokens for liquidity."); }
-      
-      const decimalsA = decimals[tokenA];
-      const decimalsB = decimals[tokenB];
-      if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
-      
-      // Approve both tokens first
-      await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
-      await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
-      
-      const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
-      
-      const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
-      const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
+    const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
+    const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
+    if (!tokenAInfo?.address || !tokenBInfo?.address) { throw new Error("Invalid tokens for liquidity."); }
+    
+    const decimalsA = decimals[tokenA];
+    const decimalsB = decimals[tokenB];
+    if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
+    
+    // Approve both tokens first
+    await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
+    await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
+    
+    const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
+    
+    const txFunction = async () => {
+        if(!walletClient) throw new Error("Wallet not connected");
 
-      const { success, txHash } = await addLiquidityAction({
-        tokenA: tokenAInfo.address,
-        tokenB: tokenBInfo.address,
-        stable: stable,
-        amountADesired,
-        amountBDesired,
-        to: walletAddress as Address,
-      });
+        const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
+        const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
+        
+        const { request } = await publicClient.simulateContract({
+            account: walletClient.account,
+            address: DEX_CONTRACT_ADDRESS,
+            abi: DEX_ABI,
+            functionName: 'addLiquidity',
+            args: [
+                tokenAInfo.address as Address,
+                tokenBInfo.address as Address,
+                stable,
+                amountADesired,
+                amountBDesired,
+                0n, // amountAMin
+                0n, // amountBMin
+                walletAddress as Address,
+                BigInt(Math.floor(Date.now() / 1000) + 60 * 10)
+            ]
+        });
 
-      if (success && txHash) {
-          const tempTxId = addTransaction({ type: 'Add Liquidity', ...dialogDetails, txHash, id: txHash });
-          updateTransactionStatus(tempTxId, 'Completed');
-          await refreshAllBalances(walletAddress as Address);
-      } else {
-         const tempTxId = addTransaction({ type: 'Add Liquidity', ...dialogDetails });
-         updateTransactionStatus(tempTxId, 'Failed', 'Server action for adding liquidity failed.');
-      }
+        return await walletClient.writeContract(request);
+    };
+
+    await executeTransaction('Add Liquidity', dialogDetails, txFunction, async (txHash) => {
+        console.log(`Add liquidity transaction ${txHash} confirmed.`);
+        await checkAllowance(tokenA, DEX_CONTRACT_ADDRESS);
+        await checkAllowance(tokenB, DEX_CONTRACT_ADDRESS);
+    });
       
-  }, [walletClient, walletAddress, decimals, approveToken, addTransaction, updateTransactionStatus, refreshAllBalances]);
+  }, [walletClient, walletAddress, decimals, approveToken, executeTransaction, checkAllowance]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
       if (!walletAddress || !walletClient) throw new Error("Wallet not connected");

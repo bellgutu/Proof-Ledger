@@ -30,49 +30,6 @@ function getAdminPublicClient() {
     });
 }
 
-
-export async function addLiquidityAction(params: {
-    tokenA: `0x${string}`;
-    tokenB: `0x${string}`;
-    stable: boolean;
-    amountADesired: bigint;
-    amountBDesired: bigint;
-    to: `0x${string}`;
-}): Promise<{ success: boolean; txHash: `0x${string}` }> {
-     try {
-        const walletClient = getAdminWalletClient();
-        const publicClient = getAdminPublicClient();
-        const { tokenA, tokenB, stable, amountADesired, amountBDesired, to } = params;
-
-        const { request } = await publicClient.simulateContract({
-            account: walletClient.account,
-            address: DEX_CONTRACT_ADDRESS,
-            abi: DEX_ABI,
-            functionName: 'addLiquidity',
-            args: [
-                tokenA,
-                tokenB,
-                stable,
-                amountADesired,
-                amountBDesired,
-                0n,
-                0n,
-                to,
-                BigInt(Math.floor(Date.now() / 1000) + 60 * 10)
-            ]
-        });
-
-        const txHash = await walletClient.writeContract(request);
-        await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-        return { success: true, txHash };
-    } catch (e: any) {
-        console.error("addLiquidityAction failed:", e);
-        throw new Error(e.shortMessage || e.message || "An unknown error occurred.");
-    }
-}
-
-
 export async function swapTokensAction(
     fromToken: string,
     toToken: string,

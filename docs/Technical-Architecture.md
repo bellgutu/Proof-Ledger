@@ -59,3 +59,20 @@ The application interacts with the blockchain using modern, type-safe tools.
 - **Type Safety**: TypeScript is used across the entire stack to minimize runtime errors and improve code maintainability.
 - **On-chain Logic**: The application correctly defers all state-changing blockchain operations (swaps, deposits, trades) to the user's wallet for signing. This is a critical security measure that ensures the user always maintains control of their assets.
 - **Error Handling**: The application includes UI components like toasts and dialogs to provide clear, immediate feedback to the user on transaction status (pending, success, failed), creating a transparent and trustworthy user experience.
+
+---
+
+## 5. Testing & Quality Assurance
+
+The project has undergone a rigorous testing process to ensure stability, reliability, and security across all components.
+
+-   **Smart Contract Testing**:
+    -   **Comprehensive Unit Tests**: All core smart contracts, including the DEX Router, Liquidity Pools, and Perpetuals Vault, have been tested extensively.
+    -   **Scenario-Based Testing**: Complex user flows such as multi-step swaps, liquidity provisioning/removal, and leveraged trade lifecycle (open, close, liquidate) have been simulated and validated.
+    -   **Deployment Verification**: Contracts have been successfully compiled and deployed to local (Hardhat/Anvil) and public testnet (Sepolia) environments, confirming their operational integrity.
+
+-   **Frontend & Integration Testing**:
+    -   **Component-Level Validation**: All UI components have been tested for correct rendering and functionality.
+    -   **End-to-End User Flow Testing**: The full application has been tested from the user's perspective, covering wallet connection, asset management, DeFi interactions, and AI tool usage.
+    -   **Cross-Browser Compatibility**: The application has been verified to work consistently across modern web browsers.
+    -   **Responsive Design**: The UI has been tested on a range of screen sizes to ensure a seamless experience on both desktop and mobile devices.

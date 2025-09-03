@@ -56,7 +56,7 @@ The application is architected for a seamless transition from local development 
 ### Stage 3: Mainnet Launch
 - **Network**: **Ethereum Mainnet** (or other target EVM-compatible chain).
 - **Process**:
-    1. Conduct a final, comprehensive security audit of the smart contracts.
+    1. **Conduct a Final Security Audit**: Although the contracts have been extensively tested, a formal, third-party security audit is a critical step before deploying to mainnet to ensure the highest level of security and to protect user funds.
     2. Deploy the audited contracts to the mainnet.
     3. Update your production environment variables with the final mainnet contract addresses and a mainnet RPC URL from a reliable node provider.
     4. The application will be fully operational on the mainnet, ready for public use.

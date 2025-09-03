@@ -21,6 +21,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Slider } from '../ui/slider';
 import { formatTokenAmount, parseTokenAmount, calculateRequiredCollateral, USDT_DECIMALS, ETH_DECIMALS, formatSignedTokenAmount } from '@/lib/format';
+import { PositionHistory } from '../trading/position-history';
 
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
@@ -229,7 +230,7 @@ const TradingPageContent = () => {
     const finalPnl = calculatePnl(activePosition);
     setIsProcessing(true);
     try {
-        await closePosition(activePosition, finalPnl);
+        await closePosition(activePosition, finalPnl, currentPrice);
         
         await fetchPosition();
         await updateVaultCollateral();
@@ -324,6 +325,7 @@ const TradingPageContent = () => {
                 )}
             </CardContent>
         </Card>
+        <PositionHistory />
       </div>
       <div className="space-y-8">
         <Card>
@@ -521,5 +523,3 @@ export default function TradingPage() {
   }
   return <TradingPageContent />;
 }
-
-    

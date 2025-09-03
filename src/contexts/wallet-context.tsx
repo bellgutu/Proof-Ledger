@@ -34,6 +34,16 @@ type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'U
 export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral' | 'Create Pool';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
+export interface PastPosition {
+  id: string; // txHash of the closing transaction
+  side: 'long' | 'short';
+  size: number;
+  entryPrice: number;
+  exitPrice: number;
+  pnl: number;
+  timestamp: number;
+}
+
 export interface Transaction {
   id: string;
   txHash: string;
@@ -98,6 +108,7 @@ interface WalletState {
   marketData: MarketData;
   isMarketDataLoaded: boolean;
   transactions: Transaction[];
+  pastPositions: PastPosition[];
   vaultWeth: number;
   vaultCollateral: VaultCollateral;
   activePosition: Position | null;
@@ -117,7 +128,7 @@ interface WalletActions {
   depositCollateral: (amount: string) => Promise<void>;
   withdrawCollateral: (amount: string) => Promise<void>;
   openPosition: (params: { side: number; size: string; collateral: string; entryPrice: number; }) => Promise<void>;
-  closePosition: (position: Position, pnl: number) => Promise<void>;
+  closePosition: (position: Position, pnl: number, exitPrice: number) => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
   getActivePosition: (address: `0x${string}`) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
@@ -213,6 +224,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // DeFi State
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [pastPositions, setPastPositions] = useState<PastPosition[]>([]);
   const [vaultWeth, setVaultWeth] = useState(0);
   const [vaultCollateral, setVaultCollateral] = useState<VaultCollateral>({ total: 0, locked: 0, available: 0 });
   const [activeStrategy, setActiveStrategy] = useState<VaultStrategy | null>(null);
@@ -319,6 +331,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [isMarketDataLoaded]);
   
   const getTxHistoryStorageKey = (address: string) => `tx_history_${address}`;
+  const getPositionHistoryStorageKey = (address: string) => `position_history_${address}`;
+  const getPoolsStorageKey = (address: string) => `user_pools_${address}`;
 
   const persistTransactions = useCallback((txs: Transaction[], address: string) => {
       if (!address) return;
@@ -347,6 +361,45 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         console.error("Failed to load transaction history:", e);
         setTransactions([]);
     }
+  }, []);
+
+  const loadPastPositions = useCallback((address: string) => {
+    try {
+        const storedHistory = localStorage.getItem(getPositionHistoryStorageKey(address));
+        if (storedHistory) {
+            setPastPositions(JSON.parse(storedHistory));
+        } else {
+            setPastPositions([]);
+        }
+    } catch (e) {
+        console.error("Failed to load position history:", e);
+        setPastPositions([]);
+    }
+  }, []);
+  
+  const addPastPosition = useCallback((position: PastPosition, address: string) => {
+      setPastPositions(prev => {
+          const newPositions = [position, ...prev];
+          localStorage.setItem(getPositionHistoryStorageKey(address), JSON.stringify(newPositions));
+          return newPositions;
+      });
+  }, []);
+
+  const loadUserCreatedPools = useCallback((address: string) => {
+      try {
+          const storedPools = localStorage.getItem(getPoolsStorageKey(address));
+          if (storedPools) {
+              const userPools: Pool[] = JSON.parse(storedPools);
+              // Avoid duplicates
+              setAvailablePools(prev => {
+                const existingIds = new Set(prev.map(p => p.id));
+                const newPools = userPools.filter(p => !existingIds.has(p.id));
+                return [...prev, ...newPools];
+              });
+          }
+      } catch (e) {
+          console.error("Failed to load user created pools:", e);
+      }
   }, []);
 
   const refreshAllBalances = useCallback(async (address: `0x${string}`) => {
@@ -385,6 +438,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         setWalletAddress(address);
         await refreshAllBalances(address);
         loadTransactions(address);
+        loadPastPositions(address);
+        loadUserCreatedPools(address);
         setIsConnected(true);
 
     } catch (e: any) {
@@ -394,7 +449,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     } finally {
         setIsConnecting(false);
     }
-  }, [loadTransactions, toast, refreshAllBalances]);
+  }, [loadTransactions, toast, refreshAllBalances, loadPastPositions, loadUserCreatedPools]);
 
   const disconnectWallet = useCallback(async () => {
     setIsConnected(false);
@@ -404,6 +459,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setDecimals({});
     setAllowances({});
     setTransactions([]);
+    setPastPositions([]);
+    setAvailablePools(initialAvailablePools);
   }, []);
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => {
@@ -713,7 +770,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const decimalsB = decimals[tokenB];
     if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
     
-    // Approve both tokens first
     await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
     await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
     
@@ -736,8 +792,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                 stable,
                 amountADesired,
                 amountBDesired,
-                0n, // amountAMin
-                0n, // amountBMin
+                0n,
+                0n,
                 walletAddress as Address,
                 BigInt(Math.floor(Date.now() / 1000) + 60 * 10)
             ]
@@ -846,7 +902,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     try {
         const position = await getActivePositionFromService(address);
         if (position) {
-            // Check for a pinned entry price in localStorage and overwrite if it exists
             const pinnedEntryPrice = localStorage.getItem(`entryPrice_${address}`);
             if (pinnedEntryPrice) {
                 position.entryPrice = parseFloat(pinnedEntryPrice);
@@ -884,7 +939,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           return await walletClient.writeContract(request);
       }
       await executeTransaction('Open Position', dialogDetails, txFunction, async () => {
-        // Pin the entry price on successful transaction
         if (entryPrice > 0 && walletAddress) {
           localStorage.setItem(`entryPrice_${walletAddress}`, entryPrice.toString());
         }
@@ -892,7 +946,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       });
   }, [executeTransaction, decimals, walletAddress, walletClient, getActivePosition]);
   
-  const closePosition = useCallback(async (position: Position, pnl: number) => {
+  const closePosition = useCallback(async (position: Position, pnl: number, exitPrice: number) => {
       const detailsNode = ( <div className="text-xs text-left"> <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div> <div>Entry: ${position.entryPrice.toFixed(2)}</div> <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}> Final PnL: ${pnl.toFixed(2)} </div> </div> );
       const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
       
@@ -906,14 +960,24 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           });
           return walletClient.writeContract(request);
       }
-      await executeTransaction('Close Position', dialogDetails, txFunction, async () => {
+      await executeTransaction('Close Position', dialogDetails, txFunction, async (txHash) => {
           if (walletAddress) {
+            const pastPosition: PastPosition = {
+              id: txHash,
+              side: position.side,
+              size: position.size,
+              entryPrice: position.entryPrice,
+              exitPrice: exitPrice,
+              pnl: pnl,
+              timestamp: Date.now(),
+            };
+            addPastPosition(pastPosition, walletAddress);
             localStorage.removeItem(`entryPrice_${walletAddress}`);
           }
           await updateVaultCollateral();
           setActivePosition(null);
       });
-  }, [executeTransaction, walletAddress, walletClient, updateVaultCollateral]);
+  }, [executeTransaction, walletAddress, walletClient, updateVaultCollateral, addPastPosition]);
 
   const depositToVault = useCallback(async (amount: number) => {
     await approveToken('WETH', amount, VAULT_CONTRACT_ADDRESS);
@@ -991,10 +1055,19 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [isConnected, walletAddress, refreshAllBalances]);
 
 
+  useEffect(() => {
+    // Persist user-created pools to local storage
+    if (walletAddress) {
+      const userCreatedPools = availablePools.filter(p => !initialAvailablePools.some(ip => ip.id === p.id));
+      localStorage.setItem(getPoolsStorageKey(walletAddress), JSON.stringify(userCreatedPools));
+    }
+  }, [availablePools, walletAddress]);
+
+
   const value: WalletContextType = {
       walletState: { 
         isConnected, isConnecting, walletAddress, walletClient, balances, decimals, walletBalance, marketData, isMarketDataLoaded,
-        transactions, vaultWeth, vaultCollateral, activeStrategy, proposals, availablePools, userPositions, txStatusDialog,
+        transactions, pastPositions, vaultWeth, vaultCollateral, activeStrategy, proposals, availablePools, userPositions, txStatusDialog,
         allowances, activePosition
       },
       walletActions: {

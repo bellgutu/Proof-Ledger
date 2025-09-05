@@ -16,14 +16,17 @@ export const DEX_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_ROUTER_ADDRESS a
 export const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}`;
 export const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS as `0x${string}`;
+
+// --- Hardcoded Token Addresses for Client-Side Access ---
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
-    'USDT': { address: process.env.NEXT_PUBLIC_USDT_ADDRESS as `0x${string}`, name: 'Tether' },
-    'USDC': { address: process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`, name: 'USD Coin' },
-    'WETH': { address: process.env.NEXT_PUBLIC_WETH_ADDRESS as `0x${string}`, name: 'Wrapped Ether' },
-    'LINK': { address: process.env.NEXT_PUBLIC_LINK_ADDRESS as `0x${string}`, name: 'Chainlink' },
-    'BNB': { address: process.env.NEXT_PUBLIC_BNB_ADDRESS as `0x${string}`, name: 'BNB' },
-    'SOL': { address: process.env.NEXT_PUBLIC_SOL_ADDRESS as `0x${string}`, name: 'Solana' },
+    'USDT': { address: '0x17a6039513bB60369e5246164Cb918973dF902BD', name: 'Tether' },
+    'USDC': { address: '0x09d011D52413DC89DFe3fa64694d67451ee49Cef', name: 'USD Coin' },
+    'WETH': { address: '0x3318056463e5bb26FB66e071999a058bdb35F34f', name: 'Wrapped Ether' },
+    'LINK': { address: '0xbb966759b1B06E224aD601c39e66b101158Fd596', name: 'Chainlink' },
+    'BNB':  { address: '0xc7973f90463F85DFc574F844CDd1A41b5187FAeC', name: 'BNB' },
+    'SOL':  { address: '0x875687459284f2a041C1c2F5209628f924A28DBc', name: 'Solana' },
 };
+
 
 // --- DYNAMIC CLIENT & CHAIN CONFIGURATION ---
 const getRpcUrl = () => {
@@ -172,8 +175,10 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
   const KNOWN_DECIMALS = 18; // Using hardcoded decimals for all tokens as per deployment.
 
   try {
+    console.log(`[BlockchainService] Fetching native ETH balance for ${address}...`);
     const ethBalance = await publicClient.getBalance({ address });
     assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatTokenAmount(ethBalance, 18)), decimals: 18 });
+    console.log(`[BlockchainService] Fetched native ETH balance: ${assets[0].balance}`);
 
     for (const symbol of tokenSymbols) {
       const contract = ERC20_CONTRACTS[symbol];
@@ -182,6 +187,7 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
         continue;
       }
       try {
+        console.log(`[BlockchainService] Fetching ${symbol} balance from ${contract.address}...`);
         const balance = await publicClient.readContract({
           address: contract.address,
           abi: genericErc20Abi,
@@ -195,9 +201,10 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
           balance: parseFloat(formatTokenAmount(balance, KNOWN_DECIMALS)),
           decimals: KNOWN_DECIMALS,
         });
+        console.log(`[BlockchainService] Fetched ${symbol} balance: ${assets[assets.length - 1].balance}`);
 
       } catch (tokenError) {
-        console.warn(`[BlockchainService] Failed to fetch data for ${symbol} at ${contract.address}. Error:`, tokenError);
+        console.error(`[BlockchainService] Failed to fetch data for ${symbol} at ${contract.address}. Error:`, tokenError);
       }
     }
 

@@ -15,7 +15,7 @@ export const FACTORY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDR
 export const DEX_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_ROUTER_ADDRESS as `0x${string}`;
 export const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS as `0x${string}`;
 export const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = "0xe59E98774CB4902E2a8CB237c26191C3e96d8EB4" as `0x${string}`;
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
     'USDT': { address: process.env.NEXT_PUBLIC_USDT_ADDRESS as `0x${string}`, name: 'Tether' },
@@ -316,7 +316,7 @@ export async function checkAllContracts() {
         coreContracts.map(async (c) => ({
             name: c.name,
             address: c.address,
-            deployed: await checkAddress(c.address as Address),
+            deployed: c.address ? await checkAddress(c.address) : false,
         }))
     );
 
@@ -331,10 +331,4 @@ export async function checkAllContracts() {
     const allDeployed = [...contracts, ...tokens].every(c => c.deployed);
 
     return { contracts, tokens, allDeployed };
-}
-
-
-// Small helper to convert human amounts to bigint using decimals (keeps frontend consistent)
-export function toTokenUnits(amount: string, decimals = 18): bigint {
-  return BigInt((Number(amount) * 10 ** decimals).toFixed(0));
 }

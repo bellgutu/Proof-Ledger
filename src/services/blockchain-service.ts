@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview
  * This service is the bridge between the ProfitForge frontend and your custom blockchain.
@@ -26,7 +27,7 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
 
 // --- DYNAMIC CLIENT & CHAIN CONFIGURATION ---
 const getRpcUrl = () => {
-  return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161';
+    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161';
 }
 
 const getTargetChain = () => {
@@ -168,6 +169,7 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
   const { publicClient } = getViemClients();
   const assets: ChainAsset[] = [];
   const tokenSymbols = Object.keys(ERC20_CONTRACTS);
+  const KNOWN_DECIMALS = 18; // Using hardcoded decimals for all tokens as per deployment.
 
   try {
     const ethBalance = await publicClient.getBalance({ address });
@@ -183,19 +185,14 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
           functionName: 'balanceOf',
           args: [address],
         });
-
-        const decimals = await publicClient.readContract({
-          address: contract.address,
-          abi: genericErc20Abi,
-          functionName: 'decimals',
-        });
-
+        
         assets.push({
           symbol,
           name: contract.name,
-          balance: parseFloat(formatTokenAmount(balance, decimals)),
-          decimals,
+          balance: parseFloat(formatTokenAmount(balance, KNOWN_DECIMALS)),
+          decimals: KNOWN_DECIMALS,
         });
+
       } catch (tokenError) {
         console.warn(`[BlockchainService] Failed to fetch data for ${symbol}:`, tokenError);
       }

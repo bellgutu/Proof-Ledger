@@ -478,7 +478,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         setPublicClient(publicClient);
         setWalletClient(authenticatedWalletClient);
         setWalletAddress(address);
-        await refreshAllBalances(address as Address);
+        await refreshAllBalances(address as `0x${string}`);
         loadTransactions(address);
         loadPastPositions(address);
         loadUserCreatedPools(address);

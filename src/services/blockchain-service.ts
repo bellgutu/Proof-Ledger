@@ -28,13 +28,18 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
 
 
 const getRpcUrl = () => {
-    return process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
+    // Favor the explicit Sepolia RPC URL if it's set
+    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
 }
 
 export const getTargetChain = () => {
     const rpcUrl = getRpcUrl();
+    // If a Sepolia URL is provided, always use the Sepolia chain config.
+    if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
+        return sepolia;
+    }
+    // Fallback for a generic RPC or default to local anvil.
     if (rpcUrl && rpcUrl !== 'http://localhost:8545') {
-        // A simple check; could be more robust
         return sepolia; 
     }
     // Default to local anvil chain

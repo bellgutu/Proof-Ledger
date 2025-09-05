@@ -26,11 +26,14 @@ const WETH_ABI = parseAbi([
 
 
 const getRpcUrl = () => {
-    return process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
+    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
 }
 
 const getTargetChain = () => {
     const rpcUrl = getRpcUrl();
+    if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
+        return sepolia;
+    }
     if (rpcUrl && rpcUrl !== 'http://localhost:8545') {
         return sepolia; 
     }

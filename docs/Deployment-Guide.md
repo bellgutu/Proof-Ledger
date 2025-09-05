@@ -31,6 +31,7 @@ The application uses a `.env.local` file to manage all environment-specific conf
 - `NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS`: The address of the AI Strategy Vault contract.
 - `NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS`: The address of the perpetuals trading contract.
 - `NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS`: The address of the governance contract.
+- `NEXT_PUBLIC_TREASURY_ADDRESS`: The address for the protocol's treasury.
 - `NEXT_PUBLIC_USDT_ADDRESS`: The address for the USDT token contract.
 - `NEXT_PUBLIC_USDC_ADDRESS`: The address for the USDC token contract.
 - `NEXT_PUBLIC_WETH_ADDRESS`: The address for the WETH token contract.

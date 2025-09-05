@@ -15,7 +15,7 @@ export const FACTORY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDR
 export const DEX_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_ROUTER_ADDRESS as `0x${string}`;
 export const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS as `0x${string}`;
 export const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = "0xe59E98774CB4902E2a8CB237c26191C3e96d8EB4" as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS as `0x${string}`;
 
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
     'USDT': { address: process.env.NEXT_PUBLIC_USDT_ADDRESS as `0x${string}`, name: 'Tether' },

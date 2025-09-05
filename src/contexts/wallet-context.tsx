@@ -24,7 +24,7 @@ import {
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
 import { createWalletClient, custom, createPublicClient, http, defineChain, TransactionExecutionError, getContract, parseAbi, formatUnits, type Address, WalletClient } from 'viem';
-import { localhost } from 'viem/chains';
+import { localhost, sepolia } from 'viem/chains';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
 
@@ -415,17 +415,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
     setIsConnecting(true);
     try {
-        const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const address = accounts[0];
         
+        if (!address) {
+            throw new Error("No address returned from wallet.");
+        }
+
         const client = createWalletClient({
-            account: address,
+            account: address as Address,
             chain: getTargetChain(),
             transport: custom(window.ethereum),
         });
 
         setWalletClient(client);
         setWalletAddress(address);
-        await refreshAllBalances(address);
+        await refreshAllBalances(address as Address);
         loadTransactions(address);
         loadPastPositions(address);
         loadUserCreatedPools(address);

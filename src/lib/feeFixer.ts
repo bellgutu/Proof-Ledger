@@ -17,7 +17,7 @@ const FACTORY_ABI = [
 
 const POOL_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
-    { type: 'function', name: 'setFeeTo', inputs: [{ name: 'feeTo_', type: 'address' }], outputs: [] },
+    { type 'function', name: 'setFeeTo', inputs: [{ name: 'feeTo_', type: 'address' }], outputs: [] },
 ] as const;
 
 const WETH_ABI = parseAbi([
@@ -26,16 +26,12 @@ const WETH_ABI = parseAbi([
 
 
 const getRpcUrl = () => {
-    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
+    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'http://localhost:8545';
 }
 
 const getTargetChain = () => {
-    const rpcUrl = getRpcUrl();
     if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
         return sepolia;
-    }
-    if (rpcUrl && rpcUrl !== 'http://localhost:8545') {
-        return sepolia; 
     }
     return defineChain({ ...localhost, id: 31337 });
 }

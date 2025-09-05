@@ -25,8 +25,7 @@ To deploy, simply connect your GitHub repository to a Firebase App Hosting backe
 The application uses a `.env` file for managing all environment-specific configuration. For local development and testnet deployment, you should create a `.env.local` file by copying the `.env` template. This ensures a clean separation between code and configuration and makes switching between different blockchain networks trivial.
 
 #### Key Environment Variables:
-- `NEXT_PUBLIC_CHAIN_RPC_URL`: The RPC URL for the target blockchain network (e.g., from Infura or Alchemy).
-- `LOCAL_PRIVATE_KEY`: The private key for the contract deployer wallet. **This account has ownership privileges over the core contracts.** This key is required for certain admin-level tools and should NEVER be committed to version control.
+- `NEXT_PUBLIC_SEPOLIA_RPC_URL`: The RPC URL for the Sepolia blockchain network (e.g., from Infura or Alchemy). If this is not set, the app will default to a local Hardhat/Anvil node.
 - `NEXT_PUBLIC_*_ADDRESS`: The deployed addresses for all core contracts and ERC20 tokens on your target network.
 
 All required variables have placeholders in the root `.env` file.
@@ -38,7 +37,7 @@ All required variables have placeholders in the root `.env` file.
 The application is architected for a seamless transition from local development to testnet and finally to a full mainnet launch.
 
 ### Stage 1: Local Development
-- **Network**: **Hardhat / Anvil** - The application defaults to using a local Hardhat network (`http://localhost:8545`) if the `NEXT_PUBLIC_CHAIN_RPC_URL` environment variable is not set. All contracts should be deployed via a local script (`npx hardhat run scripts/deploy.js --network localhost`), and the resulting addresses should be updated in your `.env.local` file.
+- **Network**: **Hardhat / Anvil** - The application defaults to using a local Hardhat network (`http://localhost:8545`) if the `NEXT_PUBLIC_SEPOLIA_RPC_URL` environment variable is not set. All contracts should be deployed via a local script (`npx hardhat run scripts/deploy.js --network localhost`), and the resulting addresses should be updated in your `.env.local` file.
 
 ### Stage 2: Testnet Deployment (Live on Sepolia)
 - **Recommended Network**: **Sepolia** (or another public Ethereum testnet).
@@ -46,9 +45,8 @@ The application is architected for a seamless transition from local development 
 - **Process**:
     1. Deploy the full suite of smart contracts to your chosen testnet.
     2. Create a `.env.local` file in the project root by copying the `.env` template.
-    3. Populate the `.env.local` file with all the contract addresses from your testnet deployment and a `NEXT_PUBLIC_CHAIN_RPC_URL` from a node provider (e.g., Infura or Alchemy).
-    4. Populate the `LOCAL_PRIVATE_KEY` with the private key of the deployer account.
-    5. Restart the application. It will now be connected to the testnet, ready for full end-to-end testing in a public environment.
+    3. Populate the `.env.local` file with all the contract addresses from your testnet deployment and a `NEXT_PUBLIC_SEPOLIA_RPC_URL` from a node provider (e.g., Infura or Alchemy).
+    4. Restart the application. It will now be connected to the testnet, ready for full end-to-end testing in a public environment.
 
 ### Stage 3: Mainnet Launch
 - **Network**: **Ethereum Mainnet** (or other target EVM-compatible chain).

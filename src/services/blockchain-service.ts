@@ -303,6 +303,7 @@ export async function checkAllContracts() {
         { name: "DEX Router", address: DEX_CONTRACT_ADDRESS },
         { name: "Vault", address: VAULT_CONTRACT_ADDRESS },
         { name: "Perpetuals", address: PERPETUALS_CONTRACT_ADDRESS },
+        { name: "Governor", address: GOVERNOR_CONTRACT_ADDRESS },
     ];
 
     const checkAddress = async (address: Address) => {

@@ -177,7 +177,10 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
 
     for (const symbol of tokenSymbols) {
       const contract = ERC20_CONTRACTS[symbol];
-      if (!contract.address || !isValidAddress(contract.address)) continue;
+      if (!contract.address || !isValidAddress(contract.address)) {
+        console.warn(`[BlockchainService] Skipping ${symbol} due to invalid or missing address.`);
+        continue;
+      }
       try {
         const balance = await publicClient.readContract({
           address: contract.address,
@@ -194,7 +197,7 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
         });
 
       } catch (tokenError) {
-        console.warn(`[BlockchainService] Failed to fetch data for ${symbol}:`, tokenError);
+        console.warn(`[BlockchainService] Failed to fetch data for ${symbol} at ${contract.address}. Error:`, tokenError);
       }
     }
 
@@ -203,7 +206,7 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
   }
 
   if (assets.length === 0) {
-    console.warn("Could not fetch any balances. The local blockchain may not be running or accessible.");
+    console.warn("[BlockchainService] Could not fetch any balances. The local blockchain may not be running or accessible.");
   }
  
   return assets;

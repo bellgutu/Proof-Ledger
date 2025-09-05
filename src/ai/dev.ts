@@ -13,4 +13,3 @@ import '@/ai/flows/watchlist-flow.ts';
 import '@/ai/flows/bridge-narrator-flow.ts';
 import '@/ai/flows/lp-advisor-flow.ts';
 import '@/ai/flows/news-generator-flow.ts';
-import '@/app/actions/defi-actions.ts';

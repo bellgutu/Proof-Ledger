@@ -25,12 +25,22 @@ const WETH_ABI = parseAbi([
 ]);
 
 
-const anvilChain = defineChain({ ...localhost, id: 31337 });
+const getRpcUrl = () => {
+    return process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
+}
+
+const getTargetChain = () => {
+    const rpcUrl = getRpcUrl();
+    if (rpcUrl && rpcUrl !== 'http://localhost:8545') {
+        return sepolia; 
+    }
+    return defineChain({ ...localhost, id: 31337 });
+}
 
 let walletClient: WalletClient | null = null;
 const publicClient = createPublicClient({
-    chain: anvilChain,
-    transport: http(),
+    chain: getTargetChain(),
+    transport: http(getRpcUrl()),
 });
 
 export async function connect(): Promise<Address> {
@@ -39,7 +49,7 @@ export async function connect(): Promise<Address> {
     }
 
     walletClient = createWalletClient({
-        chain: anvilChain,
+        chain: getTargetChain(),
         transport: custom(window.ethereum),
     });
 

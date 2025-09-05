@@ -31,10 +31,11 @@ const getRpcUrl = () => {
     return process.env.NEXT_PUBLIC_CHAIN_RPC_URL || 'http://localhost:8545';
 }
 
-const getTargetChain = () => {
+export const getTargetChain = () => {
     const rpcUrl = getRpcUrl();
-    if (rpcUrl.includes('sepolia')) {
-        return sepolia;
+    if (rpcUrl && rpcUrl !== 'http://localhost:8545') {
+        // A simple check; could be more robust
+        return sepolia; 
     }
     // Default to local anvil chain
     return defineChain({

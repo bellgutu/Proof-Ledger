@@ -18,6 +18,7 @@ import {
     getWalletAssets,
     getActivePosition as getActivePositionFromService,
     publicClient,
+    getTargetChain,
     anvilChain
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
@@ -418,7 +419,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const client = createWalletClient({
             account: address,
-            chain: anvilChain,
+            chain: getTargetChain(),
             transport: custom(window.ethereum),
         });
 

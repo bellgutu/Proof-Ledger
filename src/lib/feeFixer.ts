@@ -17,7 +17,7 @@ const FACTORY_ABI = [
 
 const POOL_ABI = [
     { type: 'function', name: 'feeTo', view: true, inputs: [], outputs: [{ name: '', type: 'address' }] },
-    { type 'function', name: 'setFeeTo', inputs: [{ name: 'feeTo_', type: 'address' }], outputs: [] },
+    { type: 'function', name: 'setFeeTo', inputs: [{ name: 'feeTo_', type: 'address' }], outputs: [] },
 ] as const;
 
 const WETH_ABI = parseAbi([
@@ -37,10 +37,18 @@ const getTargetChain = () => {
 }
 
 let walletClient: WalletClient | null = null;
-const publicClient = createPublicClient({
-    chain: getTargetChain(),
-    transport: http(getRpcUrl()),
-});
+let publicClient: PublicClient | null = null;
+
+const getClients = () => {
+    if (!publicClient) {
+        publicClient = createPublicClient({
+            chain: getTargetChain(),
+            transport: http(getRpcUrl()),
+        });
+    }
+    return { publicClient, walletClient };
+}
+
 
 export async function connect(): Promise<Address> {
     if (!window.ethereum) {
@@ -65,6 +73,7 @@ export function isWalletConnected(): boolean {
 }
 
 export async function getFactoryFeeTo(): Promise<Address | 'Error'> {
+    const { publicClient } = getClients();
     if (!FACTORY_ADDRESS) {
         console.error("Factory address is not set in environment variables.");
         return 'Error';
@@ -83,6 +92,7 @@ export async function getFactoryFeeTo(): Promise<Address | 'Error'> {
 }
 
 export async function setFactoryFeeTo(feeRecipient: Address = TREASURY_ADDRESS): Promise<{hash: Address}> {
+    const { publicClient, walletClient } = getClients();
     if (!walletClient) {
         throw new Error("Wallet not connected.");
     }
@@ -106,6 +116,7 @@ export async function setFactoryFeeTo(feeRecipient: Address = TREASURY_ADDRESS):
 }
 
 export async function getPoolFeeRecipient(poolAddress: Address): Promise<Address | 'Error'> {
+    const { publicClient } = getClients();
     try {
         const feeTo = await publicClient.readContract({
             address: poolAddress,
@@ -120,6 +131,7 @@ export async function getPoolFeeRecipient(poolAddress: Address): Promise<Address
 }
 
 export async function setPoolFeeRecipient(poolAddress: Address, feeRecipient: Address = TREASURY_ADDRESS): Promise<{hash: Address}> {
+    const { publicClient, walletClient } = getClients();
     if (!walletClient) {
         throw new Error("Wallet not connected.");
     }
@@ -144,6 +156,7 @@ export async function setPoolFeeRecipient(poolAddress: Address, feeRecipient: Ad
 
 
 export async function resetWethCircuitBreaker(): Promise<{hash: Address}> {
+    const { publicClient, walletClient } = getClients();
     if (!walletClient) {
         throw new Error("Wallet not connected.");
     }

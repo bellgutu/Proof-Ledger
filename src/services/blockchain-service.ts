@@ -5,7 +5,7 @@
  * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
-import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom } from 'viem';
+import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom, type PublicClient, type WalletClient } from 'viem';
 import { localhost, sepolia } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
@@ -27,21 +27,54 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
 };
 
 
+// --- DYNAMIC CLIENT & CHAIN CONFIGURATION ---
+
 const getRpcUrl = () => {
     return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'http://localhost:8545';
 }
 
-export const getTargetChain = () => {
+const getTargetChain = () => {
     if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
         return sepolia;
     }
     return defineChain({
         ...localhost,
         id: 31337,
+        name: 'Anvil',
     });
 }
 
-export const anvilChain = getTargetChain();
+export const anvilChain = getTargetChain(); // Used for read-only checks before wallet connection
+
+/**
+ * Creates and returns viem clients (public and wallet) based on the current environment.
+ * This is the central function for all blockchain interactions.
+ */
+export const getViemClients = (): { publicClient: PublicClient, walletClient?: WalletClient } => {
+    const chain = getTargetChain();
+    const rpcUrl = getRpcUrl();
+    const transport = http(rpcUrl);
+
+    const publicClient = createPublicClient({
+        chain,
+        transport,
+    });
+
+    if (typeof window !== 'undefined' && window.ethereum) {
+        const walletClient = createWalletClient({
+            chain,
+            transport: custom(window.ethereum),
+        });
+        return { publicClient, walletClient };
+    }
+
+    return { publicClient };
+};
+
+export const publicClient = createPublicClient({ chain: anvilChain, transport: http(getRpcUrl()) });
+
+
+// --- TYPE DEFINITIONS & ABIs ---
 
 export interface ChainAsset {
   symbol: string;
@@ -131,13 +164,10 @@ export const PERPETUALS_ABI = parseAbi([
   "function vault() view returns (address)"
 ]);
 
-export const publicClient = createPublicClient({
-  chain: anvilChain,
-  transport: http(getRpcUrl()),
-  multicall: false, // Explicitly disable multicall
-})
+// --- READ-ONLY FUNCTIONS ---
 
 export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsset[]> {
+  const { publicClient } = getViemClients();
   const assets: ChainAsset[] = [];
   const tokenSymbols = Object.keys(ERC20_CONTRACTS);
 
@@ -145,7 +175,6 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
     const ethBalance = await publicClient.getBalance({ address });
     assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatTokenAmount(ethBalance, 18)), decimals: 18 });
 
-    // Sequentially fetch token data to avoid multicall/batching issues
     for (const symbol of tokenSymbols) {
       const contract = ERC20_CONTRACTS[symbol];
       if (!contract.address || !isValidAddress(contract.address)) continue;
@@ -186,6 +215,7 @@ export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsse
 }
 
 export async function getGasPrice(): Promise<bigint | null> {
+    const { publicClient } = getViemClients();
     try {
       return await publicClient.getGasPrice();
     } catch(e) {
@@ -218,6 +248,7 @@ export interface VaultCollateral {
 }
 
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
+  const { publicClient } = getViemClients();
   try {
     const total = await publicClient.readContract({
         address: VAULT_CONTRACT_ADDRESS,
@@ -245,6 +276,7 @@ export async function getVaultCollateral(userAddress: `0x${string}`): Promise<Va
 }
 
 export async function getActivePosition(userAddress: `0x${string}`): Promise<Position | null> {
+  const { publicClient } = getViemClients();
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     console.warn("[BlockchainService] Perpetuals contract address not set. Returning null.");
     return null;
@@ -279,6 +311,7 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
 }
 
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
+  const { publicClient } = getViemClients();
   const usdtContract = ERC20_CONTRACTS['USDT'];
   if (!usdtContract.address) return 0;
   try {
@@ -296,6 +329,7 @@ export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promi
 }
 
 export async function checkAllContracts() {
+    const { publicClient } = getViemClients();
     const coreContracts = [
         { name: "Factory", address: FACTORY_CONTRACT_ADDRESS },
         { name: "DEX Router", address: DEX_CONTRACT_ADDRESS },

@@ -186,8 +186,9 @@ const initialMarketData: MarketData = {
 };
 
 const initialAvailablePools: Pool[] = [
-    { id: '0x56639dB16Ac50A89228026e42a316B30179A5376', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
-    { id: '0x0665FbB86a3acECa91Df68388EC4BBE11556DDce', name: 'WETH/USDT', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '0x908C16b8ff2526a583284Fa41f866f4cEfB31928', name: 'USDC/USDT', type: 'Stable', token1: 'USDC', token2: 'USDT', tvl: 250_000_000, volume24h: 50_000_000, apr: 2.1 },
+    { id: '0x910430e728dAD1105954b8b51Ec03F5BbdE1a57F', name: 'WETH/USDT', type: 'V2', token1: 'WETH', token2: 'USDT', tvl: 150_000_000, volume24h: 30_000_000, apr: 12.5, feeTier: 0.3 },
+    { id: '0xCf3bE0b5dc86cb58A565Fd9720B5A09CaEA078fD', name: 'WETH/LINK', type: 'V2', token1: 'WETH', token2: 'LINK', tvl: 75_000_000, volume24h: 15_000_000, apr: 18.3, feeTier: 0.3 },
 ];
 
 const initialProposals: Proposal[] = [

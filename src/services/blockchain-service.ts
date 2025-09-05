@@ -4,7 +4,7 @@
  * This service is the bridge between the ProfitForge frontend and your custom blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
-import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom, type PublicClient, type WalletClient } from 'viem';
+import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom, type PublicClient, type WalletClient, getContract } from 'viem';
 import { localhost, sepolia } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
@@ -87,6 +87,7 @@ const genericErc20Abi = parseAbi([
   "function balanceOf(address account) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) external returns (bool)",
+  "function transfer(address to, uint256 amount) external returns (bool)"
 ]);
 
 export const DEX_ABI = parseAbi([

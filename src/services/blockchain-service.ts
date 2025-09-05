@@ -1,8 +1,7 @@
 
-
 /**
  * @fileoverview
- * This service is the bridge between the ProfitForge frontend and your custom local blockchain.
+ * This service is the bridge between the ProfitForge frontend and your custom blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
 import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom, type PublicClient, type WalletClient } from 'viem';
@@ -16,7 +15,6 @@ export const DEX_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_ROUTER_ADDRESS a
 export const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS as `0x${string}`;
 export const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS as `0x${string}`;
-
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
     'USDT': { address: process.env.NEXT_PUBLIC_USDT_ADDRESS as `0x${string}`, name: 'Tether' },
     'USDC': { address: process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`, name: 'USD Coin' },
@@ -26,56 +24,103 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
     'SOL': { address: process.env.NEXT_PUBLIC_SOL_ADDRESS as `0x${string}`, name: 'Solana' },
 };
 
-
 // --- DYNAMIC CLIENT & CHAIN CONFIGURATION ---
-
 const getRpcUrl = () => {
-    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'http://localhost:8545';
+  // Always use Sepolia RPC for production
+  return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID';
 }
 
 const getTargetChain = () => {
-    if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
-        return sepolia;
-    }
-    return defineChain({
+  // Always use Sepolia for production
+  if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
+    return sepolia;
+  }
+  return defineChain({
         ...localhost,
         id: 31337,
         name: 'Anvil',
     });
 }
 
-export const anvilChain = getTargetChain(); // Used for read-only checks before wallet connection
+// --- Network Switching Function ---
+export const switchToSepolia = async () => {
+  if (typeof window === 'undefined' || !window.ethereum) {
+    throw new Error("MetaMask is not installed");
+  }
+
+  try {
+    // Check if already on Sepolia
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId === '0xaa36a7') { // Sepolia chain ID in hex
+      return true;
+    }
+
+    // Try to switch to Sepolia
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0xaa36a7' }],
+    });
+    return true;
+  } catch (error: any) {
+    // This error code indicates that the chain has not been added to MetaMask
+    if (error.code === 4902) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [
+            {
+              chainId: '0xaa36a7',
+              chainName: 'Sepolia',
+              rpcUrls: [getRpcUrl()],
+              blockExplorerUrls: ['https://sepolia.etherscan.io'],
+              nativeCurrency: {
+                name: 'Sepolia ETH',
+                symbol: 'ETH',
+                decimals: 18,
+              },
+            },
+          ],
+        });
+        return true;
+      } catch (addError) {
+        console.error('Failed to add Sepolia network to MetaMask:', addError);
+        throw new Error('Failed to add Sepolia network to MetaMask');
+      }
+    }
+    console.error('Failed to switch to Sepolia network:', error);
+    throw error;
+  }
+};
+
 
 /**
  * Creates and returns viem clients (public and wallet) based on the current environment.
  * This is the central function for all blockchain interactions.
  */
 export const getViemClients = (): { publicClient: PublicClient, walletClient?: WalletClient } => {
-    const chain = getTargetChain();
-    const rpcUrl = getRpcUrl();
-    const transport = http(rpcUrl);
-
-    const publicClient = createPublicClient({
-        chain,
-        transport,
+  const chain = getTargetChain();
+  const rpcUrl = getRpcUrl();
+  const transport = http(rpcUrl);
+  const publicClient = createPublicClient({
+    chain,
+    transport,
+  });
+  if (typeof window !== 'undefined' && window.ethereum) {
+    const walletClient = createWalletClient({
+      chain,
+      transport: custom(window.ethereum),
     });
-
-    if (typeof window !== 'undefined' && window.ethereum) {
-        const walletClient = createWalletClient({
-            chain,
-            transport: custom(window.ethereum),
-        });
-        return { publicClient, walletClient };
-    }
-
-    return { publicClient };
+    return { publicClient, walletClient };
+  }
+  return { publicClient };
 };
 
-export const publicClient = createPublicClient({ chain: anvilChain, transport: http(getRpcUrl()) });
-
+export const publicClient = createPublicClient({ 
+  chain: getTargetChain(), 
+  transport: http(getRpcUrl()) 
+});
 
 // --- TYPE DEFINITIONS & ABIs ---
-
 export interface ChainAsset {
   symbol: string;
   name: string;
@@ -97,7 +142,6 @@ export const DEX_ABI = parseAbi([
   "function removeLiquidity(address tokenA, address tokenB, bool stable, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint amountA, uint amountB)",
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint256 deadline) payable returns (uint256[])"
 ]);
-
 
 export const VAULT_ABI = parseAbi([
   "function deposit(uint256 amount)",

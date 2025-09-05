@@ -17,7 +17,8 @@ import {
     getVaultCollateral,
     getWalletAssets,
     getActivePosition as getActivePositionFromService,
-    getViemClients
+    getViemClients,
+    switchToSepolia
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -415,6 +416,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
     setIsConnecting(true);
     try {
+        await switchToSepolia();
+        
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         const address = accounts[0];
         

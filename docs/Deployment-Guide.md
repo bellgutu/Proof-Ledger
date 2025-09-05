@@ -25,14 +25,19 @@ To deploy, simply connect your GitHub repository to a Firebase App Hosting backe
 The application uses a `.env.local` file to manage all environment-specific configuration. This ensures a clean separation between code and configuration and makes switching between different blockchain networks trivial.
 
 #### Key Environment Variables:
+- `NEXT_PUBLIC_CHAIN_RPC_URL`: The RPC URL for the target blockchain network (e.g., from Infura or Alchemy).
+- `NEXT_PUBLIC_DEX_FACTORY_ADDRESS`: The address of the main DEX Factory contract.
 - `NEXT_PUBLIC_DEX_ROUTER_ADDRESS`: The address of the main DEX Router contract.
 - `NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS`: The address of the AI Strategy Vault contract.
 - `NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS`: The address of the perpetuals trading contract.
 - `NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS`: The address of the governance contract.
-- `NEXT_PUBLIC_TREASURY_ADDRESS`: The address for collecting protocol fees.
-- `NEXT_PUBLIC_ERC20_CONTRACT_ADDRESSES`: A JSON string containing the addresses for all deployed ERC-20 tokens.
+- `NEXT_PUBLIC_USDT_ADDRESS`: The address for the USDT token contract.
+- `NEXT_PUBLIC_USDC_ADDRESS`: The address for the USDC token contract.
+- `NEXT_PUBLIC_WETH_ADDRESS`: The address for the WETH token contract.
+- `NEXT_PUBLIC_LINK_ADDRESS`: The address for the LINK token contract.
+- `NEXT_PUBLIC_BNB_ADDRESS`: The address for the BNB token contract.
+- `NEXT_PUBLIC_SOL_ADDRESS`: The address for the SOL token contract.
 - `LOCAL_PRIVATE_KEY`: The private key for the local development/deployer wallet. **This should NEVER be committed to version control.**
-- `NEXT_PUBLIC_CHAIN_RPC_URL`: The RPC URL for the target blockchain network (e.g., from Infura or Alchemy).
 
 ---
 
@@ -49,9 +54,8 @@ The application is architected for a seamless transition from local development 
 - **Process**:
     1. Deploy the full suite of smart contracts to your chosen testnet.
     2. Create a `.env.local` file in the project root.
-    3. Add the `NEXT_PUBLIC_CHAIN_RPC_URL` variable to your `.env.local` file with the RPC URL from a node provider (e.g., Infura or Alchemy).
-    4. Update the contract addresses in `src/services/blockchain-service.ts` to match your new testnet deployment.
-    5. Restart the application. It will now be connected to the testnet, ready for full end-to-end testing in a public environment.
+    3. Populate the `.env.local` file with all the contract addresses from your testnet deployment and a `NEXT_PUBLIC_CHAIN_RPC_URL` from a node provider (e.g., Infura or Alchemy).
+    4. Restart the application. It will now be connected to the testnet, ready for full end-to-end testing in a public environment.
 
 ### Stage 3: Mainnet Launch
 - **Network**: **Ethereum Mainnet** (or other target EVM-compatible chain).

@@ -17,8 +17,7 @@ import {
     getVaultCollateral,
     getWalletAssets,
     getActivePosition as getActivePositionFromService,
-    getViemClients,
-    switchToSepolia
+    getViemClients
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -408,47 +407,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setDecimals(newDecimals);
     setVaultCollateral(collateral);
   }, []);
-
-  const connectWallet = useCallback(async () => {
-    if (typeof window.ethereum === 'undefined') {
-        toast({ variant: "destructive", title: "Wallet not found", description: "Please install a browser wallet like MetaMask." });
-        return;
-    }
-    setIsConnecting(true);
-    try {
-        await switchToSepolia();
-        
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const address = accounts[0];
-        
-        if (!address) {
-            throw new Error("No address returned from wallet.");
-        }
-        
-        const { publicClient, walletClient } = getViemClients();
-
-        if (!walletClient) {
-            throw new Error("Could not create wallet client.");
-        }
-
-        setPublicClient(publicClient);
-        setWalletClient(walletClient);
-        setWalletAddress(address);
-        await refreshAllBalances(address as Address);
-        loadTransactions(address);
-        loadPastPositions(address);
-        loadUserCreatedPools(address);
-        setIsConnected(true);
-
-    } catch (e: any) {
-        console.error("Failed to connect wallet:", e);
-        toast({ variant: "destructive", title: "Connection Failed", description: e.message || "User rejected the request." });
-        setIsConnected(false);
-    } finally {
-        setIsConnecting(false);
-    }
-  }, [loadTransactions, toast, refreshAllBalances, loadPastPositions, loadUserCreatedPools]);
-
+  
   const disconnectWallet = useCallback(async () => {
     setIsConnected(false);
     setWalletAddress('');
@@ -461,6 +420,85 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setPastPositions([]);
     setAvailablePools(initialAvailablePools);
   }, []);
+
+  const connectWallet = useCallback(async () => {
+    if (typeof window.ethereum === 'undefined') {
+        toast({ variant: "destructive", title: "Wallet not found", description: "Please install a browser wallet like MetaMask." });
+        return;
+    }
+    
+    setIsConnecting(true);
+    try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        
+        if (chainId !== '0xaa36a7') { // Sepolia chain ID
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0xaa36a7' }],
+                });
+            } catch (switchError: any) {
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0xaa36a7',
+                            chainName: 'Sepolia',
+                            nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                            rpcUrls: ['https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'], // Public RPC
+                            blockExplorerUrls: ['https://sepolia.etherscan.io'],
+                        }],
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
+        }
+        
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const address = accounts[0];
+        
+        if (!address) {
+            throw new Error("No address returned from wallet.");
+        }
+        
+        const { publicClient, walletClient } = getViemClients();
+        if (!walletClient) {
+            throw new Error("Could not create wallet client.");
+        }
+        
+        setPublicClient(publicClient);
+        setWalletClient(walletClient);
+        setWalletAddress(address);
+        await refreshAllBalances(address as Address);
+        loadTransactions(address);
+        loadPastPositions(address);
+        loadUserCreatedPools(address);
+        setIsConnected(true);
+        
+        // Listen for changes
+        window.ethereum.on('chainChanged', (_chainId) => window.location.reload());
+        window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts.length === 0) {
+                disconnectWallet();
+            } else {
+                disconnectWallet().then(() => connectWallet());
+            }
+        });
+        
+    } catch (e: any) {
+        console.error("Failed to connect wallet:", e);
+        toast({ 
+            variant: "destructive", 
+            title: "Connection Failed", 
+            description: e.message || "User rejected the request." 
+        });
+        setIsConnected(false);
+    } finally {
+        setIsConnecting(false);
+    }
+  }, [disconnectWallet, loadTransactions, toast, refreshAllBalances, loadPastPositions, loadUserCreatedPools]);
+
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => {
     const newTx: Transaction = {

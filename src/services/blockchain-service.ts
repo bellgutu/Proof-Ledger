@@ -12,7 +12,7 @@ import { isValidAddress } from '@/lib/utils';
 // --- Environment-loaded Contract Addresses ---
 export const FACTORY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as `0x${string}`;
 export const DEX_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_ROUTER_ADDRESS as `0x${string}`;
-export const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_CONTRACT_ADDRESS as `0x${string}`;
+export const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}`;
 export const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS as `0x${string}`;
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
@@ -26,71 +26,28 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
 
 // --- DYNAMIC CLIENT & CHAIN CONFIGURATION ---
 const getRpcUrl = () => {
-  // Always use Sepolia RPC for production
-  return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID';
+  return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161';
 }
 
 const getTargetChain = () => {
-  // Always use Sepolia for production
-  if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
-    return sepolia;
-  }
-  return defineChain({
-        ...localhost,
-        id: 31337,
-        name: 'Anvil',
-    });
-}
-
-// --- Network Switching Function ---
-export const switchToSepolia = async () => {
-  if (typeof window === 'undefined' || !window.ethereum) {
-    throw new Error("MetaMask is not installed");
-  }
-
-  try {
-    // Check if already on Sepolia
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    if (chainId === '0xaa36a7') { // Sepolia chain ID in hex
-      return true;
+    // Always use Sepolia if the RPC URL is provided
+    if (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL) {
+        return sepolia;
     }
-
-    // Try to switch to Sepolia
-    await window.ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: '0xaa36a7' }],
-    });
-    return true;
-  } catch (error: any) {
-    // This error code indicates that the chain has not been added to MetaMask
-    if (error.code === 4902) {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [
-            {
-              chainId: '0xaa36a7',
-              chainName: 'Sepolia',
-              rpcUrls: [getRpcUrl()],
-              blockExplorerUrls: ['https://sepolia.etherscan.io'],
-              nativeCurrency: {
-                name: 'Sepolia ETH',
-                symbol: 'ETH',
-                decimals: 18,
-              },
-            },
-          ],
+    
+    // Fallback to localhost for development only
+    if (process.env.NODE_ENV === 'development') {
+        return defineChain({
+            ...localhost,
+            id: 31337,
+            name: 'Anvil',
         });
-        return true;
-      } catch (addError) {
-        console.error('Failed to add Sepolia network to MetaMask:', addError);
-        throw new Error('Failed to add Sepolia network to MetaMask');
-      }
     }
-    console.error('Failed to switch to Sepolia network:', error);
-    throw error;
-  }
-};
+    
+    // Default to Sepolia with a public RPC if no URL is provided in production
+    console.warn('No RPC URL provided, using public Sepolia RPC');
+    return sepolia;
+}
 
 
 /**
@@ -114,11 +71,6 @@ export const getViemClients = (): { publicClient: PublicClient, walletClient?: W
   }
   return { publicClient };
 };
-
-export const publicClient = createPublicClient({ 
-  chain: getTargetChain(), 
-  transport: http(getRpcUrl()) 
-});
 
 // --- TYPE DEFINITIONS & ABIs ---
 export interface ChainAsset {
@@ -205,7 +157,8 @@ export const PERPETUALS_ABI = parseAbi([
   "function openPosition(uint8 side, uint256 size, uint256 collateral)",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
   "function priceOracle() view returns (address)",
-  "function vault() view returns (address)"
+  "function vault() view returns (address)",
+  "function withdrawCollateral(uint256 amount)"
 ]);
 
 // --- READ-ONLY FUNCTIONS ---

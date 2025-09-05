@@ -37,7 +37,7 @@ The application uses a `.env.local` file to manage all environment-specific conf
 - `NEXT_PUBLIC_LINK_ADDRESS`: The address for the LINK token contract.
 - `NEXT_PUBLIC_BNB_ADDRESS`: The address for the BNB token contract.
 - `NEXT_PUBLIC_SOL_ADDRESS`: The address for the SOL token contract.
-- `LOCAL_PRIVATE_KEY`: The private key for the local development/deployer wallet. **This should NEVER be committed to version control.**
+- `LOCAL_PRIVATE_KEY`: The private key for the contract deployer wallet. **This account has ownership privileges over the core contracts.** This key is required for certain admin-level tools and should NEVER be committed to version control.
 
 ---
 
@@ -48,7 +48,7 @@ The application is architected for a seamless transition from local development 
 ### Stage 1: Local Development
 - **Network**: **Hardhat / Anvil** - The application defaults to using a local Hardhat network (`http://localhost:8545`) if the `NEXT_PUBLIC_CHAIN_RPC_URL` environment variable is not set. All contracts should be deployed via a local script (`npx hardhat run scripts/deploy.js --network localhost`), and the resulting addresses should be updated in the `src/services/blockchain-service.ts` file or loaded via environment variables.
 
-### Stage 2: Testnet Deployment (Ready)
+### Stage 2: Testnet Deployment (Live on Sepolia)
 - **Recommended Network**: **Sepolia** (or another public Ethereum testnet).
 - **Configuration Status**: The application is now configured to dynamically switch to a testnet.
 - **Process**:

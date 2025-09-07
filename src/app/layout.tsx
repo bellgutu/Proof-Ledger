@@ -5,6 +5,7 @@ import { WalletProvider } from '@/contexts/wallet-context';
 import AppShell from '@/components/app-shell';
 import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
 import NetworkCheck from '@/components/shared/NetworkCheck';
+import { Web3ModalProvider } from '@/contexts/web3modal-provider';
 
 
 export const metadata: Metadata = {
@@ -28,13 +29,15 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <WalletProvider>
-          <NetworkCheck />
-          <AppShell>
-            {children}
-          </AppShell>
-          <TransactionStatusDialogController />
-        </WalletProvider>
+        <Web3ModalProvider>
+          <WalletProvider>
+            <NetworkCheck />
+            <AppShell>
+              {children}
+            </AppShell>
+            <TransactionStatusDialogController />
+          </WalletProvider>
+        </Web3ModalProvider>
         <Toaster />
       </body>
     </html>

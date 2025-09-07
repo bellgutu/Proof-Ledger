@@ -6,34 +6,38 @@ import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Wallet, RefreshCcw, CircleDollarSign } from 'lucide-react';
-import Image from 'next/image';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAccount, useDisconnect, useBalance } from 'wagmi';
 
 export function WalletHeader() {
-  const { walletState, walletActions } = useWallet();
-  const { isConnected, isConnecting, walletAddress, walletBalance } = walletState;
-  const { connectWallet, disconnectWallet } = walletActions;
+  const { open } = useWeb3Modal();
+  const { address, isConnected, isConnecting } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { data: balance } = useBalance({ address });
 
   return (
     <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01] overflow-hidden">
       <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-        {isConnected ? (
+        {isConnected && address ? (
           <>
             <div className="flex items-center space-x-4">
               <Wallet size={32} className="text-primary flex-shrink-0" />
               <div className="flex flex-col min-w-0">
                 <p className="text-muted-foreground text-xs">Connected Wallet</p>
-                <p className="font-mono text-sm break-all truncate">{walletAddress}</p>
+                <p className="font-mono text-sm break-all truncate">{address}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 text-right">
                     <CircleDollarSign size={32} className="text-primary"/>
                     <div>
-                        <p className="text-muted-foreground text-xs">Total Balance</p>
-                        <p className="text-2xl font-bold text-foreground">${walletBalance}</p>
+                        <p className="text-muted-foreground text-xs">ETH Balance</p>
+                        <p className="text-2xl font-bold text-foreground">
+                            {balance ? `${parseFloat(balance.formatted).toFixed(4)} ETH` : 'Loading...'}
+                        </p>
                     </div>
                 </div>
-                <Button onClick={disconnectWallet} variant="secondary" size="sm">
+                <Button onClick={() => disconnect()} variant="secondary" size="sm">
                     Disconnect
                 </Button>
             </div>
@@ -47,7 +51,7 @@ export function WalletHeader() {
                   <p className="text-sm text-muted-foreground">To view and manage your assets.</p>
                </div>
             </div>
-            <Button onClick={connectWallet} disabled={isConnecting} variant="default" size="lg" className="animate-pulse-strong">
+            <Button onClick={() => open()} disabled={isConnecting} variant="default" size="lg" className="animate-pulse-strong">
                 {isConnecting ? (
                   <span className="flex items-center">
                     <RefreshCcw size={16} className="mr-2 animate-spin" /> Connecting...

@@ -150,6 +150,7 @@ export const PERPETUALS_ABI = parseAbi([
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
   "function priceOracle() view returns (address)",
   "function vault() view returns (address)",
+  "function depositCollateral(uint256 amount)",
   "function withdrawCollateral(uint256 amount)"
 ]);
 
@@ -190,16 +191,27 @@ export interface VaultCollateral {
 
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   const publicClient = getViemPublicClient();
+  if (!PERPETUALS_CONTRACT_ADDRESS) {
+    console.warn("[BlockchainService] Perpetuals contract address not set.");
+    return { total: 0, locked: 0, available: 0 };
+  }
+  
   try {
+    const vaultAddress = await publicClient.readContract({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
+        functionName: 'vault',
+    });
+
     const total = await publicClient.readContract({
-        address: VAULT_CONTRACT_ADDRESS,
+        address: vaultAddress,
         abi: VAULT_ABI,
         functionName: 'collateral',
         args: [userAddress],
     });
     
     const locked = await publicClient.readContract({
-        address: VAULT_CONTRACT_ADDRESS,
+        address: vaultAddress,
         abi: VAULT_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],
@@ -305,3 +317,5 @@ export async function checkAllContracts() {
 
     return { contracts, tokens, allDeployed };
 }
+
+    

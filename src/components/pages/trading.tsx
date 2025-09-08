@@ -26,7 +26,7 @@ import { PositionHistory } from '../trading/position-history';
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals, activePosition } = walletState;
-  const { depositCollateral, withdrawCollateral, openPosition, closePosition, updateVaultCollateral, getActivePosition } = walletActions;
+  const { depositCollateral, withdrawCollateral, openPosition, closePosition, getActivePosition } = walletActions;
   const { toast } = useToast();
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
@@ -233,7 +233,6 @@ const TradingPageContent = () => {
         await closePosition(activePosition, finalPnl, currentPrice);
         
         await fetchPosition();
-        await updateVaultCollateral();
         setPnlDialogState({ isOpen: true, pnl: finalPnl });
         
     } catch(e: any) {
@@ -523,3 +522,5 @@ export default function TradingPage() {
   }
   return <TradingPageContent />;
 }
+
+    

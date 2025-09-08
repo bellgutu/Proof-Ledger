@@ -17,33 +17,6 @@ export function WalletHeader() {
   const { walletState } = useWallet();
   const { walletBalance } = walletState;
 
-  // Add state to control initial connection check
-  const [hasCheckedConnection, setHasCheckedConnection] = useState(false);
-  
-  // Only check for connection after component mounts
-  useEffect(() => {
-    setHasCheckedConnection(true);
-  }, []);
-
-  const clearWalletStorage = () => {
-    if (process.env.NODE_ENV === 'development') {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.reload();
-    }
-  };
-
-  // Don't render anything until we've checked connection status
-  if (!hasCheckedConnection) {
-    return (
-      <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01] overflow-hidden">
-        <CardContent className="p-4 flex items-center justify-center">
-          <Skeleton className="h-12 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01] overflow-hidden">
       <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -67,7 +40,11 @@ export function WalletHeader() {
                     </div>
                 </div>
                 {process.env.NODE_ENV === 'development' && (
-                  <Button onClick={clearWalletStorage} variant="outline" size="sm">
+                  <Button onClick={() => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                  }} variant="outline" size="sm">
                     Clear Storage
                   </Button>
                 )}

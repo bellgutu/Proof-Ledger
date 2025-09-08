@@ -24,5 +24,5 @@ export const config = defaultWagmiConfig({
   projectId,
   metadata,
   ssr: true,
-  autoConnect: false, // Disable auto-connect
+  autoConnect: true,
 });

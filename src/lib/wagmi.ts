@@ -26,5 +26,3 @@ export const config = defaultWagmiConfig({
   ssr: true,
   autoConnect: false, // Disable auto-connect
 });
-
-    

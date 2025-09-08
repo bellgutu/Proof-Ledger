@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -248,35 +247,40 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch all balances when wallet connects
   useEffect(() => {
-    if (isConnected && address) {
-        const allSymbols = ['ETH', ...Object.keys(ERC20_CONTRACTS)];
-        const newBalances: { [symbol:string]: number } = {};
-        const newDecimals: { [symbol:string]: number } = {};
+    const fetchAllBalances = async () => {
+        if (isUpdatingStateRef.current) return;
+        isUpdatingStateRef.current = true;
 
-        const fetchAllBalances = async () => {
-             if (nativeBalance) {
-                newBalances['ETH'] = parseFloat(nativeBalance.formatted);
-                newDecimals['ETH'] = nativeBalance.decimals;
-             }
+        const newBalances: { [symbol: string]: number } = {};
+        const newDecimals: { [symbol: string]: number } = {};
 
-            for (const symbol of Object.keys(ERC20_CONTRACTS)) {
-                 const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-                 if (contract.address && isValidAddress(contract.address)) {
-                    try {
-                        const [balanceOf, decimals] = await Promise.all([
-                            publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'balanceOf', args: [address] }),
-                            publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'decimals' })
-                        ]);
-                        newBalances[symbol] = parseFloat(formatUnits(balanceOf, decimals));
-                        newDecimals[symbol] = decimals;
-                    } catch (e) {
-                         console.error(`Failed to fetch balance/decimals for ${symbol}`, e);
-                    }
-                 }
+        if (nativeBalance) {
+            newBalances['ETH'] = parseFloat(nativeBalance.formatted);
+            newDecimals['ETH'] = nativeBalance.decimals;
+        }
+
+        for (const symbol of Object.keys(ERC20_CONTRACTS)) {
+            const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
+            if (contract.address && isValidAddress(contract.address)) {
+                try {
+                    const [balanceOf, decimals] = await Promise.all([
+                        publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'balanceOf', args: [address!] }),
+                        publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'decimals' })
+                    ]);
+                    newBalances[symbol] = parseFloat(formatUnits(balanceOf, decimals));
+                    newDecimals[symbol] = decimals;
+                } catch (e) {
+                    console.error(`Failed to fetch balance/decimals for ${symbol}`, e);
+                }
             }
-            setBalances(newBalances);
-            setDecimals(newDecimals);
-        };
+        }
+        
+        setBalances(newBalances);
+        setDecimals(newDecimals);
+        isUpdatingStateRef.current = false;
+    };
+
+    if (isConnected && address) {
         fetchAllBalances();
     } else {
         setBalances({});
@@ -971,3 +975,6 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+
+    

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Wallet, RefreshCcw, CircleDollarSign } from 'lucide-react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useAccount, useDisconnect } from 'wagmi';
+import { useEffect, useState } from 'react';
+import { Skeleton } from '../ui/skeleton';
 
 export function WalletHeader() {
   const { open } = useWeb3Modal();
@@ -14,6 +16,33 @@ export function WalletHeader() {
   const { disconnect } = useDisconnect();
   const { walletState } = useWallet();
   const { walletBalance } = walletState;
+
+  // Add state to control initial connection check
+  const [hasCheckedConnection, setHasCheckedConnection] = useState(false);
+  
+  // Only check for connection after component mounts
+  useEffect(() => {
+    setHasCheckedConnection(true);
+  }, []);
+
+  const clearWalletStorage = () => {
+    if (process.env.NODE_ENV === 'development') {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+    }
+  };
+
+  // Don't render anything until we've checked connection status
+  if (!hasCheckedConnection) {
+    return (
+      <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01] overflow-hidden">
+        <CardContent className="p-4 flex items-center justify-center">
+          <Skeleton className="h-12 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01] overflow-hidden">
@@ -37,6 +66,11 @@ export function WalletHeader() {
                         </p>
                     </div>
                 </div>
+                {process.env.NODE_ENV === 'development' && (
+                  <Button onClick={clearWalletStorage} variant="outline" size="sm">
+                    Clear Storage
+                  </Button>
+                )}
                 <Button onClick={() => disconnect()} variant="secondary" size="sm">
                     Disconnect
                 </Button>

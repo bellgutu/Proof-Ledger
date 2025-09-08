@@ -13,8 +13,16 @@ const queryClient = new QueryClient();
 createWeb3Modal({
   wagmiConfig: config,
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
-  enableAnalytics: true, // Optional - defaults to your Cloud configuration
-  enableOnramp: true // Optional - false as default
+  enableAnalytics: true,
+  enableOnramp: true,
+  featuredWalletIds: [], // Remove featured wallets that might auto-connect
+  themeMode: 'dark',
+  themeVariables: {
+    '--w3m-color-mix': '#00DCFF',
+    '--w3m-color-mix-strength': 20
+  },
+  enableAccountView: false,
+  defaultChain: config.chains[0], // Set default chain explicitly
 });
 
 export function Web3ModalProvider({ children }: { children: ReactNode }) {

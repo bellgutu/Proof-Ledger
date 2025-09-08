@@ -11,7 +11,7 @@ if (!projectId) {
 const metadata = {
   name: 'ProfitForge',
   description: 'AI-powered tools for DeFi and crypto trading.',
-  url: 'https://localhost:3000', // origin domain
+  url: 'https://profitforge.com', // origin domain
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
@@ -21,4 +21,5 @@ export const config = defaultWagmiConfig({
   projectId,
   metadata,
   ssr: true,
+  autoConnect: false, // Disable auto-connect
 });

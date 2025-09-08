@@ -610,6 +610,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
     const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
         if (!address || !walletClient || !publicClient) throw new Error("Wallet not connected");
+
+        if (tokenSymbol !== 'ETH') {
+            const balance = balances[tokenSymbol] || 0;
+            if (amount > balance) {
+                throw new Error("Insufficient balance for ERC20 token send.");
+            }
+        }
         
         const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
         
@@ -635,7 +642,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         };
     
         await executeTransaction('Send', dialogDetails, txFunction);
-      }, [address, walletClient, publicClient, decimals, executeTransaction, writeContractAsync]);
+      }, [address, walletClient, publicClient, decimals, balances, executeTransaction, writeContractAsync]);
     
 
   const checkPoolExists = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {

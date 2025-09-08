@@ -16,7 +16,8 @@ import {
     FACTORY_ABI, POOL_ABI, 
     checkAllContracts,
     getVaultCollateral,
-    getActivePosition as getActivePositionFromService
+    getActivePosition as getActivePositionFromService,
+    getViemPublicClient
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -194,7 +195,7 @@ const initialProposals: Proposal[] = [
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { address, isConnected, isConnecting } = useAccount();
   const { data: nativeBalance } = useBalance({ address });
-  const publicClient = usePublicClient();
+  const publicClient = getViemPublicClient();
   const { data: walletClient } = useWalletClient();
   const { writeContractAsync } = useWriteContract();
 

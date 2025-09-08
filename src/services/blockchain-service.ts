@@ -55,26 +55,19 @@ const getTargetChain = () => {
 
 
 /**
- * Creates and returns viem clients (public and wallet) based on the current environment.
- * This is the central function for all blockchain interactions.
+ * Creates and returns a viem public client.
+ * This is safe to use anywhere in the app for read operations.
  */
-export const getViemClients = (): { publicClient: PublicClient, walletClient?: WalletClient } => {
+export const getViemPublicClient = (): PublicClient => {
   const chain = getTargetChain();
   const rpcUrl = getRpcUrl();
   const transport = http(rpcUrl);
-  const publicClient = createPublicClient({
+  return createPublicClient({
     chain,
     transport,
   });
-  if (typeof window !== 'undefined' && window.ethereum) {
-    const walletClient = createWalletClient({
-      chain,
-      transport: custom(window.ethereum),
-    });
-    return { publicClient, walletClient };
-  }
-  return { publicClient };
 };
+
 
 // --- TYPE DEFINITIONS & ABIs ---
 export interface ChainAsset {
@@ -169,7 +162,7 @@ export const PERPETUALS_ABI = parseAbi([
 // --- READ-ONLY FUNCTIONS ---
 
 export async function getGasPrice(): Promise<bigint | null> {
-    const { publicClient } = getViemClients();
+    const publicClient = getViemPublicClient();
     try {
       return await publicClient.getGasPrice();
     } catch(e) {
@@ -202,7 +195,7 @@ export interface VaultCollateral {
 }
 
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
-  const { publicClient } = getViemClients();
+  const publicClient = getViemPublicClient();
   try {
     const total = await publicClient.readContract({
         address: VAULT_CONTRACT_ADDRESS,
@@ -230,7 +223,7 @@ export async function getVaultCollateral(userAddress: `0x${string}`): Promise<Va
 }
 
 export async function getActivePosition(userAddress: `0x${string}`): Promise<Position | null> {
-  const { publicClient } = getViemClients();
+  const publicClient = getViemPublicClient();
   if (!PERPETUALS_CONTRACT_ADDRESS) {
     console.warn("[BlockchainService] Perpetuals contract address not set. Returning null.");
     return null;
@@ -265,7 +258,7 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
 }
 
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
-  const { publicClient } = getViemClients();
+  const publicClient = getViemPublicClient();
   const usdtContract = ERC20_CONTRACTS['USDT'];
   if (!usdtContract.address) return 0;
   try {
@@ -283,7 +276,7 @@ export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promi
 }
 
 export async function checkAllContracts() {
-    const { publicClient } = getViemClients();
+    const publicClient = getViemPublicClient();
     const coreContracts = [
         { name: "Factory", address: FACTORY_CONTRACT_ADDRESS },
         { name: "DEX Router", address: DEX_CONTRACT_ADDRESS },

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
@@ -147,6 +146,7 @@ interface WalletActions {
   updateBalance: (symbol: string, amount: number) => void;
   depositToVault: (amount: number) => Promise<void>;
   withdrawFromVault: (amount: number) => Promise<void>;
+  voteOnProposal: (proposalId: string, support: number) => Promise<void>;
 }
 
 interface WalletContextType {
@@ -944,7 +944,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     };
     await executeTransaction('Vault Withdraw', dialogDetails, txFunction);
   }, [executeTransaction, decimals, writeContractAsync, address]);
-
+  
   const voteOnProposal = useCallback(async (proposalId: string, support: number) => {
     const dialogDetails = { details: `Vote on proposal #${proposalId}` };
     const txFunction = async () => writeContractAsync({
@@ -995,4 +995,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-

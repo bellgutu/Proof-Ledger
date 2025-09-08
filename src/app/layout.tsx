@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { WalletProvider } from '@/contexts/wallet-context';
 import AppShell from '@/components/app-shell';
 import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
 import NetworkCheck from '@/components/shared/NetworkCheck';
-import { Web3ModalProvider } from '@/contexts/web3modal-provider';
+import { Providers } from '@/contexts/providers';
 
 
 export const metadata: Metadata = {
@@ -29,15 +28,13 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <Web3ModalProvider>
-          <WalletProvider>
+        <Providers>
             <NetworkCheck />
             <AppShell>
               {children}
             </AppShell>
             <TransactionStatusDialogController />
-          </WalletProvider>
-        </Web3ModalProvider>
+        </Providers>
         <Toaster />
       </body>
     </html>

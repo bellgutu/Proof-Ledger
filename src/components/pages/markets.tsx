@@ -11,6 +11,7 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import Link from 'next/link';
 import { WalletHeader } from '../shared/wallet-header';
 import { useWallet } from '@/contexts/wallet-context';
+import { DebugWallet } from '../shared/debug-wallet';
 
 interface Market {
   id: string;
@@ -118,6 +119,7 @@ export default function MarketsPage() {
   return (
     <div className="container mx-auto p-0 space-y-8">
         <WalletHeader />
+        <DebugWallet />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
         {!isMarketDataLoaded ? (

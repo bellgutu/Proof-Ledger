@@ -773,7 +773,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const lpDecimals = 18;
         const liquidityToRemove = parseTokenAmount((position.lpTokens * (percentage / 100)).toString(), lpDecimals);
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
 
         return writeContractAsync({
             address: DEX_CONTRACT_ADDRESS,
@@ -1000,4 +1000,5 @@ export const useWallet = (): WalletContextType => {
   return context;
 };
 
+    
     

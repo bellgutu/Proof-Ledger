@@ -1,10 +1,7 @@
 
-import { createWeb3Modal } from '@web3modal/wagmi/react';
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
 
-import { WagmiProvider } from 'wagmi';
 import { sepolia, localhost, mainnet } from 'wagmi/chains';
-import { QueryClient } from '@tanstack/react-query';
 
 // 1. Get projectId at https://cloud.walletconnect.com
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -25,4 +22,6 @@ export const config = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
+  // Add this line to prevent auto-connection
+  enableEIP6963: false,
 });

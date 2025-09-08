@@ -3,19 +3,23 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { useLogger } from '@/hooks/use-logger';
 import { useWallet } from '@/contexts/wallet-context';
 import type { ChainAsset } from '@/contexts/wallet-context';
 import { TokenActionDialog } from '@/components/shared/token-action-dialog';
+import { cn } from '@/lib/utils';
+import { buttonVariants }from '@/components/ui/button';
+import { DebugWallet } from './shared/debug-wallet';
+
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const pathname = usePathname();
-  const router = useRouter();
   const { logEvent } = useLogger();
   const { walletState } = useWallet();
 
@@ -43,10 +47,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       logEvent('page_view', { page: activePage });
     }
   }, [activePage, logEvent]);
-
-  const navigate = (path: string) => {
-    router.push(path);
-  };
 
   const toggleTheme = () => {
     const newIsDark = !isDarkMode;
@@ -96,14 +96,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <ul className="flex flex-row lg:flex-col lg:space-y-2 overflow-x-auto lg:overflow-x-visible space-x-2 lg:space-x-0 flex-grow">
             {navItems.map(item => (
               <li key={item.id} className="flex-shrink-0">
-                <Button
-                  variant={activePage === item.id ? 'secondary' : 'ghost'}
-                  onClick={() => navigate(item.path)}
-                  className="w-full flex items-center justify-start text-left text-base font-semibold py-6"
-                >
-                  <div className="mr-3">{item.icon}</div>
-                  <span>{item.label}</span>
-                </Button>
+                 <Link
+                    href={item.path}
+                    className={cn(
+                        buttonVariants({ variant: activePage === item.id ? 'secondary' : 'ghost' }),
+                        "w-full flex items-center justify-start text-left text-base font-semibold py-6"
+                    )}
+                 >
+                    <div className="mr-3">{item.icon}</div>
+                    <span>{item.label}</span>
+                </Link>
               </li>
             ))}
           </ul>
@@ -117,7 +119,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-6 lg:p-8">
-          {children}
+            <DebugWallet />
+            <div className="mt-8">{children}</div>
         </div>
       </main>
     </div>

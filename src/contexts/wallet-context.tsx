@@ -286,16 +286,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
-    if (!isConnected) {
+    if (!isConnected || !isMarketDataLoaded || Object.keys(balances).length === 0) {
       setWalletBalance('0.00');
       return;
-    };
+    }
     const total = Object.entries(balances).reduce((acc, [symbol, balance]) => {
       const price = marketData[symbol]?.price || 0;
       return acc + (balance * price);
     }, 0);
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [balances, marketData, isConnected]);
+  }, [balances, marketData, isConnected, isMarketDataLoaded]);
 
 
   // Fetch real-time market data from our API route

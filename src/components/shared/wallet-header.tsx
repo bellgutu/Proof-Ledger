@@ -7,13 +7,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Wallet, RefreshCcw, CircleDollarSign } from 'lucide-react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useAccount, useDisconnect, useBalance } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 
 export function WalletHeader() {
   const { open } = useWeb3Modal();
   const { address, isConnected, isConnecting } = useAccount();
   const { disconnect } = useDisconnect();
-  const { data: balance } = useBalance({ address });
+  const { walletState } = useWallet();
+  const { walletBalance } = walletState;
 
   return (
     <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-[1.01] overflow-hidden">
@@ -31,9 +32,9 @@ export function WalletHeader() {
                 <div className="flex items-center gap-3 text-right">
                     <CircleDollarSign size={32} className="text-primary"/>
                     <div>
-                        <p className="text-muted-foreground text-xs">ETH Balance</p>
+                        <p className="text-muted-foreground text-xs">Total Balance</p>
                         <p className="text-2xl font-bold text-foreground">
-                            {balance ? `${parseFloat(balance.formatted).toFixed(4)} ETH` : 'Loading...'}
+                            ${walletBalance}
                         </p>
                     </div>
                 </div>

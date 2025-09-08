@@ -285,7 +285,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
-    if (!isMarketDataLoaded || !isConnected) {
+    if (!isConnected) {
       setWalletBalance('0.00');
       return;
     };
@@ -294,7 +294,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       return acc + (balance * price);
     }, 0);
     setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [balances, marketData, isMarketDataLoaded, isConnected]);
+  }, [balances, marketData, isConnected]);
 
 
   // Fetch real-time market data from our API route

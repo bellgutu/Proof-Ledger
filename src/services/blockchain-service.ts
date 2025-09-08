@@ -30,7 +30,7 @@ export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | und
 
 // --- DYNAMIC CLIENT & CHAIN CONFIGURATION ---
 const getRpcUrl = () => {
-    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161';
+    return process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'http://localhost:8545';
 }
 
 const getTargetChain = () => {
@@ -40,17 +40,11 @@ const getTargetChain = () => {
     }
     
     // Fallback to localhost for development only
-    if (process.env.NODE_ENV === 'development') {
-        return defineChain({
-            ...localhost,
-            id: 31337,
-            name: 'Anvil',
-        });
-    }
-    
-    // Default to Sepolia with a public RPC if no URL is provided in production
-    console.warn('No RPC URL provided, using public Sepolia RPC');
-    return sepolia;
+    return defineChain({
+        ...localhost,
+        id: 31337,
+        name: 'Anvil',
+    });
 }
 
 

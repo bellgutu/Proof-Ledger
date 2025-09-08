@@ -198,7 +198,7 @@ const initialProposals: Proposal[] = [
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { address, isConnected, isConnecting } = useAccount();
   const { data: nativeBalance } = useBalance({ address });
-  const publicClient = getViemPublicClient();
+  const publicClient = useMemo(() => getViemPublicClient(), []);
   const { data: walletClient } = useWalletClient();
   const { writeContractAsync } = useWriteContract();
 
@@ -999,5 +999,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

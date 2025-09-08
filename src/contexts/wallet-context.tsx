@@ -17,7 +17,8 @@ import {
     checkAllContracts,
     getVaultCollateral,
     getActivePosition as getActivePositionFromService,
-    getViemPublicClient
+    getViemPublicClient,
+    GOVERNOR_ABI
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -144,6 +145,8 @@ interface WalletActions {
   removeLiquidity: (position: UserPosition, percentage: number) => Promise<void>;
   claimRewards: (position: UserPosition) => Promise<void>;
   updateBalance: (symbol: string, amount: number) => void;
+  depositToVault: (amount: number) => Promise<void>;
+  withdrawFromVault: (amount: number) => Promise<void>;
 }
 
 interface WalletContextType {
@@ -539,6 +542,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const updateBalance = useCallback((symbol: string, amount: number) => {
+    if (isUpdatingStateRef.current) return;
     isUpdatingStateRef.current = true;
     setBalances(prev => {
         const currentBalance = prev[symbol] || 0;
@@ -632,27 +636,37 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const checkPoolExists = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
     if (!publicClient) return false;
-    const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
-    const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
-    
-    if (!tokenAInfo?.address || !tokenBInfo?.address) {
-        console.error("Token info not found for", tokenA, tokenB);
-        return false;
-    }
-    
-    if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
-        console.error("Invalid factory contract address:", FACTORY_CONTRACT_ADDRESS);
-        throw new Error("Factory contract address is not properly configured.");
-    }
-    
-    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
-    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
-    
     try {
-        const poolAddress = await publicClient.readContract({ address: FACTORY_CONTRACT_ADDRESS, abi: FACTORY_ABI, functionName: 'getPool', args: [token0, token1, stable]});
-        return poolAddress !== '0x0000000000000000000000000000000000000000';
+        const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
+        const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
+        
+        if (!tokenAInfo?.address || !tokenBInfo?.address) {
+            console.error("Token info not found for", tokenA, tokenB);
+            return false;
+        }
+        
+        if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
+            console.error("Invalid factory contract address:", FACTORY_CONTRACT_ADDRESS);
+            throw new Error("Factory contract address is not properly configured.");
+        }
+        
+        const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
+        const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
+        
+        try {
+            const poolAddress = await publicClient.readContract({ 
+                address: FACTORY_CONTRACT_ADDRESS, 
+                abi: FACTORY_ABI, 
+                functionName: 'getPool', 
+                args: [token0, token1, stable]
+            });
+            return poolAddress !== '0x0000000000000000000000000000000000000000';
+        } catch (error) {
+            console.error("Error checking pool existence:", error);
+            return false;
+        }
     } catch (error) {
-        console.error("Error checking pool existence (direct call failed):", error);
+        console.error("Critical error in checkPoolExists:", error);
         return false;
     }
   }, [publicClient]);
@@ -837,8 +851,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
         console.error("Failed to get and set active position:", e);
         setActivePosition(null);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch active position",
+        });
     }
-  }, []);
+  }, [toast]);
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; entryPrice: number; }) => {
       const { side, size, collateral, entryPrice } = params;
@@ -976,3 +995,4 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+

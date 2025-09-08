@@ -24,7 +24,7 @@ function Erc20Balance({ symbol, name, address, onAssetClick }: { symbol: string,
     const { marketData } = walletState;
     const price = marketData[symbol]?.price ?? 0;
     
-    if (!accountAddress || !balanceData || balanceData.value === 0n) return null;
+    if (!accountAddress || isLoading || !balanceData || balanceData.value === 0n) return null;
     
     const balance = parseFloat(balanceData.formatted);
     const value = balance * price;
@@ -64,7 +64,7 @@ export default function PortfolioPage() {
     const { walletState } = useWallet();
     const { isConnected, isMarketDataLoaded, marketData } = walletState;
     const { address: accountAddress } = useAccount();
-    const { data: nativeBalance } = useBalance({ address: accountAddress });
+    const { data: nativeBalance, isLoading: isNativeLoading } = useBalance({ address: accountAddress });
     const router = useRouter();
 
     const [selectedAsset, setSelectedAsset] = useState<ChainAsset | null>(null);
@@ -128,7 +128,7 @@ export default function PortfolioPage() {
                                         Connect your wallet to see your assets.
                                     </TableCell>
                                 </TableRow>
-                            ) : !isMarketDataLoaded ? (
+                            ) : (isNativeLoading || !isMarketDataLoaded) ? (
                                 <>
                                     <SkeletonRow />
                                     <SkeletonRow />
@@ -136,7 +136,7 @@ export default function PortfolioPage() {
                                 </>
                             ) : (
                                 <>
-                                    {nativeBalance && (
+                                    {nativeBalance && nativeBalance.value > 0n && (
                                         <TableRow onClick={() => handleAssetClick({ name: 'Ethereum', symbol: 'ETH', balance: parseFloat(nativeBalance.formatted), decimals: 18 })} className="cursor-pointer">
                                             <TableCell>
                                                 <div className="flex items-center gap-4">
@@ -148,7 +148,7 @@ export default function PortfolioPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right font-mono">{parseFloat(nativeBalance.formatted).toLocaleString('en-US', { maximumFractionDigits: 6 })}</TableCell>
-                                            <TableCell className="text-right font-mono">${marketData['ETH']?.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                            <TableCell className="text-right font-mono">${(marketData['ETH']?.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                             <TableCell className="text-right font-mono font-bold">${(parseFloat(nativeBalance.formatted) * (marketData['ETH']?.price || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                         </TableRow>
                                     )}

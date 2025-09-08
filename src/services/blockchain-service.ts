@@ -168,57 +168,6 @@ export const PERPETUALS_ABI = parseAbi([
 
 // --- READ-ONLY FUNCTIONS ---
 
-export async function getWalletAssets(address: `0x${string}`): Promise<ChainAsset[]> {
-  const { publicClient } = getViemClients();
-  const assets: ChainAsset[] = [];
-  const tokenSymbols = Object.keys(ERC20_CONTRACTS);
-  const KNOWN_DECIMALS = 18; // Using hardcoded decimals for all tokens as per deployment.
-
-  try {
-    console.log(`[BlockchainService] Fetching native ETH balance for ${address}...`);
-    const ethBalance = await publicClient.getBalance({ address });
-    assets.push({ symbol: 'ETH', name: 'Ethereum', balance: parseFloat(formatTokenAmount(ethBalance, 18)), decimals: 18 });
-    console.log(`[BlockchainService] Fetched native ETH balance: ${assets[0].balance}`);
-
-    for (const symbol of tokenSymbols) {
-      const contract = ERC20_CONTRACTS[symbol];
-      if (!contract.address || !isValidAddress(contract.address)) {
-        console.warn(`[BlockchainService] Skipping ${symbol} due to invalid or missing address.`);
-        continue;
-      }
-      try {
-        console.log(`[BlockchainService] Fetching ${symbol} balance from ${contract.address}...`);
-        const balance = await publicClient.readContract({
-          address: contract.address,
-          abi: genericErc20Abi,
-          functionName: 'balanceOf',
-          args: [address],
-        });
-        
-        assets.push({
-          symbol,
-          name: contract.name,
-          balance: parseFloat(formatTokenAmount(balance, KNOWN_DECIMALS)),
-          decimals: KNOWN_DECIMALS,
-        });
-        console.log(`[BlockchainService] Fetched ${symbol} balance: ${assets[assets.length - 1].balance}`);
-
-      } catch (tokenError) {
-        console.error(`[BlockchainService] Failed to fetch data for ${symbol} at ${contract.address}. Error:`, tokenError);
-      }
-    }
-
-  } catch (error) {
-    console.error("[BlockchainService] Error fetching wallet assets:", error);
-  }
-
-  if (assets.length === 0) {
-    console.warn("[BlockchainService] Could not fetch any balances. The local blockchain may not be running or accessible.");
-  }
- 
-  return assets;
-}
-
 export async function getGasPrice(): Promise<bigint | null> {
     const { publicClient } = getViemClients();
     try {
@@ -229,9 +178,9 @@ export async function getGasPrice(): Promise<bigint | null> {
     }
 }
 
-export async function getGasFee(): Promise<number | null> {
+export async function getGasFee(): Promise<number> {
     const gasPrice = await getGasPrice();
-    if (gasPrice === null) return null;
+    if (gasPrice === null) return 0;
     
     const gasLimit = 21000n; 
     const feeInWei = gasPrice * gasLimit;

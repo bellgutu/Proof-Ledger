@@ -20,7 +20,7 @@ import {
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
-import { parseAbi, formatUnits, type Address } from 'viem';
+import { parseAbi, formatUnits, type Address, parseEther } from 'viem';
 import { parseTokenAmount, USDT_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
@@ -118,10 +118,6 @@ interface WalletState {
 }
 
 interface WalletActions {
-  connectWallet: () => void;
-  disconnectWallet: () => void;
-  updateBalance: (symbol: string, amount: number) => void;
-  setBalances: React.Dispatch<React.SetStateAction<{ [symbol:string]: number }>>;
   sendTokens: (toAddress: string, tokenSymbol: string, amount: number) => Promise<void>;
   depositCollateral: (amount: string) => Promise<void>;
   withdrawCollateral: (amount: string) => Promise<void>;
@@ -146,6 +142,7 @@ interface WalletActions {
   addLiquidity: (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => Promise<void>;
   removeLiquidity: (position: UserPosition, percentage: number) => Promise<void>;
   claimRewards: (position: UserPosition) => Promise<void>;
+  updateBalance: (symbol: string, amount: number) => void;
 }
 
 interface WalletContextType {
@@ -196,8 +193,7 @@ const initialProposals: Proposal[] = [
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { address, isConnected, isConnecting } = useAccount();
-  const { open } = useWeb3Modal();
-  const { disconnect } = useAccount();
+  const { data: nativeBalance } = useBalance({ address });
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { writeContractAsync } = useWriteContract();
@@ -248,6 +244,44 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       });
     }
   }, [isConnected, address, toast]);
+
+  // Fetch all balances when wallet connects
+  useEffect(() => {
+    if (isConnected && address) {
+        const allSymbols = ['ETH', ...Object.keys(ERC20_CONTRACTS)];
+        const newBalances: { [symbol:string]: number } = {};
+        const newDecimals: { [symbol:string]: number } = {};
+
+        const fetchAllBalances = async () => {
+             if (nativeBalance) {
+                newBalances['ETH'] = parseFloat(nativeBalance.formatted);
+                newDecimals['ETH'] = nativeBalance.decimals;
+             }
+
+            for (const symbol of Object.keys(ERC20_CONTRACTS)) {
+                 const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
+                 if (contract.address && isValidAddress(contract.address)) {
+                    try {
+                        const [balanceOf, decimals] = await Promise.all([
+                            publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'balanceOf', args: [address] }),
+                            publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'decimals' })
+                        ]);
+                        newBalances[symbol] = parseFloat(formatUnits(balanceOf, decimals));
+                        newDecimals[symbol] = decimals;
+                    } catch (e) {
+                         console.error(`Failed to fetch balance/decimals for ${symbol}`, e);
+                    }
+                 }
+            }
+            setBalances(newBalances);
+            setDecimals(newDecimals);
+        };
+        fetchAllBalances();
+    } else {
+        setBalances({});
+        setDecimals({});
+    }
+  }, [isConnected, address, nativeBalance, publicClient]);
 
   // Calculate total wallet balance whenever underlying assets or prices change
   useEffect(() => {
@@ -522,7 +556,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     if (tokenDecimals === undefined) return;
 
     try {
-        const allowanceAmount = await readContract(publicClient, {
+        const allowanceAmount = await publicClient.readContract({
             address: tokenInfo.address,
             abi: erc20Abi,
             functionName: 'allowance',
@@ -560,36 +594,35 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
     }, [executeTransaction, decimals, checkAllowance, writeContractAsync]);
   
-  const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
-    if (!address || !walletClient || !publicClient) throw new Error("Wallet not connected");
+    const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
+        if (!address || !walletClient || !publicClient) throw new Error("Wallet not connected");
+        
+        const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
+        
+        const txFunction = async () => {
+          if (tokenSymbol === 'ETH') {
+              return await walletClient.sendTransaction({
+                to: toAddress as Address,
+                value: parseEther(amount.toString())
+              });
+          } else {
+              const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
+              if (!tokenInfo?.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
+              const tokenDecimals = decimals[tokenSymbol];
+              if (tokenDecimals === undefined) throw new Error(`Decimals for ${tokenSymbol} not found.`);
+              const onChainAmount = parseTokenAmount(amount.toString(), tokenDecimals);
+              return await writeContractAsync({
+                   address: tokenInfo.address as `0x${string}`,
+                   abi: erc20Abi,
+                   functionName: 'transfer',
+                   args: [toAddress as `0x${string}`, onChainAmount],
+              });
+          }
+        };
     
-    const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
+        await executeTransaction('Send', dialogDetails, txFunction);
+      }, [address, walletClient, publicClient, decimals, executeTransaction, writeContractAsync]);
     
-    const txFunction = async () => {
-      if (tokenSymbol === 'ETH') {
-          return await writeContractAsync({
-            abi: [],
-            address: toAddress as Address,
-            functionName: 'send',
-            value: parseTokenAmount(amount.toString(), 18)
-          });
-      } else {
-          const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
-          if (!tokenInfo?.address) throw new Error(`Unsupported token: ${tokenSymbol}`);
-          const tokenDecimals = decimals[tokenSymbol];
-          if (tokenDecimals === undefined) throw new Error(`Decimals for ${tokenSymbol} not found.`);
-          const onChainAmount = parseTokenAmount(amount.toString(), tokenDecimals);
-          return await writeContractAsync({
-               address: tokenInfo.address as `0x${string}`,
-               abi: erc20Abi,
-               functionName: 'transfer',
-               args: [toAddress as `0x${string}`, onChainAmount],
-          });
-      }
-    };
-
-    await executeTransaction('Send', dialogDetails, txFunction);
-  }, [address, walletClient, publicClient, decimals, executeTransaction, writeContractAsync]);
 
   const checkPoolExists = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
     if (!publicClient) return false;
@@ -610,7 +643,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
     
     try {
-        const poolAddress = await readContract(publicClient, { address: FACTORY_CONTRACT_ADDRESS, abi: FACTORY_ABI, functionName: 'getPool', args: [token0, token1, stable]});
+        const poolAddress = await publicClient.readContract({ address: FACTORY_CONTRACT_ADDRESS, abi: FACTORY_ABI, functionName: 'getPool', args: [token0, token1, stable]});
         return poolAddress !== '0x0000000000000000000000000000000000000000';
     } catch (error) {
         console.error("Error checking pool existence (direct call failed):", error);
@@ -914,12 +947,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         allowances, activePosition
       },
       walletActions: {
-          connectWallet: open, disconnectWallet: disconnect, updateBalance, setBalances, sendTokens, addTransaction,
+          sendTokens, addTransaction,
           updateTransactionStatus, setVaultWeth, setVaultCollateral, setActiveStrategy, setProposals, setAvailablePools,
           setUserPositions, setTxStatusDialog, openPosition, closePosition,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
           claimRewards, depositCollateral, withdrawCollateral, updateVaultCollateral,
-          approveToken, checkAllowance, checkPoolExists, createPool, getActivePosition
+          approveToken, checkAllowance, checkPoolExists, createPool, getActivePosition, updateBalance
       }
   }
 

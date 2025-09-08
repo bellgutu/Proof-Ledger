@@ -1,3 +1,4 @@
+
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
 import { sepolia, mainnet } from 'wagmi/chains';
 
@@ -7,11 +8,13 @@ if (!projectId) {
   throw new Error('NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set');
 }
 
-// 2. Create wagmiConfig
+// 2. Create wagmiConfig with dynamic URL
 const metadata = {
   name: 'ProfitForge',
   description: 'AI-powered tools for DeFi and crypto trading.',
-  url: 'https://profitforge.com', // origin domain
+  // Use dynamic URL based on environment
+  url: process.env.NEXT_PUBLIC_APP_URL || 
+       (typeof window !== 'undefined' ? window.location.origin : 'https://profitforge.com'),
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
@@ -23,3 +26,5 @@ export const config = defaultWagmiConfig({
   ssr: true,
   autoConnect: false, // Disable auto-connect
 });
+
+    

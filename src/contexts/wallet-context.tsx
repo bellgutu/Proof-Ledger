@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
 import type { Pool, UserPosition } from '@/components/pages/liquidity';
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, usePublicClient, useWalletClient } from 'wagmi';
 import { 
@@ -208,7 +208,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const [marketData, setMarketData] = useState<MarketData>(initialMarketData);
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
-  const [walletBalance, setWalletBalance] = useState('0.00');
 
   // DeFi State
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -232,6 +231,12 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const { toast } = useToast();
   const isUpdatingStateRef = useRef(false);
+  const nativeBalanceRef = useRef(nativeBalance);
+
+  useEffect(() => {
+    nativeBalanceRef.current = nativeBalance;
+  }, [nativeBalance]);
+
 
   const updateVaultCollateral = useCallback(async () => {
     if (!isConnected || !address) return;
@@ -258,9 +263,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         const newBalances: { [symbol: string]: number } = {};
         const newDecimals: { [symbol: string]: number } = {};
 
-        if (nativeBalance) {
-            newBalances['ETH'] = parseFloat(nativeBalance.formatted);
-            newDecimals['ETH'] = nativeBalance.decimals;
+        if (nativeBalanceRef.current) {
+            newBalances['ETH'] = parseFloat(nativeBalanceRef.current.formatted);
+            newDecimals['ETH'] = nativeBalanceRef.current.decimals;
         }
 
         for (const symbol of Object.keys(ERC20_CONTRACTS)) {
@@ -290,19 +295,18 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         setBalances({});
         setDecimals({});
     }
-  }, [isConnected, address, nativeBalance, publicClient]);
+  }, [isConnected, address, publicClient]);
 
   // Calculate total wallet balance whenever underlying assets or prices change
-  useEffect(() => {
+  const walletBalance = useMemo(() => {
     if (isConnected && isMarketDataLoaded && Object.keys(balances).length > 0) {
         const total = Object.entries(balances).reduce((acc, [symbol, balance]) => {
           const price = marketData[symbol]?.price || 0;
           return acc + (balance * price);
         }, 0);
-        setWalletBalance(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-    } else {
-        setWalletBalance('0.00');
+        return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+    return '0.00';
   }, [balances, marketData, isConnected, isMarketDataLoaded]);
 
 
@@ -995,3 +999,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

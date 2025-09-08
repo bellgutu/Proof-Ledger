@@ -22,10 +22,6 @@ export const config = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
-  // Setting enableInjected to false prevents the app from automatically trying to connect
-  // to a browser-injected wallet (like MetaMask) on load. Users can still select it
-  // from the Web3Modal. This gives users full control over the connection process.
-  enableInjected: false,
   storage: createStorage({
     storage: cookieStorage,
   }),

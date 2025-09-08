@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { WalletProvider } from '@/contexts/wallet-context';
 import { Web3ModalProvider } from '@/contexts/web3modal-provider';

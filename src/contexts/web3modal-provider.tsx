@@ -1,5 +1,4 @@
 "use client";
-
 import { createWeb3Modal } from '@web3modal/wagmi/react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,14 +14,14 @@ createWeb3Modal({
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
   enableAnalytics: true,
   enableOnramp: true,
-  featuredWalletIds: [], // Remove featured wallets that might auto-connect
+  featuredWalletIds: [], 
   themeMode: 'dark',
   themeVariables: {
     '--w3m-color-mix': '#00DCFF',
     '--w3m-color-mix-strength': 20
   },
   enableAccountView: false,
-  defaultChain: config.chains[0], // Set default chain explicitly
+  defaultChain: config.chains[0],
 });
 
 export function Web3ModalProvider({ children }: { children: ReactNode }) {

@@ -94,7 +94,8 @@ export const VAULT_ABI = [
   {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "collateral","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
   {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "lockedCollateral","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
   {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
-  {"inputs": [],"name": "totalSupply","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"}
+  {"inputs": [],"name": "totalSupply","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
+  {"inputs": [],"name": "collateralToken","outputs": [{"internalType": "address","name": "","type": "address"}],"stateMutability": "view","type": "function"}
 ] as const;
 
 

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
@@ -807,25 +808,61 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [addTransaction, address, updateBalance, toast]);
   
   const depositCollateral = useCallback(async (amount: string) => {
+    if (!address || !publicClient) {
+        throw new Error("Wallet not connected");
+    }
     const usdtDecimals = decimals['USDT'];
-    if(usdtDecimals === undefined) throw new Error("USDT decimals not found");
+    if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
-    await approveToken('USDT', parseFloat(amount), PERPETUALS_CONTRACT_ADDRESS);
+    const vaultCollateralToken = await publicClient.readContract({
+        address: VAULT_CONTRACT_ADDRESS,
+        abi: VAULT_ABI,
+        functionName: 'collateralToken',
+    });
+
+    if (vaultCollateralToken.toLowerCase() !== ERC20_CONTRACTS.USDT.address!.toLowerCase()) {
+        throw new Error(`Vault collateral token mismatch. Expected: ${ERC20_CONTRACTS.USDT.address}, Got: ${vaultCollateralToken}`);
+    }
+
+    const currentAllowance = await publicClient.readContract({
+        address: ERC20_CONTRACTS.USDT.address!,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [address, VAULT_CONTRACT_ADDRESS],
+    });
+
+    const depositAmountOnChain = parseTokenAmount(amount, usdtDecimals);
+
+    if (currentAllowance < depositAmountOnChain) {
+        console.log('Approving USDT for vault contract...');
+        const approvalTxHash = await writeContractAsync({
+            address: ERC20_CONTRACTS.USDT.address!,
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [VAULT_CONTRACT_ADDRESS, depositAmountOnChain],
+        });
+        
+        const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalTxHash });
+        if (approvalReceipt.status !== 'success') {
+            throw new Error('Token approval failed');
+        }
+        console.log('USDT approved successfully');
+    }
 
     const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
     const txFunction = async () => {
-        const amountOnChain = parseTokenAmount(amount, usdtDecimals);
         return writeContractAsync({
             address: VAULT_CONTRACT_ADDRESS,
             abi: VAULT_ABI,
             functionName: "deposit",
-            args: [amountOnChain],
+            args: [depositAmountOnChain],
         });
     };
     await executeTransaction('Deposit Collateral', dialogDetails, txFunction, async () => {
         await updateVaultCollateral();
     });
-  }, [executeTransaction, decimals, updateVaultCollateral, approveToken, writeContractAsync]);
+}, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, address, publicClient]);
+
   
   const withdrawCollateral = useCallback(async (amount: string) => {
       const usdtDecimals = decimals['USDT'];

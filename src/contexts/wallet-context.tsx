@@ -812,13 +812,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     await approveToken('USDT', parseFloat(amount), PERPETUALS_CONTRACT_ADDRESS);
 
-    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
+    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
     const txFunction = async () => {
         const amountOnChain = parseTokenAmount(amount, usdtDecimals);
         return writeContractAsync({
-            address: PERPETUALS_CONTRACT_ADDRESS,
-            abi: PERPETUALS_ABI,
-            functionName: "depositCollateral",
+            address: VAULT_CONTRACT_ADDRESS,
+            abi: VAULT_ABI,
+            functionName: "deposit",
             args: [amountOnChain],
         });
     };
@@ -831,21 +831,21 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       const usdtDecimals = decimals['USDT'];
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
-      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Contract' };
+      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
       const txFunction = async () => {
           const amountOnChain = parseTokenAmount(amount, usdtDecimals);
           
           return writeContractAsync({
-              address: PERPETUALS_CONTRACT_ADDRESS,
-              abi: PERPETUALS_ABI,
-              functionName: 'withdrawCollateral',
-              args: [amountOnChain]
+              address: VAULT_CONTRACT_ADDRESS,
+              abi: VAULT_ABI,
+              functionName: 'withdraw',
+              args: [amountOnChain, address as Address, address as Address]
           });
       };
       await executeTransaction('Withdraw Collateral', dialogDetails, txFunction, async () => {
           await updateVaultCollateral();
       });
-  }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync]);
+  }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, address]);
 
   const getActivePosition = useCallback(async (addr: `0x${string}`) => {
     try {

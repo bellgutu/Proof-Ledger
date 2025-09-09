@@ -87,13 +87,16 @@ export const DEX_ABI = parseAbi([
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint256 deadline) payable returns (uint256[])"
 ]);
 
-export const VAULT_ABI = parseAbi([
-  "function deposit(uint256 amount)",
-  "function withdraw(uint256 shares, address receiver, address owner) returns (uint256)",
-  "function setProtocol(address)",
-  "function collateral(address account) external view returns (uint256)",
-  "function lockedCollateral(address account) external view returns (uint256)"
-]);
+export const VAULT_ABI = [
+  {"inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],"name": "deposit","outputs": [],"stateMutability": "nonpayable","type": "function"},
+  {"inputs": [{"internalType": "uint256","name": "shares","type": "uint256"}, {"internalType": "address","name": "receiver","type": "address"}, {"internalType": "address","name": "owner","type": "address"}],"name": "withdraw","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "nonpayable","type": "function"},
+  {"inputs": [{"internalType": "address","name": "","type": "address"}],"name": "setProtocol","outputs": [],"stateMutability": "nonpayable","type": "function"},
+  {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "collateral","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
+  {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "lockedCollateral","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
+  {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
+  {"inputs": [],"name": "totalSupply","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"}
+] as const;
+
 
 export const GOVERNOR_ABI = parseAbi([
   "function castVote(uint256,uint8) returns (uint256)"

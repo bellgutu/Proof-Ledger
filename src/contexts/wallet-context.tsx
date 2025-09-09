@@ -780,7 +780,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         
         const lpDecimals = 18;
         const liquidityToRemove = parseTokenAmount((position.lpTokens * (percentage / 100)).toString(), lpDecimals);
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
 
         return writeContractAsync({
             address: DEX_CONTRACT_ADDRESS,
@@ -836,16 +836,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           const amountOnChain = parseTokenAmount(amount, usdtDecimals);
           
           return writeContractAsync({
-              address: VAULT_CONTRACT_ADDRESS,
-              abi: VAULT_ABI,
-              functionName: 'withdraw',
-              args: [amountOnChain, address as Address, address as Address]
+              address: PERPETUALS_CONTRACT_ADDRESS,
+              abi: PERPETUALS_ABI,
+              functionName: 'withdrawCollateral',
+              args: [amountOnChain]
           });
       };
       await executeTransaction('Withdraw Collateral', dialogDetails, txFunction, async () => {
           await updateVaultCollateral();
       });
-  }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, address]);
+  }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync]);
 
   const getActivePosition = useCallback(async (addr: `0x${string}`) => {
     try {

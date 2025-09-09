@@ -150,7 +150,6 @@ export const PERPETUALS_ABI = parseAbi([
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
   "function priceOracle() view returns (address)",
   "function vault() view returns (address)",
-  "function depositCollateral(uint256 amount)",
   "function withdrawCollateral(uint256 amount)"
 ]);
 

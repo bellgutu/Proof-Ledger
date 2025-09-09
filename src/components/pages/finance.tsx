@@ -39,7 +39,7 @@ export interface Proposal {
 }
 
 
-type Token = 'ETH' | keyof typeof ERC20_CONTRACTS;
+type Token = 'USDT' | 'USDC';
 
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
@@ -74,7 +74,7 @@ export default function FinancePage() {
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
 
   const [fromToken, setFromToken] = useState<Token>('USDT');
-  const [toToken, setToToken] = useState<Token>('WETH');
+  const [toToken, setToToken] = useState<Token>('USDC');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -118,7 +118,7 @@ export default function FinancePage() {
     verifyPool();
   }, [fromToken, toToken, checkPoolExists]);
   
-  const tokenNames: Token[] = useMemo(() => ['ETH', ...Object.keys(ERC20_CONTRACTS)], []);
+  const tokenNames: Token[] = useMemo(() => ['USDT', 'USDC'], []);
 
 
   const exchangeRates = useMemo(() => {

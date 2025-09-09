@@ -612,18 +612,14 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const sendTokens = useCallback(async (toAddress: string, tokenSymbol: string, amount: number) => {
         if (!address || !walletClient || !publicClient) throw new Error("Wallet not connected");
 
-        if (tokenSymbol !== 'ETH') {
-            const balance = balances[tokenSymbol] || 0;
-            if (amount > balance) {
-                throw new Error("Insufficient balance for ERC20 token send.");
-            }
+        if (tokenSymbol !== 'ETH' && amount > (balances[tokenSymbol] || 0)) {
+            throw new Error("Insufficient balance for ERC20 token send.");
         }
         
         const dialogDetails = { amount, token: tokenSymbol, to: toAddress };
         
         const txFunction = async () => {
           if (tokenSymbol === 'ETH') {
-              // For ETH, we let the wallet handle the gas calculation + amount check
               return await walletClient.sendTransaction({
                 to: toAddress as Address,
                 value: parseEther(amount.toString())
@@ -648,171 +644,70 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     
 
   const checkPoolExists = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
-    if (!publicClient) return false;
-    try {
-        const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
-        const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
-        
-        if (!tokenAInfo?.address || !tokenBInfo?.address) {
-            console.error("Token info not found for", tokenA, tokenB);
-            return false;
-        }
-        
-        if (!isValidAddress(FACTORY_CONTRACT_ADDRESS)) {
-            console.error("Invalid factory contract address:", FACTORY_CONTRACT_ADDRESS);
-            throw new Error("Factory contract address is not properly configured.");
-        }
-        
-        const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
-        const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
-        
-        try {
-            const poolAddress = await publicClient.readContract({ 
-                address: FACTORY_CONTRACT_ADDRESS, 
-                abi: FACTORY_ABI, 
-                functionName: 'getPool', 
-                args: [token0, token1, stable]
-            });
-            return poolAddress !== '0x0000000000000000000000000000000000000000';
-        } catch (error) {
-            console.error("Error checking pool existence:", error);
-            return false;
-        }
-    } catch (error) {
-        console.error("Critical error in checkPoolExists:", error);
-        return false;
-    }
-  }, [publicClient]);
-
+      // This is now specific to the new DEX, so we can simplify.
+      // For now, assume it exists since it's a single-pool contract.
+      return true;
+  }, []);
+  
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
-    if (!address || !publicClient) throw new Error("Wallet not connected");
-
+    if (!address) throw new Error("Wallet not connected");
+  
     const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
     if (!fromTokenInfo?.address) throw new Error(`Token ${fromToken} is not configured.`);
+  
     const fromTokenDecimals = decimals[fromToken];
     if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
-    
-    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
-    if (!toTokenInfo?.address) throw new Error("Invalid token path for swap.");
   
+    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
+    if (!toTokenInfo?.address) throw new Error(`Token ${toToken} is not configured.`);
+  
+    // 1. Approve the DEX contract to spend the `fromToken`
+    await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
+  
+    // 2. Prepare transaction arguments
     const amountInWei = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
-    
-    const currentAllowance = await publicClient.readContract({
-      address: fromTokenInfo.address,
-      abi: erc20Abi,
-      functionName: 'allowance',
-      args: [address, DEX_CONTRACT_ADDRESS],
-    });
-
-    if (currentAllowance < amountInWei) {
-      await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
+    const minAmountOut = 0n; // No slippage protection for simplicity
+  
+    let swapFunctionName: 'swapAforB' | 'swapBforA';
+  
+    // Assuming TokenA is USDT and TokenB is USDC
+    if (fromToken === 'USDT' && toToken === 'USDC') {
+      swapFunctionName = 'swapAforB';
+    } else if (fromToken === 'USDC' && toToken === 'USDT') {
+      swapFunctionName = 'swapBforA';
+    } else {
+      throw new Error(`Unsupported swap pair: ${fromToken}/${toToken}. This DEX only supports USDT/USDC.`);
     }
   
-    const path = [fromTokenInfo.address, toTokenInfo.address];
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
-    const amountOutMin = 0n;
-  
-    const dialogDetails = { 
-      amount: amountIn, 
-      token: fromToken, 
-      details: `Swap ${amountIn} ${fromToken} for ${toToken}` 
+    const dialogDetails = {
+      amount: amountIn,
+      token: fromToken,
+      details: `Swap ${amountIn} ${fromToken} for ${toToken}`
     };
   
-    const txFunction = async () => {
-      return writeContractAsync({
-        address: DEX_CONTRACT_ADDRESS,
-        abi: DEX_ABI,
-        functionName: 'swapExactTokensForTokens',
-        args: [amountInWei, amountOutMin, path, address as Address, deadline],
-      });
-    };
+    const txFunction = () => writeContractAsync({
+      address: DEX_CONTRACT_ADDRESS,
+      abi: DEX_ABI,
+      functionName: swapFunctionName,
+      args: [amountInWei, minAmountOut],
+    });
   
     await executeTransaction('Swap', dialogDetails, txFunction);
-  }, [executeTransaction, decimals, approveToken, writeContractAsync, address, publicClient]);
+  
+  }, [executeTransaction, decimals, approveToken, writeContractAsync, address]);
+  
 
   const createPool = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {
-    const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
-    const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
-    if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for pool creation.");
-    
-    const token0 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenAInfo.address : tokenBInfo.address;
-    const token1 = tokenAInfo.address.toLowerCase() < tokenBInfo.address.toLowerCase() ? tokenBInfo.address : tokenAInfo.address;
-
-    const dialogDetails = { details: `Create pool for ${tokenA}/${tokenB}` };
-    await executeTransaction('Create Pool', dialogDetails, async () => {
-        return writeContractAsync({
-            address: FACTORY_CONTRACT_ADDRESS,
-            abi: FACTORY_ABI,
-            functionName: 'createPool',
-            args: [token0, token1, stable]
-        });
-    });
-  }, [executeTransaction, writeContractAsync]);
+    toast({ variant: 'destructive', title: 'Action Not Supported', description: 'This DEX contract does not support pool creation.' });
+  }, [toast]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
-    const tokenAInfo = ERC20_CONTRACTS[tokenA as keyof typeof ERC20_CONTRACTS];
-    const tokenBInfo = ERC20_CONTRACTS[tokenB as keyof typeof ERC20_CONTRACTS];
-    if (!tokenAInfo?.address || !tokenBInfo?.address) { throw new Error("Invalid tokens for liquidity."); }
-    
-    const decimalsA = decimals[tokenA];
-    const decimalsB = decimals[tokenB];
-    if (decimalsA === undefined || decimalsB === undefined) throw new Error("Token decimals not found");
-    
-    await approveToken(tokenA, amountA, DEX_CONTRACT_ADDRESS);
-    await approveToken(tokenB, amountB, DEX_CONTRACT_ADDRESS);
-    
-    const dialogDetails = { details: `Add ${amountA.toFixed(4)} ${tokenA} & ${amountB.toFixed(4)} ${tokenB} to pool` };
-    
-    const txFunction = async () => {
-        const amountADesired = parseTokenAmount(amountA.toString(), decimalsA);
-        const amountBDesired = parseTokenAmount(amountB.toString(), decimalsB);
-        
-        return writeContractAsync({
-            address: DEX_CONTRACT_ADDRESS,
-            abi: DEX_ABI,
-            functionName: "addLiquidity",
-            args: [
-                tokenAInfo.address!,
-                tokenBInfo.address!,
-                stable,
-                amountADesired,
-                amountBDesired,
-                0n, // amountAMin
-                0n, // amountBMin
-                address as Address,
-                BigInt(Math.floor(Date.now() / 1000) + 60 * 20), // deadline
-            ],
-        });
-    };
-
-    await executeTransaction('Add Liquidity', dialogDetails, txFunction, async () => {
-        await checkAllowance(tokenA, DEX_CONTRACT_ADDRESS);
-        await checkAllowance(tokenB, DEX_CONTRACT_ADDRESS);
-    });
-      
-  }, [decimals, approveToken, executeTransaction, checkAllowance, writeContractAsync, address]);
+    toast({ variant: 'destructive', title: 'Action Not Supported', description: 'The new DEX contract has a different liquidity model.' });
+  }, [toast]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {
-      const dialogDetails = { details: `Remove ${percentage}% of liquidity from ${position.name} pool`};
-      
-      const txFunction = async () => {
-        const tokenAInfo = ERC20_CONTRACTS[position.token1 as keyof typeof ERC20_CONTRACTS];
-        const tokenBInfo = ERC20_CONTRACTS[position.token2 as keyof typeof ERC20_CONTRACTS];
-        if (!tokenAInfo?.address || !tokenBInfo?.address) throw new Error("Invalid tokens for liquidity");
-        
-        const lpDecimals = 18;
-        const liquidityToRemove = parseTokenAmount((position.lpTokens * (percentage / 100)).toString(), lpDecimals);
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
-
-        return writeContractAsync({
-            address: DEX_CONTRACT_ADDRESS,
-            abi: DEX_ABI,
-            functionName: "removeLiquidity",
-            args: [ tokenAInfo.address, tokenBInfo.address, position.type === 'Stable', liquidityToRemove, 0n, 0n, address as Address, deadline ]
-        });
-      };
-      await executeTransaction('Remove Liquidity', dialogDetails, txFunction);
-  }, [executeTransaction, writeContractAsync, address]);
+      toast({ variant: 'destructive', title: 'Action Not Supported', description: 'The new DEX contract has a different liquidity model.' });
+  }, [toast]);
 
   const claimRewards = useCallback(async (position: UserPosition) => {
       if (!address) return;
@@ -833,33 +728,20 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const usdtDecimals = decimals['USDT'];
     if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
-    const vaultCollateralToken = await publicClient.readContract({
-        address: VAULT_CONTRACT_ADDRESS,
-        abi: VAULT_ABI,
-        functionName: 'collateralToken',
+    const vaultAddress = await publicClient.readContract({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
+        functionName: 'vault',
     });
-
-    if (vaultCollateralToken.toLowerCase() !== ERC20_CONTRACTS.USDT.address!.toLowerCase()) {
-        throw new Error(`Vault collateral token mismatch. Expected: ${ERC20_CONTRACTS.USDT.address}, Got: ${vaultCollateralToken}`);
-    }
 
     const depositAmountOnChain = parseTokenAmount(amount, usdtDecimals);
-    const currentAllowance = await publicClient.readContract({
-        address: ERC20_CONTRACTS.USDT.address!,
-        abi: erc20Abi,
-        functionName: 'allowance',
-        args: [address, VAULT_CONTRACT_ADDRESS],
-    });
-
-    if (currentAllowance < depositAmountOnChain) {
-        console.log('Approving USDT for vault contract...');
-        await approveToken('USDT', parseFloat(amount), VAULT_CONTRACT_ADDRESS);
-    }
+    
+    await approveToken('USDT', parseFloat(amount), vaultAddress);
 
     const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
     const txFunction = async () => {
         return writeContractAsync({
-            address: VAULT_CONTRACT_ADDRESS,
+            address: vaultAddress,
             abi: VAULT_ABI,
             functionName: "deposit",
             args: [depositAmountOnChain],
@@ -874,22 +756,26 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const withdrawCollateral = useCallback(async (amount: string) => {
       const usdtDecimals = decimals['USDT'];
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
-
+      const vaultAddress = await publicClient.readContract({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
+        functionName: 'vault',
+      });
       const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
       const txFunction = async () => {
           const amountOnChain = parseTokenAmount(amount, usdtDecimals);
           
           return writeContractAsync({
-              address: PERPETUALS_CONTRACT_ADDRESS,
-              abi: PERPETUALS_ABI,
-              functionName: 'withdrawCollateral',
+              address: vaultAddress,
+              abi: VAULT_ABI,
+              functionName: 'withdraw',
               args: [amountOnChain]
           });
       };
       await executeTransaction('Withdraw Collateral', dialogDetails, txFunction, async () => {
           await updateVaultCollateral();
       });
-  }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync]);
+  }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, publicClient]);
 
   const getActivePosition = useCallback(async (addr: `0x${string}`) => {
     try {

@@ -927,9 +927,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         if (entryPrice > 0 && address) {
           localStorage.setItem(`entryPrice_${address}`, entryPrice.toString());
         }
+        await updateVaultCollateral();
         if (address) await getActivePosition(address);
       });
-  }, [executeTransaction, decimals, address, writeContractAsync, getActivePosition]);
+  }, [executeTransaction, decimals, address, writeContractAsync, getActivePosition, updateVaultCollateral]);
   
   const closePosition = useCallback(async (position: Position, pnl: number, exitPrice: number) => {
       const detailsNode = ( <div className="text-xs text-left"> <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div> <div>Entry: ${position.entryPrice.toFixed(2)}</div> <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}> Final PnL: ${pnl.toFixed(2)} </div> </div> );
@@ -1043,3 +1044,4 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+

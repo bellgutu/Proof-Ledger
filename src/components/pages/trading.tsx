@@ -26,7 +26,7 @@ import { PositionHistory } from '../trading/position-history';
 const TradingPageContent = () => {
   const { walletState, walletActions } = useWallet();
   const { isConnected, balances, marketData, walletAddress, vaultCollateral, decimals, activePosition } = walletState;
-  const { depositCollateral, withdrawCollateral, openPosition, closePosition, getActivePosition } = walletActions;
+  const { depositCollateral, withdrawCollateral, openPosition, closePosition, getActivePosition, updateVaultCollateral } = walletActions;
   const { toast } = useToast();
   const [selectedPair, setSelectedPair] = useState('ETH/USDT');
   const [tradeSize, setTradeSize] = useState('');
@@ -85,28 +85,29 @@ const TradingPageContent = () => {
     }
   }, []);
   
-  const fetchPosition = useCallback(async () => {
+  const fetchPositionAndCollateral = useCallback(async () => {
     if (!isConnected || !walletAddress) {
       setIsLoadingPosition(false);
       return;
     };
     setIsLoadingPosition(true);
     try {
-      await getActivePosition(walletAddress as `0x${string}`);
+      await Promise.all([
+        getActivePosition(walletAddress as `0x${string}`),
+        updateVaultCollateral()
+      ]);
     } catch (e) {
-      console.error("Failed to fetch active position:", e);
+      console.error("Failed to fetch active position or collateral:", e);
     } finally {
       setIsLoadingPosition(false);
     }
-  }, [isConnected, walletAddress, getActivePosition]);
+  }, [isConnected, walletAddress, getActivePosition, updateVaultCollateral]);
   
   useEffect(() => {
-    fetchPosition();
-    const interval = setInterval(() => {
-      fetchPosition();
-    }, 5000);
+    fetchPositionAndCollateral();
+    const interval = setInterval(fetchPositionAndCollateral, 5000);
     return () => clearInterval(interval);
-  }, [fetchPosition]);
+  }, [fetchPositionAndCollateral]);
   
   const handlePairChange = (pair: string) => {
     if(activePosition) {
@@ -202,7 +203,7 @@ const TradingPageContent = () => {
       });
       
       setTradeSize('');
-      await fetchPosition();
+      await fetchPositionAndCollateral();
     } catch(e: any) {
         // Error is handled by the wallet context dialog
     } finally {
@@ -232,7 +233,7 @@ const TradingPageContent = () => {
     try {
         await closePosition(activePosition, finalPnl, currentPrice);
         
-        await fetchPosition();
+        await fetchPositionAndCollateral();
         setPnlDialogState({ isOpen: true, pnl: finalPnl });
         
     } catch(e: any) {

@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send } from 'lucide-react';
+import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send, RefreshCw } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -75,6 +75,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
+    { id: 'swap', label: 'Swap', icon: <RefreshCw size={20} />, path: '/swap' },
     { id: 'liquidity', label: 'Liquidity Pro', icon: <Droplets size={20} />, path: '/liquidity' },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} />, path: '/finance' },
     { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },

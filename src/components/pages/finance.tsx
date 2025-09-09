@@ -38,9 +38,6 @@ export interface Proposal {
   userVote?: 'for' | 'against';
 }
 
-
-type Token = 'USDT' | 'USDC';
-
 export default function FinancePage() {
   const { walletState, walletActions } = useWallet();
   const { 
@@ -49,8 +46,7 @@ export default function FinancePage() {
     marketData,
     vaultWeth,
     activeStrategy,
-    proposals,
-    allowances
+    proposals
   } = walletState;
   const { 
     updateBalance,
@@ -58,81 +54,22 @@ export default function FinancePage() {
     setVaultWeth,
     setActiveStrategy,
     setProposals,
-    swapTokens,
     depositToVault,
     withdrawFromVault,
-    voteOnProposal,
-    approveToken,
-    checkAllowance,
-    checkPoolExists,
-    createPool,
+    voteOnProposal
   } = walletActions;
   const { toast } = useToast();
-  const router = useRouter();
 
   const [vaultLoading, setVaultLoading] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
 
-  const [fromToken, setFromToken] = useState<Token>('USDT');
-  const [toToken, setToToken] = useState<Token>('USDC');
-  const [fromAmount, setFromAmount] = useState('');
-  const [toAmount, setToAmount] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isApproving, setIsApproving] = useState(false);
-  const [isCheckingPool, setIsCheckingPool] = useState(false);
-  const [poolExists, setPoolExists] = useState(true);
-  const [swapError, setSwapError] = useState<string | null>(null);
-
-  const fromAmountNum = useMemo(() => parseFloat(fromAmount) || 0, [fromAmount]);
-  const allowance = useMemo(() => allowances[fromToken] || 0, [allowances, fromToken]);
-  const needsApproval = useMemo(() => {
-    if (fromToken === 'ETH' || fromAmountNum <= 0) return false;
-    return allowance < fromAmountNum;
-  }, [allowance, fromAmountNum, fromToken]);
-  
-  useEffect(() => {
-    if (isConnected && fromToken !== 'ETH' && fromAmountNum > 0) {
-      checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
-    }
-  }, [isConnected, fromToken, fromAmountNum, checkAllowance]);
-  
-  useEffect(() => {
-    const verifyPool = async () => {
-      setSwapError(null);
-      if (fromToken && toToken && fromToken !== toToken) {
-        setIsCheckingPool(true);
-        try {
-          const exists = await checkPoolExists(fromToken, toToken, false);
-          setPoolExists(exists);
-        } catch (error: any) {
-          console.error("Error checking pool existence:", error);
-          setPoolExists(false);
-          setSwapError(error.message || "Could not verify pool existence.");
-        } finally {
-          setIsCheckingPool(false);
-        }
-      } else {
-        setPoolExists(true); // No check needed if tokens are same or not selected
-      }
-    };
-    verifyPool();
-  }, [fromToken, toToken, checkPoolExists]);
-  
-  const tokenNames: Token[] = useMemo(() => ['USDT', 'USDC'], []);
-
-
   const exchangeRates = useMemo(() => {
     return Object.keys(marketData).reduce((acc, key) => {
-        acc[key as Token] = marketData[key].price;
+        acc[key as keyof typeof marketData] = marketData[key].price;
         return acc;
-    }, {} as Record<Token, number>);
+    }, {} as Record<keyof typeof marketData, number>);
   }, [marketData]);
 
-  const conversionRate = useMemo(() => {
-    if (!fromToken || !toToken || !exchangeRates[fromToken] || !exchangeRates[toToken]) return 1;
-    return exchangeRates[fromToken] / exchangeRates[toToken];
-  }, [fromToken, toToken, exchangeRates]);
-  
   const vaultTotalUsd = useMemo(() => {
     const wethValue = vaultWeth * (exchangeRates.WETH || 0);
     let strategyValue = 0;
@@ -142,81 +79,6 @@ export default function FinancePage() {
     }
     return wethValue + strategyValue;
   }, [vaultWeth, activeStrategy, exchangeRates]);
-
-  const handleAmountChange = (val: string) => {
-    if (val === '' || parseFloat(val) < 0) {
-      setFromAmount('');
-      setToAmount('');
-      return;
-    }
-    const numVal = parseFloat(val);
-    setFromAmount(val);
-    setToAmount((numVal * conversionRate).toFixed(4));
-  };
-
-  const handleSwapTokens = () => {
-    if (fromToken === toToken) return;
-    const tempToken = fromToken;
-    setFromToken(toToken);
-    setToToken(tempToken);
-    const tempAmount = fromAmount;
-    setFromAmount(toAmount);
-    setToAmount(tempAmount);
-  };
-  
-  const handleApprove = async () => {
-    setSwapError(null);
-    if (!fromToken || fromAmountNum <= 0) return;
-    
-    setIsApproving(true);
-    try {
-        await approveToken(fromToken, fromAmountNum, DEX_CONTRACT_ADDRESS);
-        await checkAllowance(fromToken, DEX_CONTRACT_ADDRESS);
-        toast({ title: "Approval Successful", description: `You can now swap your ${fromToken}.` });
-    } catch(e: any) {
-        setSwapError(e.message || "An unknown error occurred during approval.");
-        console.error("Approve failed:", e);
-    } finally {
-        setIsApproving(false);
-    }
-  };
-  
-  const handleSwap = async () => {
-    setSwapError(null);
-    if (!fromToken || !toToken || fromAmountNum <= 0 || fromAmountNum > (balances[fromToken] || 0)) {
-        toast({ variant: "destructive", title: "Invalid Swap", description: "Check your balance or input amount." });
-        return;
-    }
-    
-    setIsProcessing(true);
-    try {
-      await swapTokens(fromToken, toToken, fromAmountNum);
-      
-      setFromAmount('');
-      setToAmount('');
-      toast({ title: "Swap Submitted!", description: `Your transaction is being processed.`});
-    } catch(e: any) {
-        setSwapError(e.message || "An unknown error occurred during the swap.");
-        console.error("Swap failed:", e);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleCreatePool = async () => {
-    if (!fromToken || !toToken) return;
-    setIsProcessing(true);
-    try {
-      await createPool(fromToken, toToken, false);
-      toast({ title: "Pool Creation Submitted", description: `Your transaction to create the ${fromToken}/${toToken} pool is processing.`});
-      const exists = await checkPoolExists(fromToken, toToken, false);
-      setPoolExists(exists);
-    } catch (e: any) {
-       console.error("Create pool failed:", e);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const handleVote = async (proposalId: string, vote: 'for' | 'against') => {
     const support = vote === 'for' ? 1 : 0;
@@ -329,19 +191,6 @@ export default function FinancePage() {
 
   const hasVaultBalance = vaultTotalUsd > 0;
 
-  const TokenSelectItem = ({ token }: { token: Token }) => (
-    <SelectItem value={token}>
-      <div className="flex items-center">
-        <Image src={getTokenLogo(token)} alt={token} width={20} height={20} className="mr-2" />
-        {token}
-      </div>
-    </SelectItem>
-  );
-  
-  useEffect(() => {
-    handleAmountChange(fromAmount);
-  }, [fromToken, toToken, conversionRate, fromAmount]);
-
   return (
     <div className="container mx-auto p-0 space-y-8">
       <WalletHeader />
@@ -349,178 +198,73 @@ export default function FinancePage() {
       <ContractStatusPanel />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-            <CardHeader className="flex flex-row justify-between items-center">
-                <CardTitle className="text-2xl font-bold text-primary">Token Swap</CardTitle>
-                <Button variant="outline" onClick={() => router.push('/portfolio/history')}>
-                  <History className="mr-2"/>
-                  History
+        <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
+            <CardHeader>
+                <CardTitle className="text-2xl font-bold text-primary flex items-center justify-between">
+                <div className="flex items-center">
+                    <BrainCircuit className="mr-2" /> AI Strategy Vault
+                </div>
+                <Button onClick={handleAiRebalance} disabled={rebalanceLoading || vaultLoading} size="icon" variant="ghost">
+                    {rebalanceLoading ? <Loader2 className="animate-spin"/> :<BrainCircuit />}
+                    <span className="sr-only">Rebalance Vault</span>
                 </Button>
+                </CardTitle>
+                <CardDescription>Deposit WETH and let the AI manage your funds.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col space-y-2">
-                <div className="p-4 bg-background rounded-md border space-y-2">
+            <CardContent className="space-y-4">
+                <div className="p-4 bg-background rounded-md border">
                     <div className="flex justify-between items-center">
-                        <label htmlFor="from-token" className="block text-sm font-medium text-muted-foreground mb-1">From</label>
-                        <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[fromToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
+                        <p className="text-sm text-muted-foreground">Total Vault Value:</p>
                     </div>
-                    <div className="flex gap-2">
-                    <Input
-                        id="from-token"
-                        type="number"
-                        value={fromAmount}
-                        onChange={(e) => handleAmountChange(e.target.value)}
-                        disabled={!isConnected}
-                        placeholder="0.0"
-                    />
-                        <Select value={fromToken} onValueChange={(v) => setFromToken(v as Token)}>
-                        <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="Select Token" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
-                        </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <div className="flex justify-center my-2">
-                    <Button variant="ghost" size="icon" onClick={handleSwapTokens} disabled={!isConnected}>
-                    <ChevronsUpDown size={20} className="text-muted-foreground" />
-                    </Button>
-                </div>
-
-                <div className="p-4 bg-background rounded-md border space-y-2">
-                    <div className="flex justify-between items-center">
-                    <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
-                    <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[toToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
-                    </div>
-                    <div className="flex gap-2">
-                    <Input
-                        id="to-token"
-                        type="number"
-                        value={toAmount}
-                        readOnly
-                        disabled={!isConnected}
-                        placeholder="0.0"
-                    />
-                    <Select value={toToken} onValueChange={(v) => setToToken(v as Token)}>
-                        <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Select Token" />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {tokenNames.map(t => <TokenSelectItem key={t} token={t} />)}
-                        </SelectContent>
-                    </Select>
-                    </div>
-                </div>
-
-                {isCheckingPool ? (
-                    <div className="flex items-center justify-center p-4 text-muted-foreground text-sm">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" /> Checking pool...
-                    </div>
-                ) : !poolExists && fromToken !== toToken ? (
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-4 space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-yellow-400">
-                        <AlertTriangle className="h-5 w-5" /> Pool Not Found
-                      </div>
-                      <p className="text-xs text-yellow-500">
-                        A liquidity pool for {fromToken}/{toToken} does not exist. You can create one.
-                      </p>
-                      <Button onClick={handleCreatePool} variant="outline" size="sm" className="w-full" disabled={isProcessing}>
-                        {isProcessing ? <Loader2 className="animate-spin" /> : "Create Pool"}
-                      </Button>
-                    </div>
-                ) : swapError ? (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-md p-4 space-y-2 text-sm text-red-400">
-                    <div className="flex items-center gap-2 font-medium">
-                      <XCircleIcon className="h-5 w-5" /> Error
-                    </div>
-                    <p>{swapError}</p>
-                  </div>
-                ) : (
-                    <div className="mt-4 flex flex-col gap-2">
-                        {needsApproval ? (
-                             <Button onClick={handleApprove} disabled={isApproving || !isConnected || !fromAmountNum} className="w-full">
-                                {isApproving ? <><Loader2 size={16} className="mr-2 animate-spin" />Approving...</> : <><ShieldCheck size={16} className="mr-2" />Approve {fromToken}</>}
-                            </Button>
-                        ) : (
-                            <Button onClick={handleSwap} disabled={!isConnected || isProcessing || !fromAmountNum || fromToken === toToken} className="w-full">
-                                {isProcessing ? <><Loader2 size={16} className="mr-2 animate-spin" />Swapping...</> : <><RefreshCcw size={16} className="mr-2" />Swap Tokens</>}
-                            </Button>
-                        )}
-                    </div>
-                )}
-            </CardContent>
-            </Card>
-
-            <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-primary flex items-center justify-between">
-                    <div className="flex items-center">
-                        <BrainCircuit className="mr-2" /> AI Strategy Vault
-                    </div>
-                    <Button onClick={handleAiRebalance} disabled={rebalanceLoading || vaultLoading} size="icon" variant="ghost">
-                        {rebalanceLoading ? <Loader2 className="animate-spin"/> :<BrainCircuit />}
-                        <span className="sr-only">Rebalance Vault</span>
-                    </Button>
-                    </CardTitle>
-                    <CardDescription>Deposit WETH and let the AI manage your funds.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="p-4 bg-background rounded-md border">
-                        <div className="flex justify-between items-center">
-                            <p className="text-sm text-muted-foreground">Total Vault Value:</p>
-                        </div>
-                        <p className="text-2xl font-bold text-foreground">${vaultTotalUsd.toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
-                            <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                            {activeStrategy ? (
-                                <div className="p-3 bg-primary/10 rounded-md">
-                                    <p className="font-bold text-primary">{activeStrategy.name}</p>
-                                    <div className="flex justify-between items-center">
-                                        <span>{activeStrategy.value.toLocaleString('en-US', {maximumFractionDigits: 4})} {activeStrategy.asset}</span>
-                                        <span className="text-green-400 font-semibold">{activeStrategy.apy}% APY</span>
-                                    </div>
+                    <p className="text-2xl font-bold text-foreground">${vaultTotalUsd.toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
+                        <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                        {activeStrategy ? (
+                            <div className="p-3 bg-primary/10 rounded-md">
+                                <p className="font-bold text-primary">{activeStrategy.name}</p>
+                                <div className="flex justify-between items-center">
+                                    <span>{activeStrategy.value.toLocaleString('en-US', {maximumFractionDigits: 4})} {activeStrategy.asset}</span>
+                                    <span className="text-green-400 font-semibold">{activeStrategy.apy}% APY</span>
                                 </div>
-                            ) : (
-                                <p className="text-center text-xs py-2">No active strategy. Click the AI button to deploy funds.</p>
-                            )}
-                            <p className="text-sm font-bold pt-2">Idle Assets:</p>
-                            <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
-                        </div>
+                            </div>
+                        ) : (
+                            <p className="text-center text-xs py-2">No active strategy. Click the AI button to deploy funds.</p>
+                        )}
+                        <p className="text-sm font-bold pt-2">Idle Assets:</p>
+                        <div className="flex justify-between"><span>WETH:</span> <span className="font-mono">{vaultWeth.toLocaleString('en-US', {maximumFractionDigits: 4})}</span></div>
                     </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-2">
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                        onClick={handleDepositToVault}
+                        disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) < 0.5}
+                        className="w-full bg-green-600 text-white hover:bg-green-700"
+                    >
+                        {vaultLoading ? (
+                            <span className="flex items-center">
+                            <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                            </span>
+                        ) : (
+                            <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit 0.5 WETH</span>
+                        )}
+                    </Button>
                         <Button
-                            onClick={handleDepositToVault}
-                            disabled={!isConnected || vaultLoading || (balances['WETH'] || 0) < 0.5}
-                            className="w-full bg-green-600 text-white hover:bg-green-700"
-                        >
-                            {vaultLoading ? (
-                                <span className="flex items-center">
-                                <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
-                                </span>
-                            ) : (
-                                <span className="flex items-center"><ArrowDown size={16} className="mr-2" />Deposit 0.5 WETH</span>
-                            )}
-                        </Button>
-                            <Button
-                            onClick={handleWithdrawFromVault}
-                            disabled={!isConnected || vaultLoading || !hasVaultBalance}
-                            className="w-full"
-                            variant="destructive"
-                        >
-                            {vaultLoading ? (
-                                <span className="flex items-center">
-                                <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
-                                </span>
-                            ) : (
-                                <span className="flex items-center"><ArrowUp size={16} className="mr-2" />Withdraw All</span>
-                            )}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-      </div>
+                        onClick={handleWithdrawFromVault}
+                        disabled={!isConnected || vaultLoading || !hasVaultBalance}
+                        className="w-full"
+                        variant="destructive"
+                    >
+                        {vaultLoading ? (
+                            <span className="flex items-center">
+                            <RefreshCcw size={16} className="mr-2 animate-spin" /> Working...
+                            </span>
+                        ) : (
+                            <span className="flex items-center"><ArrowUp size={16} className="mr-2" />Withdraw All</span>
+                        )}
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
 
        <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
             <CardHeader>
@@ -567,6 +311,7 @@ export default function FinancePage() {
                 })}
             </CardContent>
         </Card>
+      </div>
     </div>
   );
 };

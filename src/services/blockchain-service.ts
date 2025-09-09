@@ -88,14 +88,13 @@ export const DEX_ABI = parseAbi([
 ]);
 
 export const VAULT_ABI = [
-  {"inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],"name": "deposit","outputs": [],"stateMutability": "nonpayable","type": "function"},
-  {"inputs": [{"internalType": "uint256","name": "shares","type": "uint256"}, {"internalType": "address","name": "receiver","type": "address"}, {"internalType": "address","name": "owner","type": "address"}],"name": "withdraw","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "nonpayable","type": "function"},
-  {"inputs": [{"internalType": "address","name": "","type": "address"}],"name": "setProtocol","outputs": [],"stateMutability": "nonpayable","type": "function"},
-  {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "collateral","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
-  {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "lockedCollateral","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
-  {"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
-  {"inputs": [],"name": "totalSupply","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},
-  {"inputs": [],"name": "collateralToken","outputs": [{"internalType": "address","name": "","type": "address"}],"stateMutability": "view","type": "function"}
+    { "inputs": [], "name": "collateralToken", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [{ "internalType": "address", "name": "account", "type": "address" }], "name": "collateral", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [{ "internalType": "address", "name": "account", "type": "address" }], "name": "lockedCollateral", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }], "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [{ "internalType": "uint256", "name": "shares", "type": "uint256" }, { "internalType": "address", "name": "receiver", "type": "address" }, { "internalType": "address", "name": "owner", "type": "address" }], "name": "withdraw", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [{ "internalType": "address", "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [], "name": "totalSupply", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
 ] as const;
 
 
@@ -148,9 +147,8 @@ export const POOL_ABI = [
 
 
 export const PERPETUALS_ABI = parseAbi([
-  "function calculatePnl(address user, uint256 idx) view returns (int256)",
-  "function closePosition()",
   "function openPosition(uint8 side, uint256 size, uint256 collateral)",
+  "function closePosition()",
   "function positions(address) view returns (uint8 side, uint256 size, uint256 collateral, uint256 entryPrice, bool active)",
   "function priceOracle() view returns (address)",
   "function vault() view returns (address)",

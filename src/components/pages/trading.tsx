@@ -523,5 +523,3 @@ export default function TradingPage() {
   }
   return <TradingPageContent />;
 }
-
-    

@@ -801,56 +801,58 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
 
   const openPosition = useCallback(async (params: { side: number; size: string; collateral: string; entryPrice: number; }) => {
-      const { side, size, collateral, entryPrice } = params;
-      
-      const sizeDecimals = decimals['ETH'];
-      if (sizeDecimals === undefined) throw new Error("ETH decimals not found");
-      
-      const sizeOnChain = parseTokenAmount(size, sizeDecimals);
-      const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
+    const { side, size, collateral, entryPrice } = params;
+    
+    const sizeDecimals = decimals['ETH'];
+    if (sizeDecimals === undefined) throw new Error("ETH decimals not found");
+    
+    const sizeOnChain = parseTokenAmount(size, sizeDecimals);
+    const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
 
-      const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract', details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH` };
-      const txFunction = async () => writeContractAsync({
-          address: PERPETUALS_CONTRACT_ADDRESS,
-          abi: PERPETUALS_ABI,
-          functionName: 'openPosition',
-          args: [side as 0 | 1, sizeOnChain, collateralOnChain],
-      });
-      await executeTransaction('Open Position', dialogDetails, txFunction, async () => {
-        if (entryPrice > 0 && address) {
-          localStorage.setItem(`entryPrice_${address}`, entryPrice.toString());
-        }
-        await updateVaultCollateral();
-        if (address) await getActivePosition(address);
-      });
+    const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract', details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH` };
+    const txFunction = async () => writeContractAsync({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
+        functionName: 'openPosition',
+        args: [side as 0 | 1, sizeOnChain, collateralOnChain],
+    });
+    
+    await executeTransaction('Open Position', dialogDetails, txFunction, async () => {
+      if (entryPrice > 0 && address) {
+        localStorage.setItem(`entryPrice_${address}`, entryPrice.toString());
+      }
+      await updateVaultCollateral();
+      if (address) await getActivePosition(address);
+    });
   }, [executeTransaction, decimals, address, writeContractAsync, getActivePosition, updateVaultCollateral]);
   
   const closePosition = useCallback(async (position: Position, pnl: number, exitPrice: number) => {
-      const detailsNode = ( <div className="text-xs text-left"> <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div> <div>Entry: ${position.entryPrice.toFixed(2)}</div> <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}> Final PnL: ${pnl.toFixed(2)} </div> </div> );
-      const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
-      
-      const txFunction = async () => writeContractAsync({
-          address: PERPETUALS_CONTRACT_ADDRESS,
-          abi: PERPETUALS_ABI,
-          functionName: 'closePosition'
-      });
-      await executeTransaction('Close Position', dialogDetails, txFunction, async (txHash) => {
-          if (address) {
-            const pastPosition: PastPosition = {
-              id: txHash,
-              side: position.side,
-              size: position.size,
-              entryPrice: position.entryPrice,
-              exitPrice: exitPrice,
-              pnl: pnl,
-              timestamp: Date.now(),
-            };
-            addPastPosition(pastPosition, address);
-            localStorage.removeItem(`entryPrice_${address}`);
-          }
-          await updateVaultCollateral();
-          setActivePosition(null);
-      });
+    const detailsNode = ( <div className="text-xs text-left"> <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div> <div>Entry: ${position.entryPrice.toFixed(2)}</div> <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}> Final PnL: ${pnl.toFixed(2)} </div> </div> );
+    const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
+    
+    const txFunction = async () => writeContractAsync({
+        address: PERPETUALS_CONTRACT_ADDRESS,
+        abi: PERPETUALS_ABI,
+        functionName: 'closePosition'
+    });
+    
+    await executeTransaction('Close Position', dialogDetails, txFunction, async (txHash) => {
+        if (address) {
+          const pastPosition: PastPosition = {
+            id: txHash,
+            side: position.side,
+            size: position.size,
+            entryPrice: position.entryPrice,
+            exitPrice: exitPrice,
+            pnl: pnl,
+            timestamp: Date.now(),
+          };
+          addPastPosition(pastPosition, address);
+          localStorage.removeItem(`entryPrice_${address}`);
+        }
+        await updateVaultCollateral();
+        setActivePosition(null);
+    });
   }, [executeTransaction, address, writeContractAsync, updateVaultCollateral, addPastPosition]);
 
   const depositToVault = useCallback(async (amount: number) => {

@@ -60,12 +60,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleSendClick = () => {
     const ethBalance = walletState.balances['ETH'] || 0;
-    const ethDecimals = walletState.decimals['ETH'] || 18;
     const ethAsset: ChainAsset = {
       symbol: 'ETH',
       balance: ethBalance,
       name: 'Ethereum',
-      decimals: ethDecimals,
+      decimals: 18,
     }
     setSendAsset(ethAsset);
     setIsSendOpen(true);
@@ -141,5 +140,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </>
   );
 }
-
-    

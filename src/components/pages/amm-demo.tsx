@@ -297,19 +297,29 @@ export default function InnovativeAMMDemo() {
             <Tabs defaultValue="dashboard" className="w-full">
                 <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="dashboard">
-                        <Wallet className="mr-2"/>Dashboard
+                        &lt;&gt;
+                            <Wallet className="mr-2"/>Dashboard
+                        &lt;&gt;
                     </TabsTrigger>
                     <TabsTrigger value="oracle">
-                        <Bot className="mr-2"/>AI Oracle
+                        &lt;&gt;
+                            <Bot className="mr-2"/>AI Oracle
+                        &lt;&gt;
                     </TabsTrigger>
                     <TabsTrigger value="pools">
-                        <Droplets className="mr-2"/>Pools
+                        &lt;&gt;
+                            <Droplets className="mr-2"/>Pools
+                        &lt;&gt;
                     </TabsTrigger>
                     <TabsTrigger value="swap">
-                        <RefreshCw className="mr-2"/>Swap
+                        &lt;&gt;
+                            <RefreshCw className="mr-2"/>Swap
+                        &lt;&gt;
                     </TabsTrigger>
                     <TabsTrigger value="history">
-                        <History className="mr-2"/>History
+                        &lt;&gt;
+                            <History className="mr-2"/>History
+                        &lt;&gt;
                     </TabsTrigger>
                 </TabsList>
 

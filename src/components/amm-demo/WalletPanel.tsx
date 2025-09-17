@@ -82,7 +82,7 @@ export function WalletPanel() {
                                        <span className="font-bold">{symbol}</span>
                                    </div>
                                    <div className="flex items-center gap-3">
-                                        <span className="font-mono">{parseFloat(tokenBalances[symbol]).toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                                        <span className="font-mono">{parseFloat(tokenBalances[symbol]).toLocaleString(undefined, { maximumFractionDigits: MOCK_TOKENS[symbol].decimals > 6 ? 4 : MOCK_TOKENS[symbol].decimals })}</span>
                                         <Button size="sm" variant="outline" onClick={() => actions.getFaucetTokens(symbol)} disabled={isProcessing(`Faucet_${symbol}`)}>
                                             {isProcessing(`Faucet_${symbol}`) ? <Loader2 size={14} className="animate-spin"/> : "Faucet"}
                                         </Button>

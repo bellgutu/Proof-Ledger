@@ -1,7 +1,7 @@
 
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useWalletClient, useSwitchChain } from 'wagmi';
+import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useWalletClient, useSwitchChain, useDisconnect } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { getViemPublicClient } from '@/services/blockchain-service';
 import { type Address, parseAbi, formatUnits, parseEther, formatEther, getContract, parseUnits } from 'viem';
@@ -141,7 +141,7 @@ const AmmDemoContext = createContext<AmmDemoContextType | undefined>(undefined);
 export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const { address, isConnected, chain } = useAccount();
     const { open } = useWeb3Modal();
-    const { disconnect } = useAccount();
+    const { disconnect } = useDisconnect();
     const { data: ethBalanceData } = useBalance({ address });
     const publicClient = getViemPublicClient();
     const { data: walletClient } = useWalletClient();

@@ -297,29 +297,34 @@ export default function InnovativeAMMDemo() {
             <Tabs defaultValue="dashboard" className="w-full">
                 <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="dashboard">
-                        &lt;&gt;
-                            <Wallet className="mr-2"/>Dashboard
-                        &lt;&gt;
+                        <>
+                            <Wallet className="mr-2"/>
+                            <span>Dashboard</span>
+                        </>
                     </TabsTrigger>
                     <TabsTrigger value="oracle">
-                        &lt;&gt;
-                            <Bot className="mr-2"/>AI Oracle
-                        &lt;&gt;
+                        <>
+                            <Bot className="mr-2"/>
+                            <span>AI Oracle</span>
+                        </>
                     </TabsTrigger>
                     <TabsTrigger value="pools">
-                        &lt;&gt;
-                            <Droplets className="mr-2"/>Pools
-                        &lt;&gt;
+                        <>
+                            <Droplets className="mr-2"/>
+                            <span>Pools</span>
+                        </>
                     </TabsTrigger>
                     <TabsTrigger value="swap">
-                        &lt;&gt;
-                            <RefreshCw className="mr-2"/>Swap
-                        &lt;&gt;
+                        <>
+                            <RefreshCw className="mr-2"/>
+                            <span>Swap</span>
+                        </>
                     </TabsTrigger>
                     <TabsTrigger value="history">
-                        &lt;&gt;
-                            <History className="mr-2"/>History
-                        &lt;&gt;
+                        <>
+                            <History className="mr-2"/>
+                            <span>History</span>
+                        </>
                     </TabsTrigger>
                 </TabsList>
 

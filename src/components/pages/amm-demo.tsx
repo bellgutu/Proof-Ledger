@@ -28,7 +28,7 @@ const MOCK_WETH_ADDRESS = '0x3318056463e5bb26FB66e071999a058bdb35F34f' as const;
 
 // --- Panels ---
 
-const WalletPanel = () => {
+function WalletPanel() {
     const { state, actions } = useAmmDemo();
     const { isConnected, address, ethBalance, tokenBalances } = state;
     const { chain } = useAccount();
@@ -93,7 +93,7 @@ const WalletPanel = () => {
     );
 };
 
-const TransactionHistoryPanel = () => {
+function TransactionHistoryPanel() {
     const { state } = useAmmDemo();
     const { transactions } = state;
     
@@ -144,7 +144,7 @@ const TransactionHistoryPanel = () => {
     )
 }
 
-const AiOraclePanel = () => {
+function AiOraclePanel() {
     const { state, actions } = useAmmDemo();
     const [selectedPool, setSelectedPool] = useState<string>('');
     const [fee, setFee] = useState<number>(0.3);
@@ -187,7 +187,7 @@ const AiOraclePanel = () => {
     );
 };
 
-const PoolManagementPanel = () => {
+function PoolManagementPanel() {
      const { state, actions } = useAmmDemo();
      const [tokenA, setTokenA] = useState('');
      const [tokenB, setTokenB] = useState('');
@@ -242,7 +242,7 @@ const PoolManagementPanel = () => {
     );
 }
 
-const SwapPanel = () => {
+function SwapPanel() {
     const { state, actions } = useAmmDemo();
     const [fromToken, setFromToken] = useState('');
     const [toToken, setToToken] = useState('');
@@ -339,3 +339,4 @@ export default function InnovativeAMMDemo() {
         </div>
     );
 }
+

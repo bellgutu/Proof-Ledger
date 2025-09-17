@@ -303,11 +303,21 @@ export default function InnovativeAMMDemo() {
             
             <Tabs defaultValue="dashboard" className="w-full">
                 <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="dashboard"><Wallet className="mr-2"/>Dashboard</TabsTrigger>
-                    <TabsTrigger value="oracle"><Bot className="mr-2"/>AI Oracle</TabsTrigger>
-                    <TabsTrigger value="pools"><Droplets className="mr-2"/>Pools</TabsTrigger>
-                    <TabsTrigger value="swap"><RefreshCw className="mr-2"/>Swap</TabsTrigger>
-                    <TabsTrigger value="history"><History className="mr-2"/>History</TabsTrigger>
+                    <TabsTrigger value="dashboard">
+                        <Wallet className="mr-2"/>Dashboard
+                    </TabsTrigger>
+                    <TabsTrigger value="oracle">
+                        <Bot className="mr-2"/>AI Oracle
+                    </TabsTrigger>
+                    <TabsTrigger value="pools">
+                        <Droplets className="mr-2"/>Pools
+                    </TabsTrigger>
+                    <TabsTrigger value="swap">
+                        <RefreshCw className="mr-2"/>Swap
+                    </TabsTrigger>
+                    <TabsTrigger value="history">
+                        <History className="mr-2"/>History
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="dashboard" className="mt-6">
@@ -329,5 +339,7 @@ export default function InnovativeAMMDemo() {
         </div>
     );
 }
+
+    
 
     

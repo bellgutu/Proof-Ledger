@@ -21,13 +21,6 @@ import { Label } from '../ui/label';
 import { Slider } from '../ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-// --- MOCK TOKEN ADDRESSES (for display/linking) ---
-const MOCK_USDT_ADDRESS = '0xC9569792794d40C612C6E4cd97b767EeE4708f24' as const;
-const MOCK_USDC_ADDRESS = '0xc4733C1fbdB1Ccd9d2Da26743F21fd3Fe12ECD37' as const;
-const MOCK_WETH_ADDRESS = '0x3318056463e5bb26FB66e071999a058bdb35F34f' as const;
-
-// --- Panels ---
-
 function WalletPanel() {
     const { state, actions } = useAmmDemo();
     const { isConnected, address, ethBalance, tokenBalances } = state;

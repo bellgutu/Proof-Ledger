@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send, RefreshCw } from 'lucide-react';
+import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send, RefreshCw, Bot } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -81,6 +81,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} />, path: '/tools' },
     { id: 'assistant', label: 'AI Assistant', icon: <FileText size={20} />, path: '/assistant' },
+    { id: 'amm-demo', label: 'AMM Demo', icon: <Bot size={20} />, path: '/amm-demo' },
   ];
 
   return (

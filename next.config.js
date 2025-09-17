@@ -26,6 +26,12 @@ const nextConfig = {
         hostname: 'api.coingecko.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pepecoin.org',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

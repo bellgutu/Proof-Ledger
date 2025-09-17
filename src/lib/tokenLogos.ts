@@ -1,6 +1,12 @@
 
 // utils/getTokenLogo.ts
 
+export const MOCK_TOKENS = {
+    'USDT': { address: '0xC9569792794d40C612C6E4cd97b767EeE4708f24', name: 'Mock USDT', decimals: 6 },
+    'USDC': { address: '0xc4733C1fbdB1Ccd9d2Da26743F21fd3Fe12ECD37', name: 'Mock USDC', decimals: 6 },
+    'WETH': { address: '0x3318056463e5bb26FB66e071999a058bdb35F34f', name: 'Mock WETH', decimals: 18 },
+};
+
 export const getTokenLogo = (symbol: string): string => {
   const symbolUpper = symbol.toUpperCase();
 
@@ -21,5 +27,3 @@ export const getTokenLogo = (symbol: string): string => {
 
   return logos[symbolUpper] || `https://placehold.co/32x32.png`;
 };
-
-    

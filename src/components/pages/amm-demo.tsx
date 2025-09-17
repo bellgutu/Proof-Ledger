@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAmmDemo } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Wallet, CheckCircle, XCircle, Bot, Cpu, Droplets, History, Settings, RefreshCw, PlusCircle, ArrowRightLeft } from 'lucide-react';
+import { Wallet, CheckCircle, XCircle, Bot, Cpu, Droplets, History, Settings, RefreshCw, PlusCircle, ArrowRightLeft, Loader2 } from 'lucide-react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useAccount, useSwitchChain } from 'wagmi';
 import Image from 'next/image';
@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
-import type { DemoPool, DemoTransaction } from '@/contexts/amm-demo-context';
+import type { DemoPool, DemoTransaction, MockTokenSymbol } from '@/contexts/amm-demo-context';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Slider } from '../ui/slider';
@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 function WalletPanel() {
     const { state, actions } = useAmmDemo();
-    const { isConnected, address, ethBalance, tokenBalances } = state;
+    const { isConnected, address, ethBalance, tokenBalances, isProcessing } = state;
     const { chain } = useAccount();
     const { switchChain } = useSwitchChain();
     const { open } = useWeb3Modal();
@@ -74,7 +74,9 @@ function WalletPanel() {
                                    </div>
                                    <div className="flex items-center gap-3">
                                         <span className="font-mono">{parseFloat(tokenBalances[symbol]).toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
-                                        <Button size="sm" variant="outline" onClick={() => actions.getFaucetTokens(symbol)}>Faucet</Button>
+                                        <Button size="sm" variant="outline" onClick={() => actions.getFaucetTokens(symbol)} disabled={isProcessing(`Faucet_${symbol}`)}>
+                                            {isProcessing(`Faucet_${symbol}`) ? <Loader2 className="animate-spin" /> : "Faucet"}
+                                        </Button>
                                    </div>
                                </div>
                            ))}
@@ -172,8 +174,8 @@ function AiOraclePanel() {
                     <Label>Confidence: {confidence}%</Label>
                     <Slider value={[confidence]} onValueChange={([val]) => setConfidence(val)} max={100} step={1} />
                 </div>
-                <Button onClick={handleSubmit} disabled={!selectedPool || !state.isConnected} className="w-full">
-                    Submit Prediction
+                <Button onClick={handleSubmit} disabled={!selectedPool || !state.isConnected || state.isProcessing(`Prediction_${selectedPool}`)} className="w-full">
+                    {state.isProcessing(`Prediction_${selectedPool}`) ? <Loader2 className="animate-spin" /> : 'Submit Prediction'}
                 </Button>
             </CardContent>
         </Card>
@@ -187,7 +189,7 @@ function PoolManagementPanel() {
 
      const handleCreatePool = () => {
         if (!tokenA || !tokenB || tokenA === tokenB) return;
-        actions.createPool(tokenA, tokenB);
+        actions.createPool(tokenA as MockTokenSymbol, tokenB as MockTokenSymbol);
      }
      
      const tokenOptions = useMemo(() => Object.keys(state.tokenBalances), [state.tokenBalances]);
@@ -210,8 +212,8 @@ function PoolManagementPanel() {
                             <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
-                    <Button onClick={handleCreatePool} disabled={!tokenA || !tokenB || !state.isConnected} className="w-full">
-                        Create Pool
+                    <Button onClick={handleCreatePool} disabled={!tokenA || !tokenB || !state.isConnected || state.isProcessing(`CreatePool_${tokenA}/${tokenB}`)} className="w-full">
+                        {state.isProcessing(`CreatePool_${tokenA}/${tokenB}`) ? <Loader2 className="animate-spin" /> : 'Create Pool'}
                     </Button>
                 </CardContent>
             </Card>
@@ -235,17 +237,69 @@ function PoolManagementPanel() {
     );
 }
 
+function LiquidityPanel() {
+    const { state, actions } = useAmmDemo();
+    const { pools, tokenBalances, isProcessing } = state;
+    const [selectedPool, setSelectedPool] = useState<DemoPool | null>(null);
+    const [amountA, setAmountA] = useState('');
+    const [amountB, setAmountB] = useState('');
+
+    const handleAddLiquidity = () => {
+        if (!selectedPool || !amountA || !amountB) return;
+        actions.addLiquidity(selectedPool.address, amountA, amountB);
+    };
+
+    const tokenA = useMemo(() => selectedPool?.name.split('/')[0] as MockTokenSymbol | undefined, [selectedPool]);
+    const tokenB = useMemo(() => selectedPool?.name.split('/')[1] as MockTokenSymbol | undefined, [selectedPool]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-3"><Droplets/> Add Liquidity</CardTitle>
+                <CardDescription>Provide tokens to a pool to earn fees.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label>Pool</Label>
+                    <Select onValueChange={(addr) => setSelectedPool(pools.find(p => p.address === addr) || null)} >
+                        <SelectTrigger><SelectValue placeholder="Select a pool" /></SelectTrigger>
+                        <SelectContent>{pools.map(p => <SelectItem key={p.address} value={p.address}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+                {selectedPool && tokenA && tokenB && (
+                    <>
+                        <div className="space-y-2">
+                            <Label>Amount {tokenA}</Label>
+                            <Input type="number" value={amountA} onChange={e => setAmountA(e.target.value)} placeholder={`0.0 ${tokenA}`} />
+                            <p className="text-xs text-muted-foreground">Balance: {tokenBalances[tokenA]}</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Amount {tokenB}</Label>
+                            <Input type="number" value={amountB} onChange={e => setAmountB(e.target.value)} placeholder={`0.0 ${tokenB}`} />
+                             <p className="text-xs text-muted-foreground">Balance: {tokenBalances[tokenB]}</p>
+                        </div>
+                        <Button onClick={handleAddLiquidity} disabled={isProcessing(`AddLiquidity_${selectedPool.address}`)} className="w-full">
+                           {isProcessing(`AddLiquidity_${selectedPool.address}`) ? <Loader2 className="animate-spin" /> : 'Add Liquidity'}
+                        </Button>
+                    </>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 function SwapPanel() {
     const { state, actions } = useAmmDemo();
+    const { pools, tokenBalances, isProcessing } = state;
     const [fromToken, setFromToken] = useState('');
     const [toToken, setToToken] = useState('');
     const [amount, setAmount] = useState('');
 
-    const tokenOptions = useMemo(() => Object.keys(state.tokenBalances), [state.tokenBalances]);
+    const tokenOptions = useMemo(() => Object.keys(tokenBalances) as MockTokenSymbol[], [tokenBalances]);
 
     const handleSwap = () => {
         if (!fromToken || !toToken || !amount) return;
-        actions.swap(fromToken, toToken, amount);
+        actions.swap(fromToken as MockTokenSymbol, toToken as MockTokenSymbol, amount);
     };
 
     return (
@@ -268,21 +322,20 @@ function SwapPanel() {
                  <div className="space-y-2">
                     <Label>To</Label>
                     <div className="flex items-center gap-2">
-                         <Input type="number" readOnly placeholder="0.0" />
+                         <Input type="number" readOnly placeholder="0.0 (estimated)" />
                          <Select onValueChange={setToToken} value={toToken}>
                             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Token"/></SelectTrigger>
                             <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
                 </div>
-                <Button onClick={handleSwap} disabled={!fromToken || !toToken || !amount || !state.isConnected} className="w-full">
-                    Swap
+                <Button onClick={handleSwap} disabled={!fromToken || !toToken || !amount || !state.isConnected || isProcessing(`Swap_${fromToken}_${toToken}`)} className="w-full">
+                    {isProcessing(`Swap_${fromToken}_${toToken}`) ? <Loader2 className="animate-spin" /> : 'Swap'}
                 </Button>
             </CardContent>
         </Card>
     );
 }
-
 
 export default function InnovativeAMMDemo() {
     return (
@@ -295,29 +348,35 @@ export default function InnovativeAMMDemo() {
             </div>
             
             <Tabs defaultValue="dashboard" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="dashboard">
                         <span className="flex items-center">
                             <Wallet className="mr-2"/>
                             <span>Dashboard</span>
                         </span>
                     </TabsTrigger>
-                    <TabsTrigger value="oracle">
-                        <span className="flex items-center">
-                            <Bot className="mr-2"/>
-                            <span>AI Oracle</span>
+                    <TabsTrigger value="pools">
+                         <span className="flex items-center">
+                            <PlusCircle className="mr-2"/>
+                            <span>Pools</span>
                         </span>
                     </TabsTrigger>
-                    <TabsTrigger value="pools">
+                    <TabsTrigger value="liquidity">
                         <span className="flex items-center">
                             <Droplets className="mr-2"/>
-                            <span>Pools</span>
+                            <span>Liquidity</span>
                         </span>
                     </TabsTrigger>
                     <TabsTrigger value="swap">
                         <span className="flex items-center">
                             <RefreshCw className="mr-2"/>
                             <span>Swap</span>
+                        </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="oracle">
+                        <span className="flex items-center">
+                            <Bot className="mr-2"/>
+                            <span>AI Oracle</span>
                         </span>
                     </TabsTrigger>
                     <TabsTrigger value="history">
@@ -331,14 +390,17 @@ export default function InnovativeAMMDemo() {
                 <TabsContent value="dashboard" className="mt-6">
                     <WalletPanel />
                 </TabsContent>
-                <TabsContent value="oracle" className="mt-6">
-                    <AiOraclePanel />
-                </TabsContent>
                 <TabsContent value="pools" className="mt-6">
                     <PoolManagementPanel />
                 </TabsContent>
+                <TabsContent value="liquidity" className="mt-6">
+                    <LiquidityPanel />
+                </TabsContent>
                  <TabsContent value="swap" className="mt-6">
                     <SwapPanel />
+                </TabsContent>
+                <TabsContent value="oracle" className="mt-6">
+                    <AiOraclePanel />
                 </TabsContent>
                 <TabsContent value="history" className="mt-6">
                     <TransactionHistoryPanel />

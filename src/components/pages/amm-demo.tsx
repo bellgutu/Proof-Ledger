@@ -277,7 +277,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             }
         }
         setTokenBalances(newBalances);
-    }, [address, publicClient]);
+    }, [address, publicClient, tokenBalances]);
 
     const fetchPools = useCallback(async () => {
         if (!publicClient) return;
@@ -1485,7 +1485,7 @@ function AnalyticsPanel() {
     );
 }
 
-export default function InnovativeAMMDemo() {
+function InnovativeAMMDemo() {
     return (
         <div className="container mx-auto p-0 space-y-8">
              <div className="text-center space-y-2">
@@ -1557,3 +1557,15 @@ export default function InnovativeAMMDemo() {
         </div>
     );
 }
+
+const AmmDemoPage = () => {
+    return (
+        <AmmDemoProvider>
+            <InnovativeAMMDemo />
+        </AmmDemoProvider>
+    );
+};
+
+export default AmmDemoPage;
+
+    

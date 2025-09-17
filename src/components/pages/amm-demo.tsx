@@ -1,3 +1,4 @@
+
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useWalletClient, useSwitchChain } from 'wagmi';
@@ -72,7 +73,6 @@ const AMM_POOL_ABI = parseAbi([
 const AI_ORACLE_ABI = parseAbi([
     "function submitPrediction(address pool, uint256 predictedFee, uint8 confidence) external",
     "function getPrediction(address pool) view returns (uint256, uint8, uint256)",
-    "function predictionHistory(address pool) view returns (tuple(uint256, uint8, uint256)[])",
 ]);
 
 // --- TYPE DEFINITIONS ---

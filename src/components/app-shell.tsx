@@ -84,6 +84,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { id: 'amm-demo', label: 'AMM Demo', icon: <Bot size={20} />, path: '/amm-demo' },
   ];
 
+  const isAmmDemoPage = pathname === '/amm-demo';
+
   return (
     <>
     <div className="flex flex-col min-h-screen lg:flex-row bg-secondary/40">
@@ -112,16 +114,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </ul>
            <div className="mt-auto">
-                <Button onClick={handleSendClick} className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground animate-pulse-strong">
-                    <Send className="mr-2"/> Send / Transfer
-                </Button>
+                {!isAmmDemoPage && (
+                    <Button onClick={handleSendClick} className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground animate-pulse-strong">
+                        <Send className="mr-2"/> Send / Transfer
+                    </Button>
+                )}
             </div>
         </nav>
       </aside>
 
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-6 lg:p-8">
-            <DebugWallet />
+            {!isAmmDemoPage && <DebugWallet />}
             <div className="mt-8">{children}</div>
         </div>
       </main>
@@ -137,3 +141,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </>
   );
 }
+
+    

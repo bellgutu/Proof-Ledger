@@ -1,11 +1,11 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAmmDemo } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Wallet, CheckCircle, XCircle, Bot, Cpu, Droplets, History, Settings } from 'lucide-react';
+import { Wallet, CheckCircle, XCircle, Bot, Cpu, Droplets, History, Settings, RefreshCw, PlusCircle, ArrowRightLeft } from 'lucide-react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useAccount, useSwitchChain } from 'wagmi';
 import Image from 'next/image';
@@ -15,11 +15,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import type { DemoPool, DemoTransaction } from '@/contexts/amm-demo-context';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Slider } from '../ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 // --- MOCK TOKEN ADDRESSES (for display/linking) ---
 const MOCK_USDT_ADDRESS = '0xC9569792794d40C612C6E4cd97b767EeE4708f24' as const;
 const MOCK_USDC_ADDRESS = '0xc4733C1fbdB1Ccd9d2Da26743F21fd3Fe12ECD37' as const;
 const MOCK_WETH_ADDRESS = '0x3318056463e5bb26FB66e071999a058bdb35F34f' as const;
+
+// --- Panels ---
 
 const WalletPanel = () => {
     const { state, actions } = useAmmDemo();
@@ -90,7 +97,7 @@ const TransactionHistoryPanel = () => {
     const { state } = useAmmDemo();
     const { transactions } = state;
     
-    const getStatusBadge = (status: 'Completed' | 'Pending' | 'Failed') => {
+    const getStatusBadge = (status: DemoTransaction['status']) => {
         switch (status) {
         case 'Completed': return <Badge variant="secondary" className="bg-green-500/20 text-green-400">Completed</Badge>;
         case 'Pending': return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400">Pending</Badge>;
@@ -138,13 +145,15 @@ const TransactionHistoryPanel = () => {
 }
 
 const AiOraclePanel = () => {
-    const { actions } = useAmmDemo();
+    const { state, actions } = useAmmDemo();
+    const [selectedPool, setSelectedPool] = useState<string>('');
+    const [fee, setFee] = useState<number>(0.3);
+    const [confidence, setConfidence] = useState<number>(85);
 
-    // In a real app, this would come from the contract/context
-    const pools = [
-        { name: "USDT/USDC Pool", address: "0x..." },
-        { name: "WETH/USDT Pool", address: "0x..." }
-    ];
+    const handleSubmit = () => {
+        if (!selectedPool) return;
+        actions.submitFeePrediction(selectedPool as `0x${string}`, fee, confidence);
+    };
 
     return (
         <Card>
@@ -152,26 +161,135 @@ const AiOraclePanel = () => {
                 <CardTitle className="flex items-center gap-3"><Bot /> AI Oracle Interface</CardTitle>
                 <CardDescription>Submit AI predictions to influence pool parameters like fees.</CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
-                <p className="text-muted-foreground text-sm">Feature coming soon.</p>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label>Select Pool</Label>
+                    <Select onValueChange={setSelectedPool} value={selectedPool}>
+                        <SelectTrigger><SelectValue placeholder="Select a pool" /></SelectTrigger>
+                        <SelectContent>
+                            {state.pools.map(p => <SelectItem key={p.address} value={p.address}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label>Predicted Fee: {fee.toFixed(2)}%</Label>
+                    <Slider value={[fee]} onValueChange={([val]) => setFee(val)} max={1} step={0.01} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Confidence: {confidence}%</Label>
+                    <Slider value={[confidence]} onValueChange={([val]) => setConfidence(val)} max={100} step={1} />
+                </div>
+                <Button onClick={handleSubmit} disabled={!selectedPool || !state.isConnected} className="w-full">
+                    Submit Prediction
+                </Button>
             </CardContent>
         </Card>
     );
 };
 
 const PoolManagementPanel = () => {
+     const { state, actions } = useAmmDemo();
+     const [tokenA, setTokenA] = useState('');
+     const [tokenB, setTokenB] = useState('');
+
+     const handleCreatePool = () => {
+        if (!tokenA || !tokenB || tokenA === tokenB) return;
+        actions.createPool(tokenA, tokenB);
+     }
+     
+     const tokenOptions = useMemo(() => Object.keys(state.tokenBalances), [state.tokenBalances]);
+
      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3"><PlusCircle /> Create New Pool</CardTitle>
+                    <CardDescription>Bootstrap a new AI-AMM pool.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Select onValueChange={setTokenA} value={tokenA}>
+                            <SelectTrigger><SelectValue placeholder="Token A"/></SelectTrigger>
+                            <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Select onValueChange={setTokenB} value={tokenB}>
+                            <SelectTrigger><SelectValue placeholder="Token B"/></SelectTrigger>
+                            <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                    <Button onClick={handleCreatePool} disabled={!tokenA || !tokenB || !state.isConnected} className="w-full">
+                        Create Pool
+                    </Button>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3"><Droplets /> Existing Pools</CardTitle>
+                    <CardDescription>View and manage liquidity.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-60">
+                        {state.pools.map(pool => (
+                            <div key={pool.address} className="p-2 border rounded-md mb-2">
+                                <p className="font-bold">{pool.name}</p>
+                                <p className="text-xs text-muted-foreground">{pool.address}</p>
+                            </div>
+                        ))}
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+const SwapPanel = () => {
+    const { state, actions } = useAmmDemo();
+    const [fromToken, setFromToken] = useState('');
+    const [toToken, setToToken] = useState('');
+    const [amount, setAmount] = useState('');
+
+    const tokenOptions = useMemo(() => Object.keys(state.tokenBalances), [state.tokenBalances]);
+
+    const handleSwap = () => {
+        if (!fromToken || !toToken || !amount) return;
+        actions.swap(fromToken, toToken, amount);
+    };
+
+    return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-3"><Droplets /> Pool Management</CardTitle>
-                <CardDescription>Create new pools and manage liquidity in the AI-AMM.</CardDescription>
+                <CardTitle className="flex items-center gap-3"><ArrowRightLeft /> Token Swap</CardTitle>
+                <CardDescription>Swap tokens through the AI-AMM.</CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
-                 <p className="text-muted-foreground text-sm">Feature coming soon.</p>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label>From</Label>
+                    <div className="flex items-center gap-2">
+                        <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" />
+                         <Select onValueChange={setFromToken} value={fromToken}>
+                            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Token"/></SelectTrigger>
+                            <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                 <div className="space-y-2">
+                    <Label>To</Label>
+                    <div className="flex items-center gap-2">
+                         <Input type="number" readOnly placeholder="0.0" />
+                         <Select onValueChange={setToToken} value={toToken}>
+                            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Token"/></SelectTrigger>
+                            <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <Button onClick={handleSwap} disabled={!fromToken || !toToken || !amount || !state.isConnected} className="w-full">
+                    Swap
+                </Button>
             </CardContent>
         </Card>
     );
 }
+
 
 export default function InnovativeAMMDemo() {
     return (
@@ -184,10 +302,11 @@ export default function InnovativeAMMDemo() {
             </div>
             
             <Tabs defaultValue="dashboard" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="dashboard"><Wallet />Dashboard</TabsTrigger>
                     <TabsTrigger value="oracle"><Bot />AI Oracle</TabsTrigger>
                     <TabsTrigger value="pools"><Droplets />Pools</TabsTrigger>
+                    <TabsTrigger value="swap"><RefreshCw />Swap</TabsTrigger>
                     <TabsTrigger value="history"><History />History</TabsTrigger>
                 </TabsList>
 
@@ -200,6 +319,9 @@ export default function InnovativeAMMDemo() {
                 <TabsContent value="pools" className="mt-6">
                     <PoolManagementPanel />
                 </TabsContent>
+                 <TabsContent value="swap" className="mt-6">
+                    <SwapPanel />
+                </TabsContent>
                 <TabsContent value="history" className="mt-6">
                     <TransactionHistoryPanel />
                 </TabsContent>
@@ -207,3 +329,5 @@ export default function InnovativeAMMDemo() {
         </div>
     );
 }
+
+    

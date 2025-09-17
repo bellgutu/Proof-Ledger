@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Wallet, CheckCircle, XCircle, Bot, Cpu, Droplets, History, Settings } from 'lucide-react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useAccount, useSwitchNetwork } from 'wagmi';
+import { useAccount, useSwitchChain } from 'wagmi';
 import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,7 +25,7 @@ const WalletPanel = () => {
     const { state, actions } = useAmmDemo();
     const { isConnected, address, ethBalance, tokenBalances } = state;
     const { chain } = useAccount();
-    const { switchNetwork } = useSwitchNetwork();
+    const { switchChain } = useSwitchChain();
     const { open } = useWeb3Modal();
 
     const isSepolia = chain?.id === 11155111;
@@ -54,7 +54,7 @@ const WalletPanel = () => {
                             {isSepolia ? (
                                 <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} />{chain?.name}</span>
                             ) : (
-                                <Button size="sm" variant="destructive" onClick={() => switchNetwork?.(11155111)}>
+                                <Button size="sm" variant="destructive" onClick={() => switchChain?.({ chainId: 11155111 })}>
                                     <XCircle size={16} className="mr-2"/>
                                     Switch to Sepolia
                                 </Button>

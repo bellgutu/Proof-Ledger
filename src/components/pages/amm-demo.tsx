@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Wallet, CheckCircle, XCircle, Bot, Cpu, Droplets, History, Settings } from 'lucide-react';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useAccount, useNetwork, useSwitchNetwork } from 'wagmi';
+import { useAccount, useSwitchNetwork } from 'wagmi';
 import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,7 +24,7 @@ const MOCK_WETH_ADDRESS = '0x3318056463e5bb26FB66e071999a058bdb35F34f' as const;
 const WalletPanel = () => {
     const { state, actions } = useAmmDemo();
     const { isConnected, address, ethBalance, tokenBalances } = state;
-    const { chain } = useNetwork();
+    const { chain } = useAccount();
     const { switchNetwork } = useSwitchNetwork();
     const { open } = useWeb3Modal();
 

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAmmDemo } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ const WalletPanel = () => {
                          <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Network</span>
                             {isSepolia ? (
-                                <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} />{chain?.name}</span>
+                                <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} />{chain?.name || 'Sepolia'}</span>
                             ) : (
                                 <Button size="sm" variant="destructive" onClick={() => switchChain?.({ chainId: 11155111 })}>
                                     <XCircle size={16} className="mr-2"/>
@@ -339,7 +339,3 @@ export default function InnovativeAMMDemo() {
         </div>
     );
 }
-
-    
-
-    

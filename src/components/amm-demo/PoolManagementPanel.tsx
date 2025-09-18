@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS, AMM_CONTRACT_ADDRESS } from '@/contexts/amm-demo-context';
@@ -10,7 +11,7 @@ import { Droplets, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 import { useToast } from '@/hooks/use-toast';
 import { parseAbi, type Address } from 'viem';
-import { getViemPublicClient } from '@/services/blockchain-service'; // Import this
+import { getViemPublicClient } from '@/services/blockchain-service';
 
 export function PoolManagementPanel() {
     const { state, actions } = useAmmDemo();

@@ -11,6 +11,7 @@ import { Droplets, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 import { useToast } from '@/hooks/use-toast';
 import { AMM_CONTRACT_ADDRESS } from '@/contexts/amm-demo-context';
+import { parseAbi } from 'viem';
 
 export function PoolManagementPanel() {
     const { state, actions } = useAmmDemo();
@@ -23,8 +24,14 @@ export function PoolManagementPanel() {
     const { toast } = useToast();
 
     useEffect(() => {
-        setDebugInfo(`Pools count: ${state.pools.length}\nToken balances: ${JSON.stringify(state.tokenBalances, null, 2)}`);
-    }, [state.pools, state.tokenBalances]);
+        const info = {
+            poolsCount: state.pools.length,
+            tokenBalances: state.tokenBalances,
+            processingStates: state.processingStates,
+            isConnected: state.isConnected
+        };
+        setDebugInfo(JSON.stringify(info, null, 2));
+    }, [state.pools, state.tokenBalances, state.processingStates, state.isConnected]);
 
     useEffect(() => {
         const checkExistingPool = async () => {
@@ -137,6 +144,7 @@ export function PoolManagementPanel() {
 
                     {debugInfo && (
                         <div className="mt-4 p-3 bg-muted rounded-md">
+                            <h4 className="font-semibold mb-2">Debug Information</h4>
                             <pre className="text-xs whitespace-pre-wrap">{debugInfo}</pre>
                         </div>
                     )}
@@ -204,6 +212,3 @@ export function PoolManagementPanel() {
         </div>
     );
 }
-
-// Add a helper at the end of the file for parseAbi
-const parseAbi = (abi: readonly string[]) => abi;

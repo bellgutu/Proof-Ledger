@@ -108,7 +108,6 @@ interface AmmDemoState {
     };
     tokenBalances: Record<MockTokenSymbol, string>;
     ethBalance: string;
-    isConnected: boolean;
 }
 
 interface AmmDemoActions {
@@ -138,8 +137,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const publicClient = useMemo(() => getViemPublicClient(), []);
     const { writeContractAsync } = useWriteContract();
     const { toast } = useToast();
-    const { open } = useWeb3Modal();
-    const { disconnect } = useDisconnect();
 
     const [transactions, setTransactions] = useState<DemoTransaction[]>([]);
     const [pools, setPools] = useState<DemoPool[]>([]);
@@ -281,25 +278,26 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
 
             const poolDetails = await Promise.all(poolAddresses.map(async (addr) => {
                 try {
-                    const [tokenA_addr, tokenB_addr] = await Promise.all([
+                    const [tokenA_addr, tokenB_addr, feeRate] = await Promise.all([
                         publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'tokenA' }),
                         publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'tokenB' }),
+                        publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getFee', args: [addr] })
                     ]);
 
                     const symbolA = findSymbolByAddress(tokenA_addr);
                     const symbolB = findSymbolByAddress(tokenB_addr);
 
                     if (!symbolA || !symbolB) {
+                        console.warn(`Unknown tokens in pool: tokenA=${tokenA_addr}, tokenB=${tokenB_addr}`);
                         return null;
                     }
 
                     const tokenAInfo = MOCK_TOKENS[symbolA];
                     const tokenBInfo = MOCK_TOKENS[symbolB];
 
-                    const [reserves, totalSupply, feeRate] = await Promise.all([
-                        publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getReserves', args: [addr] }),
-                        publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'totalSupply' }),
-                        publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getFee', args: [addr] }),
+                    const [reserves, totalSupply] = await Promise.all([
+                        publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'getReserves' }),
+                        publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'totalSupply' })
                     ]);
                     const [reserveA, reserveB] = reserves;
 
@@ -401,9 +399,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 return null;
             }
             
-            const [tokenA_addr, tokenB_addr] = await Promise.all([
+            const [tokenA_addr, tokenB_addr, feeRate] = await Promise.all([
                 publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'tokenA' }),
-                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'tokenB' })
+                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'tokenB' }),
+                publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getFee', args: [poolAddress] }),
             ]);
             
             const symbolA = findSymbolByAddress(tokenA_addr);
@@ -414,12 +413,11 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             const tokenAInfo = MOCK_TOKENS[symbolA];
             const tokenBInfo = MOCK_TOKENS[symbolB];
             
-            const [reserves, totalSupply, feeRate] = await Promise.all([
-                publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getReserves', args: [poolAddress] }),
-                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'totalSupply' }),
-                publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getFee', args: [poolAddress] })
+            const [reserves, totalSupply] = await Promise.all([
+                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'getReserves' }),
+                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'totalSupply' })
             ]);
-             const [reserveA, reserveB] = reserves;
+            const [reserveA, reserveB] = reserves;
             
             const volume24h = (Math.random() * 10000).toFixed(2);
             const fees24h = (parseFloat(volume24h) * (Number(feeRate) / 10000)).toFixed(2);
@@ -605,7 +603,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         networkStats,
         tokenBalances,
         ethBalance,
-        isConnected: walletState.isConnected,
     };
     
     const actions: AmmDemoActions = { 
@@ -629,4 +626,3 @@ export const useAmmDemo = (): AmmDemoContextType => {
     return context;
 };
 
-    

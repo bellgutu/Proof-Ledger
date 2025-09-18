@@ -350,14 +350,13 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if(!isConnected) return;
 
-        const fetchData = async () => {
-            await fetchAmmBalances();
-            await fetchPools();
-            await fetchNetworkStats();
-        }
-
-        fetchData();
-        const interval = setInterval(fetchData, 15000);
+        fetchPools();
+        fetchAmmBalances();
+        fetchNetworkStats();
+        const interval = setInterval(() => {
+            fetchAmmBalances();
+            fetchNetworkStats();
+        }, 15000);
         return () => clearInterval(interval);
     }, [isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats]);
     
@@ -545,19 +544,43 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const swap = useCallback(async (tokenIn: MockTokenSymbol, tokenOut: MockTokenSymbol, amountIn: string, minAmountOut: string) => {
         const tokenInInfo = MOCK_TOKENS[tokenIn];
         const tokenOutInfo = MOCK_TOKENS[tokenOut];
-        if (!address) return;
+        if (!address || !publicClient) return;
 
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
+        const onChainAmountIn = parseUnits(amountIn, tokenInInfo.decimals);
 
-        await approveToken(tokenIn, amountIn, AMM_CONTRACT_ADDRESS);
+        // Check allowance
+        const allowance = await publicClient.readContract({
+            address: tokenInInfo.address,
+            abi: ERC20_ABI,
+            functionName: 'allowance',
+            args: [address, AMM_CONTRACT_ADDRESS],
+        });
 
+        // If allowance is insufficient, approve
+        if (allowance < onChainAmountIn) {
+             try {
+                await executeTransaction('Approve', `Approving ${tokenIn} for swap`, `Approve_${tokenIn}`,
+                    () => writeContractAsync({
+                        address: tokenInInfo.address,
+                        abi: ERC20_ABI,
+                        functionName: 'approve',
+                        args: [AMM_CONTRACT_ADDRESS, onChainAmountIn]
+                    })
+                );
+            } catch (e) {
+                // Error is handled in executeTransaction, just stop the swap
+                return;
+            }
+        }
+        
         await executeTransaction('Swap', `Swapping ${amountIn} ${tokenIn} for ${tokenOut}`, `Swap_${tokenIn}_${tokenOut}`,
             () => writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
                 functionName: 'swapExactTokensForTokens',
                 args: [
-                    parseUnits(amountIn, tokenInInfo.decimals),
+                    onChainAmountIn,
                     parseUnits(minAmountOut, tokenOutInfo.decimals),
                     [tokenInInfo.address, tokenOutInfo.address],
                     address,
@@ -569,7 +592,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 await fetchPools();
             }
         );
-    }, [address, approveToken, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools]);
+    }, [address, publicClient, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools]);
 
     const send = useCallback(async (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => {
         let txFunction: () => Promise<Address>;
@@ -625,3 +648,6 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+
+    

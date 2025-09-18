@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getTokenLogo } from '@/lib/tokenLogos';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Send } from 'lucide-react';
 import { isValidAddress } from '@/lib/utils';
 import { type Address } from 'viem';
 import { useWallet } from '@/contexts/wallet-context';
@@ -20,8 +20,8 @@ export function SendReceivePanel() {
     const [token, setToken] = useState<MockTokenSymbol | 'ETH'>('ETH');
     const [recipient, setRecipient] = useState('');
     const [amount, setAmount] = useState('');
-    const [isAddressValid, setIsAddressValid] = useState(false); // Added missing state
-    const [isCheckingAddress, setIsCheckingAddress] = useState(false); // Added for better UX
+    const [isAddressValid, setIsAddressValid] = useState(false); // FIX: Added missing state
+    const [isCheckingAddress, setIsCheckingAddress] = useState(false);
     
     const tokenOptions = useMemo(() => ['ETH', ...Object.keys(state.tokenBalances)] as const, [state.tokenBalances]);
     
@@ -67,7 +67,7 @@ export function SendReceivePanel() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-3"><RefreshCw /> Send & Receive</CardTitle>
+                <CardTitle className="flex items-center gap-3"><Send /> Send & Receive</CardTitle>
                 <CardDescription>Send tokens or ETH to any address on Sepolia.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -165,7 +165,7 @@ export function SendReceivePanel() {
                     disabled={isSendDisabled}
                     className="w-full"
                 >
-                    {state.isProcessing(`Send_${token}_${amount}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null}
+                    {state.isProcessing(`Send_${token}_${amount}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : <Send className="mr-2"/>}
                     Send {token}
                 </Button>
             </CardContent>

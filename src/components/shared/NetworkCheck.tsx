@@ -9,35 +9,27 @@ export default function NetworkCheck() {
   const { chain } = useAccount();
   const { switchChain } = useSwitchChain();
   const { toast } = useToast();
+  const [isWrongNetwork, setIsWrongNetwork] = useState(false);
 
   useEffect(() => {
-    if (typeof window.ethereum === 'undefined' || !chain) {
-      return;
+    if (chain) {
+      const correctNetwork = chain.id === 11155111; // Sepolia chain ID
+      setIsWrongNetwork(!correctNetwork);
+
+      if (!correctNetwork) {
+        toast({
+          variant: "destructive",
+          title: "Wrong Network",
+          description: "Please switch to the Sepolia network to use this dApp.",
+          duration: Infinity,
+        });
+      }
+    } else {
+      setIsWrongNetwork(false);
     }
-
-    const isCorrectNetwork = chain.id === 11155111; // Sepolia chain ID
-
-    if (!isCorrectNetwork) {
-      toast({
-        variant: "destructive",
-        title: "Wrong Network",
-        description: "Please switch to Sepolia network to use this dApp.",
-        duration: Infinity,
-      });
-    }
-
-    const handleChainChanged = () => {
-      window.location.reload();
-    };
-
-    window.ethereum.on('chainChanged', handleChainChanged);
-
-    return () => {
-      window.ethereum?.removeListener('chainChanged', handleChainChanged);
-    };
   }, [chain, toast]);
 
-  if (chain && chain.id !== 11155111) {
+  if (isWrongNetwork) {
     return (
       <div className="fixed top-0 left-0 right-0 bg-destructive text-destructive-foreground px-4 py-2 text-center text-sm z-50">
         You are on the wrong network. Please switch to Sepolia in your wallet.

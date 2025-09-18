@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Droplets, PieChart, Loader2 } from 'lucide-react';
+import { useWallet } from '@/contexts/wallet-context';
 
 export function LiquidityPanel() {
     const { state, actions } = useAmmDemo();
+    const { walletState } = useWallet();
     const [selectedPool, setSelectedPool] = useState<string>('');
     const [amountA, setAmountA] = useState('');
     const [amountB, setAmountB] = useState('');
@@ -94,7 +96,7 @@ export function LiquidityPanel() {
                                 <div className="text-xs text-muted-foreground">Calculated based on pool ratio</div>
                             </div>
                             
-                            <Button onClick={handleAddLiquidity} disabled={!amountA || !amountB || !state.isConnected || state.isProcessing(`AddLiquidity_${pool.address}`)} className="w-full">
+                            <Button onClick={handleAddLiquidity} disabled={!amountA || !amountB || !walletState.isConnected || state.isProcessing(`AddLiquidity_${pool.address}`)} className="w-full">
                                 {state.isProcessing(`AddLiquidity_${pool.address}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null} Add Liquidity
                             </Button>
                         </>
@@ -138,7 +140,7 @@ export function LiquidityPanel() {
                                 </div>
                             )}
                             
-                            <Button onClick={handleRemoveLiquidity} disabled={!lpAmount || !state.isConnected || state.isProcessing(`RemoveLiquidity_${pool.address}`)} className="w-full" variant="destructive">
+                            <Button onClick={handleRemoveLiquidity} disabled={!lpAmount || !walletState.isConnected || state.isProcessing(`RemoveLiquidity_${pool.address}`)} className="w-full" variant="destructive">
                                 {state.isProcessing(`RemoveLiquidity_${pool.address}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null} Remove Liquidity
                             </Button>
                         </>

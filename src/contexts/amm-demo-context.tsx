@@ -6,6 +6,7 @@ import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { getViemPublicClient } from '@/services/blockchain-service';
 import { type Address, parseAbi, formatUnits, parseEther, formatEther, getContract, parseUnits } from 'viem';
 import { useToast } from '@/hooks/use-toast';
+import { useWallet } from './wallet-context';
 
 // --- CONTRACT & TOKEN ADDRESSES ---
 const AMM_CONTRACT_ADDRESS = '0xC3F0c7b04995517A4484e242D766f4d48f699e85' as const;
@@ -99,11 +100,6 @@ export interface Prediction {
 }
 
 interface AmmDemoState {
-    isConnected: boolean;
-    address: Address | undefined;
-    ethBalance: string;
-    tokenBalances: Record<MockTokenSymbol, string>;
-    allowances: Record<MockTokenSymbol, bigint>;
     transactions: DemoTransaction[];
     pools: DemoPool[];
     predictions: Prediction[];
@@ -114,11 +110,11 @@ interface AmmDemoState {
         blockNumber: number;
         gasLimit: string;
     };
+    tokenBalances: Record<MockTokenSymbol, string>;
+    ethBalance: string;
 }
 
 interface AmmDemoActions {
-    connectWallet: () => void;
-    disconnectWallet: () => void;
     getFaucetTokens: (token: MockTokenSymbol) => Promise<void>;
     approveToken: (token: MockTokenSymbol, amount: string, spender?: Address) => Promise<void>;
     submitFeePrediction: (poolAddress: Address, fee: number, confidence: number) => Promise<void>;
@@ -139,25 +135,20 @@ const AmmDemoContext = createContext<AmmDemoContextType | undefined>(undefined);
 
 // --- PROVIDER COMPONENT ---
 export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
-    const { address, isConnected, chain } = useAccount();
-    const { open } = useWeb3Modal();
-    const { disconnect } = useDisconnect();
-    const { data: ethBalanceData } = useBalance({ address });
-    const publicClient = getViemPublicClient();
+    const { walletState, walletActions } = useWallet();
+    const { isConnected, walletAddress: address } = walletState;
     const { data: walletClient } = useWalletClient();
+    const publicClient = useMemo(() => getViemPublicClient(), []);
     const { writeContractAsync } = useWriteContract();
     const { toast } = useToast();
     
-    const [tokenBalances, setTokenBalances] = useState<Record<MockTokenSymbol, string>>({ USDT: '0', USDC: '0', WETH: '0' });
-    const [allowances, setAllowances] = useState<Record<MockTokenSymbol, bigint>>({ USDT: 0n, USDC: 0n, WETH: 0n });
     const [transactions, setTransactions] = useState<DemoTransaction[]>([]);
     const [pools, setPools] = useState<DemoPool[]>([]);
     const [predictions, setPredictions] = useState<Prediction[]>([]);
     const [processingStates, setProcessingStates] = useState<Record<string, boolean>>({});
     const [gasPrice, setGasPrice] = useState<string>('0');
     const [networkStats, setNetworkStats] = useState({ blockNumber: 0, gasLimit: '0' });
-    
-    const ethBalance = ethBalanceData ? parseFloat(ethBalanceData.formatted).toFixed(4) : '0';
+    const [tokenBalances, setTokenBalances] = useState<Record<MockTokenSymbol, string>>({ USDT: '0', USDC: '0', WETH: '0' });
     
     const setProcessing = (key: string, value: boolean) => {
         setProcessingStates(prev => ({...prev, [key]: value}));
@@ -235,7 +226,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const fetchBalances = useCallback(async () => {
+    const fetchAmmBalances = useCallback(async () => {
         if (!address || !publicClient) return;
         const newBalances: Record<MockTokenSymbol, string> = { USDT: '0', USDC: '0', WETH: '0' };
         
@@ -246,7 +237,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     address: token.address,
                     abi: ERC20_ABI,
                     functionName: 'balanceOf',
-                    args: [address],
+                    args: [address as Address],
                 });
                 newBalances[symbol as MockTokenSymbol] = formatUnits(balance, token.decimals);
             } catch (e) {
@@ -302,7 +293,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     let userShare = 0;
                     if (address) {
                         try {
-                            const balance = await publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'balanceOf', args: [address] });
+                            const balance = await publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'balanceOf', args: [address as Address] });
                             userLpBalance = formatUnits(balance, 18);
                             if (totalSupply > 0) {
                                 userShare = (Number(userLpBalance) / Number(formatUnits(totalSupply, 18))) * 100;
@@ -336,10 +327,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     }, [publicClient, address]);
     
     useEffect(() => {
-        if(!isConnected || !chain || chain.id !== 11155111) return;
+        if(!isConnected) return;
 
         const fetchData = async () => {
-            await fetchBalances();
+            await fetchAmmBalances();
             await fetchPools();
             await fetchNetworkStats();
         }
@@ -347,19 +338,16 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         fetchData();
         const interval = setInterval(fetchData, 15000);
         return () => clearInterval(interval);
-    }, [isConnected, chain, fetchBalances, fetchPools, fetchNetworkStats]);
-    
-    const connectWallet = () => open();
-    const disconnectWallet = () => disconnect();
+    }, [isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats]);
     
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];
         const amount = parseUnits('1000', tokenInfo.decimals);
         await executeTransaction('Faucet', `Minting 1,000 ${token}`, `Faucet_${token}`,
-            () => writeContractAsync({ address: tokenInfo.address, abi: ERC20_ABI, functionName: 'mint', args: [address!, amount] }),
-            fetchBalances
+            () => writeContractAsync({ address: tokenInfo.address, abi: ERC20_ABI, functionName: 'mint', args: [address as Address, amount] }),
+            fetchAmmBalances
         );
-    }, [address, writeContractAsync, fetchBalances, executeTransaction]);
+    }, [address, writeContractAsync, fetchAmmBalances, executeTransaction]);
     
     const approveToken = useCallback(async (token: MockTokenSymbol, amount: string, spender: Address = AMM_CONTRACT_ADDRESS) => {
         const tokenInfo = MOCK_TOKENS[token];
@@ -397,23 +385,23 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             () => writeContractAsync({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'addLiquidity', args: [
                     pool.tokenA.address, pool.tokenB.address, 
                     parseUnits(amountA, pool.tokenA.decimals), parseUnits(amountB, pool.tokenB.decimals), 
-                    address!, BigInt(Math.floor(Date.now() / 1000) + 60*20)
+                    address as Address, BigInt(Math.floor(Date.now() / 1000) + 60*20)
                 ]}),
-            async () => { await fetchBalances(); await fetchPools(); }
+            async () => { await fetchAmmBalances(); await fetchPools(); }
         );
-    }, [pools, approveToken, executeTransaction, writeContractAsync, fetchBalances, fetchPools, address]);
+    }, [pools, approveToken, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools, address]);
     
     const removeLiquidity = useCallback(async (poolAddress: Address, lpAmount: string) => {
         const pool = pools.find(p => p.address === poolAddress);
         if (!pool) return;
         await executeTransaction('Remove Liquidity', `Removing ${lpAmount} LP tokens from ${pool.name}`, `RemoveLiquidity_${poolAddress}`,
             () => writeContractAsync({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'removeLiquidity', args: [
-                    pool.tokenA.address, pool.tokenB.address, parseUnits(lpAmount, 18), 0n, 0n, address!,
+                    pool.tokenA.address, pool.tokenB.address, parseUnits(lpAmount, 18), 0n, 0n, address as Address,
                     BigInt(Math.floor(Date.now() / 1000) + 60*20)
                 ]}),
-            async () => { await fetchBalances(); await fetchPools(); }
+            async () => { await fetchAmmBalances(); await fetchPools(); }
         );
-    }, [pools, executeTransaction, writeContractAsync, fetchBalances, fetchPools, address]);
+    }, [pools, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools, address]);
     
     const swap = useCallback(async (tokenIn: MockTokenSymbol, tokenOut: MockTokenSymbol, amountIn: string, minAmountOut: string) => {
          const tokenInInfo = MOCK_TOKENS[tokenIn];
@@ -426,12 +414,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
          await approveToken(tokenIn, amountIn);
          await executeTransaction('Swap', `Swapping ${amountIn} ${tokenIn} for at least ${minAmountOut} ${tokenOut}`, `Swap_${tokenIn}_${tokenOut}`,
              () => writeContractAsync({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'swapExactTokensForTokens', args: [
-                     amountInWei, minAmountOutWei, [tokenInInfo.address, tokenOutInfo.address], address!, 
+                     amountInWei, minAmountOutWei, [tokenInInfo.address, tokenOutInfo.address], address as Address, 
                      BigInt(Math.floor(Date.now() / 1000) + 60 * 20)
                  ]}),
-             fetchBalances
+             fetchAmmBalances
          );
-    }, [executeTransaction, approveToken, writeContractAsync, address, fetchBalances]);
+    }, [executeTransaction, approveToken, writeContractAsync, address, fetchAmmBalances]);
 
     const send = useCallback(async (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => {
         let txFunction: () => Promise<Address>;
@@ -445,17 +433,38 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             txFunction = () => writeContractAsync({ address: tokenInfo.address, abi: ERC20_ABI, functionName: 'transfer', args: [recipient, onChainAmount] });
         }
 
-        await executeTransaction('Send', details, `Send_${token}_${amount}`, txFunction, fetchBalances);
-    }, [walletClient, executeTransaction, writeContractAsync, fetchBalances]);
+        await executeTransaction('Send', details, `Send_${token}_${amount}`, txFunction, fetchAmmBalances);
+    }, [walletClient, executeTransaction, writeContractAsync, fetchAmmBalances]);
     
     const refreshData = useCallback(async () => {
         setProcessing('refresh', true);
-        await Promise.all([ fetchBalances(), fetchPools(), fetchNetworkStats() ]);
+        await Promise.all([ fetchAmmBalances(), fetchPools(), fetchNetworkStats() ]);
         setProcessing('refresh', false);
-    }, [fetchBalances, fetchPools, fetchNetworkStats]);
+    }, [fetchAmmBalances, fetchPools, fetchNetworkStats]);
     
-    const state: AmmDemoState = { isConnected, address, ethBalance, tokenBalances, allowances, transactions, pools, predictions, processingStates, isProcessing, gasPrice, networkStats };
-    const actions: AmmDemoActions = { connectWallet, disconnectWallet, getFaucetTokens, approveToken, submitFeePrediction, createPool, addLiquidity, removeLiquidity, swap, send, refreshData };
+    const state: AmmDemoState = { 
+        transactions, 
+        pools, 
+        predictions,
+        processingStates, 
+        isProcessing,
+        gasPrice,
+        networkStats,
+        tokenBalances,
+        ethBalance: walletState.balances['ETH']?.toFixed(4) || '0.0000',
+    };
+    
+    const actions: AmmDemoActions = { 
+        getFaucetTokens, 
+        approveToken, 
+        submitFeePrediction, 
+        createPool, 
+        addLiquidity,
+        removeLiquidity,
+        swap,
+        send,
+        refreshData
+    };
     
     return <AmmDemoContext.Provider value={{ state, actions }}>{children}</AmmDemoContext.Provider>;
 };

@@ -2,17 +2,19 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { useAmmDemo, type MockTokenSymbol } from '@/contexts/amm-demo-context';
+import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getTokenLogo } from '@/lib/tokenLogos';
-import { ArrowRightLeft, Calculator, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, Calculator, Loader2 } from 'lucide-react';
+import { useWallet } from '@/contexts/wallet-context';
 
 export function SwapPanel() {
     const { state, actions } = useAmmDemo();
+    const { walletState } = useWallet();
     const [fromToken, setFromToken] = useState<MockTokenSymbol>('USDT');
     const [toToken, setToToken] = useState<MockTokenSymbol>('USDC');
     const [amount, setAmount] = useState('');
@@ -65,7 +67,7 @@ export function SwapPanel() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-3"><ArrowRightLeft /> Token Swap</CardTitle>
+                <CardTitle className="flex items-center gap-3"><ArrowLeftRight /> Token Swap</CardTitle>
                 <CardDescription>Swap tokens through the AI-AMM with optimized fees.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -99,7 +101,7 @@ export function SwapPanel() {
                         const temp = fromToken; setFromToken(toToken); setToToken(temp);
                         setAmount(''); setMinAmountOut('');
                     }}>
-                        <ArrowRightLeft size={16} />
+                        <ArrowLeftRight size={16} />
                     </Button>
                 </div>
                 
@@ -153,7 +155,7 @@ export function SwapPanel() {
                     </div>
                 )}
                 
-                <Button onClick={handleSwap} disabled={!fromToken || !toToken || !amount || !minAmountOut || !state.isConnected || state.isProcessing(`Swap_${fromToken}_${toToken}`)} className="w-full">
+                <Button onClick={handleSwap} disabled={!fromToken || !toToken || !amount || !minAmountOut || !walletState.isConnected || state.isProcessing(`Swap_${fromToken}_${toToken}`)} className="w-full">
                     {state.isProcessing(`Swap_${fromToken}_${toToken}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null} Swap
                 </Button>
             </CardContent>

@@ -12,9 +12,11 @@ import { getTokenLogo } from '@/lib/tokenLogos';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { isValidAddress } from '@/lib/utils';
 import { type Address } from 'viem';
+import { useWallet } from '@/contexts/wallet-context';
 
 export function SendReceivePanel() {
     const { state, actions } = useAmmDemo();
+    const { walletState } = useWallet();
     const [token, setToken] = useState<MockTokenSymbol | 'ETH'>('ETH');
     const [recipient, setRecipient] = useState('');
     const [amount, setAmount] = useState('');
@@ -27,7 +29,7 @@ export function SendReceivePanel() {
             setIsAddressValid(false);
             return;
         }
-        setIsAddressValid(isValidAddress(recipient));
+        setIsValidAddress(isValidAddress(recipient));
     }, [recipient]);
     
     const handleSend = () => {
@@ -129,7 +131,7 @@ export function SendReceivePanel() {
                 
                 <Button 
                     onClick={handleSend} 
-                    disabled={!isAddressValid || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > parseFloat(getBalance()) || !state.isConnected || state.isProcessing(`Send_${token}_${amount}`)} 
+                    disabled={!isAddressValid || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > parseFloat(getBalance()) || !walletState.isConnected || state.isProcessing(`Send_${token}_${amount}`)} 
                     className="w-full"
                 >
                     {state.isProcessing(`Send_${token}_${amount}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null}
@@ -139,4 +141,3 @@ export function SendReceivePanel() {
         </Card>
     );
 }
-

@@ -2,18 +2,24 @@
 "use client";
 import React from 'react';
 import Image from 'next/image';
-import { useAmmDemo } from '@/contexts/amm-demo-context';
+import { useAmmDemo, MOCK_TOKENS } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAccount, useSwitchChain } from 'wagmi';
+import { useAccount, useSwitchChain, useDisconnect } from 'wagmi';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { Wallet, CheckCircle, XCircle, RefreshCw, Loader2, LogOut } from 'lucide-react';
-import { getTokenLogo, MOCK_TOKENS } from '@/lib/tokenLogos';
+import { getTokenLogo } from '@/lib/tokenLogos';
+import { useWallet } from '@/contexts/wallet-context';
 
 export function WalletPanel() {
-    const { state, actions } = useAmmDemo();
-    const { isConnected, address, ethBalance, tokenBalances, gasPrice, networkStats, isProcessing } = state;
+    const { state: ammState, actions: ammActions } = useAmmDemo();
+    const { walletState } = useWallet();
+    const { open } = useWeb3Modal();
+    const { disconnect } = useDisconnect();
+
+    const { isConnected, walletAddress: address } = walletState;
+    const { tokenBalances, ethBalance, gasPrice, networkStats, isProcessing } = ammState;
     const { chain } = useAccount();
-    const { switchChain } = useSwitchChain();
     
     const isSepolia = chain?.id === 11155111;
 
@@ -25,14 +31,14 @@ export function WalletPanel() {
             </CardHeader>
             <CardContent className="space-y-4">
                 {!isConnected ? (
-                    <Button onClick={actions.connectWallet} className="w-full">Connect Wallet</Button>
+                    <Button onClick={() => open()} className="w-full">Connect Wallet</Button>
                 ) : (
                     <div className="p-3 bg-background rounded-lg border space-y-2">
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Status</span>
                              <div className="flex items-center gap-2">
                                 <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} />Connected</span>
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={actions.disconnectWallet}>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => disconnect()}>
                                     <LogOut size={14} />
                                 </Button>
                             </div>
@@ -46,7 +52,7 @@ export function WalletPanel() {
                             {isSepolia ? (
                                 <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} />{chain?.name || 'Sepolia'}</span>
                             ) : (
-                                <Button size="sm" variant="destructive" onClick={() => switchChain?.({ chainId: 11155111 })}>
+                                <Button size="sm" variant="destructive" onClick={() => walletActions.switchChain(11155111)}>
                                     <XCircle size={16} className="mr-2"/>
                                     Switch to Sepolia
                                 </Button>
@@ -69,8 +75,8 @@ export function WalletPanel() {
                  {isConnected && isSepolia && (
                     <div className="space-y-3 pt-4">
                         <div className="flex justify-between items-center">
-                            <h4 className="font-semibold">Token Balances</h4>
-                            <Button size="sm" variant="outline" onClick={actions.refreshData} disabled={isProcessing('refresh')}>
+                            <h4 className="font-semibold">Mock Token Balances</h4>
+                            <Button size="sm" variant="outline" onClick={ammActions.refreshData} disabled={isProcessing('refresh')}>
                                 {isProcessing('refresh') ? <Loader2 size={14} className="mr-1 animate-spin"/> : <RefreshCw size={14} className="mr-1" />} Refresh
                             </Button>
                         </div>
@@ -82,8 +88,8 @@ export function WalletPanel() {
                                        <span className="font-bold">{symbol}</span>
                                    </div>
                                    <div className="flex items-center gap-3">
-                                        <span className="font-mono">{parseFloat(tokenBalances[symbol]).toLocaleString(undefined, { maximumFractionDigits: MOCK_TOKENS[symbol].decimals > 6 ? 4 : MOCK_TOKENS[symbol].decimals })}</span>
-                                        <Button size="sm" variant="outline" onClick={() => actions.getFaucetTokens(symbol)} disabled={isProcessing(`Faucet_${symbol}`)}>
+                                        <span className="font-mono">{parseFloat(tokenBalances[symbol]).toLocaleString('en-US', { maximumFractionDigits: MOCK_TOKENS[symbol].decimals > 6 ? 4 : MOCK_TOKENS[symbol].decimals })}</span>
+                                        <Button size="sm" variant="outline" onClick={() => ammActions.getFaucetTokens(symbol)} disabled={isProcessing(`Faucet_${symbol}`)}>
                                             {isProcessing(`Faucet_${symbol}`) ? <Loader2 size={14} className="animate-spin"/> : "Faucet"}
                                         </Button>
                                    </div>

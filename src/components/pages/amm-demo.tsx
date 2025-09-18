@@ -2,8 +2,8 @@
 "use client";
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wallet, Bot, Droplets, ArrowLeftRight, PlusCircle, BarChart3, Cpu, RefreshCw, Send } from 'lucide-react';
-import { AmmDemoProvider } from '@/contexts/amm-demo-context';
+import { Wallet, Bot, Droplets, ArrowLeftRight, PlusCircle, BarChart3, Cpu, RefreshCw, Send, Loader2 } from 'lucide-react';
+import { AmmDemoProvider, useAmmDemo } from '@/contexts/amm-demo-context';
 import { WalletPanel } from '@/components/amm-demo/WalletPanel';
 import { TransactionHistoryPanel } from '@/components/amm-demo/TransactionHistoryPanel';
 import { AiOraclePanel } from '@/components/amm-demo/AiOraclePanel';

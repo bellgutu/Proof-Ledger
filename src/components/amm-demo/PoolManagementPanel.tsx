@@ -8,9 +8,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Droplets, Eye, Loader2, PlusCircle } from 'lucide-react';
+import { useWallet } from '@/contexts/wallet-context';
 
 export function PoolManagementPanel() {
      const { state, actions } = useAmmDemo();
+     const { walletState } = useWallet();
      const [tokenA, setTokenA] = useState<MockTokenSymbol|''>('');
      const [tokenB, setTokenB] = useState<MockTokenSymbol|''>('');
 
@@ -39,7 +41,7 @@ export function PoolManagementPanel() {
                             <SelectContent>{tokenOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
-                    <Button onClick={handleCreatePool} disabled={!tokenA || !tokenB || !state.isConnected || state.isProcessing(`CreatePool_${tokenA}_${tokenB}`)} className="w-full">
+                    <Button onClick={handleCreatePool} disabled={!tokenA || !tokenB || !walletState.isConnected || state.isProcessing(`CreatePool_${tokenA}_${tokenB}`)} className="w-full">
                         {state.isProcessing(`CreatePool_${tokenA}/${tokenB}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null}
                         Create Pool
                     </Button>

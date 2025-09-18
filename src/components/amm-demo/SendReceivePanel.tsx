@@ -20,16 +20,27 @@ export function SendReceivePanel() {
     const [token, setToken] = useState<MockTokenSymbol | 'ETH'>('ETH');
     const [recipient, setRecipient] = useState('');
     const [amount, setAmount] = useState('');
-    const [isAddressValid, setIsAddressValid] = useState(false);
+    const [isAddressValid, setIsAddressValid] = useState(false); // Added missing state
+    const [isCheckingAddress, setIsCheckingAddress] = useState(false); // Added for better UX
     
-    const tokenOptions = useMemo(() => ['ETH', ...Object.keys(MOCK_TOKENS)] as const, []);
+    const tokenOptions = useMemo(() => ['ETH', ...Object.keys(state.tokenBalances)] as const, [state.tokenBalances]);
     
+    // Validate address as user types
     useEffect(() => {
         if (!recipient) {
             setIsValidAddress(false);
             return;
         }
-        setIsValidAddress(isValidAddress(recipient));
+        
+        setIsCheckingAddress(true);
+        
+        // Debounce the validation
+        const timer = setTimeout(() => {
+            setIsValidAddress(isValidAddress(recipient));
+            setIsCheckingAddress(false);
+        }, 300);
+        
+        return () => clearTimeout(timer);
     }, [recipient]);
     
     const handleSend = () => {
@@ -49,6 +60,9 @@ export function SendReceivePanel() {
         if (token === 'ETH') return state.ethBalance;
         return state.tokenBalances[token as MockTokenSymbol];
     };
+
+    const isInsufficientBalance = amount && parseFloat(amount) > parseFloat(getBalance());
+    const isSendDisabled = !isAddressValid || !amount || parseFloat(amount) <= 0 || isInsufficientBalance || !state.isConnected || state.isProcessing(`Send_${token}_${amount}`);
     
     return (
         <Card>
@@ -84,14 +98,30 @@ export function SendReceivePanel() {
                 
                 <div className="space-y-2">
                     <Label>Recipient Address</Label>
-                    <Input 
-                        value={recipient} 
-                        onChange={(e) => setRecipient(e.target.value)} 
-                        placeholder="0x..." 
-                        className={isAddressValid || !recipient ? "" : "border-red-500"}
-                    />
-                    {!isAddressValid && recipient && (
-                        <p className="text-xs text-red-500">Please enter a valid Ethereum address</p>
+                    <div className="relative">
+                        <Input 
+                            value={recipient} 
+                            onChange={(e) => setRecipient(e.target.value)} 
+                            placeholder="0x..." 
+                            className={isAddressValid || !recipient ? "" : "border-red-500"}
+                        />
+                        {isCheckingAddress && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                            </div>
+                        )}
+                    </div>
+                    {recipient && !isCheckingAddress && (
+                        <div className="flex justify-between items-center">
+                            {isAddressValid ? (
+                                <span className="text-xs text-green-600">Valid address</span>
+                            ) : (
+                                <span className="text-xs text-red-500">Invalid Ethereum address</span>
+                            )}
+                            {recipient.length > 0 && recipient.length < 42 && (
+                                <span className="text-xs text-muted-foreground">Address too short</span>
+                            )}
+                        </div>
                     )}
                 </div>
                 
@@ -103,6 +133,7 @@ export function SendReceivePanel() {
                             value={amount} 
                             onChange={(e) => setAmount(e.target.value)} 
                             placeholder="0.0" 
+                            step="any"
                         />
                         <Button size="sm" variant="outline" onClick={handleSetMax}>
                             MAX
@@ -110,7 +141,7 @@ export function SendReceivePanel() {
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Balance: {getBalance()}</span>
-                        {amount && parseFloat(amount) > parseFloat(getBalance()) && (
+                        {isInsufficientBalance && (
                             <span className="text-red-500">Insufficient balance</span>
                         )}
                     </div>
@@ -131,7 +162,7 @@ export function SendReceivePanel() {
                 
                 <Button 
                     onClick={handleSend} 
-                    disabled={!isAddressValid || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > parseFloat(getBalance()) || !walletState.isConnected || state.isProcessing(`Send_${token}_${amount}`)} 
+                    disabled={isSendDisabled}
                     className="w-full"
                 >
                     {state.isProcessing(`Send_${token}_${amount}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null}

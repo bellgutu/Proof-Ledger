@@ -20,7 +20,7 @@ export function SendReceivePanel() {
     const [token, setToken] = useState<MockTokenSymbol | 'ETH'>('ETH');
     const [recipient, setRecipient] = useState('');
     const [amount, setAmount] = useState('');
-    const [isAddressValid, setIsAddressValid] = useState(false); // FIX: Added missing state
+    const [isRecipientAddressValid, setIsRecipientAddressValid] = useState(false); // Fixed: Renamed to avoid conflict
     const [isCheckingAddress, setIsCheckingAddress] = useState(false);
     
     const tokenOptions = useMemo(() => ['ETH', ...Object.keys(state.tokenBalances)] as const, [state.tokenBalances]);
@@ -28,7 +28,7 @@ export function SendReceivePanel() {
     // Validate address as user types
     useEffect(() => {
         if (!recipient) {
-            setIsValidAddress(false);
+            setIsRecipientAddressValid(false);
             return;
         }
         
@@ -36,7 +36,7 @@ export function SendReceivePanel() {
         
         // Debounce the validation
         const timer = setTimeout(() => {
-            setIsValidAddress(isValidAddress(recipient));
+            setIsRecipientAddressValid(isValidAddress(recipient)); // Fixed: Use the correct setter
             setIsCheckingAddress(false);
         }, 300);
         
@@ -44,7 +44,7 @@ export function SendReceivePanel() {
     }, [recipient]);
     
     const handleSend = () => {
-        if (!isAddressValid || !amount || parseFloat(amount) <= 0) return;
+        if (!isRecipientAddressValid || !amount || parseFloat(amount) <= 0) return;
         actions.send(token, recipient as Address, amount);
     };
     
@@ -62,7 +62,7 @@ export function SendReceivePanel() {
     };
 
     const isInsufficientBalance = amount && parseFloat(amount) > parseFloat(getBalance());
-    const isSendDisabled = !isAddressValid || !amount || parseFloat(amount) <= 0 || isInsufficientBalance || !state.isConnected || state.isProcessing(`Send_${token}_${amount}`);
+    const isSendDisabled = !isRecipientAddressValid || !amount || parseFloat(amount) <= 0 || isInsufficientBalance || !state.isConnected || state.isProcessing(`Send_${token}_${amount}`);
     
     return (
         <Card>
@@ -103,7 +103,7 @@ export function SendReceivePanel() {
                             value={recipient} 
                             onChange={(e) => setRecipient(e.target.value)} 
                             placeholder="0x..." 
-                            className={isAddressValid || !recipient ? "" : "border-red-500"}
+                            className={isRecipientAddressValid || !recipient ? "" : "border-red-500"} // Fixed: Use renamed state
                         />
                         {isCheckingAddress && (
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -113,7 +113,7 @@ export function SendReceivePanel() {
                     </div>
                     {recipient && !isCheckingAddress && (
                         <div className="flex justify-between items-center">
-                            {isAddressValid ? (
+                            {isRecipientAddressValid ? ( // Fixed: Use renamed state
                                 <span className="text-xs text-green-600">Valid address</span>
                             ) : (
                                 <span className="text-xs text-red-500">Invalid Ethereum address</span>
@@ -147,7 +147,7 @@ export function SendReceivePanel() {
                     </div>
                 </div>
                 
-                {recipient && amount && isAddressValid && (
+                {recipient && amount && isRecipientAddressValid && ( // Fixed: Use renamed state
                     <div className="p-3 bg-muted rounded-md space-y-2">
                         <div className="flex justify-between text-sm">
                             <span>Network Fee</span>
@@ -172,3 +172,5 @@ export function SendReceivePanel() {
         </Card>
     );
 }
+
+    

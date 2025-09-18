@@ -337,11 +337,13 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     
     useEffect(() => {
         if(!isConnected || !chain || chain.id !== 11155111) return;
+
         const fetchData = async () => {
             await fetchBalances();
             await fetchPools();
             await fetchNetworkStats();
         }
+
         fetchData();
         const interval = setInterval(fetchData, 15000);
         return () => clearInterval(interval);

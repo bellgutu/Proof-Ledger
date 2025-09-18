@@ -1,7 +1,6 @@
-
 "use client";
-import React, { useState, useMemo, useEffect } from 'react';
-import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS } from '@/contexts/amm-demo-context';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS, AMM_CONTRACT_ADDRESS } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,19 +9,19 @@ import { Badge } from '@/components/ui/badge';
 import { Droplets, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 import { useToast } from '@/hooks/use-toast';
-import { AMM_CONTRACT_ADDRESS } from '@/contexts/amm-demo-context';
-import { parseAbi, usePublicClient } from 'viem';
+import { parseAbi, type Address } from 'viem';
+import { getViemPublicClient } from '@/services/blockchain-service'; // Import this
 
 export function PoolManagementPanel() {
     const { state, actions } = useAmmDemo();
     const { walletState } = useWallet();
-    const [tokenA, setTokenA] = useState<MockTokenSymbol|''>('');
-    const [tokenB, setTokenB] = useState<MockTokenSymbol|''>('');
+    const [tokenA, setTokenA] = useState<MockTokenSymbol|'' >('');
+    const [tokenB, setTokenB] = useState<MockTokenSymbol|'' >('');
     const [isCheckingExisting, setIsCheckingExisting] = useState(false);
     const [poolExists, setPoolExists] = useState(false);
     const [debugInfo, setDebugInfo] = useState<string>('');
     const { toast } = useToast();
-    const publicClient = usePublicClient();
+    const publicClient = getViemPublicClient();
 
     useEffect(() => {
         const info = {
@@ -284,5 +283,3 @@ export function PoolManagementPanel() {
         </div>
     );
 }
-
-    

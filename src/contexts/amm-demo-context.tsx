@@ -1,7 +1,7 @@
 
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useWalletClient, useSwitchChain, useDisconnect } from 'wagmi';
+import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient, useWalletClient, useSwitchChain } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { getViemPublicClient } from '@/services/blockchain-service';
 import { type Address, parseAbi, formatUnits, parseEther, getContract, parseUnits } from 'viem';
@@ -108,6 +108,7 @@ interface AmmDemoState {
     };
     tokenBalances: Record<MockTokenSymbol, string>;
     ethBalance: string;
+    isConnected: boolean;
 }
 
 interface AmmDemoActions {
@@ -132,7 +133,7 @@ const AmmDemoContext = createContext<AmmDemoContextType | undefined>(undefined);
 // --- PROVIDER COMPONENT ---
 export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const { walletState } = useWallet();
-    const { walletAddress: address } = walletState;
+    const { walletAddress: address, isConnected } = walletState;
     const { data: walletClient } = useWalletClient();
     const publicClient = useMemo(() => getViemPublicClient(), []);
     const { writeContractAsync } = useWriteContract();
@@ -169,13 +170,13 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const fetchNetworkStats = useCallback(async () => {
         if (!publicClient) return;
         try {
-            const [blockNumber, gasPriceResult] = await Promise.all([
+            const [blockNumberResult, gasPriceResult] = await Promise.all([
                 publicClient.getBlockNumber(),
                 publicClient.getGasPrice()
             ]);
             setGasPrice(formatUnits(gasPriceResult, 9));
             setNetworkStats({
-                blockNumber: Number(blockNumber),
+                blockNumber: Number(blockNumberResult),
                 gasLimit: '15000000'
             });
         } catch (e) {
@@ -295,12 +296,11 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     const tokenAInfo = MOCK_TOKENS[symbolA];
                     const tokenBInfo = MOCK_TOKENS[symbolB];
 
-                    const [reserves, totalSupply] = await Promise.all([
+                    const [[reserveA, reserveB], totalSupply] = await Promise.all([
                         publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'getReserves' }),
                         publicClient.readContract({ address: addr, abi: AMM_POOL_ABI, functionName: 'totalSupply' })
                     ]);
-                    const [reserveA, reserveB] = reserves;
-
+                    
                     const volume24h = (Math.random() * 10000).toFixed(2);
                     const fees24h = (parseFloat(volume24h) * (Number(feeRate) / 10000)).toFixed(2);
                     const apy = (Math.random() * 20 + 5);
@@ -348,7 +348,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     }, [publicClient, address]);
     
     useEffect(() => {
-        if(!walletState.isConnected) return;
+        if(!isConnected) return;
 
         const fetchData = async () => {
             await fetchAmmBalances();
@@ -359,7 +359,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         fetchData();
         const interval = setInterval(fetchData, 15000);
         return () => clearInterval(interval);
-    }, [walletState.isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats]);
+    }, [isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats]);
     
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];
@@ -413,11 +413,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             const tokenAInfo = MOCK_TOKENS[symbolA];
             const tokenBInfo = MOCK_TOKENS[symbolB];
             
-            const [reserves, totalSupply] = await Promise.all([
+            const [[reserveA, reserveB], totalSupply] = await Promise.all([
                 publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'getReserves' }),
                 publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'totalSupply' })
             ]);
-            const [reserveA, reserveB] = reserves;
             
             const volume24h = (Math.random() * 10000).toFixed(2);
             const fees24h = (parseFloat(volume24h) * (Number(feeRate) / 10000)).toFixed(2);
@@ -492,7 +491,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     }, [writeContractAsync, executeTransaction, fetchPoolByTokens, fetchPools, toast]);
 
     const addLiquidity = useCallback(async (poolAddress: Address, amountA: string, amountB: string) => {
-        const pool = pools.find(p => p.address === poolAddress);
+       const pool = pools.find(p => p.address === poolAddress);
         if (!pool || !address) return;
         
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes from now
@@ -603,6 +602,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         networkStats,
         tokenBalances,
         ethBalance,
+        isConnected,
     };
     
     const actions: AmmDemoActions = { 
@@ -625,4 +625,3 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
-

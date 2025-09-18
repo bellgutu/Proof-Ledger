@@ -26,7 +26,7 @@ export function SendReceivePanel() {
     
     useEffect(() => {
         if (!recipient) {
-            setIsAddressValid(false);
+            setIsValidAddress(false);
             return;
         }
         setIsValidAddress(isValidAddress(recipient));

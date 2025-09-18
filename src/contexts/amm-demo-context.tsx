@@ -139,6 +139,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const publicClient = useMemo(() => getViemPublicClient(), []);
     const { writeContractAsync } = useWriteContract();
     const { toast } = useToast();
+    const { chain } = useAccount();
+    const { switchChain } = useSwitchChain();
 
     const [transactions, setTransactions] = useState<DemoTransaction[]>([]);
     const [pools, setPools] = useState<DemoPool[]>([]);
@@ -202,13 +204,23 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         addTransaction({ id: tempTxId, type, details });
         
         try {
+            console.log("Executing transaction:", type);
             const txHash = await txFunction();
+            console.log("Transaction hash:", txHash);
             
             setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
             tempTxId = txHash;
             toast({ title: "Transaction Submitted", description: `Waiting for confirmation for ${type}...` });
             
-            const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+            // Add timeout for transaction confirmation
+            const receipt = await Promise.race([
+                publicClient.waitForTransactionReceipt({ hash: txHash }),
+                new Promise<any>((_, reject) => 
+                    setTimeout(() => reject(new Error('Transaction confirmation timeout')), 60000)
+                )
+            ]);
+            
+            console.log("Transaction receipt:", receipt);
             
             if (receipt.status === 'success') {
                 updateTransactionStatus(txHash, 'Completed', undefined, receipt.gasUsed?.toString(), receipt.effectiveGasPrice?.toString());
@@ -220,8 +232,19 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (e: any) {
             console.error(`❌ ${type} failed:`, e);
-            updateTransactionStatus(tempTxId, 'Failed', e.shortMessage || e.message);
-            toast({ variant: "destructive", title: "Transaction Error", description: e.shortMessage || e.message });
+            const errorMessage = e.message || "Unknown error";
+            updateTransactionStatus(tempTxId, 'Failed', errorMessage);
+            
+            // Handle timeout specifically
+            if (errorMessage.includes('timeout')) {
+                toast({ 
+                    variant: "destructive", 
+                    title: "Transaction Timeout", 
+                    description: "The transaction is taking too long to confirm. Please check the transaction status on Etherscan." 
+                });
+            } else {
+                toast({ variant: "destructive", title: "Transaction Error", description: errorMessage });
+            }
         } finally {
             setProcessing(processingKey, false);
         }
@@ -626,19 +649,78 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     }, [address, publicClient, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools]);
 
     const send = useCallback(async (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => {
+        console.log("Send function called with:", { token, recipient, amount });
+        
+        if (!walletClient || !publicClient || !address) {
+            console.error("Wallet not properly connected:", { walletClient: !!walletClient, publicClient: !!publicClient, address });
+            toast({ variant: "destructive", title: "Wallet Not Connected", description: "Please connect your wallet first." });
+            return;
+        }
+    
+        if (chain?.id !== 11155111 && switchChain) {
+            toast({ variant: "destructive", title: "Wrong Network", description: "Please switch to Sepolia testnet." });
+            try {
+                await switchChain({ chainId: 11155111 });
+            } catch (e) {
+                console.error("Failed to switch network:", e);
+            }
+            return;
+        }
+    
         let txFunction: () => Promise<Address>;
         let details: React.ReactNode = `Sending ${amount} ${token} to ${recipient.slice(0, 6)}...`;
-
-        if (token === 'ETH') {
-            txFunction = () => walletClient!.sendTransaction({ to: recipient, value: parseEther(amount) });
-        } else {
-            const tokenInfo = MOCK_TOKENS[token];
-            const onChainAmount = parseUnits(amount, tokenInfo.decimals);
-            txFunction = () => writeContractAsync({ address: tokenInfo.address, abi: ERC20_ABI, functionName: 'transfer', args: [recipient, onChainAmount] });
+        
+        try {
+            if (token === 'ETH') {
+                console.log("Sending ETH transaction");
+                const balance = await publicClient.getBalance({ address });
+                const value = parseEther(amount);
+                
+                if (balance < value) {
+                    toast({ variant: "destructive", title: "Insufficient Balance", description: "You don't have enough ETH." });
+                    return;
+                }
+                
+                txFunction = () => walletClient.sendTransaction({ 
+                    to: recipient, 
+                    value,
+                    gas: 21000n // Explicit gas limit for ETH transfer
+                });
+            } else {
+                console.log("Sending token transaction:", token);
+                const tokenInfo = MOCK_TOKENS[token];
+                const onChainAmount = parseUnits(amount, tokenInfo.decimals);
+                
+                const tokenBalance = await publicClient.readContract({
+                    address: tokenInfo.address,
+                    abi: ERC20_ABI,
+                    functionName: 'balanceOf',
+                    args: [address]
+                });
+                
+                if (tokenBalance < onChainAmount) {
+                    toast({ variant: "destructive", title: "Insufficient Balance", description: `You don't have enough ${token}.` });
+                    return;
+                }
+                
+                txFunction = () => writeContractAsync({ 
+                    address: tokenInfo.address, 
+                    abi: ERC20_ABI, 
+                    functionName: 'transfer', 
+                    args: [recipient, onChainAmount] 
+                });
+            }
+            
+            await executeTransaction('Send', details, `Send_${token}_${amount}`, txFunction, fetchAmmBalances);
+        } catch (error: any) {
+            console.error("Send error:", error);
+            toast({ 
+                variant: "destructive", 
+                title: "Send Failed", 
+                description: error.message || "Failed to send transaction" 
+            });
         }
-
-        await executeTransaction('Send', details, `Send_${token}_${amount}`, txFunction, fetchAmmBalances);
-    }, [walletClient, executeTransaction, writeContractAsync, fetchAmmBalances]);
+    }, [walletClient, publicClient, address, chain, switchChain, writeContractAsync, executeTransaction, fetchAmmBalances, toast]);
     
     const refreshData = useCallback(async () => {
         setProcessing('refresh', true);
@@ -680,3 +762,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    

@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS, AMM_CONTRACT_ADDRESS } from '@/contexts/amm-demo-context';
+import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +12,7 @@ import { useWallet } from '@/contexts/wallet-context';
 import { useToast } from '@/hooks/use-toast';
 import { parseAbi, type Address } from 'viem';
 import { getViemPublicClient } from '@/services/blockchain-service';
+import * as DEPLOYED_CONTRACTS from '@/lib/contract-addresses.json';
 
 export function PoolManagementPanel() {
     const { state, actions } = useAmmDemo();
@@ -31,7 +32,8 @@ export function PoolManagementPanel() {
                 name: p.name,
                 address: p.address,
                 tokenA: p.tokenA.symbol,
-                tokenB: p.tokenB.symbol
+                tokenB: p.tokenB.symbol,
+                id: p.id,
             })),
             tokenBalances: state.tokenBalances,
             processingStates: state.processingStates,
@@ -79,6 +81,7 @@ export function PoolManagementPanel() {
                     <CardDescription>Bootstrap a new AI-AMM pool.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    
                     <div className="flex items-center gap-2">
                         <Select onValueChange={(v) => setTokenA(v as MockTokenSymbol)} value={tokenA}>
                             <SelectTrigger><SelectValue placeholder="Token A"/></SelectTrigger>

@@ -1,0 +1,7 @@
+
+{
+    "MainContract": "0x4A67925343954738365646545A3a956d7890bCDE",
+    "AIPredictiveLiquidityOracle": "0x8ba1f109551bD432803012645Ac136ddd64DBA72",
+    "AdvancedPriceOracle": "0x5c6F7A8B9D0E1F2A3B4C5D6E7F8A9B0C1D2E3F4A",
+    "AdaptiveMarketMaker": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+}

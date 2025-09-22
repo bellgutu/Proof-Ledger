@@ -14,10 +14,11 @@ const AMM_CONTRACT_ADDRESS = DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address;
 const AI_ORACLE_ADDRESS = DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address;
 
 export const MOCK_TOKENS = {
-    'USDT': { address: '0xC9569792794d40C612C6E4cd97b767EeE4708f24' as Address, name: 'Mock USDT', decimals: 18 },
-    'USDC': { address: '0xc4733C1fbdB1Ccd9d2Da26743F21fd3Fe12ECD37' as Address, name: 'Mock USDC', decimals: 18 },
+    'USDT': { address: '0x17a6036513bB60369e5246164Cb918973dF902BD' as Address, name: 'Mock USDT', decimals: 6 },
+    'USDC': { address: '0x09d011D52413DC89DFe3fa64694d67451ee49Cef' as Address, name: 'Mock USDC', decimals_DONOTUSE: 6, decimals: 6 },
     'WETH': { address: '0x3318056463e5bb26FB66e071999a058bdb35F34f' as Address, name: 'Mock WETH', decimals: 18 },
 };
+
 
 // --- ABIs ---
 const ERC20_ABI = parseAbi([
@@ -42,16 +43,17 @@ const AMM_ABI = parseAbi([
     "function pools(uint256 index) external view returns (address pool)",
     "function getReserves(uint256 poolId) external view returns (uint256 reserveA, uint256 reserveB)",
     "function getCurrentFee(uint256 poolId) external view returns (uint256)",
-    "event PoolCreated(uint256 indexed poolId, address tokenA, address tokenB)"
+    "event PoolCreated(address indexed pool, address indexed tokenA, address indexed tokenB)"
 ]);
 
 const AMM_POOL_ABI = parseAbi([
     "function tokenA() external view returns (address)",
     "function tokenB() external view returns (address)",
-    "function getReserves() external view returns (uint256 reserveA, uint256 reserveB)",
+    "function getReserves() external view returns (uint112 reserveA, uint112 reserveB)",
     "function totalSupply() external view returns (uint256)",
     "function balanceOf(address account) external view returns (uint256)"
 ]);
+
 
 const AI_ORACLE_ABI = parseAbi([
     "function registerAsProvider() external payable",
@@ -125,7 +127,7 @@ interface AmmDemoActions {
     createPool: (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => Promise<void>;
     addLiquidity: (poolId: number, amountA: string, amountB: string) => Promise<void>;
     removeLiquidity: (poolId: number, lpAmount: string) => Promise<void>;
-    swap: (poolId: number, tokenIn: MockTokenSymbol, amountIn: string) => Promise<void>;
+    swap: (fromToken: MockTokenSymbol, toToken: MockTokenSymbol, amountIn: string, minAmountOut: string) => Promise<void>;
     send: (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => Promise<void>;
     refreshData: () => Promise<void>;
     registerOracleProvider: () => Promise<void>;
@@ -275,92 +277,75 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
 
     const findSymbolByAddress = (addr: Address): MockTokenSymbol | undefined => 
         (Object.keys(MOCK_TOKENS) as MockTokenSymbol[]).find(symbol => MOCK_TOKENS[symbol].address.toLowerCase() === addr.toLowerCase());
-    
-        const fetchPoolDetails = useCallback(async (poolId: number, poolAddress: Address): Promise<DemoPool | null> => {
-            if (!publicClient) return null;
-            
-            try {
-                const pool = await publicClient.readContract({
-                    address: AMM_CONTRACT_ADDRESS,
-                    abi: AMM_ABI,
-                    functionName: 'pools',
-                    args: [BigInt(poolId)]
-                });
-        
-                const tokenA_addr = pool.tokenA;
-                const tokenB_addr = pool.tokenB;
 
-                const symbolA = findSymbolByAddress(tokenA_addr);
-                const symbolB = findSymbolByAddress(tokenB_addr);
-                
-                if (!symbolA || !symbolB) {
-                    console.warn(`Unknown tokens in pool: tokenA=${tokenA_addr}, tokenB=${tokenB_addr}`);
-                    return null;
+    const fetchPoolDetails = useCallback(async (poolAddress: Address, poolId: number): Promise<DemoPool | null> => {
+        if (!publicClient) return null;
+        try {
+            const [tokenA_addr, tokenB_addr] = await Promise.all([
+                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'tokenA' }),
+                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'tokenB' })
+            ]);
+
+            const symbolA = findSymbolByAddress(tokenA_addr);
+            const symbolB = findSymbolByAddress(tokenB_addr);
+
+            if (!symbolA || !symbolB) return null;
+
+            const tokenAInfo = MOCK_TOKENS[symbolA];
+            const tokenBInfo = MOCK_TOKENS[symbolB];
+
+            const [[reserveA, reserveB], totalSupply] = await Promise.all([
+                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'getReserves' }),
+                publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'totalSupply' })
+            ]);
+            
+            const feeRate = await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getCurrentFee', args: [BigInt(poolId)] });
+
+            const volume24h = (Math.random() * 10000).toFixed(2);
+            const fees24h = (parseFloat(volume24h) * (Number(feeRate) / 10000)).toFixed(2);
+            const apy = (Math.random() * 20 + 5);
+
+            let userLpBalance = '0';
+            let userShare = 0;
+            if (address) {
+                const balance = await publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'balanceOf', args: [address] });
+                userLpBalance = formatUnits(balance, 18);
+                if (totalSupply > 0) {
+                    userShare = (Number(userLpBalance) / Number(formatUnits(totalSupply, 18))) * 100;
                 }
-                
-                const tokenAInfo = MOCK_TOKENS[symbolA];
-                const tokenBInfo = MOCK_TOKENS[symbolB];
-                
-                const [reserves, feeRate, lpTotalSupply] = await Promise.all([
-                    publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getReserves', args: [BigInt(poolId)] }),
-                    publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getCurrentFee', args: [BigInt(poolId)] }),
-                    publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'totalSupply' })
-                ]);
-                
-                const [reserveA, reserveB] = reserves;
-    
-                const volume24h = (Math.random() * 10000).toFixed(2);
-                const fees24h = (parseFloat(volume24h) * (Number(feeRate) / 10000)).toFixed(2); // fee is in bps
-                const apy = (Math.random() * 20 + 5);
-                
-                let userLpBalance = '0';
-                let userShare = 0;
-                if (address) {
-                    try {
-                        const balance = await publicClient.readContract({ address: poolAddress, abi: AMM_POOL_ABI, functionName: 'balanceOf', args: [address] });
-                        userLpBalance = formatUnits(balance, 18);
-                        if (lpTotalSupply > 0) {
-                            userShare = (Number(userLpBalance) / Number(formatUnits(lpTotalSupply, 18))) * 100;
-                        }
-                    } catch (e) {
-                        console.error("Failed to fetch user LP balance for pool " + poolAddress, e);
-                    }
-                }
-                
-                return {
-                    address: poolAddress, id: poolId, name: `${symbolA}/${symbolB}`,
-                    tokenA: { address: tokenA_addr, symbol: symbolA, decimals: tokenAInfo.decimals },
-                    tokenB: { address: tokenB_addr, symbol: symbolB, decimals: tokenBInfo.decimals },
-                    reserveA: formatUnits(reserveA, tokenAInfo.decimals),
-                    reserveB: formatUnits(reserveB, tokenBInfo.decimals),
-                    totalLiquidity: formatUnits(lpTotalSupply, 18),
-                    feeRate: Number(feeRate) / 100, // fee is in bps
-                    volume24h, fees24h, apy, userLpBalance, userShare
-                };
-            } catch (e) {
-                console.error(`Failed to fetch pool details for pool ID ${poolId} at ${poolAddress}`, e);
-                return null;
             }
-        }, [publicClient, address]);
+
+            return {
+                address: poolAddress, id: poolId, name: `${symbolA}/${symbolB}`,
+                tokenA: { address: tokenA_addr, symbol: symbolA, decimals: tokenAInfo.decimals },
+                tokenB: { address: tokenB_addr, symbol: symbolB, decimals: tokenBInfo.decimals },
+                reserveA: formatUnits(reserveA, tokenAInfo.decimals),
+                reserveB: formatUnits(reserveB, tokenBInfo.decimals),
+                totalLiquidity: formatUnits(totalSupply, 18),
+                feeRate: Number(feeRate) / 100,
+                volume24h, fees24h, apy, userLpBalance, userShare
+            };
+        } catch (e) {
+            console.error(`Failed to fetch pool details for ${poolAddress}`, e);
+            return null;
+        }
+    }, [publicClient, address]);
     
     const fetchPools = useCallback(async () => {
         if (!publicClient) return;
         try {
             const poolCount = Number(await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getPoolCount' }));
-            
             if (poolCount === 0) {
                 setPools([]);
                 return;
             }
-            
-            const poolDetailsPromises: Promise<DemoPool | null>[] = [];
+            const poolDetailsPromises = [];
             for (let i = 0; i < poolCount; i++) {
                 const poolAddress = await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'pools', args: [BigInt(i)] });
-                poolDetailsPromises.push(fetchPoolDetails(i, poolAddress));
+                poolDetailsPromises.push(fetchPoolDetails(poolAddress, i));
             }
-            const poolDetails = await Promise.all(poolDetailsPromises);
-            const validPools = poolDetails.filter((p): p is DemoPool => p !== null);
-            setPools(validPools);
+            const resolvedPools = await Promise.all(poolDetailsPromises);
+            setPools(resolvedPools.filter((p): p is DemoPool => p !== null));
         } catch (e) {
             console.error("Failed to fetch pools:", e);
             setPools([]);
@@ -371,19 +356,16 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         if (!publicClient) return null;
         try {
             const poolAddress = await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'getPool',
+                address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getPool',
                 args: [tokenA, tokenB]
             });
             if (poolAddress.toLowerCase() === '0x0000000000000000000000000000000000000000') return null;
 
-            // To get the pool ID, we have to iterate
             const poolCount = Number(await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getPoolCount' }));
             for (let i = 0; i < poolCount; i++) {
                 const addr = await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'pools', args: [BigInt(i)] });
                 if (addr.toLowerCase() === poolAddress.toLowerCase()) {
-                    return await fetchPoolDetails(i, poolAddress);
+                    return await fetchPoolDetails(poolAddress, i);
                 }
             }
             return null;
@@ -409,25 +391,17 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tokenAInfo = MOCK_TOKENS[tokenA];
         const tokenBInfo = MOCK_TOKENS[tokenB];
     
-        const existingPool = await fetchPoolByTokens(tokenAInfo.address, tokenBInfo.address);
-        if (existingPool) {
-            toast({ variant: "destructive", title: "Pool Already Exists" });
-            return;
-        }
-    
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
-            () => writeContractAsync({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'createPool', args: [tokenAInfo.address, tokenBInfo.address] }),
-            async (txHash) => {
-                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for state to update
-                const newPool = await fetchPoolByTokens(tokenAInfo.address, tokenBInfo.address);
-                if (newPool) {
-                    setPools(prev => [...prev, newPool]);
-                } else {
-                    await fetchPools(); // Fallback to fetching all pools
-                }
+            () => writeContractAsync({
+                address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI,
+                functionName: 'createPool', args: [tokenAInfo.address, tokenBInfo.address]
+            }),
+            async () => {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                await fetchPools();
             }
         );
-    }, [writeContractAsync, executeTransaction, fetchPoolByTokens, fetchPools, toast]);
+    }, [writeContractAsync, executeTransaction, fetchPools]);
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];
@@ -458,18 +432,18 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     
     const addLiquidity = useCallback(async (poolId: number, amountA: string, amountB: string) => {
         const pool = pools.find(p => p.id === poolId);
-         if (!pool || !address) return;
-         
+        if (!pool || !address) return;
+        
+        const amountAWei = parseUnits(amountA, pool.tokenA.decimals);
+        const amountBWei = parseUnits(amountB, pool.tokenB.decimals);
+
         await approveToken(pool.tokenA.symbol, amountA, AMM_CONTRACT_ADDRESS);
         await approveToken(pool.tokenB.symbol, amountB, AMM_CONTRACT_ADDRESS);
          
         await executeTransaction('Add Liquidity', `Adding liquidity to ${pool.name}`, `AddLiquidity_${pool.address}`,
              () => writeContractAsync({
                  address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'addLiquidity',
-                 args: [
-                     BigInt(poolId),
-                     parseUnits(amountA, pool.tokenA.decimals), parseUnits(amountB, pool.tokenB.decimals),
-                 ]
+                 args: [ BigInt(poolId), amountAWei, amountBWei ]
              }),
              fetchPools
          );
@@ -482,53 +456,76 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         await executeTransaction('Remove Liquidity', `Removing liquidity from ${pool.name}`, `RemoveLiquidity_${pool.address}`,
             () => writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'removeLiquidity',
-                args: [
-                    BigInt(poolId),
-                    parseUnits(lpAmount, 18),
-                ]
+                args: [ BigInt(poolId), parseUnits(lpAmount, 18) ]
             }),
             fetchPools
         );
     }, [pools, address, executeTransaction, writeContractAsync, fetchPools]);
     
-    const swap = useCallback(async (poolId: number, tokenIn: MockTokenSymbol, amountIn: string) => {
-        const tokenInInfo = MOCK_TOKENS[tokenIn];
+    const swap = useCallback(async (fromToken: MockTokenSymbol, toToken: MockTokenSymbol, amountIn: string, minAmountOut: string) => {
+        const pool = pools.find(p => (p.tokenA.symbol === fromToken && p.tokenB.symbol === toToken) || (p.tokenA.symbol === toToken && p.tokenB.symbol === fromToken));
+        if (!pool) {
+            toast({ variant: 'destructive', title: 'No Pool Found', description: `No liquidity pool available for ${fromToken}/${toToken}.` });
+            return;
+        }
+
+        const tokenInInfo = MOCK_TOKENS[fromToken];
         if (!address || !publicClient) return;
 
         const onChainAmountIn = parseUnits(amountIn, tokenInInfo.decimals);
         const allowance = await publicClient.readContract({ address: tokenInInfo.address, abi: ERC20_ABI, functionName: 'allowance', args: [address, AMM_CONTRACT_ADDRESS]});
 
         if (allowance < onChainAmountIn) {
-            await approveToken(tokenIn, '1000000', AMM_CONTRACT_ADDRESS); // Approve a large amount
+            await approveToken(fromToken, '1000000000', AMM_CONTRACT_ADDRESS); // Approve a large amount
         }
         
-        await executeTransaction('Swap', `Swapping ${amountIn} ${tokenIn}`, `Swap_${tokenIn}`,
+        await executeTransaction('Swap', `Swapping ${amountIn} ${fromToken}`, `Swap_${fromToken}_${toToken}`,
             () => writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'swap',
-                args: [ BigInt(poolId), tokenInInfo.address, onChainAmountIn ]
+                args: [ BigInt(pool.id), MOCK_TOKENS[fromToken].address, onChainAmountIn ]
             }),
             async () => { await fetchAmmBalances(); await fetchPools(); }
         );
-    }, [address, publicClient, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools, approveToken]);
+    }, [address, publicClient, pools, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools, approveToken, toast]);
 
     const send = useCallback(async (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => {
         if (!walletClient || !publicClient || !address) {
-            toast({ variant: "destructive", title: "Wallet Not Connected" }); return;
+            toast({ variant: "destructive", title: "Wallet Not Connected", description: "Please connect your wallet first." });
+            return;
         }
         if (chain?.id !== 11155111 && switchChain) {
-            await switchChain({ chainId: 11155111 }); return;
+            toast({ variant: "destructive", title: "Wrong Network", description: "Please switch to Sepolia testnet." });
+            await switchChain({ chainId: 11155111 });
+            return;
         }
-        await executeTransaction('Send', `Sending ${amount} ${token}`, `Send_${token}_${amount}`,
-            async () => {
+    
+        const details = `Sending ${amount} ${token} to ${recipient.slice(0, 6)}...`;
+        
+        try {
+            const txFunction = async (): Promise<Address> => {
                 if (token === 'ETH') {
-                    return walletClient.sendTransaction({ to: recipient, value: parseEther(amount), gas: 21000n });
+                    const balance = await publicClient.getBalance({ address });
+                    const value = parseEther(amount);
+                    if (balance < value) throw new Error("Insufficient ETH balance.");
+                    return walletClient.sendTransaction({ to: recipient, value, gas: 21000n });
                 } else {
                     const tokenInfo = MOCK_TOKENS[token];
-                    return writeContractAsync({ address: tokenInfo.address, abi: ERC20_ABI, functionName: 'transfer', args: [recipient, parseUnits(amount, tokenInfo.decimals)] });
+                    const onChainAmount = parseUnits(amount, tokenInfo.decimals);
+                    const tokenBalance = await publicClient.readContract({
+                        address: tokenInfo.address, abi: ERC20_ABI, functionName: 'balanceOf', args: [address]
+                    });
+                    if (tokenBalance < onChainAmount) throw new Error(`Insufficient ${token} balance.`);
+                    return writeContractAsync({
+                        address: tokenInfo.address, abi: ERC20_ABI, functionName: 'transfer', args: [recipient, onChainAmount]
+                    });
                 }
-            },
-            fetchAmmBalances
-        );
+            };
+    
+            await executeTransaction('Send', details, `Send_${token}_${amount}`, txFunction, fetchAmmBalances);
+        } catch (error: any) {
+            console.error("Send error:", error);
+            toast({ variant: "destructive", title: "Send Failed", description: error.message || "Failed to send transaction" });
+        }
     }, [walletClient, publicClient, address, chain, switchChain, writeContractAsync, executeTransaction, fetchAmmBalances, toast]);
     
     const refreshData = useCallback(async () => {
@@ -555,3 +552,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    

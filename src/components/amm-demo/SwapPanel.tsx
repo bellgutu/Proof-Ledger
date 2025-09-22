@@ -15,8 +15,8 @@ import { useWallet } from '@/contexts/wallet-context';
 export function SwapPanel() {
     const { state, actions } = useAmmDemo();
     const { walletState } = useWallet();
-    const [fromToken, setFromToken] = useState<MockTokenSymbol>('USDT');
-    const [toToken, setToToken] = useState<MockTokenSymbol>('USDC');
+    const [fromToken, setFromToken] = useState<MockTokenSymbol>('WETH');
+    const [toToken, setToToken] = useState<MockTokenSymbol>('USDT');
     const [amount, setAmount] = useState('');
     const [minAmountOut, setMinAmountOut] = useState('');
     const [estimatedOut, setEstimatedOut] = useState('0');
@@ -25,30 +25,42 @@ export function SwapPanel() {
     const tokenOptions = useMemo(() => Object.keys(state.tokenBalances) as MockTokenSymbol[], [state.tokenBalances]);
     
     useEffect(() => {
-        if (!amount || !fromToken || !toToken) {
+        if (!amount || !fromToken || !toToken || fromToken === toToken) {
             setEstimatedOut('0');
             setPriceImpact(0);
             return;
         }
         
         const amountNum = parseFloat(amount);
-        if (isNaN(amountNum)) {
+        if (isNaN(amountNum) || amountNum <= 0) {
             setEstimatedOut('0');
             setPriceImpact(0);
             return;
         }
-        
-        const fromTokenInfo = MOCK_TOKENS[fromToken];
-        const toTokenInfo = MOCK_TOKENS[toToken];
-        const mockRate = fromTokenInfo.name.includes('WETH') ? 1800 : 1;
-        const toTokenRate = toTokenInfo.name.includes('WETH') ? 1800 : 1;
-        const rate = mockRate / toTokenRate;
-        const estimated = amountNum * rate * 0.997; 
-        const impact = Math.min(5, amountNum / 10000 * 0.5);
-        
-        setEstimatedOut(estimated.toFixed(6));
-        setPriceImpact(impact);
-    }, [amount, fromToken, toToken]);
+
+        const pool = state.pools.find(p => (p.tokenA.symbol === fromToken && p.tokenB.symbol === toToken) || (p.tokenA.symbol === toToken && p.tokenB.symbol === fromToken));
+
+        if(pool) {
+            const reserveIn = pool.tokenA.symbol === fromToken ? parseFloat(pool.reserveA) : parseFloat(pool.reserveB);
+            const reserveOut = pool.tokenA.symbol === toToken ? parseFloat(pool.reserveA) : parseFloat(pool.reserveB);
+            
+            if (reserveIn > 0 && reserveOut > 0) {
+                 const amountInWithFee = amountNum * 0.997; // 0.3% fee
+                 const estimated = (amountInWithFee * reserveOut) / (reserveIn + amountInWithFee);
+                 setEstimatedOut(estimated.toFixed(6));
+                 
+                 const midPrice = reserveOut / reserveIn;
+                 const effectivePrice = estimated / amountNum;
+                 const impact = ((midPrice - effectivePrice) / midPrice) * 100;
+                 setPriceImpact(impact);
+            }
+        } else {
+            // Fallback for when pool isn't found, maybe mock rate
+            setEstimatedOut('0');
+            setPriceImpact(0);
+        }
+
+    }, [amount, fromToken, toToken, state.pools]);
     
     const handleSwap = () => {
         if (!fromToken || !toToken || !amount || !minAmountOut) return;
@@ -60,7 +72,7 @@ export function SwapPanel() {
     };
     
     const handleSetMinOut = () => {
-        const minOut = parseFloat(estimatedOut) * 0.95;
+        const minOut = parseFloat(estimatedOut) * 0.995; // 0.5% slippage
         setMinAmountOut(minOut.toFixed(6));
     };
 
@@ -99,7 +111,7 @@ export function SwapPanel() {
                 <div className="flex justify-center">
                     <Button size="sm" variant="ghost" onClick={() => {
                         const temp = fromToken; setFromToken(toToken); setToToken(temp);
-                        setAmount(''); setMinAmountOut('');
+                        setAmount(estimatedOut); 
                     }}>
                         <ArrowLeftRight size={16} />
                     </Button>
@@ -142,7 +154,7 @@ export function SwapPanel() {
                     <div className="p-3 bg-muted rounded-md space-y-2">
                         <div className="flex justify-between text-sm">
                             <span>Exchange Rate</span>
-                            <span>1 {fromToken} = {(parseFloat(estimatedOut) / parseFloat(amount)).toFixed(6)} {toToken}</span>
+                            <span>1 {fromToken} ≈ {(parseFloat(estimatedOut) / parseFloat(amount)).toFixed(6)} {toToken}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span>Price Impact</span>
@@ -162,3 +174,5 @@ export function SwapPanel() {
         </Card>
     );
 }
+
+    

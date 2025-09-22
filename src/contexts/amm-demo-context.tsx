@@ -9,7 +9,6 @@ import { useWallet } from './wallet-context';
 import * as DEPLOYED_CONTRACTS from '@/lib/contract-addresses.json';
 
 // --- CONTRACT & TOKEN ADDRESSES ---
-const MAIN_CONTRACT_ADDRESS = DEPLOYED_CONTRACTS.MainContract as Address;
 const AMM_CONTRACT_ADDRESS = DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address;
 const AI_ORACLE_ADDRESS = DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address;
 
@@ -217,7 +216,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         details: React.ReactNode,
         processingKey: string,
         txFunction: () => Promise<Address>,
-        onSuccess?: (txHash: Address) => void | Promise<void>
+        onSuccess?: (txHash: Address, receipt: any) => void | Promise<void>
     ) => {
         if (!walletClient || !publicClient || !address) {
             toast({ variant: "destructive", title: "Wallet Not Connected" });
@@ -229,9 +228,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         addTransaction({ id: tempTxId, type, details });
         
         try {
-            console.log("Executing transaction:", type);
             const txHash = await txFunction();
-            console.log("Transaction hash:", txHash);
             
             setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
             tempTxId = txHash;
@@ -244,18 +241,15 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 )
             ]);
             
-            console.log("Transaction receipt:", receipt);
-            
             if (receipt.status === 'success') {
                 updateTransactionStatus(txHash, 'Completed', undefined, receipt.gasUsed?.toString(), receipt.effectiveGasPrice?.toString());
                 toast({ title: "Transaction Successful", description: `${type} transaction confirmed.` });
-                if (onSuccess) await onSuccess(txHash);
+                if (onSuccess) await onSuccess(txHash, receipt);
             } else {
                 updateTransactionStatus(txHash, 'Failed', 'Transaction reverted');
                 toast({ variant: "destructive", title: "Transaction Failed", description: 'The transaction was reverted.' });
             }
         } catch (e: any) {
-            console.error(`❌ ${type} failed:`, e);
             const errorMessage = e.message || "Unknown error";
             updateTransactionStatus(tempTxId, 'Failed', errorMessage);
             
@@ -263,7 +257,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 toast({ 
                     variant: "destructive", 
                     title: "Transaction Timeout", 
-                    description: "The transaction is taking too long to confirm. Please check the transaction status on Etherscan." 
+                    description: "The transaction is taking too long to confirm. Please check Etherscan." 
                 });
             } else {
                 toast({ variant: "destructive", title: "Transaction Error", description: errorMessage });
@@ -312,17 +306,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             const { tokenA: tokenA_addr, tokenB: tokenB_addr, reserveA, reserveB, totalLiquidity, currentFee } = poolData;
 
             // This is a temporary hack because the AMM returns a bogus address for the pool itself.
-            // A real AMM would have a way to get a pool address from an ID, or the createPool would return it.
-            // We construct a fake but unique address here based on the ID.
             const poolAddress = `0x${'0'.repeat(24)}${poolId.toString(16).padStart(40, '0')}` as Address;
 
             const symbolA = findSymbolByAddress(tokenA_addr);
             const symbolB = findSymbolByAddress(tokenB_addr);
     
-            if (!symbolA || !symbolB) {
-                console.warn(`Unknown tokens in pool ID ${poolId}: tokenA=${tokenA_addr}, tokenB=${tokenB_addr}`);
-                return null;
-            }
+            if (!symbolA || !symbolB) return null;
     
             const tokenAInfo = MOCK_TOKENS[symbolA];
             const tokenBInfo = MOCK_TOKENS[symbolB];
@@ -346,7 +335,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                         userShare = (Number(userLpBalance) / Number(formatUnits(totalLiquidity, 18))) * 100;
                     }
                 } catch (e) {
-                    console.error("Failed to fetch user LP balance for pool " + poolId, e);
+                     console.error("User LP balance for pool " + poolId + " could not be fetched.");
                 }
             }
     
@@ -382,42 +371,9 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             setPools(resolvedPools);
         } catch (e) {
             console.error("Failed to fetch pools", e);
-            toast({ variant: "destructive", title: "Error Fetching Pools", description: "Could not retrieve pool data from the contract." });
-        }
-    }, [publicClient, fetchPoolDetails, toast]);
-    
-    const fetchPoolByTokens = useCallback(async (tokenA: Address, tokenB: Address): Promise<DemoPool | null> => {
-       if (!publicClient) return null;
-        try {
-            const poolId = await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'poolIds',
-                args: [tokenA, tokenB]
-            });
-
-            // If poolId is 0 and it's not the first pool, it doesn't exist. Check both directions.
-            const poolIdReverse = await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'poolIds',
-                args: [tokenB, tokenA]
-            });
-
-            const finalPoolId = poolId > 0 ? poolId : poolIdReverse;
-            
-            if (finalPoolId === 0n) { // If it's still 0, it likely doesn't exist (unless it's the very first pool)
-                const poolCount = await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getPoolCount' });
-                if (poolCount > 0) return null;
-            }
-
-            return await fetchPoolDetails(Number(finalPoolId));
-        } catch (e) {
-            console.log("Pool not found for tokens:", tokenA, tokenB, e);
-            return null;
         }
     }, [publicClient, fetchPoolDetails]);
-
+    
     useEffect(() => {
         if(!isConnected) return;
         fetchPools();
@@ -435,29 +391,33 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tokenBInfo = MOCK_TOKENS[tokenB];
         if (!tokenAInfo || !tokenBInfo) return;
     
-        const existingPool = await fetchPoolByTokens(tokenAInfo.address, tokenBInfo.address);
-        if (existingPool) {
-            toast({ 
-                variant: "destructive", 
-                title: "Pool Already Exists", 
-                description: `A pool for ${tokenA}/${tokenB} already exists.` 
-            });
+        const existing = pools.some(pool => 
+            (pool.tokenA.symbol === tokenA && pool.tokenB.symbol === tokenB) ||
+            (pool.tokenA.symbol === tokenB && pool.tokenB.symbol === tokenA)
+        );
+        if (existing) {
+            toast({ variant: "destructive", title: "Pool Already Exists" });
             return;
         }
-    
+        
+        // --- FIX: Ensure tokens are sorted by address ---
+        const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
+            a.toLowerCase() < b.toLowerCase() ? -1 : 1
+        );
+
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
             () => writeContractAsync({ 
                 address: AMM_CONTRACT_ADDRESS, 
                 abi: AMM_ABI, 
                 functionName: 'createPool', 
-                args: [tokenAInfo.address, tokenBInfo.address] 
+                args: [sortedTokenA, sortedTokenB] 
             }),
             async (txHash) => {
-                 await new Promise(resolve => setTimeout(resolve, 3000));
+                 await new Promise(resolve => setTimeout(resolve, 2000)); // Delay for state update
                  await fetchPools();
             }
         );
-    }, [writeContractAsync, executeTransaction, fetchPoolByTokens, fetchPools, toast, publicClient]);
+    }, [writeContractAsync, executeTransaction, fetchPools, toast, pools]);
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];
@@ -545,10 +505,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     }, [address, publicClient, pools, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools, approveToken, toast]);
 
     const send = useCallback(async (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => {
-        console.log("Send function called with:", { token, recipient, amount });
-        
         if (!walletClient || !publicClient || !address) {
-            console.error("Wallet not properly connected:", { walletClient: !!walletClient, publicClient: !!publicClient, address });
             toast({ variant: "destructive", title: "Wallet Not Connected", description: "Please connect your wallet first." });
             return;
         }
@@ -564,7 +521,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         
         try {
             if (token === 'ETH') {
-                console.log("Sending ETH transaction");
                 const balance = await publicClient.getBalance({ address });
                 const value = parseEther(amount);
                 
@@ -579,7 +535,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     gas: 21000n 
                 });
             } else {
-                console.log("Sending token transaction:", token);
                 const tokenInfo = MOCK_TOKENS[token];
                 const onChainAmount = parseUnits(amount, tokenInfo.decimals);
                 
@@ -605,7 +560,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             
             await executeTransaction('Send', details, `Send_${token}_${amount}`, txFunction, fetchAmmBalances);
         } catch (error: any) {
-            console.error("Send error:", error);
             toast({ 
                 variant: "destructive", 
                 title: "Send Failed", 
@@ -638,4 +592,3 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
-

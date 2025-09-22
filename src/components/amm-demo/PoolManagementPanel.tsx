@@ -69,90 +69,7 @@ export function PoolManagementPanel() {
         actions.createPool(tokenA, tokenB);
     }
 
-    const handleTestCreatePool = async () => {
-        try {
-            console.log("Creating test pool...");
-            await actions.createPool('USDT', 'USDC');
-        } catch (e: any) {
-            console.error("Failed to create test pool:", e);
-            toast({
-                variant: "destructive",
-                title: "Pool Creation Failed",
-                description: e.message
-            });
-        }
-    };
-
-    const handleManualFetch = async () => {
-        if (!publicClient) return;
-        try {
-            const AMM_ABI = parseAbi(["function getPool(address, address) view returns (address)"]);
-            const usdtAddress = '0xC9569792794d40C612C6E4cd97b767EeE4708f24';
-            const usdcAddress = '0xc4733C1fbdB1Ccd9d2Da26743F21fd3Fe12ECD37';
-
-            let poolAddress = await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'getPool',
-                args: [usdtAddress, usdcAddress]
-            });
-            
-            if (poolAddress === '0x0000000000000000000000000000000000000000') {
-                 poolAddress = await publicClient.readContract({
-                    address: AMM_CONTRACT_ADDRESS,
-                    abi: AMM_ABI,
-                    functionName: 'getPool',
-                    args: [usdcAddress, usdtAddress]
-                });
-            }
-            
-            console.log("Manual fetch result:", poolAddress);
-            
-            if (poolAddress !== '0x0000000000000000000000000000000000000000') {
-                toast({ title: "Pool Found", description: `Pool address: ${poolAddress}` });
-                await actions.refreshData();
-            } else {
-                toast({ variant: "destructive", title: "Pool Not Found", description: "The pool does not exist" });
-            }
-        } catch (e: any) {
-            console.error("Manual fetch error:", e);
-            toast({ variant: "destructive", title: "Error", description: e.message || "Failed to fetch pool" });
-        }
-    };
-     
     const tokenOptions = useMemo(() => Object.keys(state.tokenBalances) as MockTokenSymbol[], [state.tokenBalances]);
-
-    const verifyPoolCreated = useCallback(async () => {
-        if (!publicClient) return;
-        
-        try {
-            const AMM_ABI = parseAbi(["function poolCount() view returns (uint256)", "function pools(uint256) view returns (address)"]);
-            const poolCount = await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'poolCount'
-            });
-            
-            console.log("Pool count:", Number(poolCount));
-            
-            if (Number(poolCount) > 0) {
-                const poolAddress = await publicClient.readContract({
-                    address: AMM_CONTRACT_ADDRESS,
-                    abi: AMM_ABI,
-                    functionName: 'pools',
-                    args: [BigInt(Number(poolCount) - 1)]
-                });
-                console.log("Latest pool address:", poolAddress);
-                toast({ title: "Verification", description: `Latest pool is at ${poolAddress}`});
-                await actions.refreshData();
-            } else {
-                toast({ title: "Verification", description: "Pool count is zero."});
-            }
-        } catch (e: any) {
-            console.error("Failed to verify pool creation:", e);
-             toast({ variant: "destructive", title: "Verification Error", description: e.message });
-        }
-    }, [publicClient, actions, toast]);
     
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -162,15 +79,6 @@ export function PoolManagementPanel() {
                     <CardDescription>Bootstrap a new AI-AMM pool.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                     <Button onClick={handleTestCreatePool} variant="outline" className="w-full">
-                        Create Test Pool (USDT/USDC)
-                    </Button>
-                    <Button onClick={handleManualFetch} variant="outline" className="w-full">
-                        Manual Fetch USDT/USDC Pool
-                    </Button>
-                     <Button onClick={verifyPoolCreated} variant="outline" className="w-full">
-                        Verify Pool Creation
-                    </Button>
                     <div className="flex items-center gap-2">
                         <Select onValueChange={(v) => setTokenA(v as MockTokenSymbol)} value={tokenA}>
                             <SelectTrigger><SelectValue placeholder="Token A"/></SelectTrigger>

@@ -1,7 +1,8 @@
-
 {
-    "MainContract": "0x4A67925343954738365646545A3a956d7890bCDE",
-    "AIPredictiveLiquidityOracle": "0x8ba1f109551bD432803012645Ac136ddd64DBA72",
-    "AdvancedPriceOracle": "0x5c6F7A8B9D0E1F2A3B4C5D6E7F8A9B0C1D2E3F4A",
-    "AdaptiveMarketMaker": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+  "MainContract": "0xeD11d5816028FD0eb5b86C97b986Bf4fF21D61B8",
+  "AIPredictiveLiquidityOracle": "0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7",
+  "AdvancedPriceOracle": "0x68cB1F4F2E22C4e85667C2EB05dB8b0F68DE1648",
+  "AdaptiveMarketMaker": "0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e",
+  "network": "sepolia",
+  "chainId": 11155111
 }

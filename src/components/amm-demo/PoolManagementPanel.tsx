@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,32 +8,55 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Droplets, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
-import { useWallet } from '@/contexts/wallet-context';
 import { useToast } from '@/hooks/use-toast';
-import { parseAbi, type Address } from 'viem';
-import { getViemPublicClient } from '@/services/blockchain-service';
-import * as DEPLOYED_CONTRACTS from '@/lib/contract-addresses.json';
+import { getViemPublicClient } from '@/services/blockchain-service'; // Import this
+import Image from 'next/image';
+import { getTokenLogo } from '@/lib/tokenLogos';
 
 export function PoolManagementPanel() {
     const { state, actions } = useAmmDemo();
-    const { walletState } = useWallet();
     const [tokenA, setTokenA] = useState<MockTokenSymbol|'' >('');
     const [tokenB, setTokenB] = useState<MockTokenSymbol|'' >('');
     const [isCheckingExisting, setIsCheckingExisting] = useState(false);
     const [poolExists, setPoolExists] = useState(false);
     const [debugInfo, setDebugInfo] = useState<string>('');
+    const [isVerifying, setIsVerifying] = useState(false);
     const { toast } = useToast();
     const publicClient = getViemPublicClient();
+
+    const checkExistingPool = useCallback(async () => {
+        if (!tokenA || !tokenB || tokenA === tokenB) {
+            setPoolExists(false);
+            return;
+        }
+        
+        setIsCheckingExisting(true);
+        try {
+            const existing = state.pools.some(pool => 
+                (pool.tokenA.symbol === tokenA && pool.tokenB.symbol === tokenB) ||
+                (pool.tokenA.symbol === tokenB && pool.tokenB.symbol === tokenA)
+            );
+            setPoolExists(existing);
+        } catch (e) {
+            console.error("Failed to check existing pool", e);
+        } finally {
+            setIsCheckingExisting(false);
+        }
+    }, [tokenA, tokenB, state.pools]);
+
+    useEffect(() => {
+        checkExistingPool();
+    }, [tokenA, tokenB, checkExistingPool]);
 
     useEffect(() => {
         const info = {
             poolsCount: state.pools.length,
             pools: state.pools.map(p => ({
+                id: p.id,
                 name: p.name,
                 address: p.address,
                 tokenA: p.tokenA.symbol,
                 tokenB: p.tokenB.symbol,
-                id: p.id,
             })),
             tokenBalances: state.tokenBalances,
             processingStates: state.processingStates,
@@ -41,30 +64,6 @@ export function PoolManagementPanel() {
         };
         setDebugInfo(JSON.stringify(info, null, 2));
     }, [state.pools, state.tokenBalances, state.processingStates, state.isConnected]);
-
-    useEffect(() => {
-        const checkExistingPool = async () => {
-            if (!tokenA || !tokenB || tokenA === tokenB) {
-                setPoolExists(false);
-                return;
-            }
-            
-            setIsCheckingExisting(true);
-            try {
-                const existing = state.pools.some(pool => 
-                    (pool.tokenA.symbol === tokenA && pool.tokenB.symbol === tokenB) ||
-                    (pool.tokenA.symbol === tokenB && pool.tokenB.symbol === tokenA)
-                );
-                setPoolExists(existing);
-            } catch (e) {
-                console.error("Failed to check existing pool", e);
-            } finally {
-                setIsCheckingExisting(false);
-            }
-        };
-        
-        checkExistingPool();
-    }, [tokenA, tokenB, state.pools]);
 
     const handleCreatePool = () => {
         if (!tokenA || !tokenB || tokenA === tokenB) return;
@@ -160,12 +159,16 @@ export function PoolManagementPanel() {
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <div className="flex items-center gap-2">
+                                                <div className="flex -space-x-2">
+                                                    <Image src={getTokenLogo(pool.tokenA.symbol)} alt="" width={20} height={20} className="rounded-full border-2 border-background"/>
+                                                    <Image src={getTokenLogo(pool.tokenB.symbol)} alt="" width={20} height={20} className="rounded-full border-2 border-background"/>
+                                                </div>
                                                 <p className="font-bold">{pool.name}</p>
                                                 <Badge variant="outline">{pool.feeRate.toFixed(2)}% fee</Badge>
                                                 <Badge variant="outline">{pool.apy.toFixed(1)}% APY</Badge>
                                             </div>
                                             <p className="text-xs text-muted-foreground mt-1">
-                                                {`${pool.address.slice(0,6)}...${pool.address.slice(-4)}`}
+                                                Pool ID: {pool.id}
                                             </p>
                                             <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                                                 <span>Reserve {pool.tokenA.symbol}: {parseFloat(pool.reserveA).toLocaleString()}</span>

@@ -6,9 +6,14 @@ import { getViemPublicClient } from '@/services/blockchain-service';
 import { type Address, parseAbi, formatUnits, parseEther, getContract, parseUnits, decodeEventLog } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
-import * as DEPLOYED_CONTRACTS from '@/lib/contract-addresses.json';
 
 // --- CONTRACT & TOKEN ADDRESSES ---
+// These are specific to the new, isolated AI-powered AMM Demo
+const DEPLOYED_CONTRACTS = {
+  AdaptiveMarketMaker: "0xC687Dc2e94B6D2591551A5506236Dd64bd930C3C",
+  AIPredictiveLiquidityOracle: "0xc6a74BB5B17Ad5f56754AE3860750CcFff98524D",
+};
+
 const AMM_CONTRACT_ADDRESS = DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address;
 const AI_ORACLE_ADDRESS = DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address;
 
@@ -36,7 +41,7 @@ const AMM_ABI = parseAbi([
     "event LiquidityAdded(uint256 indexed poolId, address provider, uint256 amountA, uint256 amountB)",
     "event LiquidityRemoved(uint256 indexed poolId, address provider, uint256 amountA, uint256 amountB)",
     "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
-    "event PoolCreated(uint256 indexed poolId, address tokenA, address tokenB)",
+    "event PoolCreated(uint256 indexed poolId, address indexed tokenA, address indexed tokenB)",
     "event Swap(uint256 indexed poolId, address trader, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
     "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) external",
     "function collectProtocolFees(address token) external",
@@ -65,8 +70,6 @@ const AMM_POOL_ABI = parseAbi([
     "function totalSupply() external view returns (uint256)",
     "function balanceOf(address account) external view returns (uint256)"
 ]);
-
-
 
 const AI_ORACLE_ABI = parseAbi([
     "function registerAsProvider() external payable",
@@ -250,7 +253,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 toast({ variant: "destructive", title: "Transaction Failed", description: 'The transaction was reverted.' });
             }
         } catch (e: any) {
-            const errorMessage = e.message || "Unknown error";
+            const errorMessage = e.shortMessage || e.message || "Unknown error";
             updateTransactionStatus(tempTxId, 'Failed', errorMessage);
             
             if (errorMessage.includes('timeout')) {
@@ -391,19 +394,18 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tokenBInfo = MOCK_TOKENS[tokenB];
         if (!tokenAInfo || !tokenBInfo) return;
     
-        const existing = pools.some(pool => 
-            (pool.tokenA.symbol === tokenA && pool.tokenB.symbol === tokenB) ||
-            (pool.tokenA.symbol === tokenB && pool.tokenB.symbol === tokenA)
+        const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
+            a.toLowerCase() < b.toLowerCase() ? -1 : 1
         );
+
+        const existing = pools.some(pool => 
+            (pool.tokenA.address.toLowerCase() === sortedTokenA.toLowerCase() && pool.tokenB.address.toLowerCase() === sortedTokenB.toLowerCase())
+        );
+
         if (existing) {
             toast({ variant: "destructive", title: "Pool Already Exists" });
             return;
         }
-        
-        // --- FIX: Ensure tokens are sorted by address ---
-        const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
-            a.toLowerCase() < b.toLowerCase() ? -1 : 1
-        );
 
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
             () => writeContractAsync({ 
@@ -412,12 +414,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'createPool', 
                 args: [sortedTokenA, sortedTokenB] 
             }),
-            async (txHash) => {
+            async () => {
                  await new Promise(resolve => setTimeout(resolve, 2000)); // Delay for state update
                  await fetchPools();
             }
         );
-    }, [writeContractAsync, executeTransaction, fetchPools, toast, pools]);
+    }, [pools, writeContractAsync, executeTransaction, fetchPools, toast]);
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];

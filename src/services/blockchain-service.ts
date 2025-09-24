@@ -9,19 +9,21 @@ import { createPublicClient, http, parseAbi, defineChain, Address, createWalletC
 import { localhost, sepolia } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
+import * as DEPLOYED_LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
+
 
 // --- Environment-loaded Contract Addresses ---
-export const FACTORY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEX_FACTORY_ADDRESS as `0x${string}`;
-export const DEX_CONTRACT_ADDRESS = '0x56d214cf5b85E8a4743f297C8E277C702eC746Ab' as `0x${string}`;
-export const VAULT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}`;
-export const PERPETUALS_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
-export const GOVERNOR_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GOVERNOR_CONTRACT_ADDRESS as `0x${string}`;
+export const FACTORY_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.DEX_FACTORY_ADDRESS as `0x${string}`;
+export const DEX_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.DEX_ROUTER_ADDRESS as `0x${string}`;
+export const VAULT_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.VAULT_ADDRESS as `0x${string}`;
+export const PERPETUALS_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.PERPETUALS_VAULT_ADDRESS as `0x${string}`;
+export const GOVERNOR_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.GOVERNOR_ADDRESS as `0x${string}`;
 
 // --- Hardcoded Token Addresses for Client-Side Access ---
 export const ERC20_CONTRACTS: { [symbol: string]: { address: `0x${string}` | undefined, name: string } } = {
-    'USDT': { address: '0x17a6039513bB60369e5246164Cb918973dF902BD', name: 'Tether' },
-    'USDC': { address: '0x09d011D52413DC89DFe3fa64694d67451ee49Cef', name: 'USD Coin' },
-    'WETH': { address: '0x3318056463e5bb26FB66e071999a058bdb35F34f', name: 'Wrapped Ether' },
+    'USDT': { address: DEPLOYED_LEGACY_CONTRACTS.USDT_ADDRESS as `0x${string}`, name: 'Tether' },
+    'USDC': { address: DEPLOYED_LEGACY_CONTRACTS.USDC_ADDRESS as `0x${string}`, name: 'USD Coin' },
+    'WETH': { address: DEPLOYED_LEGACY_CONTRACTS.WETH_ADDRESS as `0x${string}`, name: 'Wrapped Ether' },
     'LINK': { address: '0xbb966759b1B06E224aD601c39e66b101158Fd596', name: 'Chainlink' },
     'BNB':  { address: '0xc7973f90463F85DFc574F844CDd1A41b5187FAeC', name: 'BNB' },
     'SOL':  { address: '0x875687459284f2a041C1c2F5209628f924A28DBc', name: 'Solana' },
@@ -505,8 +507,12 @@ export async function checkAllContracts() {
 
     const checkAddress = async (address: Address) => {
         if (!isValidAddress(address)) return false;
-        const code = await publicClient.getCode({ address });
-        return code !== '0x';
+        try {
+            const code = await publicClient.getCode({ address });
+            return code !== '0x';
+        } catch (e) {
+            return false;
+        }
     };
 
     const contracts = await Promise.all(

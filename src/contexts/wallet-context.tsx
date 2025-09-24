@@ -12,6 +12,7 @@ import {
     PERPETUALS_CONTRACT_ADDRESS, 
     GOVERNOR_CONTRACT_ADDRESS, DEX_ABI, VAULT_ABI, 
     PERPETUALS_ABI, 
+    PERPETUALS_VAULT_ABI,
     FACTORY_CONTRACT_ADDRESS, 
     FACTORY_ABI, POOL_ABI, 
     checkAllContracts,
@@ -161,7 +162,7 @@ const erc20Abi = parseAbi([
     "function name() view returns (string)",
     "function symbol() view returns (string)",
     "function decimals() view returns (uint8)",
-    "function balanceOf(address account) external view returns (uint256)",
+    "function balanceOf(address account) view returns (uint256)",
     "function allowance(address owner, address spender) external view returns (uint256)",
     "function approve(address spender, uint256 amount) external returns (bool)",
     "function transfer(address to, uint256 amount) external returns (bool)"
@@ -742,7 +743,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const txFunction = async () => {
         return writeContractAsync({
             address: vaultAddress,
-            abi: VAULT_ABI,
+            abi: PERPETUALS_VAULT_ABI,
             functionName: "deposit",
             args: [depositAmountOnChain],
         });
@@ -887,7 +888,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         });
     };
     await executeTransaction('Vault Withdraw', dialogDetails, txFunction);
-  }, [executeTransaction, decimals, writeContractAsync, address]);
+}, [executeTransaction, decimals, writeContractAsync, address]);
   
   const voteOnProposal = useCallback(async (proposalId: string, support: number) => {
     const dialogDetails = { details: `Vote on proposal #${proposalId}` };
@@ -939,3 +940,5 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
+
+    

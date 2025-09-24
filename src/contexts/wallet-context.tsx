@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
@@ -768,7 +767,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           
           return writeContractAsync({
               address: vaultAddress,
-              abi: VAULT_ABI,
+              abi: PERPETUALS_VAULT_ABI,
               functionName: 'withdraw',
               args: [amountOnChain]
           });

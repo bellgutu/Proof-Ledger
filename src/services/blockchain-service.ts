@@ -300,15 +300,12 @@ export const DEX_ABI = [
 ] as const;
 
 
-export const VAULT_ABI = [
-    { "inputs": [], "name": "collateralToken", "outputs": [{ "internalType": "address", "name": "", "type": "address" }], "stateMutability": "view", "type": "function" },
-    { "inputs": [{ "internalType": "address", "name": "account", "type": "address" }], "name": "collateral", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
-    { "inputs": [{ "internalType": "address", "name": "account", "type": "address" }], "name": "lockedCollateral", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
-    { "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }], "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [ { "internalType": "uint256", "name": "amount", "type": "uint256" } ], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-    { "inputs": [{ "internalType": "address", "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
-    { "inputs": [], "name": "totalSupply", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
-] as const;
+export const VAULT_ABI = parseAbi([
+    "function deposit(uint256 amount)",
+    "function withdraw(uint256 shares, address receiver, address owner) returns (uint256 assets)",
+    "function balanceOf(address) view returns (uint256)",
+    "function totalSupply() view returns (uint256)"
+]);
 
 
 export const GOVERNOR_ABI = parseAbi([
@@ -368,6 +365,14 @@ export const PERPETUALS_ABI = parseAbi([
   "function withdrawCollateral(uint256 amount)"
 ]);
 
+// This is the correct ABI for the PerpetualsVault contract
+export const PERPETUALS_VAULT_ABI = parseAbi([
+    "function collateral(address) view returns (uint256)",
+    "function lockedCollateral(address) view returns (uint256)",
+    "function deposit(uint256 amount)",
+    "function withdraw(uint256 amount)"
+]);
+
 // --- READ-ONLY FUNCTIONS ---
 
 export async function getGasPrice(): Promise<bigint | null> {
@@ -419,14 +424,14 @@ export async function getVaultCollateral(userAddress: `0x${string}`): Promise<Va
 
     const total = await publicClient.readContract({
         address: vaultAddress,
-        abi: VAULT_ABI,
+        abi: PERPETUALS_VAULT_ABI,
         functionName: 'collateral',
         args: [userAddress],
     });
     
     const locked = await publicClient.readContract({
         address: vaultAddress,
-        abi: VAULT_ABI,
+        abi: PERPETUALS_VAULT_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],
     });

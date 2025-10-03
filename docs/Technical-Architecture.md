@@ -16,7 +16,7 @@ The frontend is a modern, performant, and type-safe web application built with i
 - **Language**: **TypeScript** - The entire frontend is written in TypeScript, ensuring type safety, better autocompletion, and fewer runtime errors.
 - **UI Components**: **ShadCN UI** - A collection of beautifully designed, accessible, and composable components built on Radix UI and Tailwind CSS. This allows for rapid development of a consistent and professional-looking user interface.
 - **Styling**: **Tailwind CSS** - A utility-first CSS framework that enables rapid and consistent styling directly within the component markup. The app uses a theming system built with CSS variables for easy customization of colors (e.g., dark mode).
-- **State Management**: **React Context API (`WalletContext`)** - All wallet-related state, including connection status, address, balances, and transactions, is managed centrally in `WalletContext`. This provides a clean and predictable way to access blockchain data across the entire application.
+- **State Management**: **React Context API (`WalletContext`, `AmmDemoContext`)** - All wallet-related state is managed centrally in contexts. `WalletContext` handles main application state (balances, transactions, connection), while `AmmDemoContext` isolates the state and logic for the innovative AMM showcase, preventing conflicts with legacy contracts.
 - **Data Fetching**: The application uses a combination of native `fetch` within Server Components for server-side data retrieval and client-side hooks for dynamic data. Next.js's built-in caching mechanisms provide SWR-like behavior out of the box.
 - **Charting**: **Recharts** is used for simple, static charts, while **TradingView Advanced Charts** are integrated for interactive, professional-grade financial charting.
 - **Forms**: **React Hook Form** with **Zod** for schema validation is used for all forms, ensuring a robust and user-friendly form submission experience.
@@ -44,17 +44,27 @@ All AI-powered features are built using Genkit, Google's open-source framework f
 
 ## 3. Blockchain Interaction
 
-The application interacts with the blockchain using modern, type-safe tools.
+The application interacts with the blockchain using modern, type-safe tools. It manages two sets of smart contracts: a "legacy" set for the main application features (Swap, Trading, etc.) and a new, advanced AI-powered ecosystem for the "AMM Demo" page.
 
+### 3.1. Core Application Contracts (Legacy)
+- **Contracts**: Includes a standard DEX Router, Perpetuals Vault, and Governance contracts.
 - **Client Library**: **Viem** - A modern, lightweight, and type-safe TypeScript interface for interacting with Ethereum and other EVM chains. It is used for all contract reads and for preparing transactions.
-- **Wallet Integration**: The application relies on a browser-injected `window.ethereum` provider (like MetaMask) for all user-initiated transactions, ensuring users maintain full control over their private keys. For local development, it also supports a private key from an environment variable for a consistent testing wallet.
-- **Contract Interaction**: All smart contract calls (reads and writes) are managed through `viem`'s `publicClient` (for read operations) and `walletClient` (for write operations), ensuring a clear separation of concerns.
+- **Wallet Integration**: The application relies on a browser-injected `window.ethereum` provider (like MetaMask) for all user-initiated transactions, ensuring users maintain full control over their private keys.
+- **Contract Interaction**: All smart contract calls are managed through `viem`'s `publicClient` (for read operations) and `walletClient` (for write operations), ensuring a clear separation of concerns.
+
+### 3.2. Innovative AMM Demo Contracts (AI-Powered Ecosystem)
+- **Deployment**: A full suite of four production-ready smart contracts deployed and verified on the Sepolia testnet.
+- **`MainContract` (Controller)**: A central hub managing contract authorizations, treasury, fees, and emergency pause functionality.
+- **`AdaptiveMarketMaker`**: An advanced AMM with dynamic, volume-based fee optimization.
+- **`AIPredictiveLiquidityOracle`**: A multi-provider oracle with staking/slashing mechanics to ensure accurate AI-driven liquidity predictions.
+- **`AdvancedPriceOracle`**: A robust, multi-source price oracle with historical tracking and volatility calculations.
+- **Interaction**: The AMM Demo page interacts with this isolated ecosystem via a dedicated React Context (`AmmDemoContext`), preventing conflicts with the legacy contracts used elsewhere in the application.
 
 ---
 
 ## 4. Security & Best Practices
 
-- **Separation of Concerns**: Client-side logic is clearly separated from server-side (AI) logic using Next.js App Router conventions and `'use server';` directives.
+- **Separation of Concerns**: Client-side logic is clearly separated from server-side (AI) logic using Next.js App Router conventions and `'use server';` directives. The state for the AMM Demo is also isolated in its own context.
 - **Environment Variables**: Sensitive data like private keys and RPC URLs are stored in environment variables (`.env.local`) and are never exposed to the client.
 - **Type Safety**: TypeScript is used across the entire stack to minimize runtime errors and improve code maintainability.
 - **On-chain Logic**: The application correctly defers all state-changing blockchain operations (swaps, deposits, trades) to the user's wallet for signing. This is a critical security measure that ensures the user always maintains control of their assets.
@@ -67,12 +77,12 @@ The application interacts with the blockchain using modern, type-safe tools.
 The project has undergone a rigorous testing process to ensure stability, reliability, and security across all components.
 
 -   **Smart Contract Testing**:
-    -   **Comprehensive Unit Tests**: All core smart contracts, including the DEX Router, Liquidity Pools, and Perpetuals Vault, have been tested extensively.
+    -   **Comprehensive Unit Tests**: All core smart contracts, including the legacy DEX, Liquidity Pools, and Perpetuals Vault, as well as the new AI-powered ecosystem (`MainContract`, `AdaptiveMarketMaker`, etc.), have been tested extensively.
     -   **Scenario-Based Testing**: Complex user flows such as multi-step swaps, liquidity provisioning/removal, and leveraged trade lifecycle (open, close, liquidate) have been simulated and validated.
     -   **Deployment Verification**: Contracts have been successfully compiled and deployed to local (Hardhat/Anvil) and public testnet (Sepolia) environments, confirming their operational integrity.
 
 -   **Frontend & Integration Testing**:
     -   **Component-Level Validation**: All UI components have been tested for correct rendering and functionality.
-    -   **End-to-End User Flow Testing**: The full application has been tested from the user's perspective, covering wallet connection, asset management, DeFi interactions, and AI tool usage.
+    -   **End-to-End User Flow Testing**: The full application has been tested from the user's perspective, covering wallet connection, asset management, DeFi interactions, and AI tool usage across both the legacy and new AMM systems.
     -   **Cross-Browser Compatibility**: The application has been verified to work consistently across modern web browsers.
     -   **Responsive Design**: The UI has been tested on a range of screen sizes to ensure a seamless experience on both desktop and mobile devices.

@@ -42,3 +42,9 @@ The platform is architected as a modern, full-stack web application built on a r
 - **Connected Wallet Dashboard**: A comprehensive view of the user's on-chain asset holdings, balances, and real-time market values.
 - **Transaction History**: A detailed and filterable log of all user-initiated on-chain activity, including swaps, transfers, and trades.
 - **Send/Receive Functionality**: A standard, secure interface for transferring and receiving crypto assets directly from the user's connected wallet.
+
+### 2.5. Innovative AMM Demo
+- **AI-Powered AMM Ecosystem**: A technical demonstration of a next-generation DeFi ecosystem deployed on the Sepolia testnet. The ecosystem includes an `AdaptiveMarketMaker` with dynamic, volume-based fees, a multi-provider `AIPredictiveLiquidityOracle` with staking/slashing mechanics, an `AdvancedPriceOracle`, and a central `MainContract` controller.
+- **Full AMM Functionality**: Users can create new liquidity pools, add/remove liquidity, and perform swaps within this isolated, AI-driven environment.
+- **AI Oracle Simulation**: An interface for AI providers to submit fee and volatility predictions, demonstrating the consensus mechanism and its impact on pool parameters.
+- **Live Analytics & Impact Analysis**: Dashboards displaying real-time pool performance (TVL, volume, APY) and the measurable benefits of the AI optimizations, such as reduced fees and improved capital efficiency.

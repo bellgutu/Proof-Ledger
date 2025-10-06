@@ -65,7 +65,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             const activeProviders = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
-                functionName: 'getActiveProviders',
+                functionName: 'listActiveOracles',
             });
             const minStake = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
@@ -176,7 +176,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             writeContractAsync({
                 address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
-                functionName: 'registerAsProvider',
+                functionName: 'registerOracle',
                 value: minStake,
             });
         

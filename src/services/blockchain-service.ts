@@ -9,7 +9,7 @@ import { createPublicClient, http, parseAbi, defineChain, Address, createWalletC
 import { localhost, sepolia } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
-import * as DEPLOYED_LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
+import DEPLOYED_LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
 
 
 // --- Environment-loaded Contract Addresses ---

@@ -89,7 +89,7 @@ export const Dashboard = () => {
             >
                 <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">Total Value Secured</p>
-                    <p className="text-3xl font-bold">${parseFloat(proofBondData.tvl).toLocaleString(undefined, { maximumFractionDigits: 2 })}M</p>
+                    <p className="text-3xl font-bold">${parseFloat(proofBondData.tvl).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                     <p className="text-xs text-muted-foreground mt-1">Across all integrated markets.</p>
                 </div>
             </ContractCard>
@@ -104,7 +104,7 @@ export const Dashboard = () => {
                 <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">Active Bonds</p>
                     <p className="text-3xl font-bold">{proofBondData.activeBonds.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Total Value Locked: ${parseFloat(proofBondData.tvl).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Total Value Locked: ${proofBondData.tvl}</p>
                 </div>
             </ContractCard>
             
@@ -115,9 +115,9 @@ export const Dashboard = () => {
                 status="Verified"
                 isLoading={isLoading}
             >
-                <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Total Deposits</p>
-                    <p className="text-3xl font-bold">${parseFloat(safeVaultData.totalAssets).toLocaleString()}</p>
+                 <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total Value Locked</p>
+                    <p className="text-3xl font-bold">${safeVaultData.totalAssets}</p>
                     <p className="text-xs text-muted-foreground mt-1">Across 3 active strategies.</p>
                 </div>
             </ContractCard>
@@ -131,7 +131,7 @@ export const Dashboard = () => {
             >
                 <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">24h Volume</p>
-                    <p className="text-3xl font-bold">${parseFloat(forgeMarketData.totalVolume).toLocaleString()}</p>
+                    <p className="text-3xl font-bold">${forgeMarketData.totalVolume}</p>
                     <p className="text-xs text-muted-foreground mt-1">Across all listed assets.</p>
                 </div>
             </ContractCard>
@@ -159,5 +159,3 @@ export const Dashboard = () => {
         </div>
     );
 };
-
-    

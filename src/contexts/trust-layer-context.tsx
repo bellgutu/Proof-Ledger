@@ -172,7 +172,7 @@ interface TrustLayerContextType {
 const TrustLayerContext = createContext<TrustLayerContextType | undefined>(undefined);
 
 const initialTrustLayerState: TrustLayerState = {
-  mainContractData: { protocolFee: 0 },
+  mainContractData: { protocolFee: 20 }, // Fallback
   trustOracleData: { 
     activeProviders: 0, 
     minStake: '0', 
@@ -268,14 +268,11 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         setState(prev => ({ ...prev, isLoading: true }));
 
         try {
-             // MainContract
-            const protocolFee = 20; // Hardcoded fallback
-
             // TrustOracle - Enhanced with AI features
             const activeProviders = await publicClient.readContract({
                 address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
                 abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
-                functionName: 'listActiveOracles',
+                functionName: 'getActiveProviders',
             }) as Address[];
             
             const minStake = await publicClient.readContract({
@@ -290,101 +287,20 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'minSubmissions',
             });
 
-            // Get latest price and confidence from AI Oracle
             let latestPrice = '0';
             let confidence = 0;
             let lastUpdate = 0;
             
-            // This call reverts
-            // try {
-            //     const latestData = await publicClient.readContract({
-            //         address: trustLayerContracts.SimpleAIOracle as Address,
-            //         abi: trustLayerContracts.abis.SimpleAIOracle,
-            //         functionName: 'getLatestPrediction',
-            //     });
-            //     latestPrice = formatUnits((latestData as any[])[0], 18);
-            //     confidence = Number((latestData as any[])[1]);
-            //     lastUpdate = Number((latestData as any[])[2]);
-            // } catch (error) {
-            //     console.log("AI Oracle data not available:", error);
-            // }
-
-            // SafeVault - Enhanced with multi-sig data
-            // This call reverts
-            const totalAssets = 0n;
-            const totalDeposits = 0n; // Placeholder
-            const totalWithdrawals = 0n; // Placeholder
-
-            // Get multi-sig info
-            let owners: Address[] = [];
-            let threshold = 1;
-            let isLocked = false;
-            let lockDuration = 0;
-            
-            // These calls also fail
-            
             // ProofBond - Enhanced with bond market data
-            const activeBonds = await publicClient.readContract({
-                address: trustLayerContracts.ProofBond as Address,
-                abi: trustLayerContracts.abis.ProofBond,
-                functionName: 'totalSupply',
-            });
-            
-            const bondTvl = 0n // Placeholder, as totalValueLocked may also fail
-            
-
+            const activeBonds = 0; // Placeholder
+            const bondTvl = '0'; // Placeholder
             let bondPrice = 0n;
             let apy = 0;
             let trancheSize = 0n;
             let nextTrancheId = 0;
             
-            try {
-                // This call reverts
-                // bondPrice = await publicClient.readContract({
-                //     address: trustLayerContracts.ProofBond as Address,
-                //     abi: trustLayerContracts.abis.ProofBond,
-                //     functionName: 'bondPrice',
-                // });
-                apy = Number(await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
-                    functionName: 'apy',
-                }));
-                trancheSize = await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
-                    functionName: 'trancheSize',
-                });
-                nextTrancheId = Number(await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
-                    functionName: 'nextTrancheId',
-                }));
-            } catch (error) {
-                console.log("Bond market data not available:", error);
-            }
-
-            // ForgeMarket - Enhanced with AI optimization data
-            const totalVolume = 0n; // Placeholder
-
-            let totalLiquidity = 0n;
-            let currentFee = 0;
-            let aiOptimizedFee = 0;
-            let efficiency = 0;
-            let activePools = 0;
-            
             // OpenGovernor - Enhanced with detailed proposal data
             let proposalCount = 0n;
-            try {
-                proposalCount = await publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
-                    functionName: 'proposalCount',
-                });
-            } catch (error) {
-                console.error("Failed to fetch proposal count:", error);
-            }
-            
             
             const treasuryAddress = await publicClient.readContract({
                 address: trustLayerContracts.OpenGovernor as Address,
@@ -397,46 +313,11 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let quorum = 0;
             let votingPeriod = 0;
             
-            try {
-                quorum = Number(await publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
-                    functionName: 'quorum',
-                }));
-                votingPeriod = Number(await publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
-                    functionName: 'votingPeriod',
-                }));
-            } catch (error) {
-                console.log("Governance config not available:", error);
-            }
-            
-            const activeProposalsPromises = Array.from({ length: Math.min(Number(proposalCount), 10) }, (_, i) => 
-                publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
-                    functionName: 'state',
-                    args: [BigInt(i + 1)],
-                })
-            );
-            const proposalStates = await Promise.all(activeProposalsPromises);
-            const activeProposals = proposalStates.filter(s => s === 1).length;
+            const activeProposals = 0; // Placeholder
 
-            // AI Data - Enhanced with prediction history
-            let currentPrediction = '0';
-            let aiConfidence = 0;
-            let lastOptimization = 0;
-            let efficiencyGain = 0;
-            let gasSavings = 0;
-            
-            // Predictive Liquidity Data
-            let predictedLiquidity = '0';
-            let predictionAccuracy = 0;
-            
             setState(prev => ({
                 ...prev,
-                mainContractData: { protocolFee },
+                mainContractData: { protocolFee: 20 },
                 trustOracleData: { 
                     activeProviders: activeProviders.length, 
                     minStake: formatEther(minStake as bigint), 
@@ -446,35 +327,16 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     lastUpdate,
                     providers: []
                 },
-                safeVaultData: { 
-                    totalAssets: formatUnits(totalAssets, 6),
-                    totalDeposits: formatUnits(totalDeposits, 6),
-                    totalWithdrawals: formatUnits(totalWithdrawals, 6),
-                    userBalance: '0',
-                    isLocked,
-                    lockDuration,
-                    owners,
-                    threshold
-                },
+                safeVaultData: { ...prev.safeVaultData }, // Keep previous state as functions are not available
                 proofBondData: { 
                     activeBonds: Number(activeBonds), 
-                    tvl: formatUnits(bondTvl, 6),
-                    totalSupply: formatUnits(activeBonds, 18),
+                    tvl: bondTvl,
+                    totalSupply: '0',
                     bondPrice: formatUnits(bondPrice, 18),
-                    apy: apy,
+                    apy: Number(apy),
                     userBonds: [],
                     trancheSize: formatUnits(trancheSize, 18),
-                    nextTrancheId: nextTrancheId
-                },
-                forgeMarketData: { 
-                    totalVolume: formatUnits(totalVolume, 6),
-                    totalLiquidity: formatUnits(totalLiquidity, 6),
-                    activePools,
-                    currentFee,
-                    aiOptimizedFee,
-                    efficiency,
-                    userLiquidity: '0',
-                    pools: []
+                    nextTrancheId: Number(nextTrancheId)
                 },
                 openGovernorData: { 
                     proposalCount: Number(proposalCount), 
@@ -483,27 +345,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     votingPower: '0',
                     userVotes: [],
                     proposals: [],
-                    quorum,
-                    votingPeriod
-                },
-                aiData: {
-                    currentPrediction,
-                    confidence: aiConfidence,
-                    lastOptimization,
-                    efficiencyGain,
-                    gasSavings,
-                    predictions: []
-                },
-                adaptiveAMMData: {
-                    currentFee,
-                    optimizedFee: aiOptimizedFee,
-                    efficiency,
-                    volume24h: '0'
-                },
-                predictiveLiquidityData: {
-                    predictedLiquidity,
-                    accuracy: predictionAccuracy,
-                    recommendations: []
+                    quorum: Number(quorum),
+                    votingPeriod: Number(votingPeriod)
                 },
                 isLoading: false,
                 lastUpdated: Date.now(),
@@ -526,7 +369,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        const minStake = parseEther(state.trustOracleData.minStake);
+        const minStakeValue = parseEther(state.trustOracleData.minStake);
 
         const dialogDetails = {
             amount: parseFloat(state.trustOracleData.minStake),
@@ -540,66 +383,19 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
                 abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
                 functionName: 'registerOracle',
-                value: minStake,
+                value: minStakeValue,
             });
         
         await walletActions.executeTransaction('Register as Oracle', dialogDetails, txFunction, fetchData);
     }, [walletClient, state.trustOracleData.minStake, toast, writeContractAsync, walletActions, fetchData]);
 
     const submitOracleData = useCallback(async (price: string, confidence: number) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to submit oracle data.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'ETH',
-            to: trustLayerContracts.SimpleAIOracle,
-            details: `Submitting AI Oracle data: ${price} with ${confidence}% confidence`,
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.SimpleAIOracle as Address,
-                abi: trustLayerContracts.abis.SimpleAIOracle,
-                functionName: 'submitPrediction',
-                args: [parseEther(price), BigInt(Math.floor(confidence * 100))],
-            });
-        
-        await walletActions.executeTransaction('Submit Oracle Data', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const unstakeOracle = useCallback(async () => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to unstake.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'ETH',
-            to: trustLayerContracts.AIPredictiveLiquidityOracle,
-            details: 'Unstaking from Oracle Provider',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
-                abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
-                functionName: 'unstake',
-            });
-        
-        await walletActions.executeTransaction('Unstake Oracle', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     // Vault Functions
     const depositToVault = useCallback(async (amount: string) => {
@@ -627,7 +423,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         const dialogDetails = {
             amount: parseFloat(amount),
-            token: 'USDC',
+            token: 'USDC', // Assuming bonds are purchased with USDC
             to: trustLayerContracts.ProofBond,
             details: 'Purchasing ProofBonds',
         };
@@ -637,39 +433,15 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 address: trustLayerContracts.ProofBond as Address,
                 abi: trustLayerContracts.abis.ProofBond,
                 functionName: 'purchase',
-                args: [parseUnits(amount, 6)],
+                args: [parseUnits(amount, 6)], // Assuming USDC has 6 decimals
             });
         
         await walletActions.executeTransaction('Purchase Bonds', dialogDetails, txFunction, fetchData);
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const redeemBond = useCallback(async (bondId: number) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to redeem bonds.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'USDC',
-            to: trustLayerContracts.ProofBond,
-            details: `Redeeming Bond #${bondId}`,
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.ProofBond as Address,
-                abi: trustLayerContracts.abis.ProofBond,
-                functionName: 'redeem',
-                args: [BigInt(bondId)],
-            });
-        
-        await walletActions.executeTransaction('Redeem Bond', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const claimBondYield = useCallback(async (bondId: number) => {
         toast({ title: 'Not implemented' });
@@ -758,5 +530,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-
-    

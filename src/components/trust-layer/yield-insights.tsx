@@ -51,8 +51,8 @@ export const YieldInsights = () => {
                             <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
                         ) : (
                             <div className="p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground">Total Assets Under Management</p>
-                                <p className="text-3xl font-bold">${parseFloat(safeVaultData.totalAssets).toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                                <p className="text-sm text-muted-foreground">Total Value Locked</p>
+                                <p className="text-3xl font-bold">${safeVaultData.totalAssets}</p>
                             </div>
                         )}
                     </CardContent>
@@ -73,7 +73,7 @@ export const YieldInsights = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-muted rounded-lg">
                                 <p className="text-sm text-muted-foreground">Total Value Locked</p>
-                                <p className="text-2xl font-bold">${parseFloat(proofBondData.tvl).toLocaleString()}</p>
+                                <p className="text-2xl font-bold">${proofBondData.tvl}</p>
                             </div>
                             <div className="p-4 bg-muted rounded-lg">
                                 <p className="text-sm text-muted-foreground">Active Bonds</p>

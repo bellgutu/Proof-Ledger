@@ -1,4 +1,6 @@
 
+"use client";
+
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
 import { sepolia, mainnet } from 'wagmi/chains';
 
@@ -13,8 +15,7 @@ const metadata = {
   name: 'ProfitForge',
   description: 'AI-powered tools for DeFi and crypto trading.',
   // Use dynamic URL based on environment
-  url: process.env.NEXT_PUBLIC_APP_URL || 
-       (typeof window !== 'undefined' ? window.location.origin : 'https://profitforge.com'),
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://profitforge.com',
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 

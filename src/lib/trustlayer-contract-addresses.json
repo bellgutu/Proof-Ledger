@@ -1,15 +1,37 @@
 {
+  "MainContract": "0xD5162798db7eBC4f55a7197EAAb60eBdb09b9A9C",
+  "AIPredictiveLiquidityOracle": "0xc6a74BB5B17Ad5f56754AE3860750CcFff98524D",
+  "AdvancedPriceOracle": "0xe80fb21a9F638C5A4244c27719DEBdA27e580563",
+  "AdaptiveMarketMaker": "0xC687Dc2e94B6D2591551A5506236Dd64bd930C3C",
   "TrustOracle": "0x5a92b7E95dC3537E87eC6a755403B9191C9055cD",
   "SafeVault": "0xbE5dd587b17eb4c0e2c6156c599851e164D37A37",
   "ProofBond": "0x98e84f8F812cDFD21debF85f85cbe46a729E608a",
   "ForgeMarket": "0xD2c449f3FFf7713cFE9E1f45e5B96E19EFAC49a6",
   "OpenGovernor": "0xf2500D9170e6f85D29a69d5a50764a8b44370AD6",
   "abis": {
-    "TrustOracle": [],
-    "SafeVault": [],
-    "ProofBond": [],
-    "ForgeMarket": [],
-    "OpenGovernor": []
+    "MainContract": [
+      "function protocolFeePercent() view returns (uint256)"
+    ],
+    "TrustOracle": [
+      "function getActiveProviders() view returns (address[])",
+      "function minStake() view returns (uint256)",
+      "function minSubmissions() view returns (uint256)"
+    ],
+    "SafeVault": [
+      "function totalAssets() view returns (uint256)"
+    ],
+    "ProofBond": [
+      "function totalSupply() view returns (uint256)",
+      "function totalValueLocked() view returns (uint256)"
+    ],
+    "ForgeMarket": [
+      "function totalVolume() view returns (uint256)"
+    ],
+    "OpenGovernor": [
+      "function proposalCount() view returns (uint256)",
+      "function treasury() view returns (address)",
+      "function state(uint256 proposalId) view returns (uint8)"
+    ]
   },
   "network": "sepolia",
   "chainId": 11155111

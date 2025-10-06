@@ -1,3 +1,4 @@
+
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
@@ -267,7 +268,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         setState(prev => ({ ...prev, isLoading: true }));
 
         try {
-            // MainContract - Gracefully handle protocolFee
+            // MainContract
             let protocolFee: bigint = 0n;
             try {
                 protocolFee = await publicClient.readContract({
@@ -279,7 +280,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 console.log("Could not fetch protocolFeePercent, using fallback.", e);
             }
 
-            // TrustOracle - Gracefully handle AI features
+            // TrustOracle
             let activeProviders: Address[] = [];
             try {
                 activeProviders = await publicClient.readContract({
@@ -329,7 +330,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 console.log("AI Oracle data not available:", error);
             }
 
-            // SafeVault - Gracefully handle multi-sig data
+            // SafeVault
             let totalDeposits: bigint = 0n;
             let totalWithdrawals: bigint = 0n;
             try {
@@ -376,7 +377,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 console.log("Multi-sig data not available:", error);
             }
             
-            // ProofBond - Gracefully handle bond market data
+            // ProofBond
             let activeBonds: bigint = 0n;
             try {
                  activeBonds = await publicClient.readContract({
@@ -428,7 +429,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 console.log("Bond market data not available:", error);
             }
 
-            // ForgeMarket - Gracefully handle AI optimization data
+            // ForgeMarket
             let totalVolume: bigint = 0n;
             try {
                 totalVolume = await publicClient.readContract({
@@ -475,7 +476,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 console.log("AI market data not available:", error);
             }
             
-            // OpenGovernor - Gracefully handle governance data
+            // OpenGovernor
             let proposalCount: bigint = 0n;
             let treasuryBalance: bigint = 0n;
             let activeProposalsCount: number = 0;
@@ -519,13 +520,12 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 console.error("Could not fetch some governance data.", e);
             }
 
-            // AI Data - Enhanced with prediction history
+            // AI Data
             let currentPrediction = '0';
             let aiConfidence = 0;
             let lastOptimization = 0;
             let efficiencyGain = 0;
             let gasSavings = 0;
-            
             try {
                 const aiData = await publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
@@ -544,7 +544,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             // Predictive Liquidity Data
             let predictedLiquidity = '0';
             let predictionAccuracy = 0;
-            
             try {
                 const liquidityData = await publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
@@ -1201,4 +1200,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-```

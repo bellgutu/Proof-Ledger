@@ -32,7 +32,7 @@ import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral' | 'Create Pool';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral' | 'Create Pool' | 'Register as Oracle';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface PastPosition {
@@ -127,6 +127,7 @@ interface WalletActions {
   closePosition: (position: Position, pnl: number, exitPrice: number) => Promise<void>;
   updateVaultCollateral: () => Promise<void>;
   getActivePosition: (address: `0x${string}`) => Promise<void>;
+  executeTransaction: (txType: TransactionType, dialogDetails: Partial<Transaction>, txFunction: () => Promise<`0x${string}`>, onSuccess?: (txHash: `0x${string}`) => void | Promise<void>) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'status' | 'timestamp' | 'from' | 'to'> & { id?: string; to?: string; txHash?: string }) => string;
   updateTransactionStatus: (id: string, status: TransactionStatus, details?: string | React.ReactNode, txHash?: string) => void;
   setVaultWeth: React.Dispatch<React.SetStateAction<number>>;
@@ -921,7 +922,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           setUserPositions, setTxStatusDialog, openPosition, closePosition,
           swapTokens, depositToVault, withdrawFromVault, voteOnProposal, addLiquidity, removeLiquidity,
           claimRewards, depositCollateral, withdrawCollateral, updateVaultCollateral,
-          approveToken, checkAllowance, checkPoolExists, createPool, getActivePosition, updateBalance
+          approveToken, checkAllowance, checkPoolExists, createPool, getActivePosition, updateBalance,
+          executeTransaction
       }
   }
 
@@ -939,5 +941,3 @@ export const useWallet = (): WalletContextType => {
   }
   return context;
 };
-
-    

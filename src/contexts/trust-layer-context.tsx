@@ -1,9 +1,11 @@
 
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { usePublicClient } from 'wagmi';
+import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
 import * as DEPLOYED_CONTRACTS from '@/lib/trustlayer-contract-addresses.json';
-import { type Address, formatUnits, formatEther } from 'viem';
+import { type Address, formatUnits, formatEther, parseEther } from 'viem';
+import { useToast } from '@/hooks/use-toast';
+import { useWallet } from './wallet-context';
 
 interface TrustLayerState {
     mainContractData: { protocolFee: number };
@@ -15,9 +17,14 @@ interface TrustLayerState {
     isLoading: boolean;
 }
 
+interface TrustLayerActions {
+    refresh: () => Promise<void>;
+    registerOracleProvider: () => Promise<void>;
+}
+
 interface TrustLayerContextType {
     state: TrustLayerState;
-    refresh: () => Promise<void>;
+    actions: TrustLayerActions;
 }
 
 const TrustLayerContext = createContext<TrustLayerContextType | undefined>(undefined);
@@ -35,6 +42,11 @@ const initialTrustLayerState: TrustLayerState = {
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
     const publicClient = usePublicClient({ chainId: DEPLOYED_CONTRACTS.chainId });
+    const { data: walletClient } = useWalletClient();
+    const { walletActions } = useWallet();
+    const { toast } = useToast();
+    const { writeContractAsync } = useWriteContract();
+
 
     const fetchData = useCallback(async () => {
         if (!publicClient) return;
@@ -51,17 +63,17 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
             // TrustOracle
             const activeProviders = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                 functionName: 'getActiveProviders',
             });
             const minStake = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                 functionName: 'minStake',
             });
             const minSubmissions = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                 functionName: 'minSubmissions',
             });
@@ -141,13 +153,46 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [publicClient]);
 
+    const registerOracleProvider = useCallback(async () => {
+        if (!walletClient) {
+            toast({
+                variant: 'destructive',
+                title: 'Wallet not connected',
+                description: 'Please connect your wallet to register as a provider.',
+            });
+            return;
+        }
+
+        const minStake = parseEther(state.trustOracleData.minStake);
+
+        const dialogDetails = {
+            amount: parseFloat(state.trustOracleData.minStake),
+            token: 'ETH',
+            to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle,
+            details: 'Staking to become an AI Oracle Provider',
+        };
+
+        const txFunction = () =>
+            writeContractAsync({
+                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
+                functionName: 'registerAsProvider',
+                value: minStake,
+            });
+        
+        await walletActions.executeTransaction('Register as Oracle', dialogDetails, txFunction, fetchData);
+    }, [walletClient, state.trustOracleData.minStake, toast, writeContractAsync, walletActions, fetchData]);
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
+    
     const value: TrustLayerContextType = {
         state,
-        refresh: fetchData
+        actions: {
+            refresh: fetchData,
+            registerOracleProvider,
+        }
     };
 
     return (

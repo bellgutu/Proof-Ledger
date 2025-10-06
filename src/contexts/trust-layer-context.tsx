@@ -1,9 +1,8 @@
-
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
-import trustLayerContracts from '@/lib/trustlayer-contract-addresses.json';
-import { type Address, formatUnits, formatEther, parseEther, parseUnits } from 'viem';
+import DEPLOYED_CONTRACTS from '@/lib/trustlayer-contract-addresses.json';
+import { type Address, formatUnits, formatEther, parseEther, maxUint256, parseUnits } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
 
@@ -255,7 +254,7 @@ const initialTrustLayerState: TrustLayerState = {
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
-    const publicClient = usePublicClient({ chainId: trustLayerContracts.chainId });
+    const publicClient = usePublicClient({ chainId: DEPLOYED_CONTRACTS.chainId });
     const { data: walletClient } = useWalletClient();
     const { walletActions } = useWallet();
     const { toast } = useToast();
@@ -268,114 +267,121 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         setState(prev => ({ ...prev, isLoading: true }));
 
         try {
-            // MainContract
+            // MainContract - Gracefully handle protocolFee
             let protocolFee: bigint = 0n;
             try {
-                 protocolFee = await publicClient.readContract({
-                    address: trustLayerContracts.MainContract as Address,
-                    abi: trustLayerContracts.abis.MainContract,
+                protocolFee = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.MainContract as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.MainContract,
                     functionName: 'protocolFeePercent',
                 });
             } catch (e) {
-                console.error("Could not fetch protocolFeePercent, using fallback.", e);
+                console.log("Could not fetch protocolFeePercent, using fallback.", e);
             }
 
-
-            // TrustOracle - Enhanced with AI features
+            // TrustOracle - Gracefully handle AI features
             let activeProviders: Address[] = [];
             try {
                 activeProviders = await publicClient.readContract({
-                    address: trustLayerContracts.TrustOracle as Address,
-                    abi: trustLayerContracts.abis.TrustOracle,
+                    address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                     functionName: 'listActiveOracles',
                 }) as Address[];
-            } catch(e) {
-                console.error("Could not fetch active providers, using fallback.", e);
+            } catch (e) {
+                console.log("Could not fetch active providers, using fallback.", e);
             }
             
             let minStake: bigint = 0n;
             try {
-                 minStake = await publicClient.readContract({
-                    address: trustLayerContracts.TrustOracle as Address,
-                    abi: trustLayerContracts.abis.TrustOracle,
+                minStake = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                     functionName: 'minStake',
                 });
-            } catch(e) {
-                console.error("Could not fetch minStake, using fallback.", e);
+            } catch (e) {
+                 console.log("Could not fetch minStake, using fallback.", e);
             }
-
             
             let minSubmissions: bigint = 0n;
             try {
-                 minSubmissions = await publicClient.readContract({
-                    address: trustLayerContracts.TrustOracle as Address,
-                    abi: trustLayerContracts.abis.TrustOracle,
+                minSubmissions = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                     functionName: 'minSubmissions',
                 });
-            } catch(e) {
-                console.error("Could not fetch minSubmissions, using fallback.", e);
+            } catch (e) {
+                 console.log("Could not fetch minSubmissions, using fallback.", e);
             }
 
-            // Get latest price and confidence from AI Oracle
             let latestPrice = '0';
             let confidence = 0;
             let lastUpdate = 0;
-            
-            // SafeVault - Enhanced with multi-sig data
+            try {
+                const latestData = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
+                    functionName: 'getLatestPrediction',
+                });
+                latestPrice = formatUnits((latestData as any[])[0], 18);
+                confidence = Number((latestData as any[])[1]);
+                lastUpdate = Number((latestData as any[])[2]);
+            } catch (error) {
+                console.log("AI Oracle data not available:", error);
+            }
+
+            // SafeVault - Gracefully handle multi-sig data
             let totalDeposits: bigint = 0n;
             let totalWithdrawals: bigint = 0n;
             try {
                 totalDeposits = await publicClient.readContract({
-                    address: trustLayerContracts.SafeVault as Address,
-                    abi: trustLayerContracts.abis.SafeVault,
+                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                     functionName: 'totalDeposits',
                 });
                 totalWithdrawals = await publicClient.readContract({
-                    address: trustLayerContracts.SafeVault as Address,
-                    abi: trustLayerContracts.abis.SafeVault,
+                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                     functionName: 'totalWithdrawals',
                 });
-            } catch(e) {
-                 console.error("Could not fetch SafeVault totals, using fallback.", e);
+            } catch (e) {
+                 console.log("Could not fetch SafeVault totals, using fallback.", e);
             }
 
-            // Get multi-sig info
             let owners: Address[] = [];
             let threshold: bigint = 1n;
             let isLocked = false;
             let lockDuration: bigint = 0n;
-            
             try {
                 owners = await publicClient.readContract({
-                    address: trustLayerContracts.SafeVault as Address,
-                    abi: trustLayerContracts.abis.SafeVault,
+                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                     functionName: 'getOwners',
                 });
                 threshold = await publicClient.readContract({
-                    address: trustLayerContracts.SafeVault as Address,
-                    abi: trustLayerContracts.abis.SafeVault,
+                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                     functionName: 'threshold',
                 });
                 isLocked = await publicClient.readContract({
-                    address: trustLayerContracts.SafeVault as Address,
-                    abi: trustLayerContracts.abis.SafeVault,
+                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                     functionName: 'isLocked',
                 });
                 lockDuration = await publicClient.readContract({
-                    address: trustLayerContracts.SafeVault as Address,
-                    abi: trustLayerContracts.abis.SafeVault,
+                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                     functionName: 'lockDuration',
                 });
             } catch (error) {
                 console.log("Multi-sig data not available:", error);
             }
             
-            // ProofBond - Enhanced with bond market data
+            // ProofBond - Gracefully handle bond market data
             let activeBonds: bigint = 0n;
             try {
                  activeBonds = await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'totalSupply',
                 });
             } catch(e) {
@@ -385,8 +391,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let bondTvl: bigint = 0n;
             try {
                  bondTvl = await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'totalValueLocked',
                 });
             } catch (error) {
@@ -397,33 +403,37 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let apy: bigint = 0n;
             let trancheSize: bigint = 0n;
             let nextTrancheId: bigint = 0n;
-            
             try {
+                bondPrice = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                    functionName: 'bondPrice',
+                });
                 apy = await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'apy',
                 });
                 trancheSize = await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'trancheSize',
                 });
                 nextTrancheId = await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'nextTrancheId',
                 });
             } catch (error) {
                 console.log("Bond market data not available:", error);
             }
 
-            // ForgeMarket - Enhanced with AI optimization data
+            // ForgeMarket - Gracefully handle AI optimization data
             let totalVolume: bigint = 0n;
             try {
                 totalVolume = await publicClient.readContract({
-                    address: trustLayerContracts.ForgeMarket as Address,
-                    abi: trustLayerContracts.abis.ForgeMarket,
+                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                     functionName: 'totalVolume',
                 });
             } catch(e) {
@@ -435,62 +445,59 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let aiOptimizedFee: bigint = 0n;
             let efficiency: bigint = 0n;
             let forgeActivePools: bigint = 0n;
-            
             try {
                 totalLiquidity = await publicClient.readContract({
-                    address: trustLayerContracts.ForgeMarket as Address,
-                    abi: trustLayerContracts.abis.ForgeMarket,
+                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                     functionName: 'totalLiquidity',
                 });
                 currentFee = await publicClient.readContract({
-                    address: trustLayerContracts.ForgeMarket as Address,
-                    abi: trustLayerContracts.abis.ForgeMarket,
+                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                     functionName: 'currentFee',
                 });
                 aiOptimizedFee = await publicClient.readContract({
-                    address: trustLayerContracts.AdaptiveMarketMaker as Address,
-                    abi: trustLayerContracts.abis.AdaptiveMarketMaker,
+                    address: DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AdaptiveMarketMaker,
                     functionName: 'getOptimizedFee',
                 });
                 efficiency = await publicClient.readContract({
-                    address: trustLayerContracts.SimpleAdaptiveAMM as Address,
-                    abi: trustLayerContracts.abis.SimpleAdaptiveAMM,
+                    address: DEPLOYED_CONTRACTS.SimpleAdaptiveAMM as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SimpleAdaptiveAMM,
                     functionName: 'getEfficiency',
                 });
                 forgeActivePools = await publicClient.readContract({
-                    address: trustLayerContracts.ForgeMarket as Address,
-                    abi: trustLayerContracts.abis.ForgeMarket,
+                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                     functionName: 'activePools',
                 });
             } catch (error) {
                 console.log("AI market data not available:", error);
             }
             
-            // OpenGovernor - Enhanced with detailed proposal data
+            // OpenGovernor - Gracefully handle governance data
             let proposalCount: bigint = 0n;
             let treasuryBalance: bigint = 0n;
-            let treasuryAddress: Address = '0x';
             let activeProposalsCount: number = 0;
-
+            let quorum: bigint = 0n;
+            let votingPeriod: bigint = 0n;
             try {
                 proposalCount = await publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
+                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                     functionName: 'proposalCount',
                 });
-            
-                treasuryAddress = await publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
+                const treasuryAddress = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                     functionName: 'treasury',
                 });
-                
                 treasuryBalance = await publicClient.getBalance({ address: treasuryAddress as Address });
-                 if (proposalCount > 0n) {
+                if (proposalCount > 0n) {
                     const activeProposalsPromises = Array.from({ length: Math.min(Number(proposalCount), 10) }, (_, i) => 
                         publicClient.readContract({
-                            address: trustLayerContracts.OpenGovernor as Address,
-                            abi: trustLayerContracts.abis.OpenGovernor,
+                            address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                            abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                             functionName: 'state',
                             args: [BigInt(i + 1)],
                         })
@@ -498,26 +505,18 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     const proposalStates = await Promise.all(activeProposalsPromises);
                     activeProposalsCount = proposalStates.filter(s => s === 1).length;
                 }
-            } catch(e) {
-                console.error("Could not fetch some governance data.", e);
-            }
-
-            let quorum: bigint = 0n;
-            let votingPeriod: bigint = 0n;
-            
-            try {
                 quorum = await publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
+                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                     functionName: 'quorum',
                 });
                 votingPeriod = await publicClient.readContract({
-                    address: trustLayerContracts.OpenGovernor as Address,
-                    abi: trustLayerContracts.abis.OpenGovernor,
+                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                     functionName: 'votingPeriod',
                 });
-            } catch (error) {
-                console.log("Governance config not available:", error);
+            } catch(e) {
+                console.error("Could not fetch some governance data.", e);
             }
 
             // AI Data - Enhanced with prediction history
@@ -527,10 +526,37 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let efficiencyGain = 0;
             let gasSavings = 0;
             
+            try {
+                const aiData = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
+                    functionName: 'getAIData',
+                });
+                currentPrediction = formatUnits((aiData as any[])[0], 18);
+                aiConfidence = Number((aiData as any[])[1]);
+                lastOptimization = Number((aiData as any[])[2]);
+                efficiencyGain = Number((aiData as any[])[3]);
+                gasSavings = Number((aiData as any[])[4]);
+            } catch (error) {
+                console.log("AI data not available:", error);
+            }
+
             // Predictive Liquidity Data
             let predictedLiquidity = '0';
             let predictionAccuracy = 0;
             
+            try {
+                const liquidityData = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+                    functionName: 'getPrediction',
+                });
+                predictedLiquidity = formatUnits((liquidityData as any[])[0], 18);
+                predictionAccuracy = Number((liquidityData as any[])[1]);
+            } catch (error) {
+                console.log("Predictive liquidity data not available:", error);
+            }
+
             setState({
                 mainContractData: { protocolFee: Number(protocolFee) },
                 trustOracleData: { 
@@ -635,14 +661,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(state.trustOracleData.minStake),
             token: 'ETH',
-            to: trustLayerContracts.TrustOracle,
+            to: DEPLOYED_CONTRACTS.TrustOracle,
             details: 'Staking to become an AI Oracle Provider',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.TrustOracle as Address,
-                abi: trustLayerContracts.abis.TrustOracle,
+                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                 functionName: 'registerOracle',
                 value: minStakeValue,
             });
@@ -663,14 +689,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.SimpleAIOracle,
+            to: DEPLOYED_CONTRACTS.SimpleAIOracle,
             details: `Submitting AI Oracle data: ${price} with ${confidence}% confidence`,
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.SimpleAIOracle as Address,
-                abi: trustLayerContracts.abis.SimpleAIOracle,
+                address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
                 functionName: 'submitPrediction',
                 args: [parseEther(price), BigInt(Math.floor(confidence * 100))],
             });
@@ -691,14 +717,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.TrustOracle,
+            to: DEPLOYED_CONTRACTS.TrustOracle,
             details: 'Unstaking from Oracle Provider',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.TrustOracle as Address,
-                abi: trustLayerContracts.abis.TrustOracle,
+                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                 functionName: 'unregisterAndWithdraw',
             });
         
@@ -719,14 +745,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: trustLayerContracts.SafeVault,
+            to: DEPLOYED_CONTRACTS.SafeVault,
             details: 'Depositing to SafeVault',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.SafeVault as Address,
-                abi: trustLayerContracts.abis.SafeVault,
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                 functionName: 'deposit',
                 args: [parseUnits(amount, 6), walletClient.account.address],
             });
@@ -747,14 +773,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: trustLayerContracts.SafeVault,
+            to: DEPLOYED_CONTRACTS.SafeVault,
             details: 'Withdrawing from SafeVault',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.SafeVault as Address,
-                abi: trustLayerContracts.abis.SafeVault,
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                 functionName: 'withdraw',
                 args: [parseUnits(amount, 6), walletClient.account.address, walletClient.account.address],
             });
@@ -775,7 +801,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: trustLayerContracts.SafeVault,
+            to: DEPLOYED_CONTRACTS.SafeVault,
             details: 'Approving SafeVault to spend USDC',
         };
 
@@ -795,7 +821,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     "type": "function"
                 }],
                 functionName: 'approve',
-                args: [trustLayerContracts.SafeVault as Address, parseUnits(amount, 6)],
+                args: [DEPLOYED_CONTRACTS.SafeVault as Address, parseUnits(amount, 6)],
             });
         
         await walletActions.executeTransaction('Approve Vault', dialogDetails, txFunction, fetchData);
@@ -815,14 +841,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: trustLayerContracts.ProofBond,
+            to: DEPLOYED_CONTRACTS.ProofBond,
             details: 'Purchasing ProofBonds',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.ProofBond as Address,
-                abi: trustLayerContracts.abis.ProofBond,
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                 functionName: 'purchase',
                 args: [parseUnits(amount, 6)],
             });
@@ -843,14 +869,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'USDC',
-            to: trustLayerContracts.ProofBond,
+            to: DEPLOYED_CONTRACTS.ProofBond,
             details: `Redeeming Bond #${bondId}`,
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.ProofBond as Address,
-                abi: trustLayerContracts.abis.ProofBond,
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                 functionName: 'redeem',
                 args: [BigInt(bondId)],
             });
@@ -871,14 +897,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'USDC',
-            to: trustLayerContracts.ProofBond,
+            to: DEPLOYED_CONTRACTS.ProofBond,
             details: `Claiming yield for Bond #${bondId}`,
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.ProofBond as Address,
-                abi: trustLayerContracts.abis.ProofBond,
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                 functionName: 'claimYield',
                 args: [BigInt(bondId)],
             });
@@ -900,14 +926,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(amountIn),
             token: 'TOKEN',
-            to: trustLayerContracts.ForgeMarket,
+            to: DEPLOYED_CONTRACTS.ForgeMarket,
             details: `Swapping ${amountIn} tokens`,
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.ForgeMarket as Address,
-                abi: trustLayerContracts.abis.ForgeMarket,
+                address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                 functionName: 'swap',
                 args: [tokenA, tokenB, parseUnits(amountIn, 18), parseUnits(minAmountOut, 18)],
             });
@@ -928,14 +954,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(amountA),
             token: 'TOKEN',
-            to: trustLayerContracts.ForgeMarket,
+            to: DEPLOYED_CONTRACTS.ForgeMarket,
             details: 'Adding liquidity to pool',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.ForgeMarket as Address,
-                abi: trustLayerContracts.abis.ForgeMarket,
+                address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                 functionName: 'addLiquidity',
                 args: [tokenA, tokenB, parseUnits(amountA, 18), parseUnits(amountB, 18)],
             });
@@ -956,14 +982,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(liquidity),
             token: 'LP',
-            to: trustLayerContracts.ForgeMarket,
+            to: DEPLOYED_CONTRACTS.ForgeMarket,
             details: 'Removing liquidity from pool',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.ForgeMarket as Address,
-                abi: trustLayerContracts.abis.ForgeMarket,
+                address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                 functionName: 'removeLiquidity',
                 args: [BigInt(poolId), parseUnits(liquidity, 18)],
             });
@@ -985,14 +1011,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.OpenGovernor,
+            to: DEPLOYED_CONTRACTS.OpenGovernor,
             details: `Creating proposal: ${title}`,
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.OpenGovernor as Address,
-                abi: trustLayerContracts.abis.OpenGovernor,
+                address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                 functionName: 'propose',
                 args: [[], [], [], description],
             });
@@ -1013,14 +1039,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.OpenGovernor,
+            to: DEPLOYED_CONTRACTS.OpenGovernor,
             details: `Voting ${support ? 'for' : 'against'} proposal #${proposalId}`,
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.OpenGovernor as Address,
-                abi: trustLayerContracts.abis.OpenGovernor,
+                address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                 functionName: 'castVote',
                 args: [BigInt(proposalId), support ? 1 : 0],
             });
@@ -1041,14 +1067,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.OpenGovernor,
+            to: DEPLOYED_CONTRACTS.OpenGovernor,
             details: `Executing proposal #${proposalId}`,
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.OpenGovernor as Address,
-                abi: trustLayerContracts.abis.OpenGovernor,
+                address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                 functionName: 'execute',
                 args: [[],[],[], ''], // Simplified for now
             });
@@ -1070,14 +1096,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.SimpleAdaptiveAMM,
+            to: DEPLOYED_CONTRACTS.SimpleAdaptiveAMM,
             details: 'Triggering AI optimization',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.SimpleAdaptiveAMM as Address,
-                abi: trustLayerContracts.abis.SimpleAdaptiveAMM,
+                address: DEPLOYED_CONTRACTS.SimpleAdaptiveAMM as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SimpleAdaptiveAMM,
                 functionName: 'optimize',
             });
         
@@ -1089,8 +1115,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         try {
             const prediction = await publicClient.readContract({
-                address: trustLayerContracts.SimpleAIOracle as Address,
-                abi: trustLayerContracts.abis.SimpleAIOracle,
+                address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
                 functionName: 'getPrediction',
                 args: [market],
             });
@@ -1118,14 +1144,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.SimpleAIOracle,
+            to: DEPLOYED_CONTRACTS.SimpleAIOracle,
             details: 'Updating AI model',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.SimpleAIOracle as Address,
-                abi: trustLayerContracts.abis.SimpleAIOracle,
+                address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
                 functionName: 'updateModel',
             });
         

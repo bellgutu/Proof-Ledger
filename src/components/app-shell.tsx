@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send, RefreshCw, Bot } from 'lucide-react';
+import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send, RefreshCw, Bot, ShieldCheck } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -77,6 +77,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { id: 'swap', label: 'Swap', icon: <RefreshCw size={20} />, path: '/swap' },
     { id: 'liquidity', label: 'Liquidity Pro', icon: <Droplets size={20} />, path: '/liquidity' },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} />, path: '/finance' },
+    { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/trust-layer' },
     { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} />, path: '/tools' },
     { id: 'assistant', label: 'AI Assistant', icon: <FileText size={20} />, path: '/assistant' },

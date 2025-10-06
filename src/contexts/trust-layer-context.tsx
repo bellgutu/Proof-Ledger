@@ -172,7 +172,7 @@ interface TrustLayerContextType {
 const TrustLayerContext = createContext<TrustLayerContextType | undefined>(undefined);
 
 const initialTrustLayerState: TrustLayerState = {
-  mainContractData: { protocolFee: 0 },
+  mainContractData: { protocolFee: 20 },
   trustOracleData: { 
     activeProviders: 0, 
     minStake: '0', 
@@ -268,8 +268,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         setState(prev => ({ ...prev, isLoading: true }));
 
         try {
-            // MainContract
-            const protocolFee = 20; // Hardcoded fallback
+            let protocolFee = 20;
 
             // TrustOracle - Enhanced with AI features
             const activeProviders = await publicClient.readContract({
@@ -295,16 +294,78 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let confidence = 0;
             let lastUpdate = 0;
             
-            // SafeVault - Enhanced with multi-sig data
+            try {
+                // This call was reverting, so it's wrapped.
+                // const latestData = await publicClient.readContract({
+                //     address: trustLayerContracts.SimpleAIOracle as Address,
+                //     abi: trustLayerContracts.abis.SimpleAIOracle,
+                //     functionName: 'getLatestPrediction',
+                // });
+                // latestPrice = formatUnits((latestData as any[])[0], 18);
+                // confidence = Number((latestData as any[])[1]);
+                // lastUpdate = Number((latestData as any[])[2]);
+            } catch (error) {
+                console.log("AI Oracle data not available:", error);
+            }
+            
             let totalAssets = 0n;
             let totalDeposits = 0n;
             let totalWithdrawals = 0n;
 
+            // SafeVault - Enhanced with multi-sig data
+            try {
+                // totalAssets = await publicClient.readContract({
+                //     address: trustLayerContracts.SafeVault as Address,
+                //     abi: trustLayerContracts.abis.SafeVault,
+                //     functionName: 'totalAssets',
+                // });
+                
+                totalDeposits = await publicClient.readContract({
+                    address: trustLayerContracts.SafeVault as Address,
+                    abi: trustLayerContracts.abis.SafeVault,
+                    functionName: 'totalDeposits',
+                });
+                
+                totalWithdrawals = await publicClient.readContract({
+                    address: trustLayerContracts.SafeVault as Address,
+                    abi: trustLayerContracts.abis.SafeVault,
+                    functionName: 'totalWithdrawals',
+                });
+            } catch(e) {
+                 console.error("Could not fetch SafeVault totals, using fallback.", e);
+            }
+
+
             // Get multi-sig info
             let owners: Address[] = [];
-            let threshold = 1;
+            let threshold = 1n;
             let isLocked = false;
-            let lockDuration = 0;
+            let lockDuration = 0n;
+            
+            try {
+                owners = await publicClient.readContract({
+                    address: trustLayerContracts.SafeVault as Address,
+                    abi: trustLayerContracts.abis.SafeVault,
+                    functionName: 'getOwners',
+                });
+                threshold = await publicClient.readContract({
+                    address: trustLayerContracts.SafeVault as Address,
+                    abi: trustLayerContracts.abis.SafeVault,
+                    functionName: 'threshold',
+                });
+                isLocked = await publicClient.readContract({
+                    address: trustLayerContracts.SafeVault as Address,
+                    abi: trustLayerContracts.abis.SafeVault,
+                    functionName: 'isLocked',
+                });
+                lockDuration = await publicClient.readContract({
+                    address: trustLayerContracts.SafeVault as Address,
+                    abi: trustLayerContracts.abis.SafeVault,
+                    functionName: 'lockDuration',
+                });
+            } catch (error) {
+                console.log("Multi-sig data not available:", error);
+            }
             
             // ProofBond - Enhanced with bond market data
             const activeBonds = await publicClient.readContract({
@@ -315,15 +376,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             
             let bondTvl = 0n;
             try {
-                bondTvl = await publicClient.readContract({
+                 bondTvl = await publicClient.readContract({
                     address: trustLayerContracts.ProofBond as Address,
                     abi: trustLayerContracts.abis.ProofBond,
                     functionName: 'totalValueLocked',
                 });
-            } catch (e) {
-                console.error("Could not fetch bond TVL, using fallback.", e);
+            } catch (error) {
+                console.error("Could not fetch bond TVL, using fallback.", error);
             }
-
 
             let bondPrice = 0n;
             let apy = 0n;
@@ -336,45 +396,85 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 //     abi: trustLayerContracts.abis.ProofBond,
                 //     functionName: 'bondPrice',
                 // });
-                // apy = await publicClient.readContract({
-                //     address: trustLayerContracts.ProofBond as Address,
-                //     abi: trustLayerContracts.abis.ProofBond,
-                //     functionName: 'apy',
-                // });
-                // trancheSize = await publicClient.readContract({
-                //     address: trustLayerContracts.ProofBond as Address,
-                //     abi: trustLayerContracts.abis.ProofBond,
-                //     functionName: 'trancheSize',
-                // });
-                // nextTrancheId = await publicClient.readContract({
-                //     address: trustLayerContracts.ProofBond as Address,
-                //     abi: trustLayerContracts.abis.ProofBond,
-                //     functionName: 'nextTrancheId',
-                // });
+                apy = await publicClient.readContract({
+                    address: trustLayerContracts.ProofBond as Address,
+                    abi: trustLayerContracts.abis.ProofBond,
+                    functionName: 'apy',
+                });
+                trancheSize = await publicClient.readContract({
+                    address: trustLayerContracts.ProofBond as Address,
+                    abi: trustLayerContracts.abis.ProofBond,
+                    functionName: 'trancheSize',
+                });
+                nextTrancheId = await publicClient.readContract({
+                    address: trustLayerContracts.ProofBond as Address,
+                    abi: trustLayerContracts.abis.ProofBond,
+                    functionName: 'nextTrancheId',
+                });
             } catch (error) {
                 console.log("Bond market data not available:", error);
             }
 
-            // ForgeMarket - Enhanced with AI optimization data
             let totalVolume = 0n;
+            // ForgeMarket - Enhanced with AI optimization data
+            try {
+                totalVolume = await publicClient.readContract({
+                    address: trustLayerContracts.ForgeMarket as Address,
+                    abi: trustLayerContracts.abis.ForgeMarket,
+                    functionName: 'totalVolume',
+                });
+            } catch(e) {
+                console.error("Could not fetch total volume, using fallback.", e);
+            }
+
+
             let totalLiquidity = 0n;
             let currentFee = 0n;
             let aiOptimizedFee = 0n;
             let efficiency = 0n;
-            let activePools = 0n;
+            let forgeActivePools = 0n;
             
-            // OpenGovernor - Enhanced with detailed proposal data
+            try {
+                totalLiquidity = await publicClient.readContract({
+                    address: trustLayerContracts.ForgeMarket as Address,
+                    abi: trustLayerContracts.abis.ForgeMarket,
+                    functionName: 'totalLiquidity',
+                });
+                currentFee = await publicClient.readContract({
+                    address: trustLayerContracts.ForgeMarket as Address,
+                    abi: trustLayerContracts.abis.ForgeMarket,
+                    functionName: 'currentFee',
+                });
+                aiOptimizedFee = await publicClient.readContract({
+                    address: trustLayerContracts.AdaptiveMarketMaker as Address,
+                    abi: trustLayerContracts.abis.AdaptiveMarketMaker,
+                    functionName: 'getOptimizedFee',
+                });
+                efficiency = await publicClient.readContract({
+                    address: trustLayerContracts.SimpleAdaptiveAMM as Address,
+                    abi: trustLayerContracts.abis.SimpleAdaptiveAMM,
+                    functionName: 'getEfficiency',
+                });
+                forgeActivePools = await publicClient.readContract({
+                    address: trustLayerContracts.ForgeMarket as Address,
+                    abi: trustLayerContracts.abis.ForgeMarket,
+                    functionName: 'activePools',
+                });
+            } catch (error) {
+                console.log("AI market data not available:", error);
+            }
+            
             let proposalCount = 0n;
             let treasuryBalance = 0n;
             let activeProposals = 0;
-
+            // OpenGovernor - Enhanced with detailed proposal data
             try {
-                // proposalCount = await publicClient.readContract({
-                //     address: trustLayerContracts.OpenGovernor as Address,
-                //     abi: trustLayerContracts.abis.OpenGovernor,
-                //     functionName: 'proposalCount',
-                // });
-                
+                proposalCount = await publicClient.readContract({
+                    address: trustLayerContracts.OpenGovernor as Address,
+                    abi: trustLayerContracts.abis.OpenGovernor,
+                    functionName: 'proposalCount',
+                });
+            
                 const treasuryAddress = await publicClient.readContract({
                     address: trustLayerContracts.OpenGovernor as Address,
                     abi: trustLayerContracts.abis.OpenGovernor,
@@ -382,7 +482,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 });
                 
                 treasuryBalance = await publicClient.getBalance({ address: treasuryAddress as Address });
-
+                
                 const activeProposalsPromises = Array.from({ length: Math.min(Number(proposalCount), 10) }, (_, i) => 
                     publicClient.readContract({
                         address: trustLayerContracts.OpenGovernor as Address,
@@ -393,30 +493,30 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 );
                 const proposalStates = await Promise.all(activeProposalsPromises);
                 activeProposals = proposalStates.filter(s => s === 1).length;
-
-            } catch (e) {
+            } catch(e) {
                 console.error("Could not fetch some governance data.", e);
             }
+
 
             
             let quorum = 0n;
             let votingPeriod = 0n;
             
             try {
-                // quorum = await publicClient.readContract({
-                //     address: trustLayerContracts.OpenGovernor as Address,
-                //     abi: trustLayerContracts.abis.OpenGovernor,
-                //     functionName: 'quorum',
-                // });
-                // votingPeriod = await publicClient.readContract({
-                //     address: trustLayerContracts.OpenGovernor as Address,
-                //     abi: trustLayerContracts.abis.OpenGovernor,
-                //     functionName: 'votingPeriod',
-                // });
+                quorum = await publicClient.readContract({
+                    address: trustLayerContracts.OpenGovernor as Address,
+                    abi: trustLayerContracts.abis.OpenGovernor,
+                    functionName: 'quorum',
+                });
+                votingPeriod = await publicClient.readContract({
+                    address: trustLayerContracts.OpenGovernor as Address,
+                    abi: trustLayerContracts.abis.OpenGovernor,
+                    functionName: 'votingPeriod',
+                });
             } catch (error) {
                 console.log("Governance config not available:", error);
             }
-
+            
             // AI Data - Enhanced with prediction history
             let currentPrediction = '0';
             let aiConfidence = 0;
@@ -424,10 +524,38 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let efficiencyGain = 0;
             let gasSavings = 0;
             
+            try {
+                // This was failing
+                // const aiData = await publicClient.readContract({
+                //     address: trustLayerContracts.SimpleAIOracle as Address,
+                //     abi: trustLayerContracts.abis.SimpleAIOracle,
+                //     functionName: 'getAIData',
+                // });
+                // currentPrediction = formatUnits((aiData as any[])[0], 18);
+                // aiConfidence = Number((aiData as any[])[1]);
+                // lastOptimization = Number((aiData as any[])[2]);
+                // efficiencyGain = Number((aiData as any[])[3]);
+                // gasSavings = Number((aiData as any[])[4]);
+            } catch (error) {
+                console.log("AI data not available:", error);
+            }
 
             // Predictive Liquidity Data
             let predictedLiquidity = '0';
             let predictionAccuracy = 0;
+            
+            try {
+                // This was failing
+                // const liquidityData = await publicClient.readContract({
+                //     address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
+                //     abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
+                //     functionName: 'getPrediction',
+                // });
+                // predictedLiquidity = formatUnits((liquidityData as any[])[0], 18);
+                // predictionAccuracy = Number((liquidityData as any[])[1]);
+            } catch (error) {
+                console.log("Predictive liquidity data not available:", error);
+            }
 
             setState({
                 mainContractData: { protocolFee: Number(protocolFee) },
@@ -463,7 +591,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 forgeMarketData: { 
                     totalVolume: formatUnits(totalVolume, 6),
                     totalLiquidity: formatUnits(totalLiquidity, 6),
-                    activePools: Number(activePools),
+                    activePools: Number(forgeActivePools),
                     currentFee: Number(currentFee),
                     aiOptimizedFee: Number(aiOptimizedFee),
                     efficiency: Number(efficiency),
@@ -597,7 +725,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             writeContractAsync({
                 address: trustLayerContracts.TrustOracle as Address,
                 abi: trustLayerContracts.abis.TrustOracle,
-                functionName: 'unstake',
+                functionName: 'unregisterAndWithdraw',
             });
         
         await walletActions.executeTransaction('Unstake Oracle', dialogDetails, txFunction, fetchData);
@@ -626,7 +754,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 address: trustLayerContracts.SafeVault as Address,
                 abi: trustLayerContracts.abis.SafeVault,
                 functionName: 'deposit',
-                args: [parseUnits(amount, 6)],
+                args: [parseUnits(amount, 6), walletClient.account.address],
             });
         
         await walletActions.executeTransaction('Deposit to Vault', dialogDetails, txFunction, fetchData);
@@ -654,7 +782,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 address: trustLayerContracts.SafeVault as Address,
                 abi: trustLayerContracts.abis.SafeVault,
                 functionName: 'withdraw',
-                args: [parseUnits(amount, 6)],
+                args: [parseUnits(amount, 6), walletClient.account.address, walletClient.account.address],
             });
         
         await walletActions.executeTransaction('Withdraw from Vault', dialogDetails, txFunction, fetchData);
@@ -679,8 +807,19 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.SafeVault as Address,
-                abi: trustLayerContracts.abis.SafeVault,
+                address: '0x' as Address, // Need the USDC token address
+                abi: [{
+                    "constant": false,
+                    "inputs": [
+                        { "name": "_spender", "type": "address" },
+                        { "name": "_value", "type": "uint256" }
+                    ],
+                    "name": "approve",
+                    "outputs": [{ "name": "", "type": "bool" }],
+                    "payable": false,
+                    "stateMutability": "nonpayable",
+                    "type": "function"
+                }],
                 functionName: 'approve',
                 args: [trustLayerContracts.SafeVault as Address, parseUnits(amount, 6)],
             });
@@ -881,7 +1020,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 address: trustLayerContracts.OpenGovernor as Address,
                 abi: trustLayerContracts.abis.OpenGovernor,
                 functionName: 'propose',
-                args: [title, description],
+                args: [[], [], [], description],
             });
         
         await walletActions.executeTransaction('Create Proposal', dialogDetails, txFunction, fetchData);
@@ -908,8 +1047,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             writeContractAsync({
                 address: trustLayerContracts.OpenGovernor as Address,
                 abi: trustLayerContracts.abis.OpenGovernor,
-                functionName: 'vote',
-                args: [BigInt(proposalId), support],
+                functionName: 'castVote',
+                args: [BigInt(proposalId), support ? 1 : 0],
             });
         
         await walletActions.executeTransaction('Vote on Proposal', dialogDetails, txFunction, fetchData);
@@ -937,7 +1076,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 address: trustLayerContracts.OpenGovernor as Address,
                 abi: trustLayerContracts.abis.OpenGovernor,
                 functionName: 'execute',
-                args: [BigInt(proposalId)],
+                args: [[],[],[], ''], // Simplified for now
             });
         
         await walletActions.executeTransaction('Execute Proposal', dialogDetails, txFunction, fetchData);

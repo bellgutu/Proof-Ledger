@@ -10,27 +10,100 @@
   "OpenGovernor": "0xf2500D9170e6f85D29a69d5a50764a8b44370AD6",
   "abis": {
     "MainContract": [
-      "function protocolFeePercent() view returns (uint256)"
+      {
+        "type": "function",
+        "name": "protocolFeePercent",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      }
     ],
     "TrustOracle": [
-      "function getActiveProviders() view returns (address[])",
-      "function minStake() view returns (uint256)",
-      "function minSubmissions() view returns (uint256)"
+      {
+        "type": "function",
+        "name": "getActiveProviders",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "address[]", "name": "", "type": "address[]" }]
+      },
+      {
+        "type": "function",
+        "name": "minStake",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      },
+      {
+        "type": "function",
+        "name": "minSubmissions",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      },
+       {
+        "type": "function",
+        "name": "registerAsProvider",
+        "stateMutability": "payable",
+        "inputs": [],
+        "outputs": []
+      }
     ],
     "SafeVault": [
-      "function totalAssets() view returns (uint256)"
+      {
+        "type": "function",
+        "name": "totalAssets",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      }
     ],
     "ProofBond": [
-      "function totalSupply() view returns (uint256)",
-      "function totalValueLocked() view returns (uint256)"
+      {
+        "type": "function",
+        "name": "totalSupply",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      },
+      {
+        "type": "function",
+        "name": "totalValueLocked",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      }
     ],
     "ForgeMarket": [
-      "function totalVolume() view returns (uint256)"
+      {
+        "type": "function",
+        "name": "totalVolume",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      }
     ],
     "OpenGovernor": [
-      "function proposalCount() view returns (uint256)",
-      "function treasury() view returns (address)",
-      "function state(uint256 proposalId) view returns (uint8)"
+      {
+        "type": "function",
+        "name": "proposalCount",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }]
+      },
+      {
+        "type": "function",
+        "name": "treasury",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{ "internalType": "address", "name": "", "type": "address" }]
+      },
+      {
+        "type": "function",
+        "name": "state",
+        "stateMutability": "view",
+        "inputs": [{ "internalType": "uint256", "name": "proposalId", "type": "uint256" }],
+        "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }]
+      }
     ]
   },
   "network": "sepolia",

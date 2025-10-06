@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldCheck, Landmark, GitCommit, LineChart, Cpu, Users, FileCheck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
@@ -29,89 +29,130 @@ const ContractCard = ({ name, address, description, children, status }: { name: 
     </Card>
 );
 
-const Dashboard = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+const Dashboard = () => {
+    const [oracleStake, setOracleStake] = useState(0);
+    const [marketValue, setMarketValue] = useState(0);
+
+    useEffect(() => {
+        // Generate random values only on the client side to avoid hydration errors
+        setOracleStake(0.1 + Math.random() * 0.5);
+        setMarketValue(1500000 + Math.random() * 500000);
+    }, []);
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+                <ContractCard 
+                    name="MainContract" 
+                    address={trustLayerContracts.MainContract} 
+                    description="The central hub managing contract authorizations, the treasury, fees, and emergency pause functionality for the entire ecosystem."
+                    status="Verified"
+                >
+                    <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">Protocol Fee on All Trades</p>
+                        <p className="text-3xl font-bold">20%</p>
+                        <p className="text-xs text-muted-foreground mt-1">Collected and stored in the MainContract treasury.</p>
+                    </div>
+                </ContractCard>
+            </div>
+
+             <ContractCard 
+                name="AIPredictiveLiquidityOracle" 
+                address={trustLayerContracts.AIPredictiveLiquidityOracle} 
+                description="A multi-provider oracle where AI agents stake ETH to submit predictions on optimal fees and market volatility."
+                status="Configured"
+            >
+                 <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <div className="flex justify-between items-center">
+                        <p className="text-sm text-muted-foreground flex items-center gap-2"><Users /> Active Oracles</p>
+                        <p className="text-xl font-bold text-green-400">3</p>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <p className="text-sm text-muted-foreground">Min Stake</p>
+                        <p className="text-sm font-mono">0.1 ETH</p>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <p className="text-sm text-muted-foreground">Min Submissions</p>
+                        <p className="text-sm font-mono">3</p>
+                    </div>
+                </div>
+            </ContractCard>
+
             <ContractCard 
-                name="MainContract" 
-                address={trustLayerContracts.MainContract} 
-                description="The central hub managing contract authorizations, the treasury, fees, and emergency pause functionality for the entire ecosystem."
+                name="AdvancedPriceOracle" 
+                address={trustLayerContracts.AdvancedPriceOracle} 
+                description="A robust, multi-source price oracle with historical tracking and volatility calculations to provide secure and reliable price data."
                 status="Verified"
             >
                 <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Protocol Fee</p>
-                    <p className="text-3xl font-bold">20%</p>
+                    <p className="text-sm text-muted-foreground">Total Value Secured</p>
+                    <p className="text-3xl font-bold">${oracleStake.toLocaleString(undefined, { maximumFractionDigits: 2 })}M</p>
+                    <p className="text-xs text-muted-foreground mt-1">Across all integrated markets.</p>
                 </div>
             </ContractCard>
-        </div>
-
-         <ContractCard 
-            name="AIPredictiveLiquidityOracle" 
-            address={trustLayerContracts.AIPredictiveLiquidityOracle} 
-            description="A multi-provider oracle where AI agents stake ETH to submit predictions on optimal fees and market volatility."
-            status="Configured"
-        >
-             <div className="p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground flex items-center gap-2"><Users /> Active Oracles</p>
-                    <p className="text-xl font-bold text-green-400">3</p>
-                </div>
-                 <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">Min Stake</p>
-                    <p className="text-sm font-mono">0.1 ETH</p>
-                </div>
-                 <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">Min Submissions</p>
-                    <p className="text-sm font-mono">3</p>
-                </div>
-            </div>
-        </ContractCard>
-
-        <ContractCard 
-            name="AdvancedPriceOracle" 
-            address={trustLayerContracts.AdvancedPriceOracle} 
-            description="A robust, multi-source price oracle with historical tracking and volatility calculations to provide secure and reliable price data."
-            status="Verified"
-        >
-            <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Price Sources</p>
-                <p className="text-3xl font-bold">Multiple (Chainlink, etc.)</p>
-            </div>
-        </ContractCard>
-        
-        <ContractCard 
-            name="AdaptiveMarketMaker" 
-            address={trustLayerContracts.AdaptiveMarketMaker} 
-            description="An advanced AMM with dynamic, volume-based fee optimization, controlled by the AI Oracle."
-            status="Verified"
-        >
-             <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Fee Tiers</p>
-                <p className="text-xl font-bold">0.05% → 0.03% → 0.01%</p>
-            </div>
-        </ContractCard>
-
-        <div className="lg:col-span-3">
-             <ContractCard 
-                name="OpenGovernor" 
-                address={trustLayerContracts.OpenGovernor} 
-                description="A DAO for governing the entire Trust Layer ecosystem."
+            
+            <ContractCard 
+                name="ProofBond"
+                address={trustLayerContracts.ProofBond}
+                description="A contract for issuing and managing yield-bearing bonds backed by real-world assets, linked to the oracle for verifiable data."
                 status="Verified"
             >
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Active Proposals</p>
-                        <p className="text-3xl font-bold">3</p>
-                    </div>
-                    <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Treasury Value</p>
-                        <p className="text-3xl font-bold">$1.2M</p>
-                    </div>
+                <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Active Bonds</p>
+                    <p className="text-3xl font-bold">1,250</p>
+                    <p className="text-xs text-muted-foreground mt-1">Total Value Locked: $1.25M</p>
                 </div>
             </ContractCard>
+            
+            <ContractCard 
+                name="SafeVault"
+                address={trustLayerContracts.SafeVault}
+                description="A secure vault for depositing assets, which are then utilized in various yield-generating strategies managed by the ecosystem."
+                status="Verified"
+            >
+                <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total Deposits</p>
+                    <p className="text-3xl font-bold">$2.8M</p>
+                    <p className="text-xs text-muted-foreground mt-1">Across 3 active strategies.</p>
+                </div>
+            </ContractCard>
+            
+            <ContractCard 
+                name="ForgeMarket"
+                address={trustLayerContracts.ForgeMarket}
+                description="A marketplace for trading tokenized assets, using the AdvancedPriceOracle for reliable pricing."
+                status="Configured"
+            >
+                <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">24h Volume</p>
+                    <p className="text-3xl font-bold">${marketValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Across all listed assets.</p>
+                </div>
+            </ContractCard>
+
+            <div className="lg:col-span-3">
+                 <ContractCard 
+                    name="OpenGovernor" 
+                    address={trustLayerContracts.OpenGovernor} 
+                    description="A DAO for governing the entire Trust Layer ecosystem, allowing token holders to create and vote on proposals."
+                    status="Verified"
+                >
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Active Proposals</p>
+                            <p className="text-3xl font-bold">3</p>
+                        </div>
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Treasury Value</p>
+                            <p className="text-3xl font-bold">$1.2M</p>
+                        </div>
+                    </div>
+                </ContractCard>
+            </div>
         </div>
-    </div>
-);
+    );
+};
+
 
 const Governance = () => (
     <div className="text-center py-16">

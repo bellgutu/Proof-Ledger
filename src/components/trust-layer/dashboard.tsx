@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShieldCheck, Users, FileCheck, Landmark, GitCommit, LineChart } from 'lucide-react';
-import * as trustLayerContracts from '@/lib/trustlayer-contract-addresses.json';
+import trustLayerContracts from '@/lib/trustlayer-contract-addresses.json';
 
 const ContractCard = ({ name, address, description, children, status, isLoading }: { name: string, address: string, description: string, children?: React.ReactNode, status?: 'Verified' | 'Configured', isLoading?: boolean }) => (
     <Card className="transform transition-transform duration-300 hover:scale-[1.01] flex flex-col">
@@ -51,7 +51,7 @@ export const Dashboard = () => {
                 >
                     <div className="p-4 bg-muted rounded-lg">
                         <p className="text-sm text-muted-foreground">Protocol Fee on All Trades</p>
-                        <p className="text-3xl font-bold">{mainContractData.protocolFee / 100}%</p>
+                        <p className="text-3xl font-bold">{mainContractData.protocolFee}%</p>
                         <p className="text-xs text-muted-foreground mt-1">Collected and stored in the MainContract treasury.</p>
                     </div>
                 </ContractCard>
@@ -159,3 +159,5 @@ export const Dashboard = () => {
         </div>
     );
 };
+
+    

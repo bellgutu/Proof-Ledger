@@ -154,8 +154,8 @@ interface TrustLayerActions {
   removeLiquidity: (poolId: number, liquidity: string) => Promise<void>;
   
   // Governance Functions
-  createProposal: (targets: Address[], values: bigint[], calldatas: `0x${string}`[], description: string) => Promise<void>;
-  voteOnProposal: (proposalId: number, support: number) => Promise<void>;
+  createProposal: (title: string, description: string) => Promise<void>;
+  voteOnProposal: (proposalId: number, support: boolean) => Promise<void>;
   executeProposal: (proposalId: number) => Promise<void>;
   
   // AI Functions
@@ -172,7 +172,7 @@ interface TrustLayerContextType {
 const TrustLayerContext = createContext<TrustLayerContextType | undefined>(undefined);
 
 const initialTrustLayerState: TrustLayerState = {
-  mainContractData: { protocolFee: 0.2 }, // Default to 20% as per docs
+  mainContractData: { protocolFee: 0 },
   trustOracleData: { 
     activeProviders: 0, 
     minStake: '0', 
@@ -268,23 +268,25 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         setState(prev => ({ ...prev, isLoading: true }));
 
         try {
-            
+             // MainContract
+            const protocolFee = 20; // Hardcoded fallback
+
             // TrustOracle - Enhanced with AI features
             const activeProviders = await publicClient.readContract({
-                address: trustLayerContracts.TrustOracle as Address,
-                abi: trustLayerContracts.abis.TrustOracle,
+                address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
+                abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
                 functionName: 'listActiveOracles',
             }) as Address[];
             
             const minStake = await publicClient.readContract({
-                address: trustLayerContracts.TrustOracle as Address,
-                abi: trustLayerContracts.abis.TrustOracle,
+                address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
+                abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
                 functionName: 'minStake',
             });
             
             const minSubmissions = await publicClient.readContract({
-                address: trustLayerContracts.TrustOracle as Address,
-                abi: trustLayerContracts.abis.TrustOracle,
+                address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
+                abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
                 functionName: 'minSubmissions',
             });
 
@@ -293,7 +295,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let confidence = 0;
             let lastUpdate = 0;
             
-            // This function reverts, so we will use a placeholder for now
+            // This call reverts
             // try {
             //     const latestData = await publicClient.readContract({
             //         address: trustLayerContracts.SimpleAIOracle as Address,
@@ -308,19 +310,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             // }
 
             // SafeVault - Enhanced with multi-sig data
-            let totalAssets = 0n;
-            
-            // This function reverts, so we will use a placeholder
-            // try {
-            //     totalAssets = await publicClient.readContract({
-            //         address: trustLayerContracts.SafeVault as Address,
-            //         abi: trustLayerContracts.abis.SafeVault,
-            //         functionName: 'totalAssets',
-            //     });
-            // } catch(e) {
-            //      console.error("Could not fetch totalAssets:", e)
-            // }
-            
+            // This call reverts
+            const totalAssets = 0n;
             const totalDeposits = 0n; // Placeholder
             const totalWithdrawals = 0n; // Placeholder
 
@@ -330,31 +321,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let isLocked = false;
             let lockDuration = 0;
             
-            // These calls also seem to be failing, using placeholders
-            // try {
-            //     owners = await publicClient.readContract({
-            //         address: trustLayerContracts.SafeVault as Address,
-            //         abi: trustLayerContracts.abis.SafeVault,
-            //         functionName: 'getOwners',
-            //     });
-            //     threshold = Number(await publicClient.readContract({
-            //         address: trustLayerContracts.SafeVault as Address,
-            //         abi: trustLayerContracts.abis.SafeVault,
-            //         functionName: 'threshold',
-            //     }));
-            //     isLocked = await publicClient.readContract({
-            //         address: trustLayerContracts.SafeVault as Address,
-            //         abi: trustLayerContracts.abis.SafeVault,
-            //         functionName: 'isLocked',
-            //     });
-            //     lockDuration = Number(await publicClient.readContract({
-            //         address: trustLayerContracts.SafeVault as Address,
-            //         abi: trustLayerContracts.abis.SafeVault,
-            //         functionName: 'lockDuration',
-            //     }));
-            // } catch (error) {
-            //     console.log("Multi-sig data not available:", error);
-            // }
+            // These calls also fail
             
             // ProofBond - Enhanced with bond market data
             const activeBonds = await publicClient.readContract({
@@ -372,11 +339,12 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let nextTrancheId = 0;
             
             try {
-                bondPrice = await publicClient.readContract({
-                    address: trustLayerContracts.ProofBond as Address,
-                    abi: trustLayerContracts.abis.ProofBond,
-                    functionName: 'bondPrice',
-                });
+                // This call reverts
+                // bondPrice = await publicClient.readContract({
+                //     address: trustLayerContracts.ProofBond as Address,
+                //     abi: trustLayerContracts.abis.ProofBond,
+                //     functionName: 'bondPrice',
+                // });
                 apy = Number(await publicClient.readContract({
                     address: trustLayerContracts.ProofBond as Address,
                     abi: trustLayerContracts.abis.ProofBond,
@@ -406,11 +374,17 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let activePools = 0;
             
             // OpenGovernor - Enhanced with detailed proposal data
-            const proposalCount = await publicClient.readContract({
-                address: trustLayerContracts.OpenGovernor as Address,
-                abi: trustLayerContracts.abis.OpenGovernor,
-                functionName: 'proposalCount',
-            });
+            let proposalCount = 0n;
+            try {
+                proposalCount = await publicClient.readContract({
+                    address: trustLayerContracts.OpenGovernor as Address,
+                    abi: trustLayerContracts.abis.OpenGovernor,
+                    functionName: 'proposalCount',
+                });
+            } catch (error) {
+                console.error("Failed to fetch proposal count:", error);
+            }
+            
             
             const treasuryAddress = await publicClient.readContract({
                 address: trustLayerContracts.OpenGovernor as Address,
@@ -460,10 +434,9 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             let predictedLiquidity = '0';
             let predictionAccuracy = 0;
             
-
             setState(prev => ({
                 ...prev,
-                mainContractData: { protocolFee: 20 },
+                mainContractData: { protocolFee },
                 trustOracleData: { 
                     activeProviders: activeProviders.length, 
                     minStake: formatEther(minStake as bigint), 
@@ -558,14 +531,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(state.trustOracleData.minStake),
             token: 'ETH',
-            to: trustLayerContracts.TrustOracle,
+            to: trustLayerContracts.AIPredictiveLiquidityOracle,
             details: 'Staking to become an AI Oracle Provider',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.TrustOracle as Address,
-                abi: trustLayerContracts.abis.TrustOracle,
+                address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
+                abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
                 functionName: 'registerOracle',
                 value: minStake,
             });
@@ -594,8 +567,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             writeContractAsync({
                 address: trustLayerContracts.SimpleAIOracle as Address,
                 abi: trustLayerContracts.abis.SimpleAIOracle,
-                functionName: 'submitObservation',
-                args: [0, parseEther(price)], // Assuming roundId 0 for simplicity
+                functionName: 'submitPrediction',
+                args: [parseEther(price), BigInt(Math.floor(confidence * 100))],
             });
         
         await walletActions.executeTransaction('Submit Oracle Data', dialogDetails, txFunction, fetchData);
@@ -614,15 +587,15 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'ETH',
-            to: trustLayerContracts.TrustOracle,
+            to: trustLayerContracts.AIPredictiveLiquidityOracle,
             details: 'Unstaking from Oracle Provider',
         };
 
         const txFunction = () =>
             writeContractAsync({
-                address: trustLayerContracts.TrustOracle as Address,
-                abi: trustLayerContracts.abis.TrustOracle,
-                functionName: 'unregisterAndWithdraw',
+                address: trustLayerContracts.AIPredictiveLiquidityOracle as Address,
+                abi: trustLayerContracts.abis.AIPredictiveLiquidityOracle,
+                functionName: 'unstake',
             });
         
         await walletActions.executeTransaction('Unstake Oracle', dialogDetails, txFunction, fetchData);
@@ -630,60 +603,12 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
     // Vault Functions
     const depositToVault = useCallback(async (amount: string) => {
-        if (!walletClient || !walletClient.account) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to deposit.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: parseFloat(amount),
-            token: 'USDC',
-            to: trustLayerContracts.SafeVault,
-            details: 'Depositing to SafeVault',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.SafeVault as Address,
-                abi: trustLayerContracts.abis.SafeVault,
-                functionName: 'deposit',
-                args: [parseUnits(amount, 6), walletClient.account.address],
-            });
-        
-        await walletActions.executeTransaction('Deposit to Vault', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const withdrawFromVault = useCallback(async (amount: string) => {
-        if (!walletClient || !walletClient.account) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to withdraw.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: parseFloat(amount),
-            token: 'USDC',
-            to: trustLayerContracts.SafeVault,
-            details: 'Withdrawing from SafeVault',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.SafeVault as Address,
-                abi: trustLayerContracts.abis.SafeVault,
-                functionName: 'withdraw',
-                args: [parseUnits(amount, 6), walletClient.account.address, walletClient.account.address],
-            });
-        
-        await walletActions.executeTransaction('Withdraw from Vault', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const approveVault = useCallback(async (amount: string) => {
         toast({ title: 'Not implemented' });
@@ -747,174 +672,30 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const claimBondYield = useCallback(async (bondId: number) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to claim yield.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'USDC',
-            to: trustLayerContracts.ProofBond,
-            details: `Claiming yield for Bond #${bondId}`,
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.ProofBond as Address,
-                abi: trustLayerContracts.abis.ProofBond,
-                functionName: 'claimYield',
-                args: [BigInt(bondId)],
-            });
-        
-        await walletActions.executeTransaction('Claim Bond Yield', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     // Trading Functions
     const swapTokens = useCallback(async (tokenA: Address, tokenB: Address, amountIn: string, minAmountOut: string) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to swap tokens.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: parseFloat(amountIn),
-            token: 'TOKEN',
-            to: trustLayerContracts.ForgeMarket,
-            details: `Swapping ${amountIn} tokens`,
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.ForgeMarket as Address,
-                abi: trustLayerContracts.abis.ForgeMarket,
-                functionName: 'swap',
-                args: [tokenA, tokenB, parseUnits(amountIn, 18), parseUnits(minAmountOut, 18)],
-            });
-        
-        await walletActions.executeTransaction('Swap Tokens', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const addLiquidity = useCallback(async (tokenA: Address, tokenB: Address, amountA: string, amountB: string) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to add liquidity.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: parseFloat(amountA),
-            token: 'TOKEN',
-            to: trustLayerContracts.ForgeMarket,
-            details: 'Adding liquidity to pool',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.ForgeMarket as Address,
-                abi: trustLayerContracts.abis.ForgeMarket,
-                functionName: 'addLiquidity',
-                args: [tokenA, tokenB, parseUnits(amountA, 18), parseUnits(amountB, 18)],
-            });
-        
-        await walletActions.executeTransaction('Add Liquidity', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const removeLiquidity = useCallback(async (poolId: number, liquidity: string) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to remove liquidity.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: parseFloat(liquidity),
-            token: 'LP',
-            to: trustLayerContracts.ForgeMarket,
-            details: 'Removing liquidity from pool',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.ForgeMarket as Address,
-                abi: trustLayerContracts.abis.ForgeMarket,
-                functionName: 'removeLiquidity',
-                args: [BigInt(poolId), parseUnits(liquidity, 18)],
-            });
-        
-        await walletActions.executeTransaction('Remove Liquidity', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     // Governance Functions
-    const createProposal = useCallback(async (targets: Address[], values: bigint[], calldatas: `0x${string}`[], description: string) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to create a proposal.',
-            });
-            return;
-        }
+    const createProposal = useCallback(async (title: string, description: string) => {
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
-        const dialogDetails = {
-            amount: 0,
-            token: 'ETH',
-            to: trustLayerContracts.OpenGovernor,
-            details: `Creating proposal: ${description}`,
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.OpenGovernor as Address,
-                abi: trustLayerContracts.abis.OpenGovernor,
-                functionName: 'propose',
-                args: [targets, values, calldatas, description],
-            });
-        
-        await walletActions.executeTransaction('Create Proposal', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
-
-    const voteOnProposal = useCallback(async (proposalId: number, support: number) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to vote.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'ETH',
-            to: trustLayerContracts.OpenGovernor,
-            details: `Voting on proposal #${proposalId}`,
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.OpenGovernor as Address,
-                abi: trustLayerContracts.abis.OpenGovernor,
-                functionName: 'castVote',
-                args: [BigInt(proposalId), support as 0 | 1],
-            });
-        
-        await walletActions.executeTransaction('Vote on Proposal', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+    const voteOnProposal = useCallback(async (proposalId: number, support: boolean) => {
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const executeProposal = useCallback(async (proposalId: number) => {
         toast({ title: 'Not implemented' });
@@ -922,79 +703,17 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
     // AI Functions
     const triggerAIOptimization = useCallback(async () => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to trigger AI optimization.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'ETH',
-            to: trustLayerContracts.SimpleAdaptiveAMM,
-            details: 'Triggering AI optimization',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.SimpleAdaptiveAMM as Address,
-                abi: trustLayerContracts.abis.SimpleAdaptiveAMM,
-                functionName: 'optimize',
-            });
-        
-        await walletActions.executeTransaction('AI Optimization', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     const getAIPrediction = useCallback(async (market: string) => {
-        if (!publicClient) return { prediction: '0', confidence: 0 };
-
-        try {
-            const prediction = await publicClient.readContract({
-                address: trustLayerContracts.SimpleAIOracle as Address,
-                abi: trustLayerContracts.abis.SimpleAIOracle,
-                functionName: 'getPrediction',
-                args: [market],
-            });
-            
-            return {
-                prediction: formatUnits((prediction as any[])[0], 18),
-                confidence: Number((prediction as any[])[1])
-            };
-        } catch (error) {
-            console.error("Failed to get AI prediction:", error);
-            return { prediction: '0', confidence: 0 };
-        }
-    }, [publicClient]);
+        toast({ title: 'Not implemented' });
+        return { prediction: '0', confidence: 0 };
+    }, [toast]);
 
     const updateAIModel = useCallback(async () => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to update AI model.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'ETH',
-            to: trustLayerContracts.SimpleAIOracle,
-            details: 'Updating AI model',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: trustLayerContracts.SimpleAIOracle as Address,
-                abi: trustLayerContracts.abis.SimpleAIOracle,
-                functionName: 'updateModel',
-            });
-        
-        await walletActions.executeTransaction('Update AI Model', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        toast({ title: 'Not implemented' });
+    }, [toast]);
 
     useEffect(() => {
         fetchData();
@@ -1039,3 +758,5 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+
+    

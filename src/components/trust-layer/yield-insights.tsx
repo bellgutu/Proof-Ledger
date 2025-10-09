@@ -15,14 +15,7 @@ export const YieldInsights = () => {
     const [isRedeeming, setIsRedeeming] = useState<number | null>(null);
 
     const handlePurchase = async () => {
-        if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) return;
-        setIsPurchasing(true);
-        try {
-            await actions.purchaseBond(purchaseAmount);
-            setPurchaseAmount('');
-        } finally {
-            setIsPurchasing(false);
-        }
+        // This is disabled as per the new contract understanding
     };
 
     const handleRedeem = async (bondId: number) => {
@@ -91,7 +84,7 @@ export const YieldInsights = () => {
                         <TrendingUp /> Purchase ProofBonds
                     </CardTitle>
                     <CardDescription>
-                        Buy yield-bearing bonds to participate in the ecosystem.
+                        Bond issuance is handled via off-chain agreements and reflected here. Direct purchases are not available.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -104,11 +97,12 @@ export const YieldInsights = () => {
                                 placeholder="e.g., 1000"
                                 value={purchaseAmount}
                                 onChange={(e) => setPurchaseAmount(e.target.value)}
+                                disabled={true}
                             />
                         </div>
-                        <Button onClick={handlePurchase} disabled={isPurchasing || !purchaseAmount}>
+                        <Button onClick={handlePurchase} disabled={true}>
                             {isPurchasing && <Loader2 className="mr-2 animate-spin" />}
-                            Purchase Bonds
+                            Purchase Bonds (Disabled)
                         </Button>
                     </div>
                 </CardContent>

@@ -145,7 +145,7 @@ interface TrustLayerActions {
   approveVault: (amount: string) => Promise<void>;
   
   // Bond Functions
-  purchaseBond: (amount: string) => Promise<void>;
+  issueTranche: (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => Promise<void>;
   redeemBond: (bondId: number) => Promise<void>;
   claimBondYield: (bondId: number) => Promise<void>;
   
@@ -330,6 +330,16 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         }
         
         // --- SafeVault ---
+        let totalAssets: bigint = 0n;
+        try {
+            totalAssets = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
+                functionName: 'totalAssets',
+            });
+        } catch(e) {
+            console.error("Could not fetch totalAssets, using fallback.", e);
+        }
         let totalDeposits: bigint = 0n;
         let totalWithdrawals: bigint = 0n;
         try {
@@ -563,7 +573,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 providers: []
             },
             safeVaultData: { 
-                totalAssets: '0',
+                totalAssets: formatUnits(totalAssets, 6),
                 totalDeposits: formatUnits(totalDeposits, 6),
                 totalWithdrawals: formatUnits(totalWithdrawals, 6),
                 userBalance: '0',
@@ -817,58 +827,30 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     // Bond Functions
-    const purchaseBond = useCallback(async (amount: string) => {
+    const issueTranche = useCallback(async (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => {
         if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to purchase bonds.',
-            });
+            toast({ variant: 'destructive', title: 'Wallet not connected' });
             return;
         }
-    
-        const usdcAddress = LEGACY_CONTRACTS.USDC_ADDRESS as Address;
-        const proofBondAddress = DEPLOYED_CONTRACTS.ProofBond as Address;
-    
-        // 1. Approve the ProofBond contract to spend USDC
-        const approveDetails = {
-            amount: parseFloat(amount),
-            token: 'USDC',
-            to: proofBondAddress,
-            details: `Approving ${amount} USDC for bond purchase`
-        };
-        const approveTx = () => writeContractAsync({
-            address: usdcAddress,
-            abi: [{
-                "inputs": [{"internalType": "address", "name": "spender", "type": "address"}, {"internalType": "uint256", "name": "value", "type": "uint256"}],
-                "name": "approve",
-                "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            }],
-            functionName: 'approve',
-            args: [proofBondAddress, parseUnits(amount, 6)]
-        });
-    
-        await walletActions.executeTransaction('Approve', approveDetails, approveTx);
-    
-        // 2. Call the purchase function
-        const purchaseDetails = {
-            amount: parseFloat(amount),
-            token: 'USDC',
-            to: proofBondAddress,
-            details: 'Purchasing ProofBonds',
-        };
-    
-        const purchaseTx = () =>
-            writeContractAsync({
-                address: proofBondAddress,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'purchase',
-                args: [parseUnits(amount, 6)],
-            });
         
-        await walletActions.executeTransaction('Purchase Bonds', purchaseDetails, purchaseTx, fetchData);
+        // This is a privileged function, typically not called directly by a user UI.
+        // Assuming the caller is authorized.
+
+        const dialogDetails = {
+            amount: parseFloat(amount),
+            token: 'USDC',
+            to: DEPLOYED_CONTRACTS.ProofBond,
+            details: `Issuing bond tranche of ${amount} for ${investor.slice(0,6)}...`
+        };
+
+        const txFunction = () => writeContractAsync({
+            address: DEPLOYED_CONTRACTS.ProofBond as Address,
+            abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+            functionName: 'issueTranche',
+            args: [investor, parseUnits(amount, 6), BigInt(interest), BigInt(duration), collateralToken, parseUnits(collateralAmount, 18)] // Assuming collateral is WETH
+        });
+
+        await walletActions.executeTransaction('Issue Bond Tranche', dialogDetails, txFunction, fetchData);
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const redeemBond = useCallback(async (bondId: number) => {
@@ -892,7 +874,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             writeContractAsync({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'redeem',
+                functionName: 'redeemTranche',
                 args: [BigInt(bondId)],
             });
         
@@ -900,32 +882,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const claimBondYield = useCallback(async (bondId: number) => {
-        if (!walletClient) {
-            toast({
-                variant: 'destructive',
-                title: 'Wallet not connected',
-                description: 'Please connect your wallet to claim yield.',
-            });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'USDC',
-            to: DEPLOYED_CONTRACTS.ProofBond,
-            details: `Claiming yield for Bond #${bondId}`,
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'claimYield',
-                args: [BigInt(bondId)],
-            });
-        
-        await walletActions.executeTransaction('Claim Bond Yield', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+        // The provided ABI doesn't have a separate `claimYield` function. 
+        // Redemption likely includes yield.
+        toast({
+            variant: 'destructive',
+            title: 'Not Implemented',
+            description: '`claimYield` is not a function in the ProofBond contract. Use "Redeem" to claim principal and yield at maturity.',
+        });
+    }, [toast]);
 
     // Trading Functions
     const swapTokens = useCallback(async (tokenA: Address, tokenB: Address, amountIn: string, minAmountOut: string) => {
@@ -1187,7 +1151,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             depositToVault,
             withdrawFromVault,
             approveVault,
-            purchaseBond,
+            issueTranche,
             redeemBond,
             claimBondYield,
             swapTokens,
@@ -1216,5 +1180,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-
-    

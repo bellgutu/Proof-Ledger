@@ -6,6 +6,7 @@ import DEPLOYED_CONTRACTS from '@/lib/trustlayer-contract-addresses.json';
 import { type Address, formatUnits, formatEther, parseEther, maxUint256, parseUnits } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
+import LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
 
 // Enhanced Types for All Contracts
 interface TrustOracleData {
@@ -267,381 +268,370 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         setState(prev => ({ ...prev, isLoading: true }));
 
+        // --- MainContract ---
+        let protocolFee: bigint = 0n;
         try {
-            // MainContract
-            let protocolFee: bigint = 0n;
-            try {
-                protocolFee = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.MainContract as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.MainContract,
-                    functionName: 'protocolFeePercent',
-                });
-            } catch (e) {
-                console.log("Could not fetch protocolFeePercent, using fallback.", e);
-            }
-
-            // TrustOracle
-            let activeProviders: Address[] = [];
-            try {
-                activeProviders = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.TrustOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
-                    functionName: 'listActiveOracles',
-                }) as Address[];
-            } catch (e) {
-                console.log("Could not fetch active providers, using fallback.", e);
-            }
-            
-            let minStake: bigint = 0n;
-            try {
-                minStake = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.TrustOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
-                    functionName: 'minStake',
-                });
-            } catch (e) {
-                 console.log("Could not fetch minStake, using fallback.", e);
-            }
-            
-            let minSubmissions: bigint = 0n;
-            try {
-                minSubmissions = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.TrustOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
-                    functionName: 'minSubmissions',
-                });
-            } catch (e) {
-                 console.log("Could not fetch minSubmissions, using fallback.", e);
-            }
-
-            let latestPrice = '0';
-            let confidence = 0;
-            let lastUpdate = 0;
-            try {
-                const latestData = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
-                    functionName: 'getLatestPrediction',
-                });
-                latestPrice = formatUnits((latestData as any[])[0], 18);
-                confidence = Number((latestData as any[])[1]);
-                lastUpdate = Number((latestData as any[])[2]);
-            } catch (error) {
-                console.log("AI Oracle data not available:", error);
-            }
-
-            // SafeVault
-            let totalDeposits: bigint = 0n;
-            let totalWithdrawals: bigint = 0n;
-            try {
-                totalDeposits = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
-                    functionName: 'totalDeposits',
-                });
-                totalWithdrawals = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
-                    functionName: 'totalWithdrawals',
-                });
-            } catch (e) {
-                 console.log("Could not fetch SafeVault totals, using fallback.", e);
-            }
-
-            let owners: Address[] = [];
-            let threshold: bigint = 1n;
-            let isLocked = false;
-            let lockDuration: bigint = 0n;
-            try {
-                owners = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
-                    functionName: 'getOwners',
-                });
-                threshold = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
-                    functionName: 'threshold',
-                });
-                isLocked = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
-                    functionName: 'isLocked',
-                });
-                lockDuration = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SafeVault as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SafeVault,
-                    functionName: 'lockDuration',
-                });
-            } catch (error) {
-                console.log("Multi-sig data not available:", error);
-            }
-            
-            // ProofBond
-            let activeBonds: bigint = 0n;
-            try {
-                 activeBonds = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'totalSupply',
-                });
-            } catch(e) {
-                 console.error("Could not fetch active bonds, using fallback.", e);
-            }
-            
-            let bondTvl: bigint = 0n;
-            try {
-                 bondTvl = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'totalValueLocked',
-                });
-            } catch (error) {
-                console.error("Could not fetch bond TVL, using fallback.", error);
-            }
-
-            let bondPrice: bigint = 0n;
-            let apy: bigint = 0n;
-            let trancheSize: bigint = 0n;
-            let nextTrancheId: bigint = 0n;
-            try {
-                bondPrice = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'bondPrice',
-                });
-                apy = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'apy',
-                });
-                trancheSize = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'trancheSize',
-                });
-                nextTrancheId = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'nextTrancheId',
-                });
-            } catch (error) {
-                console.log("Bond market data not available:", error);
-            }
-
-            // ForgeMarket
-            let totalVolume: bigint = 0n;
-            try {
-                totalVolume = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
-                    functionName: 'totalVolume',
-                });
-            } catch(e) {
-                 console.error("Could not fetch total volume, using fallback.", e);
-            }
-
-            let totalLiquidity: bigint = 0n;
-            let currentFee: bigint = 0n;
-            let aiOptimizedFee: bigint = 0n;
-            let efficiency: bigint = 0n;
-            let forgeActivePools: bigint = 0n;
-            try {
-                totalLiquidity = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
-                    functionName: 'totalLiquidity',
-                });
-                currentFee = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
-                    functionName: 'currentFee',
-                });
-                aiOptimizedFee = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AdaptiveMarketMaker,
-                    functionName: 'getOptimizedFee',
-                });
-                efficiency = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SimpleAdaptiveAMM as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SimpleAdaptiveAMM,
-                    functionName: 'getEfficiency',
-                });
-                forgeActivePools = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
-                    functionName: 'activePools',
-                });
-            } catch (error) {
-                console.log("AI market data not available:", error);
-            }
-            
-            // OpenGovernor
-            let proposalCount: bigint = 0n;
-            let treasuryBalance: bigint = 0n;
-            let activeProposalsCount: number = 0;
-            let quorum: bigint = 0n;
-            let votingPeriod: bigint = 0n;
-            try {
-                proposalCount = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
-                    functionName: 'proposalCount',
-                });
-                const treasuryAddress = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
-                    functionName: 'treasury',
-                });
-                treasuryBalance = await publicClient.getBalance({ address: treasuryAddress as Address });
-                if (proposalCount > 0n) {
-                    const activeProposalsPromises = Array.from({ length: Math.min(Number(proposalCount), 10) }, (_, i) => 
-                        publicClient.readContract({
-                            address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
-                            abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
-                            functionName: 'state',
-                            args: [BigInt(i + 1)],
-                        })
-                    );
-                    const proposalStates = await Promise.all(activeProposalsPromises);
-                    activeProposalsCount = proposalStates.filter(s => s === 1).length;
-                }
-                quorum = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
-                    functionName: 'quorum',
-                });
-                votingPeriod = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
-                    functionName: 'votingPeriod',
-                });
-            } catch(e) {
-                console.error("Could not fetch some governance data.", e);
-            }
-
-            // AI Data
-            let currentPrediction = '0';
-            let aiConfidence = 0;
-            let lastOptimization = 0;
-            let efficiencyGain = 0;
-            let gasSavings = 0;
-            try {
-                const aiData = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
-                    functionName: 'getAIData',
-                });
-                currentPrediction = formatUnits((aiData as any[])[0], 18);
-                aiConfidence = Number((aiData as any[])[1]);
-                lastOptimization = Number((aiData as any[])[2]);
-                efficiencyGain = Number((aiData as any[])[3]);
-                gasSavings = Number((aiData as any[])[4]);
-            } catch (error) {
-                console.log("AI data not available:", error);
-            }
-
-            // Predictive Liquidity Data
-            let predictedLiquidity = '0';
-            let predictionAccuracy = 0;
-            try {
-                const liquidityData = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'getPrediction',
-                });
-                predictedLiquidity = formatUnits((liquidityData as any[])[0], 18);
-                predictionAccuracy = Number((liquidityData as any[])[1]);
-            } catch (error) {
-                console.log("Predictive liquidity data not available:", error);
-            }
-
-            setState({
-                mainContractData: { protocolFee: Number(protocolFee) },
-                trustOracleData: { 
-                    activeProviders: activeProviders.length, 
-                    minStake: formatEther(minStake), 
-                    minSubmissions: Number(minSubmissions),
-                    latestPrice,
-                    confidence,
-                    lastUpdate,
-                    providers: []
-                },
-                safeVaultData: { 
-                    totalAssets: '0',
-                    totalDeposits: formatUnits(totalDeposits, 6),
-                    totalWithdrawals: formatUnits(totalWithdrawals, 6),
-                    userBalance: '0',
-                    isLocked,
-                    lockDuration: Number(lockDuration),
-                    owners,
-                    threshold: Number(threshold)
-                },
-                proofBondData: { 
-                    activeBonds: Number(activeBonds), 
-                    tvl: formatUnits(bondTvl, 6),
-                    totalSupply: formatUnits(activeBonds, 18),
-                    bondPrice: formatUnits(bondPrice, 18),
-                    apy: Number(apy),
-                    userBonds: [],
-                    trancheSize: formatUnits(trancheSize, 18),
-                    nextTrancheId: Number(nextTrancheId)
-                },
-                forgeMarketData: { 
-                    totalVolume: formatUnits(totalVolume, 6),
-                    totalLiquidity: formatUnits(totalLiquidity, 6),
-                    activePools: Number(forgeActivePools),
-                    currentFee: Number(currentFee),
-                    aiOptimizedFee: Number(aiOptimizedFee),
-                    efficiency: Number(efficiency),
-                    userLiquidity: '0',
-                    pools: []
-                },
-                openGovernorData: { 
-                    proposalCount: Number(proposalCount), 
-                    treasuryValue: formatEther(treasuryBalance), 
-                    activeProposals: activeProposalsCount,
-                    votingPower: '0',
-                    userVotes: [],
-                    proposals: [],
-                    quorum: Number(quorum),
-                    votingPeriod: Number(votingPeriod)
-                },
-                aiData: {
-                    currentPrediction,
-                    confidence: aiConfidence,
-                    lastOptimization,
-                    efficiencyGain,
-                    gasSavings,
-                    predictions: []
-                },
-                adaptiveAMMData: {
-                    currentFee: Number(currentFee),
-                    optimizedFee: Number(aiOptimizedFee),
-                    efficiency: Number(efficiency),
-                    volume24h: '0'
-                },
-                predictiveLiquidityData: {
-                    predictedLiquidity,
-                    accuracy: predictionAccuracy,
-                    recommendations: []
-                },
-                userData: {
-                    isOracleProvider: false,
-                    oracleStake: '0',
-                    vaultBalance: '0',
-                    bondHoldings: '0',
-                    liquidityPositions: '0',
-                    votingPower: '0'
-                },
-                isLoading: false,
-                lastUpdated: Date.now(),
+            protocolFee = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.MainContract as Address,
+                abi: DEPLOYED_CONTRACTS.abis.MainContract,
+                functionName: 'protocolFeePercent',
             });
-
-        } catch (error) {
-            console.error("Failed to fetch Trust Layer data:", error);
-            setState(prev => ({ ...prev, isLoading: false }));
+        } catch (e) {
+            console.log("Could not fetch protocolFeePercent, using fallback.", e);
         }
+
+        // --- TrustOracle ---
+        let activeProviders: Address[] = [];
+        try {
+            activeProviders = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
+                functionName: 'listActiveOracles',
+            }) as Address[];
+        } catch (e) {
+            console.log("Could not fetch active providers, using fallback.", e);
+        }
+        let minStake: bigint = 0n;
+        try {
+            minStake = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
+                functionName: 'minStake',
+            });
+        } catch (e) {
+             console.log("Could not fetch minStake, using fallback.", e);
+        }
+        let minSubmissions: bigint = 0n;
+        try {
+            minSubmissions = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
+                functionName: 'minSubmissions',
+            });
+        } catch (e) {
+             console.log("Could not fetch minSubmissions, using fallback.", e);
+        }
+
+        // --- SimpleAIOracle ---
+        let latestPrice = '0';
+        let confidence = 0;
+        let lastUpdate = 0;
+        try {
+            const latestData = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
+                functionName: 'getLatestPrediction',
+            });
+            latestPrice = formatUnits((latestData as any[])[0], 18);
+            confidence = Number((latestData as any[])[1]);
+            lastUpdate = Number((latestData as any[])[2]);
+        } catch (error) {
+            console.log("AI Oracle data not available:", error);
+        }
+        
+        // --- SafeVault ---
+        let totalDeposits: bigint = 0n;
+        let totalWithdrawals: bigint = 0n;
+        try {
+            totalDeposits = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
+                functionName: 'totalDeposits',
+            });
+            totalWithdrawals = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
+                functionName: 'totalWithdrawals',
+            });
+        } catch (e) {
+             console.log("Could not fetch SafeVault totals, using fallback.", e);
+        }
+        let owners: Address[] = [];
+        let threshold: bigint = 1n;
+        let isLocked = false;
+        let lockDuration: bigint = 0n;
+        try {
+            owners = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
+                functionName: 'getOwners',
+            });
+            threshold = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
+                functionName: 'threshold',
+            });
+            isLocked = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
+                functionName: 'isLocked',
+            });
+            lockDuration = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SafeVault as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault,
+                functionName: 'lockDuration',
+            });
+        } catch (error) {
+            console.log("Multi-sig data not available:", error);
+        }
+        
+        // --- ProofBond ---
+        let activeBonds: bigint = 0n;
+        try {
+             activeBonds = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                functionName: 'totalSupply',
+            });
+        } catch(e) {
+             console.error("Could not fetch active bonds, using fallback.", e);
+        }
+        let bondTvl: bigint = 0n;
+        try {
+             bondTvl = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                functionName: 'totalValueLocked',
+            });
+        } catch (error) {
+            console.error("Could not fetch bond TVL, using fallback.", error);
+        }
+        let bondPrice: bigint = 0n;
+        let apy: bigint = 0n;
+        let trancheSize: bigint = 0n;
+        let nextTrancheId: bigint = 0n;
+        try {
+            bondPrice = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                functionName: 'bondPrice',
+            });
+            apy = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                functionName: 'apy',
+            });
+            trancheSize = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                functionName: 'trancheSize',
+            });
+            nextTrancheId = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                functionName: 'nextTrancheId',
+            });
+        } catch (error) {
+            console.log("Bond market data not available:", error);
+        }
+
+        // --- ForgeMarket ---
+        let totalVolume: bigint = 0n;
+        try {
+            totalVolume = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
+                functionName: 'totalVolume',
+            });
+        } catch(e) {
+             console.error("Could not fetch total volume, using fallback.", e);
+        }
+        let totalLiquidity: bigint = 0n;
+        let currentFee: bigint = 0n;
+        let aiOptimizedFee: bigint = 0n;
+        let efficiency: bigint = 0n;
+        let forgeActivePools: bigint = 0n;
+        try {
+            totalLiquidity = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
+                functionName: 'totalLiquidity',
+            });
+            currentFee = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
+                functionName: 'currentFee',
+            });
+            aiOptimizedFee = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address,
+                abi: DEPLOYED_CONTRACTS.abis.AdaptiveMarketMaker,
+                functionName: 'getOptimizedFee',
+            });
+            efficiency = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SimpleAdaptiveAMM as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SimpleAdaptiveAMM,
+                functionName: 'getEfficiency',
+            });
+            forgeActivePools = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
+                functionName: 'activePools',
+            });
+        } catch (error) {
+            console.log("AI market data not available:", error);
+        }
+        
+        // --- OpenGovernor ---
+        let proposalCount: bigint = 0n;
+        let treasuryBalance: bigint = 0n;
+        let activeProposalsCount: number = 0;
+        let quorum: bigint = 0n;
+        let votingPeriod: bigint = 0n;
+        try {
+            proposalCount = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
+                functionName: 'proposalCount',
+            });
+            const treasuryAddress = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
+                functionName: 'treasury',
+            });
+            treasuryBalance = await publicClient.getBalance({ address: treasuryAddress as Address });
+            if (proposalCount > 0n) {
+                const activeProposalsPromises = Array.from({ length: Math.min(Number(proposalCount), 10) }, (_, i) => 
+                    publicClient.readContract({
+                        address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                        abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
+                        functionName: 'state',
+                        args: [BigInt(i + 1)],
+                    })
+                );
+                const proposalStates = await Promise.all(activeProposalsPromises);
+                activeProposalsCount = proposalStates.filter(s => s === 1).length;
+            }
+            quorum = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
+                functionName: 'quorum',
+            });
+            votingPeriod = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
+                abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
+                functionName: 'votingPeriod',
+            });
+        } catch(e) {
+            console.error("Could not fetch some governance data.", e);
+        }
+
+        // --- AI Data ---
+        let currentPrediction = '0';
+        let aiConfidence = 0;
+        let lastOptimization = 0;
+        let efficiencyGain = 0;
+        let gasSavings = 0;
+        try {
+            const aiData = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.SimpleAIOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
+                functionName: 'getAIData',
+            });
+            currentPrediction = formatUnits((aiData as any[])[0], 18);
+            aiConfidence = Number((aiData as any[])[1]);
+            lastOptimization = Number((aiData as any[])[2]);
+            efficiencyGain = Number((aiData as any[])[3]);
+            gasSavings = Number((aiData as any[])[4]);
+        } catch (error) {
+            console.log("AI data not available:", error);
+        }
+
+        // --- Predictive Liquidity Data ---
+        let predictedLiquidity = '0';
+        let predictionAccuracy = 0;
+        try {
+            const liquidityData = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+                functionName: 'getPrediction',
+            });
+            predictedLiquidity = formatUnits((liquidityData as any[])[0], 18);
+            predictionAccuracy = Number((liquidityData as any[])[1]);
+        } catch (error) {
+            console.log("Predictive liquidity data not available:", error);
+        }
+
+        setState({
+            mainContractData: { protocolFee: Number(protocolFee) },
+            trustOracleData: { 
+                activeProviders: activeProviders.length, 
+                minStake: formatEther(minStake), 
+                minSubmissions: Number(minSubmissions),
+                latestPrice,
+                confidence,
+                lastUpdate,
+                providers: []
+            },
+            safeVaultData: { 
+                totalAssets: '0',
+                totalDeposits: formatUnits(totalDeposits, 6),
+                totalWithdrawals: formatUnits(totalWithdrawals, 6),
+                userBalance: '0',
+                isLocked,
+                lockDuration: Number(lockDuration),
+                owners,
+                threshold: Number(threshold)
+            },
+            proofBondData: { 
+                activeBonds: Number(activeBonds), 
+                tvl: formatUnits(bondTvl, 6),
+                totalSupply: formatUnits(activeBonds, 18),
+                bondPrice: formatUnits(bondPrice, 18),
+                apy: Number(apy),
+                userBonds: [],
+                trancheSize: formatUnits(trancheSize, 18),
+                nextTrancheId: Number(nextTrancheId)
+            },
+            forgeMarketData: { 
+                totalVolume: formatUnits(totalVolume, 6),
+                totalLiquidity: formatUnits(totalLiquidity, 6),
+                activePools: Number(forgeActivePools),
+                currentFee: Number(currentFee),
+                aiOptimizedFee: Number(aiOptimizedFee),
+                efficiency: Number(efficiency),
+                userLiquidity: '0',
+                pools: []
+            },
+            openGovernorData: { 
+                proposalCount: Number(proposalCount), 
+                treasuryValue: formatEther(treasuryBalance), 
+                activeProposals: activeProposalsCount,
+                votingPower: '0',
+                userVotes: [],
+                proposals: [],
+                quorum: Number(quorum),
+                votingPeriod: Number(votingPeriod)
+            },
+            aiData: {
+                currentPrediction,
+                confidence: aiConfidence,
+                lastOptimization,
+                efficiencyGain,
+                gasSavings,
+                predictions: []
+            },
+            adaptiveAMMData: {
+                currentFee: Number(currentFee),
+                optimizedFee: Number(aiOptimizedFee),
+                efficiency: Number(efficiency),
+                volume24h: '0'
+            },
+            predictiveLiquidityData: {
+                predictedLiquidity,
+                accuracy: predictionAccuracy,
+                recommendations: []
+            },
+            userData: {
+                isOracleProvider: false,
+                oracleStake: '0',
+                vaultBalance: '0',
+                bondHoldings: '0',
+                liquidityPositions: '0',
+                votingPower: '0'
+            },
+            isLoading: false,
+            lastUpdated: Date.now(),
+        });
     }, [publicClient]);
 
     // Enhanced Oracle Functions
@@ -806,7 +796,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         const txFunction = () =>
             writeContractAsync({
-                address: '0x' as Address, // Need the USDC token address
+                address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
                 abi: [{
                     "constant": false,
                     "inputs": [
@@ -836,23 +826,49 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             });
             return;
         }
-
-        const dialogDetails = {
+    
+        const usdcAddress = LEGACY_CONTRACTS.USDC_ADDRESS as Address;
+        const proofBondAddress = DEPLOYED_CONTRACTS.ProofBond as Address;
+    
+        // 1. Approve the ProofBond contract to spend USDC
+        const approveDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: DEPLOYED_CONTRACTS.ProofBond,
+            to: proofBondAddress,
+            details: `Approving ${amount} USDC for bond purchase`
+        };
+        const approveTx = () => writeContractAsync({
+            address: usdcAddress,
+            abi: [{
+                "inputs": [{"internalType": "address", "name": "spender", "type": "address"}, {"internalType": "uint256", "name": "value", "type": "uint256"}],
+                "name": "approve",
+                "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }],
+            functionName: 'approve',
+            args: [proofBondAddress, parseUnits(amount, 6)]
+        });
+    
+        await walletActions.executeTransaction('Approve', approveDetails, approveTx);
+    
+        // 2. Call the purchase function
+        const purchaseDetails = {
+            amount: parseFloat(amount),
+            token: 'USDC',
+            to: proofBondAddress,
             details: 'Purchasing ProofBonds',
         };
-
-        const txFunction = () =>
+    
+        const purchaseTx = () =>
             writeContractAsync({
-                address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                address: proofBondAddress,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                 functionName: 'purchase',
                 args: [parseUnits(amount, 6)],
             });
         
-        await walletActions.executeTransaction('Purchase Bonds', dialogDetails, txFunction, fetchData);
+        await walletActions.executeTransaction('Purchase Bonds', purchaseDetails, purchaseTx, fetchData);
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const redeemBond = useCallback(async (bondId: number) => {
@@ -1200,3 +1216,5 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+
+    

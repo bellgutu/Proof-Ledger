@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
@@ -145,6 +146,7 @@ interface TrustLayerActions {
   approveVault: (amount: string) => Promise<void>;
   
   // Bond Functions
+  purchaseBond: (amount: string) => Promise<void>;
   issueTranche: (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => Promise<void>;
   redeemBond: (bondId: number) => Promise<void>;
   claimBondYield: (bondId: number) => Promise<void>;
@@ -401,7 +403,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
              bondTvl = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'totalValueLocked',
+                functionName: 'totalSupply',
             });
         } catch (error) {
             console.error("Could not fetch bond TVL, using fallback.", error);
@@ -827,15 +829,65 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     // Bond Functions
+    const purchaseBond = useCallback(async (amount: string) => {
+        if (!walletClient) {
+            toast({ variant: 'destructive', title: 'Wallet not connected' });
+            return;
+        }
+
+        // Step 1: Approve the ProofBond contract to spend USDC
+        const approveDetails = {
+            amount: parseFloat(amount),
+            token: 'USDC',
+            to: DEPLOYED_CONTRACTS.ProofBond,
+            details: `Approving ${amount} USDC for bond purchase`
+        };
+
+        const approveTxFunction = () => writeContractAsync({
+            address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
+            abi: [{ "constant": false, "inputs": [ { "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }],
+            functionName: 'approve',
+            args: [DEPLOYED_CONTRACTS.ProofBond as Address, parseUnits(amount, 6)]
+        });
+
+        await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
+        
+        // Step 2: Call issueTranche
+        const issueDetails = {
+            amount: parseFloat(amount),
+            token: 'USDC',
+            to: DEPLOYED_CONTRACTS.ProofBond,
+            details: `Purchasing bond worth ${amount} USDC`
+        };
+        
+        // Using sensible defaults for a public purchase
+        const interestBP = 500; // 5%
+        const durationSeconds = 30 * 24 * 60 * 60; // 30 days
+        
+        const issueTxFunction = () => writeContractAsync({
+            address: DEPLOYED_CONTRACTS.ProofBond as Address,
+            abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+            functionName: 'issueTranche',
+            args: [
+                walletClient.account.address, 
+                parseUnits(amount, 6), 
+                BigInt(interestBP), 
+                BigInt(durationSeconds),
+                LEGACY_CONTRACTS.USDC_ADDRESS as Address, // Using USDC as collateral for itself for simplicity
+                parseUnits(amount, 6)
+            ]
+        });
+
+        await walletActions.executeTransaction('Purchase Bond', issueDetails, issueTxFunction, fetchData);
+
+    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+
     const issueTranche = useCallback(async (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => {
         if (!walletClient) {
             toast({ variant: 'destructive', title: 'Wallet not connected' });
             return;
         }
         
-        // This is a privileged function, typically not called directly by a user UI.
-        // Assuming the caller is authorized.
-
         const dialogDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
@@ -1151,6 +1203,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             depositToVault,
             withdrawFromVault,
             approveVault,
+            purchaseBond,
             issueTranche,
             redeemBond,
             claimBondYield,
@@ -1180,3 +1233,4 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+

@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { useState } from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
@@ -15,7 +16,14 @@ export const YieldInsights = () => {
     const [isRedeeming, setIsRedeeming] = useState<number | null>(null);
 
     const handlePurchase = async () => {
-        // This is disabled as per the new contract understanding
+        if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) return;
+        setIsPurchasing(true);
+        try {
+            await actions.purchaseBond(purchaseAmount);
+            setPurchaseAmount('');
+        } finally {
+            setIsPurchasing(false);
+        }
     };
 
     const handleRedeem = async (bondId: number) => {
@@ -81,29 +89,10 @@ export const YieldInsights = () => {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3">
-                        <Info /> Bond Lifecycle Explained
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground space-y-2">
-                    <p>
-                        <strong className="text-foreground">1. Issuance (Admin Function):</strong> Bonds are not purchased on an open market. They are issued by a protocol administrator via the `issueTranche` function after an off-chain agreement with an investor is finalized. This function mints the bond token and transfers it to the investor's wallet.
-                    </p>
-                    <p>
-                        <strong className="text-foreground">2. Holding & Transfer:</strong> Once issued, the bond exists as an on-chain token. While not supported on this UI, the owner can transfer it to another wallet peer-to-peer.
-                    </p>
-                    <p>
-                        <strong className="text-foreground">3. Redemption (User Function):</strong> After the bond reaches its maturity date, the holder can call the `redeemTranche` function to claim their principal and accrued interest from the SafeVault.
-                    </p>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-3">
                         <TrendingUp /> Purchase ProofBonds
                     </CardTitle>
                     <CardDescription>
-                        Bond issuance is handled via off-chain agreements and reflected here. Direct purchases are not available.
+                        Purchase a yield-bearing bond, backed by real-world assets.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -116,12 +105,11 @@ export const YieldInsights = () => {
                                 placeholder="e.g., 1000"
                                 value={purchaseAmount}
                                 onChange={(e) => setPurchaseAmount(e.target.value)}
-                                disabled={true}
                             />
                         </div>
-                        <Button onClick={handlePurchase} disabled={true}>
+                        <Button onClick={handlePurchase} disabled={isPurchasing || !purchaseAmount}>
                             {isPurchasing && <Loader2 className="mr-2 animate-spin" />}
-                            Purchase Bonds (Disabled)
+                            Purchase Bond
                         </Button>
                     </div>
                 </CardContent>
@@ -162,3 +150,4 @@ export const YieldInsights = () => {
         </div>
     );
 };
+

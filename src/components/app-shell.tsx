@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -33,11 +32,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   const getActivePage = () => {
      const segments = pathname.split('/').filter(Boolean);
-     if (pathname === '/') return 'markets';
+     // The root path is now 'trust-layer', but we want the nav item to be highlighted.
+     if (pathname === '/') return 'trust-layer';
      if(segments[0] === 'markets' && segments[1]){
       return 'markets';
     }
-    return segments[0] || 'markets';
+    return segments[0] || 'trust-layer';
   };
   
   const activePage = getActivePage();
@@ -71,13 +71,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const navItems = [
-    { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/' },
+    { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/' },
+    { id: 'markets', label: 'Markets', icon: <LineChart size={20} />, path: '/markets' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
     { id: 'swap', label: 'Swap', icon: <RefreshCw size={20} />, path: '/swap' },
     { id: 'liquidity', label: 'Liquidity Pro', icon: <Droplets size={20} />, path: '/liquidity' },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} />, path: '/finance' },
-    { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/trust-layer' },
     { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} />, path: '/tools' },
     { id: 'assistant', label: 'AI Assistant', icon: <FileText size={20} />, path: '/assistant' },
@@ -85,6 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   const isAmmDemoPage = pathname === '/amm-demo';
+  const isTrustLayerPage = pathname === '/';
 
   return (
     <>
@@ -125,8 +126,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-6 lg:p-8">
-            {!isAmmDemoPage && <DebugWallet />}
-            <div className="mt-8">{children}</div>
+            {!isAmmDemoPage && !isTrustLayerPage && <DebugWallet />}
+            <div className={cn(!isAmmDemoPage && !isTrustLayerPage && "mt-8")}>{children}</div>
         </div>
       </main>
     </div>

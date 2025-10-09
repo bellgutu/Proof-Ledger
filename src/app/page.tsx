@@ -1,12 +1,11 @@
 
-"use client";
+import TrustLayerPage from '@/components/pages/trust-layer';
+import { TrustLayerProvider } from '@/contexts/trust-layer-context';
 
-import MarketsPage from '@/components/pages/markets';
-
-export default function Page() {
+export default function Home() {
   return (
-    <>
-      <MarketsPage />
-    </>
+    <TrustLayerProvider>
+      <TrustLayerPage />
+    </TrustLayerProvider>
   );
 }

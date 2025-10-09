@@ -1,3 +1,4 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
@@ -50,11 +51,7 @@ const nextConfig = {
   },
    async redirects() {
     return [
-      {
-        source: '/markets',
-        destination: '/',
-        permanent: true,
-      },
+      // No longer need the redirect from /markets to /
     ]
   },
 };

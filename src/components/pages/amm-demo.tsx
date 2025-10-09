@@ -18,7 +18,7 @@ function InnovativeAMMDemo() {
     return (
         <div className="container mx-auto p-0 space-y-8">
              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold tracking-tight text-primary">Innovative AMM Demo</h1>
+                <h1 className="text-4xl font-bold tracking-tight text-primary">Innovative Automatic Market Maker</h1>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                     A technical showcase of the AI-driven Automated Market Maker system, using isolated mock contracts on the Sepolia testnet.
                 </p>

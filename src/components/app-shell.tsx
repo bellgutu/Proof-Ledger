@@ -73,7 +73,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
-    { id: 'amm-demo', label: 'AMM Demo', icon: <Bot size={20} />, path: '/amm-demo' },
+    { id: 'amm-demo', label: 'Automatic Market Maker', icon: <Bot size={20} />, path: '/amm-demo' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
     { id: 'swap', label: 'Swap', icon: <RefreshCw size={20} />, path: '/swap' },
     { id: 'liquidity', label: 'Liquidity Pro', icon: <Droplets size={20} />, path: '/liquidity' },

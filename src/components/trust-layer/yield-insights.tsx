@@ -1,5 +1,3 @@
-
-
 "use client";
 import React, { useState } from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
@@ -7,24 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PiggyBank, FileArchive, TrendingUp, Loader2, ReceiptText, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { BondIssuancePanel } from './BondIssuancePanel';
 
 export const YieldInsights = () => {
     const { state, actions } = useTrustLayer();
     const { safeVaultData, proofBondData, isLoading } = state;
-    const [purchaseAmount, setPurchaseAmount] = useState('');
-    const [isPurchasing, setIsPurchasing] = useState(false);
     const [isRedeeming, setIsRedeeming] = useState<number | null>(null);
-
-    const handlePurchase = async () => {
-        if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) return;
-        setIsPurchasing(true);
-        try {
-            await actions.purchaseBond(purchaseAmount);
-            setPurchaseAmount('');
-        } finally {
-            setIsPurchasing(false);
-        }
-    };
 
     const handleRedeem = async (bondId: number) => {
         setIsRedeeming(bondId);
@@ -86,34 +72,7 @@ export const YieldInsights = () => {
                 </Card>
             </div>
             
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-3">
-                        <TrendingUp /> Purchase ProofBonds
-                    </CardTitle>
-                    <CardDescription>
-                        Purchase a yield-bearing bond, backed by real-world assets.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex gap-4 items-end">
-                        <div className="flex-grow">
-                            <label htmlFor="purchase-amount" className="text-sm font-medium">Amount (USDC)</label>
-                            <Input 
-                                id="purchase-amount"
-                                type="number" 
-                                placeholder="e.g., 1000"
-                                value={purchaseAmount}
-                                onChange={(e) => setPurchaseAmount(e.target.value)}
-                            />
-                        </div>
-                        <Button onClick={handlePurchase} disabled={isPurchasing || !purchaseAmount}>
-                            {isPurchasing && <Loader2 className="mr-2 animate-spin" />}
-                            Purchase Bond
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            <BondIssuancePanel />
 
             <Card>
                 <CardHeader>
@@ -150,4 +109,3 @@ export const YieldInsights = () => {
         </div>
     );
 };
-

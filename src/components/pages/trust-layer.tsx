@@ -12,10 +12,10 @@ export default function TrustLayerPage() {
         <div className="container mx-auto p-0 space-y-8">
             <div className="text-center space-y-2">
                 <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center justify-center gap-3">
-                    <ShieldCheck className="w-10 h-10" /> Trust Layer Dashboard
+                    <ShieldCheck className="w-10 h-10" /> Trust Layer Ecosystem
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                    An investor-focused view into a verified, on-chain ecosystem for tokenized real-world assets, demonstrating transparency and security.
+                    An interactive dashboard showcasing a verified, on-chain ecosystem for tokenized assets, demonstrating transparency, security, and advanced DeFi mechanics.
                 </p>
             </div>
             
@@ -23,11 +23,11 @@ export default function TrustLayerPage() {
                 <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="dashboard" className="flex items-center gap-2">
                         <ShieldCheck className="h-4 w-4" />
-                        <span>Dashboard</span>
+                        <span>System Health</span>
                     </TabsTrigger>
                      <TabsTrigger value="governance" className="flex items-center gap-2">
                         <Landmark className="h-4 w-4" />
-                        <span>Governance</span>
+                        <span>Oracle Network</span>
                     </TabsTrigger>
                     <TabsTrigger value="integrity" className="flex items-center gap-2">
                         <GitCommit className="h-4 w-4" />
@@ -35,7 +35,7 @@ export default function TrustLayerPage() {
                     </TabsTrigger>
                     <TabsTrigger value="yield" className="flex items-center gap-2">
                         <LineChart className="h-4 w-4" />
-                        <span>Yield Insights</span>
+                        <span>Yield Products</span>
                     </TabsTrigger>
                 </TabsList>
                 

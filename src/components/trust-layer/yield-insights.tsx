@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PiggyBank, FileArchive, TrendingUp, Loader2, ReceiptText } from 'lucide-react';
+import { PiggyBank, FileArchive, TrendingUp, Loader2, ReceiptText, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
@@ -77,6 +77,25 @@ export const YieldInsights = () => {
                     </CardContent>
                 </Card>
             </div>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3">
+                        <Info /> Bond Lifecycle Explained
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-2">
+                    <p>
+                        <strong className="text-foreground">1. Issuance (Admin Function):</strong> Bonds are not purchased on an open market. They are issued by a protocol administrator via the `issueTranche` function after an off-chain agreement with an investor is finalized. This function mints the bond token and transfers it to the investor's wallet.
+                    </p>
+                    <p>
+                        <strong className="text-foreground">2. Holding & Transfer:</strong> Once issued, the bond exists as an on-chain token. While not supported on this UI, the owner can transfer it to another wallet peer-to-peer.
+                    </p>
+                    <p>
+                        <strong className="text-foreground">3. Redemption (User Function):</strong> After the bond reaches its maturity date, the holder can call the `redeemTranche` function to claim their principal and accrued interest from the SafeVault.
+                    </p>
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>

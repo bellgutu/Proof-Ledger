@@ -17,7 +17,7 @@ interface TrustOracleData {
   latestPrice: string;
   confidence: number;
   lastUpdate: number;
-  providers: Array<{ address: Address; stake: string; confidence: number }>;
+  providers: Array<{ address: Address; stake: string; lastUpdate: number }>;
 }
 
 interface SafeVaultData {
@@ -29,6 +29,7 @@ interface SafeVaultData {
   lockDuration: number;
   owners: Address[];
   threshold: number;
+  strategies: Array<{ name: string; value: string; apy: number }>;
 }
 
 interface ProofBondData {
@@ -98,7 +99,9 @@ interface ArbitrageEngineData {
     medianPrice: string;
     profitThreshold: string;
     isPaused: boolean;
-    oraclePrices: { address: Address; price: string }[];
+    oraclePrices: { address: Address; price: string; name: string }[];
+    lastProfit: string;
+    totalProfit: string;
 }
 
 interface TrustLayerState {
@@ -201,7 +204,12 @@ const initialTrustLayerState: TrustLayerState = {
     isLocked: false,
     lockDuration: 0,
     owners: [],
-    threshold: 0
+    threshold: 0,
+    strategies: [
+        { name: 'Aave Lending', value: '150450.23', apy: 4.5 },
+        { name: 'Convex Farming', value: '85200.50', apy: 8.1 },
+        { name: 'Idle', value: '25349.27', apy: 0 },
+    ]
   },
   proofBondData: { 
     activeBonds: 0, 
@@ -238,6 +246,8 @@ const initialTrustLayerState: TrustLayerState = {
       profitThreshold: '0',
       isPaused: false,
       oraclePrices: [],
+      lastProfit: '0',
+      totalProfit: '0',
   },
   aiData: {
     currentPrediction: '0',
@@ -298,12 +308,33 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         // --- TrustOracle ---
         let activeProviders: Address[] = [];
+        let providerDetails: { address: Address; stake: string; lastUpdate: number; }[] = [];
         try {
             activeProviders = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.TrustOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
                 functionName: 'listActiveOracles',
             }) as Address[];
+            
+            const providerDataPromises = activeProviders.map(async (providerAddr) => {
+                const [stake, lastUpdate] = await Promise.all([
+                    publicClient.readContract({
+                        address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                        abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
+                        functionName: 'stakes',
+                        args: [providerAddr]
+                    }),
+                    publicClient.readContract({
+                        address: DEPLOYED_CONTRACTS.TrustOracle as Address,
+                        abi: DEPLOYED_CONTRACTS.abis.TrustOracle,
+                        functionName: 'lastUpdate',
+                        args: [providerAddr]
+                    })
+                ]);
+                return { address: providerAddr, stake: formatEther(stake as bigint), lastUpdate: Number(lastUpdate) };
+            });
+            providerDetails = await Promise.all(providerDataPromises);
+            
         } catch (e) {
             console.log("Could not fetch active providers, using fallback.", e);
         }
@@ -364,13 +395,17 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                 functionName: 'totalDeposits',
             });
+        } catch (e) {
+             console.log("Could not fetch SafeVault totalDeposits, using fallback.", e);
+        }
+        try {
             totalWithdrawals = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.SafeVault as Address,
                 abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                 functionName: 'totalWithdrawals',
             });
         } catch (e) {
-             console.log("Could not fetch SafeVault totals, using fallback.", e);
+             console.log("Could not fetch SafeVault totalWithdrawals, using fallback.", e);
         }
         let owners: Address[] = [];
         let threshold: bigint = 1n;
@@ -382,16 +417,28 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                 functionName: 'getOwners',
             });
+        } catch (e) {
+             console.log("Could not fetch SafeVault getOwners, using fallback.", e);
+        }
+        try {
             threshold = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.SafeVault as Address,
                 abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                 functionName: 'threshold',
             });
+        } catch (e) {
+            console.log("Could not fetch SafeVault threshold, using fallback.", e);
+        }
+        try {
             isLocked = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.SafeVault as Address,
                 abi: DEPLOYED_CONTRACTS.abis.SafeVault,
                 functionName: 'isLocked',
             });
+        } catch (e) {
+            console.log("Could not fetch SafeVault isLocked, using fallback.", e);
+        }
+        try {
             lockDuration = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.SafeVault as Address,
                 abi: DEPLOYED_CONTRACTS.abis.SafeVault,
@@ -414,10 +461,11 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         }
         let bondTvl: bigint = 0n;
         try {
+            // Using balanceOf the vault as a proxy for TVL
              bondTvl = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'totalSupply', // This is likely incorrect, should be totalValueLocked or similar
+                address: DEPLOYED_CONTRACTS.abis.ProofBond[0].inputs.find(i => i.name === 'safeVaultAddress_') ? DEPLOYED_CONTRACTS.SafeVault as Address : DEPLOYED_CONTRACTS.ProofBond as Address,
+                abi: DEPLOYED_CONTRACTS.abis.SafeVault, 
+                functionName: 'totalAssets',
             });
         } catch (error) {
             console.error("Could not fetch bond TVL, using fallback.", error);
@@ -427,21 +475,27 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         let trancheSize: bigint = 0n;
         let nextTrancheId: bigint = 0n;
         try {
-            bondPrice = 0n; // This function does not exist on the provided ABI
-            apy = 0n; // This function does not exist on the provided ABI
+            // These functions do not exist, so we keep them as 0
+            bondPrice = 0n; 
+            apy = 0n;
             trancheSize = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                 functionName: 'trancheSize',
             });
+        } catch (error) {
+             console.log("Bond trancheSize data not available:", error);
+        }
+        try {
             nextTrancheId = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                 functionName: 'trancheCounter',
             });
         } catch (error) {
-            console.log("Bond market data not available:", error);
+            console.log("Bond trancheCounter data not available:", error);
         }
+
 
         // --- ForgeMarket ---
         let totalVolume: bigint = 0n;
@@ -465,21 +519,37 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                 functionName: 'totalLiquidity',
             });
+        } catch(e) {
+            console.log("Could not fetch forge totalLiquidity, using fallback.", e);
+        }
+        try {
             currentFee = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
                 functionName: 'currentFee',
             });
+        } catch (e) {
+            console.log("Could not fetch forge currentFee, using fallback.", e);
+        }
+        try {
             aiOptimizedFee = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address,
                 abi: DEPLOYED_CONTRACTS.abis.AdaptiveMarketMaker,
                 functionName: 'getOptimizedFee',
             });
+        } catch(e) {
+            console.log("Could not fetch AMM optimized fee, using fallback.", e);
+        }
+        try {
             efficiency = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.SimpleAdaptiveAMM as Address,
                 abi: DEPLOYED_CONTRACTS.abis.SimpleAdaptiveAMM,
                 functionName: 'getEfficiency',
             });
+        } catch(e) {
+            console.log("Could not fetch AMM efficiency, using fallback.", e);
+        }
+        try {
             forgeActivePools = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ForgeMarket as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ForgeMarket,
@@ -501,12 +571,20 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                 functionName: 'proposalCount',
             });
+        } catch(e) {
+            console.error("Could not fetch proposalCount, using fallback.", e);
+        }
+        try {
             const treasuryAddress = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
                 abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                 functionName: 'treasury',
             });
             treasuryBalance = await publicClient.getBalance({ address: treasuryAddress as Address });
+        } catch(e) {
+            console.error("Could not fetch treasury balance, using fallback.", e);
+        }
+        try {
             if (proposalCount > 0n) {
                 const activeProposalsPromises = Array.from({ length: Math.min(Number(proposalCount), 10) }, (_, i) => 
                     publicClient.readContract({
@@ -519,25 +597,34 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 const proposalStates = await Promise.all(activeProposalsPromises);
                 activeProposalsCount = proposalStates.filter(s => s === 1).length;
             }
+        } catch(e) {
+            console.error("Could not fetch proposal states, using fallback.", e);
+        }
+        try {
             quorum = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
                 abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                 functionName: 'quorum',
             });
+        } catch(e) {
+            console.error("Could not fetch quorum, using fallback.", e);
+        }
+        try {
             votingPeriod = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.OpenGovernor as Address,
                 abi: DEPLOYED_CONTRACTS.abis.OpenGovernor,
                 functionName: 'votingPeriod',
             });
         } catch(e) {
-            console.error("Could not fetch some governance data.", e);
+            console.error("Could not fetch voting period, using fallback.", e);
         }
+
 
         // --- ArbitrageEngine ---
         let medianPrice: bigint = 0n;
         let profitThreshold: bigint = 0n;
         let isPaused: boolean = false;
-        let oraclePrices: { address: Address; price: string; }[] = [];
+        let oraclePrices: { address: Address; price: string; name: string }[] = [];
         try {
             const oracleAddresses = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ArbitrageEngine as Address,
@@ -545,16 +632,16 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'getOracles',
             }) as Address[];
 
-            const prices = await Promise.all(oracleAddresses.map(async (oracleAddr) => {
+            const prices = await Promise.all(oracleAddresses.map(async (oracleAddr, i) => {
                 try {
                     const price = await publicClient.readContract({
                         address: oracleAddr,
-                        abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
+                        abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle, // Assuming all use this ABI
                         functionName: 'latestAnswer',
                     }) as bigint;
-                    return { address: oracleAddr, price: formatUnits(price, 8) }; // Assuming 8 decimals for oracle price
+                    return { address: oracleAddr, price: formatUnits(price, 8), name: `Oracle ${i + 1}` }; // Assuming 8 decimals for oracle price
                 } catch {
-                    return { address: oracleAddr, price: '0' };
+                    return { address: oracleAddr, price: '0', name: `Oracle ${i + 1}` };
                 }
             }));
             oraclePrices = prices;
@@ -623,9 +710,10 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 latestPrice,
                 confidence,
                 lastUpdate,
-                providers: []
+                providers: providerDetails
             },
             safeVaultData: { 
+                ...initialTrustLayerState.safeVaultData, // keep mocked strategies
                 totalAssets: formatUnits(totalAssets, 6),
                 totalDeposits: formatUnits(totalDeposits, 6),
                 totalWithdrawals: formatUnits(totalWithdrawals, 6),
@@ -670,6 +758,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 profitThreshold: formatUnits(profitThreshold, 6),
                 isPaused,
                 oraclePrices,
+                lastProfit: '123.45', // mock
+                totalProfit: '5678.90', // mock
             },
             aiData: {
                 currentPrediction,
@@ -866,18 +956,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const txFunction = () =>
             writeContractAsync({
                 address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-                abi: [{
-                    "constant": false,
-                    "inputs": [
-                        { "name": "_spender", "type": "address" },
-                        { "name": "_value", "type": "uint256" }
-                    ],
-                    "name": "approve",
-                    "outputs": [{ "name": "", "type": "bool" }],
-                    "payable": false,
-                    "stateMutability": "nonpayable",
-                    "type": "function"
-                }],
+                abi: [{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}],
                 functionName: 'approve',
                 args: [DEPLOYED_CONTRACTS.SafeVault as Address, parseUnits(amount, 6)],
             });
@@ -1292,5 +1371,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-
-    

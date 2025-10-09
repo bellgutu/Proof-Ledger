@@ -3,9 +3,12 @@
 import React, { useState } from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bot, UserPlus, Loader2, Send } from 'lucide-react';
+import { Bot, UserPlus, Loader2, Send, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '../ui/scroll-area';
+import { formatDistanceToNow } from 'date-fns';
 
 export const OracleNetworkPanel = () => {
     const { state, actions } = useTrustLayer();
@@ -37,54 +40,97 @@ export const OracleNetworkPanel = () => {
     };
     
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                    <Bot /> AI Oracle Network
-                </CardTitle>
-                 <CardDescription>
-                    The decentralized network of AI providers who stake capital to submit data.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                 {isLoading ? (
-                    <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
-                ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Active Providers</p>
-                        <p className="text-3xl font-bold">{trustOracleData.activeProviders}</p>
-                    </div>
-                    <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Minimum Stake</p>
-                        <p className="text-3xl font-bold">{trustOracleData.minStake} ETH</p>
-                    </div>
-                    <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Min. Submissions</p>
-                        <p className="text-3xl font-bold">{trustOracleData.minSubmissions}</p>
-                    </div>
-                </div>
-                )}
-
-                {userData.isOracleProvider ? (
-                    <div className="p-4 border rounded-lg space-y-4">
-                        <h4 className="font-semibold">Submit Oracle Data</h4>
-                        <div className="flex gap-4">
-                            <Input type="number" placeholder="Price (e.g., 4150.75)" value={price} onChange={e => setPrice(e.target.value)} />
-                            <Input type="number" placeholder="Confidence (0-100)" value={confidence} onChange={e => setConfidence(e.target.value)} />
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3">
+                        <Bot /> AI Oracle Network
+                    </CardTitle>
+                    <CardDescription>
+                        The decentralized network of AI providers who stake capital to submit data.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {isLoading ? (
+                        <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
+                    ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Active Providers</p>
+                            <p className="text-3xl font-bold">{trustOracleData.activeProviders}</p>
                         </div>
-                        <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
-                            {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : <Send className="mr-2" />}
-                            Submit Prediction
-                        </Button>
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Minimum Stake</p>
+                            <p className="text-3xl font-bold">{trustOracleData.minStake} ETH</p>
+                        </div>
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Min. Submissions</p>
+                            <p className="text-3xl font-bold">{trustOracleData.minSubmissions}</p>
+                        </div>
                     </div>
-                ) : (
-                    <Button onClick={handleRegister} disabled={isRegistering || isLoading} className="w-full">
-                        {isRegistering ? <Loader2 className="mr-2 animate-spin" /> : <UserPlus className="mr-2" />}
-                        Register as a Provider ({trustOracleData.minStake} ETH Stake)
-                    </Button>
-                )}
-            </CardContent>
-        </Card>
+                    )}
+
+                    {userData.isOracleProvider ? (
+                        <div className="p-4 border rounded-lg space-y-4">
+                            <h4 className="font-semibold">Submit Oracle Data</h4>
+                            <div className="flex gap-4">
+                                <Input type="number" placeholder="Price (e.g., 4150.75)" value={price} onChange={e => setPrice(e.target.value)} />
+                                <Input type="number" placeholder="Confidence (0-100)" value={confidence} onChange={e => setConfidence(e.target.value)} />
+                            </div>
+                            <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
+                                {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : <Send className="mr-2" />}
+                                Submit Prediction
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button onClick={handleRegister} disabled={isRegistering || isLoading} className="w-full">
+                            {isRegistering ? <Loader2 className="mr-2 animate-spin" /> : <UserPlus className="mr-2" />}
+                            Register as a Provider ({trustOracleData.minStake} ETH Stake)
+                        </Button>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3"><Database /> Registered Providers</CardTitle>
+                    <CardDescription>A list of all staked oracle providers in the network.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-72">
+                         <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Provider Address</TableHead>
+                                    <TableHead className="text-right">Stake</TableHead>
+                                    <TableHead className="text-right">Last Update</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    Array(3).fill(0).map((_, i) => (
+                                        <TableRow key={i}><TableCell colSpan={3} className="h-12 text-center">Loading...</TableCell></TableRow>
+                                    ))
+                                ) : trustOracleData.providers.length > 0 ? (
+                                    trustOracleData.providers.map(p => (
+                                        <TableRow key={p.address}>
+                                            <TableCell className="font-mono text-xs">{p.address}</TableCell>
+                                            <TableCell className="text-right font-mono">{parseFloat(p.stake).toFixed(4)} ETH</TableCell>
+                                            <TableCell className="text-right text-xs">
+                                                {p.lastUpdate > 0 ? formatDistanceToNow(new Date(p.lastUpdate * 1000), { addSuffix: true }) : 'Never'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="h-24 text-center">No oracle providers registered.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+        </div>
     );
 };

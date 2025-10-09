@@ -6,11 +6,13 @@ import { PiggyBank, FileArchive, TrendingUp, Loader2, ReceiptText, Info } from '
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { BondIssuancePanel } from './BondIssuancePanel';
+import { TreasuryStrategiesPanel } from './TreasuryStrategiesPanel';
 
 export const YieldInsights = () => {
     const { state, actions } = useTrustLayer();
-    const { safeVaultData, proofBondData, isLoading } = state;
+    const { proofBondData, isLoading } = state;
     const [isRedeeming, setIsRedeeming] = useState<number | null>(null);
+    const [purchaseAmount, setPurchaseAmount] = useState('');
 
     const handleRedeem = async (bondId: number) => {
         setIsRedeeming(bondId);
@@ -20,58 +22,58 @@ export const YieldInsights = () => {
             setIsRedeeming(null);
         }
     };
+
+    const handlePurchase = async () => {
+        if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) return;
+        // The purchase logic is now handled in the context
+        await actions.purchaseBond(purchaseAmount);
+        setPurchaseAmount('');
+    };
     
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
-                            <PiggyBank /> SafeVault Performance
-                        </CardTitle>
-                        <CardDescription>
-                            Insights into the secure vault holding assets for yield generation.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
-                        ) : (
-                            <div className="p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground">Total Value Locked</p>
-                                <p className="text-3xl font-bold">${safeVaultData.totalAssets}</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
-                            <FileArchive /> ProofBond Market
-                        </CardTitle>
-                        <CardDescription>
-                            Metrics on yield-bearing bonds backed by real-world assets.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
-                        ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground">Total Value Locked</p>
-                                <p className="text-2xl font-bold">${proofBondData.tvl}</p>
-                            </div>
-                            <div className="p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground">Active Bonds</p>
-                                <p className="text-2xl font-bold">{proofBondData.activeBonds}</p>
-                            </div>
+            <TreasuryStrategiesPanel />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3">
+                        <FileArchive /> ProofBond Market
+                    </CardTitle>
+                    <CardDescription>
+                        Purchase or manage yield-bearing bonds backed by real-world assets.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     {isLoading ? (
+                        <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
+                    ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Total Value Locked</p>
+                            <p className="text-2xl font-bold">${proofBondData.tvl}</p>
                         </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-            
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Active Bonds</p>
+                            <p className="text-2xl font-bold">{proofBondData.activeBonds}</p>
+                        </div>
+                    </div>
+                    )}
+                    <div className="p-4 border rounded-lg space-y-2">
+                        <h4 className="font-semibold">Purchase ProofBonds</h4>
+                        <p className="text-xs text-muted-foreground">Purchase protocol bonds with USDC. These bonds represent a claim on future protocol revenue and help capitalize the treasury.</p>
+                        <div className="flex gap-2">
+                            <Input 
+                                type="number" 
+                                placeholder="Amount in USDC"
+                                value={purchaseAmount}
+                                onChange={e => setPurchaseAmount(e.target.value)}
+                            />
+                            <Button onClick={handlePurchase} disabled={isLoading || !purchaseAmount}>Purchase</Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             <BondIssuancePanel />
 
             <Card>

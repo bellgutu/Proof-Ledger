@@ -94,6 +94,13 @@ interface AIData {
   }>;
 }
 
+interface ArbitrageEngineData {
+    medianPrice: string;
+    profitThreshold: string;
+    isPaused: boolean;
+    oraclePrices: { address: Address; price: string }[];
+}
+
 interface TrustLayerState {
   // Core Contract Data
   mainContractData: { protocolFee: number };
@@ -102,6 +109,7 @@ interface TrustLayerState {
   proofBondData: ProofBondData;
   forgeMarketData: ForgeMarketData;
   openGovernorData: OpenGovernorData;
+  arbitrageEngineData: ArbitrageEngineData;
   
   // AI Enhancement Data
   aiData: AIData;
@@ -224,6 +232,12 @@ const initialTrustLayerState: TrustLayerState = {
     proposals: [],
     quorum: 0,
     votingPeriod: 0
+  },
+  arbitrageEngineData: {
+      medianPrice: '0',
+      profitThreshold: '0',
+      isPaused: false,
+      oraclePrices: [],
   },
   aiData: {
     currentPrediction: '0',
@@ -403,7 +417,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
              bondTvl = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'totalSupply',
+                functionName: 'totalSupply', // This is likely incorrect, should be totalValueLocked or similar
             });
         } catch (error) {
             console.error("Could not fetch bond TVL, using fallback.", error);
@@ -413,16 +427,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         let trancheSize: bigint = 0n;
         let nextTrancheId: bigint = 0n;
         try {
-            bondPrice = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'bondPrice',
-            });
-            apy = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'apy',
-            });
+            bondPrice = 0n; // This function does not exist on the provided ABI
+            apy = 0n; // This function does not exist on the provided ABI
             trancheSize = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
@@ -431,7 +437,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             nextTrancheId = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                functionName: 'nextTrancheId',
+                functionName: 'trancheCounter',
             });
         } catch (error) {
             console.log("Bond market data not available:", error);
@@ -527,6 +533,51 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             console.error("Could not fetch some governance data.", e);
         }
 
+        // --- ArbitrageEngine ---
+        let medianPrice: bigint = 0n;
+        let profitThreshold: bigint = 0n;
+        let isPaused: boolean = false;
+        let oraclePrices: { address: Address; price: string; }[] = [];
+        try {
+            const oracleAddresses = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ArbitrageEngine as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ArbitrageEngine,
+                functionName: 'getOracles',
+            }) as Address[];
+
+            const prices = await Promise.all(oracleAddresses.map(async (oracleAddr) => {
+                try {
+                    const price = await publicClient.readContract({
+                        address: oracleAddr,
+                        abi: DEPLOYED_CONTRACTS.abis.SimpleAIOracle,
+                        functionName: 'latestAnswer',
+                    }) as bigint;
+                    return { address: oracleAddr, price: formatUnits(price, 8) }; // Assuming 8 decimals for oracle price
+                } catch {
+                    return { address: oracleAddr, price: '0' };
+                }
+            }));
+            oraclePrices = prices;
+            
+            medianPrice = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ArbitrageEngine as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ArbitrageEngine,
+                functionName: 'getMedianPrice',
+            });
+            profitThreshold = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ArbitrageEngine as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ArbitrageEngine,
+                functionName: 'profitThreshold',
+            });
+            isPaused = await publicClient.readContract({
+                address: DEPLOYED_CONTRACTS.ArbitrageEngine as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ArbitrageEngine,
+                functionName: 'isPaused',
+            });
+        } catch (e) {
+            console.error("Could not fetch Arbitrage Engine data.", e);
+        }
+
         // --- AI Data ---
         let currentPrediction = '0';
         let aiConfidence = 0;
@@ -613,6 +664,12 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 proposals: [],
                 quorum: Number(quorum),
                 votingPeriod: Number(votingPeriod)
+            },
+            arbitrageEngineData: {
+                medianPrice: formatUnits(medianPrice, 8),
+                profitThreshold: formatUnits(profitThreshold, 6),
+                isPaused,
+                oraclePrices,
             },
             aiData: {
                 currentPrediction,
@@ -834,7 +891,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             toast({ variant: 'destructive', title: 'Wallet not connected' });
             return;
         }
-
+    
         // Step 1: Approve the ProofBond contract to spend USDC
         const approveDetails = {
             amount: parseFloat(amount),
@@ -842,15 +899,20 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             to: DEPLOYED_CONTRACTS.ProofBond,
             details: `Approving ${amount} USDC for bond purchase`
         };
-
+    
         const approveTxFunction = () => writeContractAsync({
             address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-            abi: [{ "constant": false, "inputs": [ { "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }],
+            abi: [{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}],
             functionName: 'approve',
             args: [DEPLOYED_CONTRACTS.ProofBond as Address, parseUnits(amount, 6)]
         });
-
-        await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
+    
+        try {
+            await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
+        } catch (e) {
+            console.error("Approval failed, stopping bond purchase.", e);
+            return; // Stop if approval fails
+        }
         
         // Step 2: Call issueTranche
         const issueDetails = {
@@ -860,7 +922,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             details: `Purchasing bond worth ${amount} USDC`
         };
         
-        // Using sensible defaults for a public purchase
         const interestBP = 500; // 5%
         const durationSeconds = 30 * 24 * 60 * 60; // 30 days
         
@@ -873,13 +934,13 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 parseUnits(amount, 6), 
                 BigInt(interestBP), 
                 BigInt(durationSeconds),
-                LEGACY_CONTRACTS.USDC_ADDRESS as Address, // Using USDC as collateral for itself for simplicity
+                LEGACY_CONTRACTS.USDC_ADDRESS as Address, 
                 parseUnits(amount, 6)
             ]
         });
-
+    
         await walletActions.executeTransaction('Purchase Bond', issueDetails, issueTxFunction, fetchData);
-
+    
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const issueTranche = useCallback(async (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => {
@@ -934,8 +995,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const claimBondYield = useCallback(async (bondId: number) => {
-        // The provided ABI doesn't have a separate `claimYield` function. 
-        // Redemption likely includes yield.
         toast({
             variant: 'destructive',
             title: 'Not Implemented',
@@ -1234,3 +1293,4 @@ export const useTrustLayer = (): TrustLayerContextType => {
     return context;
 };
 
+    

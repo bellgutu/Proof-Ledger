@@ -11,6 +11,7 @@
   "OpenGovernor": "0xf2500D9170e6f85D29a69d5a50764a8b44370AD6",
   "SimpleAIOracle": "0xc6a74BB5B17Ad5f56754AE3860750CcFff98524D",
   "SimpleAdaptiveAMM": "0xC687Dc2e94B6D2591551A5506236Dd64bd930C3C",
+  "ArbitrageEngine": "0x319045e6d91492abdbbad047737c74a4714d657b",
   "abis": {
     "MainContract": [
       {
@@ -66,6 +67,7 @@
         { "type": "function", "name": "removeLiquidity", "stateMutability": "nonpayable", "inputs": [{ "internalType": "uint256", "name": "poolId", "type": "uint256" }, { "internalType": "uint256", "name": "liquidity", "type": "uint256" }], "outputs": [] }
     ],
     "SimpleAIOracle": [
+        { "type": "function", "name": "latestAnswer", "stateMutability": "view", "inputs": [], "outputs": [{"internalType": "int256", "name": "", "type": "int256"}] },
         { "type": "function", "name": "getLatestPrediction", "stateMutability": "view", "inputs": [], "outputs": [{"internalType": "uint256", "name": "price", "type": "uint256"}, {"internalType": "uint256", "name": "confidence", "type": "uint256"}, {"internalType": "uint256", "name": "timestamp", "type": "uint256"}] },
         { "type": "function", "name": "submitPrediction", "stateMutability": "nonpayable", "inputs": [{"internalType": "uint256", "name": "price", "type": "uint256"}, {"internalType": "uint256", "name": "confidence", "type": "uint256"}], "outputs": [] },
         { "type": "function", "name": "getAIData", "stateMutability": "view", "inputs": [], "outputs": [{"internalType": "uint256", "name": "prediction", "type": "uint256"}, {"internalType": "uint256", "name": "confidence", "type": "uint256"}, {"internalType": "uint256", "name": "lastOptimization", "type": "uint256"}, {"internalType": "uint256", "name": "efficiencyGain", "type": "uint256"}, {"internalType": "uint256", "name": "gasSavings", "type": "uint256"}] },
@@ -77,8 +79,18 @@
     ],
     "AIPredictiveLiquidityOracle": [
         { "type": "function", "name": "getPrediction", "stateMutability": "view", "inputs": [], "outputs": [{"internalType": "uint256", "name": "liquidity", "type": "uint256"}, {"internalType": "uint256", "name": "accuracy", "type": "uint256"}] }
+    ],
+    "ArbitrageEngine": [
+      { "inputs": [], "name": "getOracles", "outputs": [ { "internalType": "address[]", "name": "", "type": "address[]" } ], "stateMutability": "view", "type": "function" },
+      { "inputs": [], "name": "getMedianPrice", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+      { "inputs": [], "name": "profitThreshold", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+      { "inputs": [], "name": "isPaused", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
+      { "inputs": [ { "internalType": "bool", "name": "_paused", "type": "bool" } ], "name": "setPaused", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [], "name": "checkAndExecuteArbitrage", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
     ]
   },
   "network": "sepolia",
   "chainId": 11155111
 }
+
+    

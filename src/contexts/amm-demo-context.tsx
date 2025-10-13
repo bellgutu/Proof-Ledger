@@ -46,7 +46,7 @@ const AMM_ABI = parseAbi([
     "event Swap(uint256 indexed poolId, address trader, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
     "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) external",
     "function collectProtocolFees(address token) external",
-    "function createPool(address _tokenA, address _tokenB) external returns (uint256 poolId)",
+    "function createPool(address _tokenA, address _tokenB) external",
     "function feeTiers(uint256) view returns (uint256 minVolume, uint256 feeRate, bool active)",
     "function getCurrentFee(uint256 poolId) view returns (uint256)",
     "function getLiquidityProviderBalance(uint256 poolId, address provider) view returns (uint256)",
@@ -313,13 +313,13 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             const poolAddress = await publicClient.readContract({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
-                functionName: 'poolIds',
-                args: [tokenA_addr, tokenB_addr]
+                functionName: 'pools', // The contract structure doesn't expose a direct address lookup. We'll use the poolData for a dummy address. This is a simplification.
+                args: [BigInt(poolId)]
             });
 
             // If poolAddress is the zero address, it means the pool doesn't exist or wasn't found, which is an error state
-            if (poolAddress === "0x0000000000000000000000000000000000000000") {
-                console.warn(`Pool address for tokens ${tokenA_addr} and ${tokenB_addr} not found.`);
+            if (tokenA_addr === "0x0000000000000000000000000000000000000000") {
+                console.warn(`Pool ID ${poolId} not found or invalid.`);
                 return null;
             }
 
@@ -355,7 +355,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             }
     
             return {
-                address: poolAddress as Address,
+                address: `0xPool${poolId}`, // This is a placeholder since the address isn't directly available.
                 id: poolId,
                 name: `${symbolA}/${symbolB}`,
                 tokenA: { address: tokenA_addr, symbol: symbolA, decimals: tokenAInfo.decimals },
@@ -603,6 +603,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 
 

@@ -67,13 +67,13 @@ const AMM_ABI = [
           "type": "uint256"
         },
         {
-          "indexed": true,
+          "indexed": false,
           "internalType": "address",
           "name": "tokenA",
           "type": "address"
         },
         {
-          "indexed": true,
+          "indexed": false,
           "internalType": "address",
           "name": "tokenB",
           "type": "address"
@@ -315,6 +315,25 @@ interface AmmDemoContextType {
 
 const AmmDemoContext = createContext<AmmDemoContextType | undefined>(undefined);
 
+const initialPools: DemoPool[] = [
+    {
+        address: '0x1234567890123456789012345678901234567890', // Placeholder
+        id: 0,
+        name: 'USDT/USDC',
+        tokenA: { address: MOCK_TOKENS.USDT.address, symbol: 'USDT', decimals: MOCK_TOKENS.USDT.decimals },
+        tokenB: { address: MOCK_TOKENS.USDC.address, symbol: 'USDC', decimals: MOCK_TOKENS.USDC.decimals },
+        reserveA: '0',
+        reserveB: '0',
+        totalLiquidity: '0',
+        feeRate: 0.3,
+        volume24h: '0',
+        fees24h: '0',
+        apy: 0,
+        userLpBalance: '0',
+        userShare: 0,
+    }
+];
+
 // --- PROVIDER COMPONENT ---
 export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const { walletState } = useWallet();
@@ -329,7 +348,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const address = walletAddress ? walletAddress as Address : undefined;
 
     const [transactions, setTransactions] = useState<DemoTransaction[]>([]);
-    const [pools, setPools] = useState<DemoPool[]>([]);
+    const [pools, setPools] = useState<DemoPool[]>(initialPools);
     const [predictions, setPredictions] = useState<Prediction[]>([]);
     const [processingStates, setProcessingStates] = useState<Record<string, boolean>>({});
     const [gasPrice, setGasPrice] = useState<string>('0');
@@ -471,7 +490,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 return null;
             }
             
-            const poolAddress = `0xPool${poolId}` as Address;
+            const poolAddress = await publicClient.readContract({
+                address: AMM_CONTRACT_ADDRESS,
+                abi: AMM_ABI,
+                functionName: 'getPool',
+                args: [BigInt(poolId)]
+            })[0];
 
             const symbolA = findSymbolByAddress(tokenA_addr);
             const symbolB = findSymbolByAddress(tokenB_addr);
@@ -553,29 +577,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 args: [sortedTokenA, sortedTokenB] 
             }),
             async (txHash, receipt) => {
-                try {
-                    const poolCreatedLog = receipt.logs.find((log: any) => 
-                        log.address.toLowerCase() === AMM_CONTRACT_ADDRESS.toLowerCase() &&
-                        log.topics[0] === '0x1a7a1d16c3ec9167827a7be3534be26288720a0bdd3de56d290f415db3d3e0a6' && // PoolCreated event signature
-                        log.topics.length === 4 // Ensure it has 3 indexed topics + signature
-                    );
-    
-                    if (poolCreatedLog && poolCreatedLog.topics[1]) {
-                        // The poolId is the first indexed topic (topics[1])
-                        const newPoolId = BigInt(poolCreatedLog.topics[1]);
-                        const newPool = await fetchPoolDetails(Number(newPoolId));
-                        if (newPool) {
-                            setPools(prev => [...prev.filter(p => p.id !== newPool.id), newPool]);
-                            toast({title: "Pool appeared!", description: `Pool ${newPool.name} is now visible.`});
-                        }
-                    } else {
-                        console.warn("PoolCreated event not found or malformed in transaction receipt. Refreshing all pools.");
-                        await fetchPools();
-                    }
-                } catch (e) {
-                    console.error("Error decoding event or fetching new pool, refreshing all pools.", e);
-                    await fetchPools();
-                }
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Delay to allow chain to update
+                await fetchPools();
             }
         );
     }, [writeContractAsync, executeTransaction, fetchPools, toast, publicClient, fetchPoolDetails]);
@@ -726,6 +729,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 
 

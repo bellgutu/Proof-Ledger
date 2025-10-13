@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
@@ -732,7 +733,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
     const depositAmountOnChain = parseTokenAmount(amount, usdtDecimals);
     
-    // Approve the Perpetuals VAULT, not the main perpetuals contract
     await approveToken('USDT', parseFloat(amount), PERPETUALS_VAULT_ADDRESS);
 
     const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: PERPETUALS_VAULT_ADDRESS, details: 'Deposit collateral to Perpetuals Vault' };
@@ -802,7 +802,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     const sizeOnChain = parseTokenAmount(size, sizeDecimals);
     const collateralOnChain = parseTokenAmount(collateral, USDT_DECIMALS);
 
-    const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: 'Perpetuals Contract', details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH` };
+    const dialogDetails = { amount: parseFloat(collateral), token: 'USDT', to: PERPETUALS_CONTRACT_ADDRESS, details: `Open ${side === 0 ? 'LONG' : 'SHORT'} position of ${size} ETH` };
     const txFunction = async () => writeContractAsync({
         address: PERPETUALS_CONTRACT_ADDRESS,
         abi: PERPETUALS_ABI,
@@ -821,7 +821,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const closePosition = useCallback(async (position: Position, pnl: number, exitPrice: number) => {
     const detailsNode = ( <div className="text-xs text-left"> <div>Closed {position.side.toUpperCase()} position of {position.size} ETH</div> <div>Entry: ${position.entryPrice.toFixed(2)}</div> <div className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}> Final PnL: ${pnl.toFixed(2)} </div> </div> );
-    const dialogDetails = { to: 'Perpetuals Contract', details: detailsNode };
+    const dialogDetails = { to: PERPETUALS_CONTRACT_ADDRESS, details: detailsNode };
     
     const txFunction = async () => writeContractAsync({
         address: PERPETUALS_CONTRACT_ADDRESS,

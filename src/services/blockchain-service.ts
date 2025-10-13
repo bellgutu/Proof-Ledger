@@ -486,7 +486,7 @@ export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promi
       address: usdtContract.address,
       abi: genericErc20Abi,
       functionName: 'allowance',
-      args: [ownerAddress, PERPETUALS_CONTRACT_ADDRESS]
+      args: [ownerAddress, PERPETUALS_VAULT_ADDRESS]
     });
     return parseFloat(formatTokenAmount(allowance, USDT_DECIMALS));
   } catch (error) {

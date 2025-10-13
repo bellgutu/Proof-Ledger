@@ -11,7 +11,7 @@ import { useWallet } from './wallet-context';
 // --- CONTRACT & TOKEN ADDRESSES ---
 // These are specific to the new, isolated AI-powered AMM Demo
 const DEPLOYED_CONTRACTS = {
-  AdaptiveMarketMaker: "0xfc02fA5b3B11EB137f2061c7919c257eCe2AbF72",
+  AdaptiveMarketMaker: "0xC3F0c7b04995517A4484e242D766f4d48f699e85",
   AIPredictiveLiquidityOracle: "0x730A471452aA3FA1AbC604f22163a7655B78d1B1",
 };
 
@@ -409,7 +409,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
     
-        const defaultFeeTier = BigInt(30);
+        const defaultFeeTier = BigInt(30); // 0.3%
     
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
             () => writeContractAsync({ 
@@ -419,8 +419,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 args: [sortedTokenA, sortedTokenB, defaultFeeTier] 
             }),
             async (txHash, receipt) => {
-                 await new Promise(resolve => setTimeout(resolve, 2000)); // Give indexer time to catch up
-                 await fetchPools();
+                if (publicClient) {
+                    await publicClient.waitForTransactionReceipt({ hash: txHash });
+                }
+                await fetchPools();
             }
         );
     }, [pools, writeContractAsync, executeTransaction, fetchPools, toast, publicClient]);

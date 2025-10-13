@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useAccount, useBalance, useWriteContract, useWalletClient, useSwitchChain } from 'wagmi';
@@ -308,8 +309,9 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     
             const { tokenA: tokenA_addr, tokenB: tokenB_addr, reserveA, reserveB, totalLiquidity, currentFee } = poolData;
 
-            // This is a temporary hack because the AMM returns a bogus address for the pool itself.
-            const poolAddress = `0x${'0'.repeat(24)}${poolId.toString(16).padStart(40, '0')}` as Address;
+            // The pool address is derived from the factory contract, which is not available here.
+            // For now, we will use a placeholder address, which might impact some functionality but will allow display.
+             const poolAddress = `0xPoolAddress_Placeholder_${poolId}` as Address;
 
             const symbolA = findSymbolByAddress(tokenA_addr);
             const symbolB = findSymbolByAddress(tokenB_addr);
@@ -407,7 +409,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
     
-        // Default fee tier of 30 basis points (0.3%)
         const defaultFeeTier = BigInt(30);
     
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
@@ -418,7 +419,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 args: [sortedTokenA, sortedTokenB, defaultFeeTier] 
             }),
             async (txHash, receipt) => {
-                await fetchPools();
+                 await new Promise(resolve => setTimeout(resolve, 2000)); // Give indexer time to catch up
+                 await fetchPools();
             }
         );
     }, [pools, writeContractAsync, executeTransaction, fetchPools, toast, publicClient]);
@@ -596,6 +598,8 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    
 
     
 

@@ -85,7 +85,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   const isAmmDemoPage = pathname === '/amm-demo';
-  const isTrustLayerPage = pathname === '/';
 
   return (
     <>
@@ -126,8 +125,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-6 lg:p-8">
-            {!isAmmDemoPage && !isTrustLayerPage && <DebugWallet />}
-            <div className={cn(!isAmmDemoPage && !isTrustLayerPage && "mt-8")}>{children}</div>
+            {!isAmmDemoPage && <DebugWallet />}
+            <div className={cn(!isAmmDemoPage && "mt-8")}>{children}</div>
         </div>
       </main>
     </div>

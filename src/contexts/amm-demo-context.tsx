@@ -45,7 +45,7 @@ const AMM_ABI = parseAbi([
     "event Swap(uint256 indexed poolId, address trader, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
     "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) external",
     "function collectProtocolFees(address token) external",
-    "function createPool(address tokenA, address tokenB) external returns (uint256)",
+    "function createPool(address tokenA, address tokenB, uint256 feeTier) external returns (uint256)",
     "function feeTiers(uint256) view returns (uint256 minVolume, uint256 feeRate, bool active)",
     "function getCurrentFee(uint256 poolId) view returns (uint256)",
     "function getLiquidityProviderBalance(uint256 poolId, address provider) view returns (uint256)",
@@ -393,31 +393,32 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tokenAInfo = MOCK_TOKENS[tokenA];
         const tokenBInfo = MOCK_TOKENS[tokenB];
         if (!tokenAInfo || !tokenBInfo) return;
-
+    
         const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
             a.toLowerCase() < b.toLowerCase() ? -1 : 1
         );
-
+    
         const existing = pools.some(pool => 
             (pool.tokenA.address.toLowerCase() === sortedTokenA.toLowerCase() && pool.tokenB.address.toLowerCase() === sortedTokenB.toLowerCase())
         );
-
+    
         if (existing) {
             toast({ variant: "destructive", title: "Pool Already Exists" });
             return;
         }
-
+    
+        // Default fee tier of 30 basis points (0.3%)
+        const defaultFeeTier = BigInt(30);
+    
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
             () => writeContractAsync({ 
                 address: AMM_CONTRACT_ADDRESS, 
                 abi: AMM_ABI, 
                 functionName: 'createPool', 
-                args: [sortedTokenA, sortedTokenB] 
+                args: [sortedTokenA, sortedTokenB, defaultFeeTier] 
             }),
-            async (txHash) => {
-                 if (!publicClient) return;
-                 await publicClient.waitForTransactionReceipt({ hash: txHash });
-                 await fetchPools();
+            async (txHash, receipt) => {
+                await fetchPools();
             }
         );
     }, [pools, writeContractAsync, executeTransaction, fetchPools, toast, publicClient]);
@@ -595,5 +596,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    
 
     

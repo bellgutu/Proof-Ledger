@@ -11,7 +11,7 @@ import { useWallet } from './wallet-context';
 // --- CONTRACT & TOKEN ADDRESSES ---
 // These are specific to the new, isolated AI-powered AMM Demo
 const DEPLOYED_CONTRACTS = {
-  AdaptiveMarketMaker: "0xC3F0c7b04995517A4484e242D766f4d48f699e85",
+  AdaptiveMarketMaker: "0xC687Dc2e94B6D2591551A5506236Dd64bd930C3C",
   AIPredictiveLiquidityOracle: "0x730A471452aA3FA1AbC604f22163a7655B78d1B1",
 };
 
@@ -46,7 +46,7 @@ const AMM_ABI = parseAbi([
     "event Swap(uint256 indexed poolId, address trader, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
     "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) external",
     "function collectProtocolFees(address token) external",
-    "function createPool(address tokenA, address tokenB, uint256 feeTier) external returns (uint256)",
+    "function createPool(address lpAddr, address ownership) external",
     "function feeTiers(uint256) view returns (uint256 minVolume, uint256 feeRate, bool active)",
     "function getCurrentFee(uint256 poolId) view returns (uint256)",
     "function getLiquidityProviderBalance(uint256 poolId, address provider) view returns (uint256)",
@@ -414,19 +414,15 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
     
-        const defaultFeeTier = BigInt(30); // 0.3%
-    
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
             () => writeContractAsync({ 
                 address: AMM_CONTRACT_ADDRESS, 
                 abi: AMM_ABI, 
                 functionName: 'createPool', 
-                args: [sortedTokenA, sortedTokenB, defaultFeeTier] 
+                args: [sortedTokenA, sortedTokenB] 
             }),
             async (txHash, receipt) => {
-                if (publicClient) {
-                    await publicClient.waitForTransactionReceipt({ hash: txHash });
-                }
+                await publicClient.waitForTransactionReceipt({ hash: txHash });
                 await fetchPools();
             }
         );

@@ -1,5 +1,4 @@
 
-
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useAccount, useBalance, useWriteContract, useWalletClient, useSwitchChain } from 'wagmi';
@@ -1537,7 +1536,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const { walletAddress, isConnected } = walletState;
     const { data: walletClient } = useWalletClient();
     const publicClient = useMemo(() => getViemPublicClient(), []);
-    const { writeContract, writeContractAsync } = useWriteContract();
+    const { writeContractAsync } = useWriteContract();
     const { toast } = useToast();
     const { chain } = useAccount();
     const { switchChain } = useSwitchChain();
@@ -1766,32 +1765,24 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
             a.toLowerCase() < b.toLowerCase() ? -1 : 1
         );
-
-        setProcessing(`CreatePool_${tokenA}_${tokenB}`, true);
-        try {
-            const newPoolId = await writeContract({
+        
+        await executeTransaction(
+            'Create Pool',
+            `Creating ${tokenA}/${tokenB} pool`,
+            `CreatePool_${tokenA}_${tokenB}`,
+            () => writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
                 functionName: 'createPool',
-                args: [sortedTokenA, sortedTokenB]
-            });
-            
-            toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
-            
-            // Wait for tx and then fetch
-            // This is a simplification; a more robust solution would use onSuccess from executeTransaction
-            setTimeout(() => {
-                fetchPools();
-                 toast({ title: "Pool Created!", description: "The new pool is now available." });
-            }, 15000);
+                args: [sortedTokenA, sortedTokenB],
+            }),
+            async (txHash) => {
+                // Now we fetch pools again to get the latest state including the new pool.
+                await fetchPools();
+            }
+        );
 
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Pool Creation Failed', description: e.shortMessage || e.message });
-        } finally {
-            setProcessing(`CreatePool_${tokenA}_${tokenB}`, false);
-        }
-
-    }, [writeContract, fetchPools, toast, walletClient]);
+    }, [executeTransaction, writeContractAsync, fetchPools, toast, walletClient]);
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];
@@ -1997,5 +1988,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
-
+    
     

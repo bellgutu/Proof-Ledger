@@ -471,8 +471,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 return null;
             }
             
-            // The pool address itself isn't directly available from a simple mapping in this contract.
-            // This is a simplification; a real factory would give us the address. We'll use the ID as a key.
             const poolAddress = `0xPool${poolId}` as Address;
 
             const symbolA = findSymbolByAddress(tokenA_addr);
@@ -484,14 +482,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             const tokenBInfo = MOCK_TOKENS[symbolB];
     
             const volume24h = (Math.random() * 10000).toFixed(2);
-            // Fee rate is not available on this simplified contract, so we assume 0.3%
             const feeRate = 0.3;
             const fees24h = (parseFloat(volume24h) * (feeRate / 100)).toFixed(2);
             const apy = (Math.random() * 20 + 5);
     
             let userLpBalance = '0';
             let userShare = 0;
-            // LP token logic is not implemented in this simplified contract.
     
             return {
                 address: poolAddress,
@@ -501,7 +497,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 tokenB: { address: tokenB_addr, symbol: symbolB, decimals: tokenBInfo.decimals },
                 reserveA: formatUnits(reserveA, tokenAInfo.decimals),
                 reserveB: formatUnits(reserveB, tokenBInfo.decimals),
-                totalLiquidity: "0", // Not available
+                totalLiquidity: "0",
                 feeRate,
                 volume24h, fees24h, apy, userLpBalance, userShare
             };
@@ -563,26 +559,16 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                         log.topics[0] === '0x1a7a1d16c3ec9167827a7be3534be26288720a0bdd3de56d290f415db3d3e0a6' // PoolCreated event signature
                     );
     
-                    if (poolCreatedLog) {
-                        const decodedLog = decodeEventLog({
-                            abi: AMM_ABI,
-                            eventName: 'PoolCreated',
-                            topics: poolCreatedLog.topics,
-                            data: poolCreatedLog.data,
-                        });
-                        
-                        const newPoolId = (decodedLog.args as any).poolId;
-                        if (newPoolId !== undefined) {
-                            const newPool = await fetchPoolDetails(Number(newPoolId));
-                            if (newPool) {
-                                setPools(prev => [...prev.filter(p => p.id !== newPool.id), newPool]);
-                                toast({title: "Pool appeared!", description: `Pool ${newPool.name} is now visible.`});
-                            }
-                        } else {
-                           await fetchPools();
+                    if (poolCreatedLog && poolCreatedLog.topics[1]) {
+                        // The poolId is the first indexed topic (topics[1])
+                        const newPoolId = BigInt(poolCreatedLog.topics[1]);
+                        const newPool = await fetchPoolDetails(Number(newPoolId));
+                        if (newPool) {
+                            setPools(prev => [...prev.filter(p => p.id !== newPool.id), newPool]);
+                            toast({title: "Pool appeared!", description: `Pool ${newPool.name} is now visible.`});
                         }
                     } else {
-                        console.warn("PoolCreated event not found in transaction receipt. Refreshing all pools.");
+                        console.warn("PoolCreated event not found or malformed in transaction receipt. Refreshing all pools.");
                         await fetchPools();
                     }
                 } catch (e) {
@@ -739,6 +725,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 
 

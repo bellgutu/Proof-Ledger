@@ -10,8 +10,8 @@ import { useWallet } from './wallet-context';
 // --- CONTRACT & TOKEN ADDRESSES ---
 // These are specific to the new, isolated AI-powered AMM Demo
 const DEPLOYED_CONTRACTS = {
-  AdaptiveMarketMaker: "0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e",
-  AIPredictiveLiquidityOracle: "0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7",
+  AdaptiveMarketMaker: "0xC3F0c7b04995517A4484e242D766f4d48f699e85",
+  AIPredictiveLiquidityOracle: "0x730A471452aA3FA1AbC604f22163a7655B78d1B1",
 };
 
 const AMM_CONTRACT_ADDRESS = DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address;
@@ -36,589 +36,16 @@ const ERC20_ABI = parseAbi([
     "function mint(address to, uint256 amount) external",
 ]);
 
-const AMM_ABI = [
-    {
-      "inputs": [],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        }
-      ],
-      "name": "OwnableInvalidOwner",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "OwnableUnauthorizedAccount",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ReentrancyGuardReentrantCall",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        }
-      ],
-      "name": "SafeERC20FailedOperation",
-      "type": "error"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "oldFee",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "newFee",
-          "type": "uint256"
-        }
-      ],
-      "name": "FeeAdjusted",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountA",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountB",
-          "type": "uint256"
-        }
-      ],
-      "name": "LiquidityAdded",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountA",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountB",
-          "type": "uint256"
-        }
-      ],
-      "name": "LiquidityRemoved",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "previousOwner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "OwnershipTransferred",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "tokenA",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "tokenB",
-          "type": "address"
-        }
-      ],
-      "name": "PoolCreated",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "trader",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "tokenIn",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "tokenOut",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountIn",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountOut",
-          "type": "uint256"
-        }
-      ],
-      "name": "Swap",
-      "type": "event"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountA",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountB",
-          "type": "uint256"
-        }
-      ],
-      "name": "addLiquidity",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "token",
-          "type": "address"
-        }
-      ],
-      "name": "collectProtocolFees",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenA",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "tokenB",
-          "type": "address"
-        }
-      ],
-      "name": "createPool",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "feeTiers",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "minVolume",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "feeRate",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bool",
-          "name": "active",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        }
-      ],
-      "name": "getCurrentFee",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        }
-      ],
-      "name": "getLiquidityProviderBalance",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getPoolCount",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        }
-      ],
-      "name": "getReserves",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "reserveA",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "reserveB",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "owner",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "poolIds",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "pools",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "tokenA",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "tokenB",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "reserveA",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "reserveB",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "totalLiquidity",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "currentFee",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "lastAdjustment",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "volume24h",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "lastVolumeUpdate",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "protocolFeePercent",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "protocolFees",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "liquidity",
-          "type": "uint256"
-        }
-      ],
-      "name": "removeLiquidity",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "renounceOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "poolId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "tokenIn",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountIn",
-          "type": "uint256"
-        }
-      ],
-      "name": "swap",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "amountOut",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "transferOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-] as const;
+const AMM_ABI = parseAbi([
+    "function createPool(address tokenA, address tokenB) returns (uint256 poolId)",
+    "event PoolCreated(uint256 indexed poolId, address indexed tokenA, address indexed tokenB)",
+    "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) nonpayable",
+    "function removeLiquidity(uint256 poolId, uint256 liquidity) nonpayable",
+    "function swap(uint256 poolId, address tokenIn, uint256 amountIn) returns (uint256 amountOut)",
+    "function pools(uint256) view returns (address tokenA, address tokenB, uint256 reserveA, uint256 reserveB, uint256 totalLiquidity, uint256 currentFee, uint256 lastAdjustment, uint256 volume24h, uint256 lastVolumeUpdate)",
+    "function getPoolCount() view returns (uint256)",
+    "function getLiquidityProviderBalance(uint256 poolId, address provider) view returns (uint256)"
+]);
 
 
 const AI_ORACLE_ABI = [
@@ -1277,39 +704,51 @@ const AI_ORACLE_ABI = [
               "type": "uint256"
             },
             {
-              "internalType": "uint256",
-              "name": "optimalFee",
-              "type": "uint256"
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "timestamp",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "optimalFee",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "priceVolatility",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "volumeForecast",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "confidence",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bytes32",
+                  "name": "modelHash",
+                  "type": "bytes32"
+                }
+              ],
+              "internalType": "struct AIPredictiveLiquidityOracle.Prediction",
+              "name": "prediction",
+              "type": "tuple"
             },
             {
-              "internalType": "uint256",
-              "name": "priceVolatility",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "volumeForecast",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "confidence",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "modelHash",
-              "type": "bytes32"
+              "internalType": "bool",
+              "name": "hasSubmitted",
+              "type": "bool"
             }
           ],
-          "internalType": "struct AIPredictiveLiquidityOracle.Prediction",
-          "name": "prediction",
+          "internalType": "struct AIPredictiveLiquidityOracle.ProviderPrediction",
+          "name": "",
           "type": "tuple"
-        },
-        {
-          "internalType": "bool",
-          "name": "hasSubmitted",
-          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -1760,64 +1199,49 @@ const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockToken
     }
     const processingKey = `CreatePool_${tokenA}_${tokenB}`;
     setProcessing(processingKey, true);
-    let tempTxId = `temp_${Date.now()}`;
+    const tempTxId = `temp_create_pool_${Date.now()}`;
     addTransaction({ id: tempTxId, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
 
     try {
         const tokenAInfo = MOCK_TOKENS[tokenA];
         const tokenBInfo = MOCK_TOKENS[tokenB];
-        if (!tokenAInfo || !tokenBInfo) throw new Error("Invalid tokens");
 
         const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
             a.toLowerCase() < b.toLowerCase() ? -1 : 1
         );
 
-        // Directly call writeContractAsync and expect a tx hash
         const txHash = await writeContractAsync({
             address: AMM_CONTRACT_ADDRESS,
             abi: AMM_ABI,
             functionName: 'createPool',
             args: [sortedTokenA, sortedTokenB],
         });
-        
+
         toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
         setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
-        tempTxId = txHash;
-
+        
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
         if (receipt.status === 'success') {
-            toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
-            
-            const poolCreatedEvent = receipt.logs
-                .map(log => {
-                    try { return decodeEventLog({ abi: AMM_ABI, ...log }); } catch { return null; }
-                })
-                .find(event => event?.eventName === 'PoolCreated');
+            const poolCreatedLog = receipt.logs.find(log => 
+                log.topics[0] === '0x5c72b05534448f219b16550e5b74b281f6d3a84b0e50f588c7f21a813c54e0b0' // PoolCreated event signature
+            );
 
-            let newPoolId: number | null = null;
-            if (poolCreatedEvent && 'poolId' in poolCreatedEvent.args) {
-                newPoolId = Number(poolCreatedEvent.args.poolId);
-            } else {
-                // Fallback: If event is not found/parsed, try to get the latest pool ID
-                const poolCount = await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getPoolCount' });
-                if (Number(poolCount) > pools.length) {
-                    newPoolId = Number(poolCount) - 1;
-                }
-            }
-
-            if (newPoolId !== null) {
+            if (poolCreatedLog) {
+                const decodedLog = decodeEventLog({ abi: AMM_ABI, ...poolCreatedLog });
+                const newPoolId = Number((decodedLog.args as { poolId: bigint }).poolId);
                 const newPoolDetails = await fetchPoolDetails(newPoolId);
                 if (newPoolDetails) {
                     setPools(prev => [...prev, newPoolDetails]);
                 }
+                toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
+                updateTransactionStatus(txHash, 'Completed');
             } else {
-                // Final fallback if ID can't be determined
-                await fetchPools();
+                 // Fallback if event is not found/parsed
+                 await fetchPools();
+                 toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
+                 updateTransactionStatus(txHash, 'Completed');
             }
-
-            updateTransactionStatus(txHash, 'Completed', `Successfully created ${tokenA}/${tokenB} pool`, receipt.transactionHash, receipt.effectiveGasPrice?.toString());
-
         } else {
             throw new Error("Transaction reverted");
         }
@@ -1828,7 +1252,7 @@ const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockToken
     } finally {
         setProcessing(processingKey, false);
     }
-}, [walletClient, publicClient, writeContractAsync, fetchPoolDetails, fetchPools, pools, toast]);
+}, [walletClient, publicClient, writeContractAsync, fetchPoolDetails, fetchPools, toast]);
 
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
@@ -2041,3 +1465,4 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+

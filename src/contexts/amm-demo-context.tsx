@@ -471,7 +471,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 return null;
             }
             
-            // This is a simplification; a real factory would give us the address.
+            // The pool address itself isn't directly available from a simple mapping in this contract.
+            // This is a simplification; a real factory would give us the address. We'll use the ID as a key.
             const poolAddress = `0xPool${poolId}` as Address;
 
             const symbolA = findSymbolByAddress(tokenA_addr);
@@ -556,11 +557,41 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 args: [sortedTokenA, sortedTokenB] 
             }),
             async (txHash, receipt) => {
-                await publicClient.waitForTransactionReceipt({ hash: txHash });
-                await fetchPools();
+                try {
+                    const poolCreatedLog = receipt.logs.find((log: any) => 
+                        log.address.toLowerCase() === AMM_CONTRACT_ADDRESS.toLowerCase() &&
+                        log.topics[0] === '0x1a7a1d16c3ec9167827a7be3534be26288720a0bdd3de56d290f415db3d3e0a6' // PoolCreated event signature
+                    );
+    
+                    if (poolCreatedLog) {
+                        const decodedLog = decodeEventLog({
+                            abi: AMM_ABI,
+                            eventName: 'PoolCreated',
+                            topics: poolCreatedLog.topics,
+                            data: poolCreatedLog.data,
+                        });
+                        
+                        const newPoolId = (decodedLog.args as any).poolId;
+                        if (newPoolId !== undefined) {
+                            const newPool = await fetchPoolDetails(Number(newPoolId));
+                            if (newPool) {
+                                setPools(prev => [...prev.filter(p => p.id !== newPool.id), newPool]);
+                                toast({title: "Pool appeared!", description: `Pool ${newPool.name} is now visible.`});
+                            }
+                        } else {
+                           await fetchPools();
+                        }
+                    } else {
+                        console.warn("PoolCreated event not found in transaction receipt. Refreshing all pools.");
+                        await fetchPools();
+                    }
+                } catch (e) {
+                    console.error("Error decoding event or fetching new pool, refreshing all pools.", e);
+                    await fetchPools();
+                }
             }
         );
-    }, [pools, writeContractAsync, executeTransaction, fetchPools, toast, publicClient]);
+    }, [writeContractAsync, executeTransaction, fetchPools, toast, publicClient, fetchPoolDetails]);
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];
@@ -708,6 +739,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 
 

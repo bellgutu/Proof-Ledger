@@ -10,7 +10,7 @@ import { useWallet } from './wallet-context';
 // --- CONTRACT & TOKEN ADDRESSES ---
 // These are specific to the new, isolated AI-powered AMM Demo
 const DEPLOYED_CONTRACTS = {
-  AdaptiveMarketMaker: "0xC3F0c7b04995517A4484e242D766f4d48f699e85",
+  AdaptiveMarketMaker: "0xfc02fA5b3B11EB137f2061c7919c257eCe2AbF72",
   AIPredictiveLiquidityOracle: "0x730A471452aA3FA1AbC604f22163a7655B78d1B1",
 };
 
@@ -595,3 +595,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    

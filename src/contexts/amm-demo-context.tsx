@@ -12,7 +12,7 @@ import { useWallet } from './wallet-context';
 // These are specific to the new, isolated AI-powered AMM Demo
 const DEPLOYED_CONTRACTS = {
   AdaptiveMarketMaker: "0xC687Dc2e94B6D2591551A5506236Dd64bd930C3C",
-  AIPredictiveLiquidityOracle: "0x730A471452aA3FA1AbC604f22163a7655B78d1B1",
+  AIPredictiveLiquidityOracle: "0xc6a74BB5B17Ad5f56754AE3860750CcFff98524D",
 };
 
 const AMM_CONTRACT_ADDRESS = DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address;
@@ -309,11 +309,19 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     
             const { tokenA: tokenA_addr, tokenB: tokenB_addr, reserveA, reserveB, totalLiquidity, currentFee } = poolData;
 
-            // Since we cannot get the pool address directly from a creation event without a full indexer,
-            // and the `pools` array doesn't store the pool's own address, we will have to make a big assumption
-            // for this demo: that the pool address is the same as one of the tokens. THIS IS NOT CORRECT for a real app.
-            // For the demo purpose, we'll use tokenA's address as a placeholder pool address.
-            const poolAddress = tokenA_addr;
+            // This is a crucial fix: we need to find the pool address from the factory using the tokens.
+            const poolAddress = await publicClient.readContract({
+                address: AMM_CONTRACT_ADDRESS,
+                abi: AMM_ABI,
+                functionName: 'poolIds',
+                args: [tokenA_addr, tokenB_addr]
+            });
+
+            // If poolAddress is the zero address, it means the pool doesn't exist or wasn't found, which is an error state
+            if (poolAddress === "0x0000000000000000000000000000000000000000") {
+                console.warn(`Pool address for tokens ${tokenA_addr} and ${tokenB_addr} not found.`);
+                return null;
+            }
 
             const symbolA = findSymbolByAddress(tokenA_addr);
             const symbolB = findSymbolByAddress(tokenB_addr);
@@ -347,7 +355,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             }
     
             return {
-                address: poolAddress,
+                address: poolAddress as Address,
                 id: poolId,
                 name: `${symbolA}/${symbolB}`,
                 tokenA: { address: tokenA_addr, symbol: symbolA, decimals: tokenAInfo.decimals },
@@ -595,5 +603,6 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 

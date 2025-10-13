@@ -6,16 +6,13 @@ import { getViemPublicClient } from '@/services/blockchain-service';
 import { type Address, parseAbi, formatUnits, parseEther, getContract, parseUnits, decodeEventLog } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
+import AMM_CONTRACT_INFO from '@/lib/amm-contracts.json';
 
 // --- CONTRACT & TOKEN ADDRESSES ---
-// These are specific to the new, isolated AI-powered AMM Demo
-const DEPLOYED_CONTRACTS = {
-  AdaptiveMarketMaker: "0xC3F0c7b04995517A4484e242D766f4d48f699e85",
-  AIPredictiveLiquidityOracle: "0x730A471452aA3FA1AbC604f22163a7655B78d1B1",
-};
-
-const AMM_CONTRACT_ADDRESS = DEPLOYED_CONTRACTS.AdaptiveMarketMaker as Address;
-const AI_ORACLE_ADDRESS = DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address;
+const AMM_CONTRACT_ADDRESS = AMM_CONTRACT_INFO.AdaptiveMarketMaker as Address;
+const AI_ORACLE_ADDRESS = AMM_CONTRACT_INFO.AIPredictiveLiquidityOracle as Address;
+const AMM_ABI = AMM_CONTRACT_INFO.abis.AdaptiveMarketMaker;
+const AI_ORACLE_ABI = AMM_CONTRACT_INFO.abis.AIPredictiveLiquidityOracle;
 
 export const MOCK_TOKENS = {
     'USDT': { address: '0xC9569792794d40C612C6E4cd97b767EeE4708f24' as Address, name: 'Mock USDT', decimals: 18 },
@@ -35,861 +32,6 @@ const ERC20_ABI = parseAbi([
     "function transfer(address to, uint256 amount) external returns (bool)",
     "function mint(address to, uint256 amount) external",
 ]);
-
-const AMM_ABI = parseAbi([
-    "function createPool(address tokenA, address tokenB) returns (uint256 poolId)",
-    "event PoolCreated(uint256 indexed poolId, address indexed tokenA, address indexed tokenB)",
-    "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) nonpayable",
-    "function removeLiquidity(uint256 poolId, uint256 liquidity) nonpayable",
-    "function swap(uint256 poolId, address tokenIn, uint256 amountIn) returns (uint256 amountOut)",
-    "function pools(uint256) view returns (address tokenA, address tokenB, uint256 reserveA, uint256 reserveB, uint256 totalLiquidity, uint256 currentFee, uint256 lastAdjustment, uint256 volume24h, uint256 lastVolumeUpdate)",
-    "function getPoolCount() view returns (uint256)",
-    "function getLiquidityProviderBalance(uint256 poolId, address provider) view returns (uint256)"
-]);
-
-
-const AI_ORACLE_ABI = [
-    {
-      "inputs": [],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        }
-      ],
-      "name": "OwnableInvalidOwner",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "OwnableUnauthorizedAccount",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ReentrancyGuardReentrantCall",
-      "type": "error"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "newThreshold",
-          "type": "uint256"
-        }
-      ],
-      "name": "ConsensusThresholdChanged",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "newThreshold",
-          "type": "uint256"
-        }
-      ],
-      "name": "MinConfidenceChanged",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "previousOwner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "OwnershipTransferred",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "tokenA",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "tokenB",
-          "type": "address"
-        }
-      ],
-      "name": "PairAdded",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        }
-      ],
-      "name": "PredictionSubmitted",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "optimalFee",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "confidence",
-          "type": "uint256"
-        }
-      ],
-      "name": "PredictionUpdated",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        }
-      ],
-      "name": "ProviderRegistered",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "ProviderSlashed",
-      "type": "event"
-    },
-    {
-      "inputs": [],
-      "name": "MIN_PROVIDER_STAKE",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "activePairIds",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenA",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "tokenB",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "updateInterval",
-          "type": "uint256"
-        }
-      ],
-      "name": "addAssetPair",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "aiProviders",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "assetPairs",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "tokenA",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "tokenB",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "isActive",
-          "type": "bool"
-        },
-        {
-          "internalType": "uint256",
-          "name": "updateInterval",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "lastUpdated",
-          "type": "uint256"
-        },
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "optimalFee",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "priceVolatility",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "volumeForecast",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "confidence",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "modelHash",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct AIPredictiveLiquidityOracle.Prediction",
-          "name": "currentPrediction",
-          "type": "tuple"
-        },
-        {
-          "internalType": "uint256",
-          "name": "predictionCount",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "consensusThreshold",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getActivePairCount",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
-        }
-      ],
-      "name": "getCurrentPrediction",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "optimalFee",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "priceVolatility",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "volumeForecast",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "confidence",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "modelHash",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct AIPredictiveLiquidityOracle.Prediction",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
-        }
-      ],
-      "name": "getPredictionCount",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenA",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "tokenB",
-          "type": "address"
-        }
-      ],
-      "name": "getPredictionForTokens",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "optimalFee",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "priceVolatility",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "volumeForecast",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "confidence",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "modelHash",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct AIPredictiveLiquidityOracle.Prediction",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        }
-      ],
-      "name": "getProviderPrediction",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "components": [
-                {
-                  "internalType": "uint256",
-                  "name": "timestamp",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "optimalFee",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "priceVolatility",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "volumeForecast",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "confidence",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "bytes32",
-                  "name": "modelHash",
-                  "type": "bytes32"
-                }
-              ],
-              "internalType": "struct AIPredictiveLiquidityOracle.Prediction",
-              "name": "prediction",
-              "type": "tuple"
-            },
-            {
-              "internalType": "bool",
-              "name": "hasSubmitted",
-              "type": "bool"
-            }
-          ],
-          "internalType": "struct AIPredictiveLiquidityOracle.ProviderPrediction",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "minConfidenceThreshold",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "owner",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "pairIds",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "providerAccuracyScores",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "providerPredictions",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "timestamp",
-          "type": "uint256"
-        },
-        {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "timestamp",
-              "type": "uint256"
-            },
-            {
-              "components": [
-                {
-                  "internalType": "uint256",
-                  "name": "timestamp",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "optimalFee",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "priceVolatility",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "volumeForecast",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "confidence",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "bytes32",
-                  "name": "modelHash",
-                  "type": "bytes32"
-                }
-              ],
-              "internalType": "struct AIPredictiveLiquidityOracle.Prediction",
-              "name": "prediction",
-              "type": "tuple"
-            },
-            {
-              "internalType": "bool",
-              "name": "hasSubmitted",
-              "type": "bool"
-            }
-          ],
-          "internalType": "struct AIPredictiveLiquidityOracle.ProviderPrediction",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "providerStakes",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "registerAsProvider",
-      "outputs": [],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "renounceOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "newThreshold",
-          "type": "uint256"
-        }
-      ],
-      "name": "setConsensusThreshold",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "newThreshold",
-          "type": "uint256"
-        }
-      ],
-      "name": "setMinConfidenceThreshold",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "provider",
-          "type": "address"
-        }
-      ],
-      "name": "slashProvider",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "pairId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "optimalFee",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "priceVolatility",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "volumeForecast",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "confidence",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "modelHash",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes",
-          "name": "signature",
-          "type": "bytes"
-        }
-      ],
-      "name": "submitPrediction",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "transferOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "withdrawStake",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-] as const;
 
 // --- TYPE DEFINITIONS ---
 export type MockTokenSymbol = keyof typeof MOCK_TOKENS;
@@ -1112,17 +254,25 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         if (!publicClient || !address) return null;
     
         try {
-            const poolData = await publicClient.readContract({
+            // The ABIs in the JSON are arrays of objects, need to be used directly.
+            const AMM_ABI_FOR_READ = AMM_CONTRACT_INFO.abis.AdaptiveMarketMaker;
+            
+            const poolReserves = await publicClient.readContract({
                 address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'pools',
+                abi: AMM_ABI_FOR_READ,
+                functionName: 'getReserves',
                 args: [BigInt(poolId)]
             });
-    
-            const { tokenA: tokenA_addr, tokenB: tokenB_addr, reserveA, reserveB, totalLiquidity, currentFee } = poolData;
+            const {reserveA, reserveB} = poolReserves;
 
-            const symbolA = findSymbolByAddress(tokenA_addr);
-            const symbolB = findSymbolByAddress(tokenB_addr);
+            // This is a mock implementation because the simplified ABI doesn't have `pools` view
+            const poolFromState = pools.find(p => p.id === poolId);
+            const tokenA_addr = poolFromState?.tokenA.address || '0x0';
+            const tokenB_addr = poolFromState?.tokenB.address || '0x0';
+            const totalLiquidity = BigInt(poolFromState?.totalLiquidity || '0');
+
+            const symbolA = findSymbolByAddress(tokenA_addr as Address);
+            const symbolB = findSymbolByAddress(tokenB_addr as Address);
     
             if (!symbolA || !symbolB) return null;
     
@@ -1130,13 +280,14 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             const tokenBInfo = MOCK_TOKENS[symbolB];
     
             const volume24h = (Math.random() * 10000).toFixed(2);
-            const fees24h = (parseFloat(volume24h) * (Number(currentFee) / 10000)).toFixed(2);
+            const feeRate = 0.3; // mock
+            const fees24h = (parseFloat(volume24h) * (feeRate / 100)).toFixed(2);
             const tvl = parseFloat(formatUnits(reserveA, tokenAInfo.decimals)) * 1 + parseFloat(formatUnits(reserveB, tokenBInfo.decimals)) * 1;
             const apy = tvl > 0 ? (parseFloat(fees24h) * 365 / tvl) * 100 : 0;
     
             const userLpBalance = await publicClient.readContract({
                 address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
+                abi: AMM_ABI_FOR_READ,
                 functionName: 'getLiquidityProviderBalance',
                 args: [BigInt(poolId), address]
             });
@@ -1146,12 +297,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 address: "0x0", // Pool address is not directly available in this simplified version
                 id: poolId,
                 name: `${symbolA}/${symbolB}`,
-                tokenA: { address: tokenA_addr, symbol: symbolA, decimals: tokenAInfo.decimals },
-                tokenB: { address: tokenB_addr, symbol: symbolB, decimals: tokenBInfo.decimals },
+                tokenA: { address: tokenA_addr as Address, symbol: symbolA, decimals: tokenAInfo.decimals },
+                tokenB: { address: tokenB_addr as Address, symbol: symbolB, decimals: tokenBInfo.decimals },
                 reserveA: formatUnits(reserveA, tokenAInfo.decimals),
                 reserveB: formatUnits(reserveB, tokenBInfo.decimals),
                 totalLiquidity: formatUnits(totalLiquidity, 18),
-                feeRate: Number(currentFee) / 100, // Assuming fee is in basis points
+                feeRate,
                 volume24h, fees24h, apy,
                 userLpBalance: formatUnits(userLpBalance, 18),
                 userShare
@@ -1160,7 +311,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             console.error(`Failed to fetch pool details for ID ${poolId}`, e);
             return null;
         }
-    }, [publicClient, address]);
+    }, [publicClient, address, pools]);
 
     const fetchPools = useCallback(async () => {
         if (!publicClient) return;
@@ -1192,67 +343,66 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         return () => clearInterval(interval);
     }, [isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats]);
     
-const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => {
-    if (!walletClient || !publicClient) {
-        toast({ variant: "destructive", title: "Wallet not connected" });
-        return;
-    }
-    const processingKey = `CreatePool_${tokenA}_${tokenB}`;
-    setProcessing(processingKey, true);
-    const tempTxId = `temp_create_pool_${Date.now()}`;
-    addTransaction({ id: tempTxId, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
+    const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => {
+        if (!walletClient || !publicClient) {
+            toast({ variant: "destructive", title: "Wallet not connected" });
+            return;
+        }
+        const processingKey = `CreatePool_${tokenA}_${tokenB}`;
+        setProcessing(processingKey, true);
+        const tempTxId = `temp_create_pool_${Date.now()}`;
+        addTransaction({ id: tempTxId, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
 
-    try {
-        const tokenAInfo = MOCK_TOKENS[tokenA];
-        const tokenBInfo = MOCK_TOKENS[tokenB];
+        try {
+            const tokenAInfo = MOCK_TOKENS[tokenA];
+            const tokenBInfo = MOCK_TOKENS[tokenB];
 
-        const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
-            a.toLowerCase() < b.toLowerCase() ? -1 : 1
-        );
-
-        const txHash = await writeContractAsync({
-            address: AMM_CONTRACT_ADDRESS,
-            abi: AMM_ABI,
-            functionName: 'createPool',
-            args: [sortedTokenA, sortedTokenB],
-        });
-
-        toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
-        setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
-        
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-        if (receipt.status === 'success') {
-            const poolCreatedLog = receipt.logs.find(log => 
-                log.topics[0] === '0x5c72b05534448f219b16550e5b74b281f6d3a84b0e50f588c7f21a813c54e0b0' // PoolCreated event signature
+            const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
+                a.toLowerCase() < b.toLowerCase() ? -1 : 1
             );
 
-            if (poolCreatedLog) {
-                const decodedLog = decodeEventLog({ abi: AMM_ABI, ...poolCreatedLog });
-                const newPoolId = Number((decodedLog.args as { poolId: bigint }).poolId);
-                const newPoolDetails = await fetchPoolDetails(newPoolId);
-                if (newPoolDetails) {
-                    setPools(prev => [...prev, newPoolDetails]);
+            const txHash = await writeContractAsync({
+                address: AMM_CONTRACT_ADDRESS,
+                abi: AMM_ABI,
+                functionName: 'createPool',
+                args: [sortedTokenA, sortedTokenB],
+            });
+
+            toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
+            setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
+            
+            const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+            if (receipt.status === 'success') {
+                const poolCreatedLog = receipt.logs.find(log => 
+                    log.topics[0] === '0x3c889d148a8a8c63f6991a0219c836928e4695b287b415a77ac639f4082260f3'
+                );
+
+                if (poolCreatedLog) {
+                    const decodedLog = decodeEventLog({ abi: AMM_ABI, ...poolCreatedLog });
+                    const newPoolId = Number((decodedLog.args as { poolId: bigint }).poolId);
+                    const newPoolDetails = await fetchPoolDetails(newPoolId);
+                    if (newPoolDetails) {
+                        setPools(prev => [...prev, newPoolDetails]);
+                    }
+                    toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
+                    updateTransactionStatus(txHash, 'Completed');
+                } else {
+                     await fetchPools();
+                     toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
+                     updateTransactionStatus(txHash, 'Completed');
                 }
-                toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
-                updateTransactionStatus(txHash, 'Completed');
             } else {
-                 // Fallback if event is not found/parsed
-                 await fetchPools();
-                 toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
-                 updateTransactionStatus(txHash, 'Completed');
+                throw new Error("Transaction reverted");
             }
-        } else {
-            throw new Error("Transaction reverted");
+        } catch (e: any) {
+            console.error("Pool creation failed:", e);
+            toast({ variant: 'destructive', title: "Pool Creation Failed", description: e.shortMessage || e.message });
+            updateTransactionStatus(tempTxId, 'Failed', e.shortMessage || e.message);
+        } finally {
+            setProcessing(processingKey, false);
         }
-    } catch (e: any) {
-        console.error("Pool creation failed:", e);
-        toast({ variant: 'destructive', title: "Pool Creation Failed", description: e.shortMessage || e.message });
-        updateTransactionStatus(tempTxId, 'Failed', e.shortMessage || e.message);
-    } finally {
-        setProcessing(processingKey, false);
-    }
-}, [walletClient, publicClient, writeContractAsync, fetchPoolDetails, fetchPools, toast]);
+    }, [walletClient, publicClient, writeContractAsync, fetchPoolDetails, fetchPools, toast]);
 
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {

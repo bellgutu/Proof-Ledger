@@ -1753,72 +1753,82 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         return () => clearInterval(interval);
     }, [isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats]);
     
-    const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => {
-        if (!walletClient || !publicClient) {
-            toast({ variant: "destructive", title: "Wallet not connected" });
-            return;
-        }
-        const processingKey = `CreatePool_${tokenA}_${tokenB}`;
-        setProcessing(processingKey, true);
-        const tempTxId = `temp_${Date.now()}`;
-        addTransaction({ id: tempTxId, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
+const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => {
+    if (!walletClient || !publicClient) {
+        toast({ variant: "destructive", title: "Wallet not connected" });
+        return;
+    }
+    const processingKey = `CreatePool_${tokenA}_${tokenB}`;
+    setProcessing(processingKey, true);
+    let tempTxId = `temp_${Date.now()}`;
+    addTransaction({ id: tempTxId, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
 
-        try {
-            const tokenAInfo = MOCK_TOKENS[tokenA];
-            const tokenBInfo = MOCK_TOKENS[tokenB];
-            if (!tokenAInfo || !tokenBInfo) throw new Error("Invalid tokens");
+    try {
+        const tokenAInfo = MOCK_TOKENS[tokenA];
+        const tokenBInfo = MOCK_TOKENS[tokenB];
+        if (!tokenAInfo || !tokenBInfo) throw new Error("Invalid tokens");
 
-            const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
-                a.toLowerCase() < b.toLowerCase() ? -1 : 1
-            );
+        const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
+            a.toLowerCase() < b.toLowerCase() ? -1 : 1
+        );
 
-            // Directly call writeContract and get the return value
-            const newPoolId = await writeContractAsync({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'createPool',
-                args: [sortedTokenA, sortedTokenB],
-            });
+        // Directly call writeContractAsync and expect a tx hash
+        const txHash = await writeContractAsync({
+            address: AMM_CONTRACT_ADDRESS,
+            abi: AMM_ABI,
+            functionName: 'createPool',
+            args: [sortedTokenA, sortedTokenB],
+        });
+        
+        toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
+        setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
+        tempTxId = txHash;
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+        if (receipt.status === 'success') {
+            toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
             
-            toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
+            const poolCreatedEvent = receipt.logs
+                .map(log => {
+                    try { return decodeEventLog({ abi: AMM_ABI, ...log }); } catch { return null; }
+                })
+                .find(event => event?.eventName === 'PoolCreated');
 
-            const receipt = await publicClient.waitForTransactionReceipt({ hash: newPoolId });
-
-            if (receipt.status === 'success') {
-                toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
-                
-                // Since we don't get poolId back directly from writeContractAsync in this manner,
-                // we parse it from the event logs. This is the correct way for this specific ABI.
-                const poolCreatedEvent = receipt.logs
-                    .map(log => {
-                        try { return decodeEventLog({ abi: AMM_ABI, ...log }); } catch { return null; }
-                    })
-                    .find(event => event?.eventName === 'PoolCreated');
-
-                if (poolCreatedEvent && 'poolId' in poolCreatedEvent.args) {
-                    const createdPoolId = Number(poolCreatedEvent.args.poolId);
-                    const newPoolDetails = await fetchPoolDetails(createdPoolId);
-                    if (newPoolDetails) {
-                        setPools(prev => [...prev, newPoolDetails]);
-                    }
-                } else {
-                    // Fallback to refreshing all pools if event parsing fails
-                    await fetchPools();
-                }
-
-                updateTransactionStatus(tempTxId, 'Completed', `Successfully created ${tokenA}/${tokenB} pool`, receipt.transactionHash, receipt.effectiveGasPrice?.toString());
-
+            let newPoolId: number | null = null;
+            if (poolCreatedEvent && 'poolId' in poolCreatedEvent.args) {
+                newPoolId = Number(poolCreatedEvent.args.poolId);
             } else {
-                throw new Error("Transaction reverted");
+                // Fallback: If event is not found/parsed, try to get the latest pool ID
+                const poolCount = await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getPoolCount' });
+                if (Number(poolCount) > pools.length) {
+                    newPoolId = Number(poolCount) - 1;
+                }
             }
-        } catch (e: any) {
-            console.error("Pool creation failed:", e);
-            toast({ variant: 'destructive', title: "Pool Creation Failed", description: e.shortMessage || e.message });
-            updateTransactionStatus(tempTxId, 'Failed', e.shortMessage || e.message);
-        } finally {
-            setProcessing(processingKey, false);
+
+            if (newPoolId !== null) {
+                const newPoolDetails = await fetchPoolDetails(newPoolId);
+                if (newPoolDetails) {
+                    setPools(prev => [...prev, newPoolDetails]);
+                }
+            } else {
+                // Final fallback if ID can't be determined
+                await fetchPools();
+            }
+
+            updateTransactionStatus(txHash, 'Completed', `Successfully created ${tokenA}/${tokenB} pool`, receipt.transactionHash, receipt.effectiveGasPrice?.toString());
+
+        } else {
+            throw new Error("Transaction reverted");
         }
-    }, [walletClient, publicClient, writeContractAsync, fetchPoolDetails, fetchPools, toast]);
+    } catch (e: any) {
+        console.error("Pool creation failed:", e);
+        toast({ variant: 'destructive', title: "Pool Creation Failed", description: e.shortMessage || e.message });
+        updateTransactionStatus(tempTxId, 'Failed', e.shortMessage || e.message);
+    } finally {
+        setProcessing(processingKey, false);
+    }
+}, [walletClient, publicClient, writeContractAsync, fetchPoolDetails, fetchPools, pools, toast]);
 
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {

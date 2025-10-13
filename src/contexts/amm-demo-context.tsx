@@ -46,7 +46,7 @@ const AMM_ABI = parseAbi([
     "event Swap(uint256 indexed poolId, address trader, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
     "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) external",
     "function collectProtocolFees(address token) external",
-    "function createPool(address lpAddr, address ownership) external",
+    "function createPool(address _lpAddr, address _ownership) external",
     "function feeTiers(uint256) view returns (uint256 minVolume, uint256 feeRate, bool active)",
     "function getCurrentFee(uint256 poolId) view returns (uint256)",
     "function getLiquidityProviderBalance(uint256 poolId, address provider) view returns (uint256)",
@@ -405,15 +405,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             a.toLowerCase() < b.toLowerCase() ? -1 : 1
         );
     
-        const existing = pools.some(pool => 
-            (pool.tokenA.address.toLowerCase() === sortedTokenA.toLowerCase() && pool.tokenB.address.toLowerCase() === sortedTokenB.toLowerCase())
-        );
-    
-        if (existing) {
-            toast({ variant: "destructive", title: "Pool Already Exists" });
-            return;
-        }
-    
         await executeTransaction('Create Pool', `Creating pool for ${tokenA}/${tokenB}`, `CreatePool_${tokenA}_${tokenB}`,
             () => writeContractAsync({ 
                 address: AMM_CONTRACT_ADDRESS, 
@@ -607,3 +598,4 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+

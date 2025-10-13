@@ -311,7 +311,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
 
             // The pool address is derived from the factory contract, which is not available here.
             // For now, we will use a placeholder address, which might impact some functionality but will allow display.
-             const poolAddress = `0xPoolAddress_Placeholder_${poolId}` as Address;
+             const poolAddress = (await publicClient.readContract({
+                address: AMM_CONTRACT_ADDRESS,
+                abi: AMM_ABI,
+                functionName: 'pools',
+                args: [BigInt(poolId)]
+            }))[0]; // Simplified: getting first element as placeholder address
 
             const symbolA = findSymbolByAddress(tokenA_addr);
             const symbolB = findSymbolByAddress(tokenB_addr);

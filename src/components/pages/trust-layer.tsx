@@ -1,3 +1,4 @@
+
 "use client";
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,11 +7,13 @@ import { Dashboard } from '@/components/trust-layer/dashboard';
 import { Governance } from '@/components/trust-layer/governance';
 import { MarketIntegrity } from '@/components/trust-layer/market-integrity';
 import { YieldInsights } from '@/components/trust-layer/yield-insights';
+import { WalletHeader } from '../shared/wallet-header';
 
 export default function TrustLayerPage() {
     return (
         <div className="container mx-auto p-0 space-y-8">
-            <div className="text-center space-y-2">
+            <WalletHeader />
+            <div className="text-center space-y-2 mt-8">
                 <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center justify-center gap-3">
                     <ShieldCheck className="w-10 h-10" /> Trust Layer Ecosystem
                 </h1>

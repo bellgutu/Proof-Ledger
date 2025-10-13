@@ -317,11 +317,27 @@ const AmmDemoContext = createContext<AmmDemoContextType | undefined>(undefined);
 
 const initialPools: DemoPool[] = [
     {
-        address: '0x1234567890123456789012345678901234567890', // Placeholder
+        address: '0x908C16b8ff2526a583284Fa41f866f4cEfB31928',
         id: 0,
         name: 'USDT/USDC',
         tokenA: { address: MOCK_TOKENS.USDT.address, symbol: 'USDT', decimals: MOCK_TOKENS.USDT.decimals },
         tokenB: { address: MOCK_TOKENS.USDC.address, symbol: 'USDC', decimals: MOCK_TOKENS.USDC.decimals },
+        reserveA: '0',
+        reserveB: '0',
+        totalLiquidity: '0',
+        feeRate: 0.05,
+        volume24h: '0',
+        fees24h: '0',
+        apy: 0,
+        userLpBalance: '0',
+        userShare: 0,
+    },
+    {
+        address: '0x910430e728dAD1105954b8b51Ec03F5BbdE1a57F',
+        id: 1,
+        name: 'USDT/WETH',
+        tokenA: { address: MOCK_TOKENS.USDT.address, symbol: 'USDT', decimals: MOCK_TOKENS.USDT.decimals },
+        tokenB: { address: MOCK_TOKENS.WETH.address, symbol: 'WETH', decimals: MOCK_TOKENS.WETH.decimals },
         reserveA: '0',
         reserveB: '0',
         totalLiquidity: '0',
@@ -490,12 +506,12 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 return null;
             }
             
-            const poolAddress = await publicClient.readContract({
+            const poolAddress = (await publicClient.readContract({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
                 functionName: 'getPool',
                 args: [BigInt(poolId)]
-            })[0];
+            }))[0];
 
             const symbolA = findSymbolByAddress(tokenA_addr);
             const symbolB = findSymbolByAddress(tokenB_addr);
@@ -729,6 +745,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 
 

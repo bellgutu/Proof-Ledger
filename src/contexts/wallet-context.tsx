@@ -19,7 +19,8 @@ import {
     getVaultCollateral,
     getActivePosition as getActivePositionFromService,
     getViemPublicClient,
-    GOVERNOR_ABI
+    GOVERNOR_ABI,
+    getPerpetualsVaultAddressFromProtocol
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -586,7 +587,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [publicClient, address, decimals]);
 
-    const approveToken = useCallback(async (tokenSymbol: string, amount: number, spender: `0x${string}` = DEX_CONTRACT_ADDRESS) => {
+    const approveToken = useCallback(async (tokenSymbol: string, amount: number, spender?: `0x${string}`) => {
+        if (!spender) throw new Error("Spender address is required for approveToken");
+
         const tokenInfo = ERC20_CONTRACTS[tokenSymbol as keyof typeof ERC20_CONTRACTS];
         if (!tokenInfo || !tokenInfo.address) {
             throw new Error(`Token ${tokenSymbol} is not configured.`);
@@ -726,18 +729,21 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [addTransaction, address, updateBalance, toast]);
   
  const depositCollateral = useCallback(async (amount: string) => {
-    if (!address || !PERPETUALS_VAULT_ADDRESS) throw new Error("Wallet not connected or vault address missing");
+    if (!address) throw new Error("Wallet not connected");
 
+    const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
+    if (!vaultAddress) throw new Error("Could not determine Perpetual Vault address.");
+    
     const usdtDecimals = decimals['USDT'];
     if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
     const depositAmountOnChain = parseTokenAmount(amount, usdtDecimals);
     
-    await approveToken('USDT', parseFloat(amount), PERPETUALS_VAULT_ADDRESS);
+    await approveToken('USDT', parseFloat(amount), vaultAddress);
 
-    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: PERPETUALS_VAULT_ADDRESS, details: 'Deposit collateral to Perpetuals Vault' };
+    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: vaultAddress, details: 'Deposit collateral to Perpetuals Vault' };
     const txFunction = () => writeContractAsync({
-        address: PERPETUALS_VAULT_ADDRESS,
+        address: vaultAddress,
         abi: PERPETUALS_VAULT_ABI,
         functionName: "deposit",
         args: [depositAmountOnChain],
@@ -750,16 +756,18 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   
   const withdrawCollateral = useCallback(async (amount: string) => {
+      const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
+      if (!vaultAddress) throw new Error("Could not determine Perpetual Vault address.");
+
       const usdtDecimals = decimals['USDT'];
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
-      if (!PERPETUALS_VAULT_ADDRESS) throw new Error("Perpetuals vault address missing");
       
-      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: PERPETUALS_VAULT_ADDRESS };
+      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: vaultAddress };
       const txFunction = async () => {
           const amountOnChain = parseTokenAmount(amount, usdtDecimals);
           
           return writeContractAsync({
-              address: PERPETUALS_VAULT_ADDRESS,
+              address: vaultAddress,
               abi: PERPETUALS_VAULT_ABI,
               functionName: 'withdraw',
               args: [amountOnChain]

@@ -543,9 +543,8 @@ export const PERPETUALS_ABI = [
       "stateMutability": "view",
       "type": "function"
     }
-] as const;
+  ] as const;
 
-// This is the correct ABI for the PerpetualsVault contract
 export const PERPETUALS_VAULT_ABI = [
     {
       "inputs": [
@@ -822,23 +821,48 @@ export interface VaultCollateral {
   available: number;
 }
 
+/**
+ * Dynamically fetches the vault address from the perpetual protocol contract.
+ * @returns {Promise<Address | null>} The address of the vault contract or null if not found.
+ */
+export async function getPerpetualsVaultAddressFromProtocol(): Promise<Address | null> {
+  const publicClient = getViemPublicClient();
+  if (!PERPETUALS_CONTRACT_ADDRESS) {
+    console.warn("[BlockchainService] Perpetuals contract address not set.");
+    return null;
+  }
+  try {
+    const vaultAddress = await publicClient.readContract({
+      address: PERPETUALS_CONTRACT_ADDRESS,
+      abi: PERPETUALS_ABI,
+      functionName: 'vault',
+    });
+    return vaultAddress;
+  } catch (e) {
+    console.error("[BlockchainService] Failed to fetch vault address from protocol:", e);
+    return null;
+  }
+}
+
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   const publicClient = getViemPublicClient();
-  if (!PERPETUALS_VAULT_ADDRESS) {
-    console.warn("[BlockchainService] Perpetuals vault address not set.");
+  const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
+
+  if (!vaultAddress) {
+    console.warn("[BlockchainService] Could not determine perpetuals vault address.");
     return { total: 0, locked: 0, available: 0 };
   }
   
   try {
     const total = await publicClient.readContract({
-        address: PERPETUALS_VAULT_ADDRESS,
+        address: vaultAddress,
         abi: PERPETUALS_VAULT_ABI,
         functionName: 'collateral',
         args: [userAddress],
     });
     
     const locked = await publicClient.readContract({
-        address: PERPETUALS_VAULT_ADDRESS,
+        address: vaultAddress,
         abi: PERPETUALS_VAULT_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],
@@ -893,13 +917,16 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
   const publicClient = getViemPublicClient();
   const usdtContract = ERC20_CONTRACTS['USDT'];
-  if (!usdtContract.address) return 0;
+  const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
+
+  if (!usdtContract.address || !vaultAddress) return 0;
+
   try {
     const allowance = await publicClient.readContract({
       address: usdtContract.address,
       abi: genericErc20Abi,
       functionName: 'allowance',
-      args: [ownerAddress, PERPETUALS_VAULT_ADDRESS]
+      args: [ownerAddress, vaultAddress]
     });
     return parseFloat(formatTokenAmount(allowance, USDT_DECIMALS));
   } catch (error) {

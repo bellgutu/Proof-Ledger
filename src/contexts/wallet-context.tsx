@@ -724,50 +724,42 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       toast({ title: 'Rewards Claimed!', description: `$${position.unclaimedRewards.toFixed(2)} has been added to your wallet.`});
   }, [addTransaction, address, updateBalance, toast]);
   
-  const depositCollateral = useCallback(async (amount: string) => {
-    if (!address || !publicClient) throw new Error("Wallet not connected");
+ const depositCollateral = useCallback(async (amount: string) => {
+    if (!address || !PERPETUALS_VAULT_ADDRESS) throw new Error("Wallet not connected or vault address missing");
+
     const usdtDecimals = decimals['USDT'];
     if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
 
-    const vaultAddress = await publicClient.readContract({
-        address: PERPETUALS_CONTRACT_ADDRESS,
-        abi: PERPETUALS_ABI,
-        functionName: 'vault',
-    });
-
     const depositAmountOnChain = parseTokenAmount(amount, usdtDecimals);
     
-    await approveToken('USDT', parseFloat(amount), vaultAddress);
+    // Approve the Perpetuals VAULT, not the main perpetuals contract
+    await approveToken('USDT', parseFloat(amount), PERPETUALS_VAULT_ADDRESS);
 
-    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
-    const txFunction = async () => {
-        return writeContractAsync({
-            address: vaultAddress,
-            abi: PERPETUALS_VAULT_ABI,
-            functionName: "deposit",
-            args: [depositAmountOnChain],
-        });
-    };
+    const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: PERPETUALS_VAULT_ADDRESS, details: 'Deposit collateral to Perpetuals Vault' };
+    const txFunction = () => writeContractAsync({
+        address: PERPETUALS_VAULT_ADDRESS,
+        abi: PERPETUALS_VAULT_ABI,
+        functionName: "deposit",
+        args: [depositAmountOnChain],
+    });
+    
     await executeTransaction('Deposit Collateral', dialogDetails, txFunction, async () => {
         await updateVaultCollateral();
     });
-}, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, address, publicClient, approveToken]);
+}, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, address, approveToken]);
 
   
   const withdrawCollateral = useCallback(async (amount: string) => {
       const usdtDecimals = decimals['USDT'];
       if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
-      const vaultAddress = await publicClient.readContract({
-        address: PERPETUALS_CONTRACT_ADDRESS,
-        abi: PERPETUALS_ABI,
-        functionName: 'vault',
-      });
-      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: 'Perpetuals Vault' };
+      if (!PERPETUALS_VAULT_ADDRESS) throw new Error("Perpetuals vault address missing");
+      
+      const dialogDetails = { amount: parseFloat(amount), token: 'USDT', to: PERPETUALS_VAULT_ADDRESS };
       const txFunction = async () => {
           const amountOnChain = parseTokenAmount(amount, usdtDecimals);
           
           return writeContractAsync({
-              address: vaultAddress,
+              address: PERPETUALS_VAULT_ADDRESS,
               abi: PERPETUALS_VAULT_ABI,
               functionName: 'withdraw',
               args: [amountOnChain]

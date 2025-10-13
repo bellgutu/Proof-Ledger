@@ -5,7 +5,7 @@
  * This service is the bridge between the ProfitForge frontend and your custom blockchain.
  * It contains functions that are safe to be executed on the client-side (read-only operations).
  */
-import { createPublicClient, http, parseAbi, defineChain, Address, createWalletClient, custom, type PublicClient, type WalletClient, getContract } from 'viem';
+import { createPublicClient, http, parseAbi, defineChain, Address, type PublicClient } from 'viem';
 import { localhost, sepolia } from 'viem/chains';
 import { formatTokenAmount, PRICE_DECIMALS, USDT_DECIMALS, ETH_DECIMALS } from '@/lib/format';
 import { isValidAddress } from '@/lib/utils';
@@ -17,6 +17,7 @@ export const FACTORY_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.DEX_FACTORY_AD
 export const DEX_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.DEX_ROUTER_ADDRESS as `0x${string}`;
 export const VAULT_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.VAULT_ADDRESS as `0x${string}`;
 export const PERPETUALS_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.PERPETUALS_VAULT_ADDRESS as `0x${string}`;
+export const PERPETUALS_VAULT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.PERPETUALS_VAULT_ADDRESS as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.GOVERNOR_ADDRESS as `0x${string}`;
 
 // --- Hardcoded Token Addresses for Client-Side Access ---
@@ -410,27 +411,21 @@ export interface VaultCollateral {
 
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   const publicClient = getViemPublicClient();
-  if (!PERPETUALS_CONTRACT_ADDRESS) {
-    console.warn("[BlockchainService] Perpetuals contract address not set.");
+  if (!PERPETUALS_VAULT_ADDRESS) {
+    console.warn("[BlockchainService] Perpetuals vault address not set.");
     return { total: 0, locked: 0, available: 0 };
   }
   
   try {
-    const vaultAddress = await publicClient.readContract({
-        address: PERPETUALS_CONTRACT_ADDRESS,
-        abi: PERPETUALS_ABI,
-        functionName: 'vault',
-    });
-
     const total = await publicClient.readContract({
-        address: vaultAddress,
+        address: PERPETUALS_VAULT_ADDRESS,
         abi: PERPETUALS_VAULT_ABI,
         functionName: 'collateral',
         args: [userAddress],
     });
     
     const locked = await publicClient.readContract({
-        address: vaultAddress,
+        address: PERPETUALS_VAULT_ADDRESS,
         abi: PERPETUALS_VAULT_ABI,
         functionName: 'lockedCollateral',
         args: [userAddress],

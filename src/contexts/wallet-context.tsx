@@ -20,7 +20,7 @@ import {
     getActivePosition as getActivePositionFromService,
     getViemPublicClient,
     GOVERNOR_ABI,
-    getPerpetualsVaultAddressFromProtocol
+    PERPETUALS_VAULT_ADDRESS
 } from '@/services/blockchain-service';
 import type { VaultCollateral, Position } from '@/services/blockchain-service';
 import { useToast } from '@/hooks/use-toast';
@@ -731,8 +731,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
  const depositCollateral = useCallback(async (amount: string) => {
     if (!address) throw new Error("Wallet not connected");
 
-    const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
-    if (!vaultAddress) throw new Error("Could not determine Perpetual Vault address.");
+    const vaultAddress = PERPETUALS_VAULT_ADDRESS;
+    if (!vaultAddress || !isValidAddress(vaultAddress)) throw new Error("Could not determine Perpetual Vault address.");
     
     const usdtDecimals = decimals['USDT'];
     if (usdtDecimals === undefined) throw new Error("USDT decimals not found");
@@ -756,7 +756,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   
   const withdrawCollateral = useCallback(async (amount: string) => {
-      const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
+      const vaultAddress = PERPETUALS_VAULT_ADDRESS;
       if (!vaultAddress) throw new Error("Could not determine Perpetual Vault address.");
 
       const usdtDecimals = decimals['USDT'];

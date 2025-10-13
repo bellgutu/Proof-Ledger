@@ -16,7 +16,7 @@ import DEPLOYED_LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
 export const FACTORY_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.DEX_FACTORY_ADDRESS as `0x${string}`;
 export const DEX_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.DEX_ROUTER_ADDRESS as `0x${string}`;
 export const VAULT_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.VAULT_ADDRESS as `0x${string}`;
-export const PERPETUALS_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.PERPETUALS_VAULT_ADDRESS as `0x${string}`;
+export const PERPETUALS_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.PERPETUALS_CONTRACT_ADDRESS as `0x${string}`;
 export const PERPETUALS_VAULT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.PERPETUALS_VAULT_ADDRESS as `0x${string}`;
 export const GOVERNOR_CONTRACT_ADDRESS = DEPLOYED_LEGACY_CONTRACTS.GOVERNOR_ADDRESS as `0x${string}`;
 
@@ -821,35 +821,12 @@ export interface VaultCollateral {
   available: number;
 }
 
-/**
- * Dynamically fetches the vault address from the perpetual protocol contract.
- * @returns {Promise<Address | null>} The address of the vault contract or null if not found.
- */
-export async function getPerpetualsVaultAddressFromProtocol(): Promise<Address | null> {
-  const publicClient = getViemPublicClient();
-  if (!PERPETUALS_CONTRACT_ADDRESS) {
-    console.warn("[BlockchainService] Perpetuals contract address not set.");
-    return null;
-  }
-  try {
-    const vaultAddress = await publicClient.readContract({
-      address: PERPETUALS_CONTRACT_ADDRESS,
-      abi: PERPETUALS_ABI,
-      functionName: 'vault',
-    });
-    return vaultAddress;
-  } catch (e) {
-    console.error("[BlockchainService] Failed to fetch vault address from protocol:", e);
-    return null;
-  }
-}
-
 export async function getVaultCollateral(userAddress: `0x${string}`): Promise<VaultCollateral> {
   const publicClient = getViemPublicClient();
-  const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
+  const vaultAddress = PERPETUALS_VAULT_ADDRESS;
 
-  if (!vaultAddress) {
-    console.warn("[BlockchainService] Could not determine perpetuals vault address.");
+  if (!vaultAddress || !isValidAddress(vaultAddress)) {
+    console.warn("[BlockchainService] PERPETUALS_VAULT_ADDRESS is not valid or not set.");
     return { total: 0, locked: 0, available: 0 };
   }
   
@@ -917,7 +894,7 @@ export async function getActivePosition(userAddress: `0x${string}`): Promise<Pos
 export async function getCollateralAllowance(ownerAddress: `0x${string}`): Promise<number> {
   const publicClient = getViemPublicClient();
   const usdtContract = ERC20_CONTRACTS['USDT'];
-  const vaultAddress = await getPerpetualsVaultAddressFromProtocol();
+  const vaultAddress = PERPETUALS_VAULT_ADDRESS;
 
   if (!usdtContract.address || !vaultAddress) return 0;
 

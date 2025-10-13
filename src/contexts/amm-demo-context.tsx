@@ -393,7 +393,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tokenAInfo = MOCK_TOKENS[tokenA];
         const tokenBInfo = MOCK_TOKENS[tokenB];
         if (!tokenAInfo || !tokenBInfo) return;
-    
+
         const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
             a.toLowerCase() < b.toLowerCase() ? -1 : 1
         );
@@ -414,12 +414,13 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'createPool', 
                 args: [sortedTokenA, sortedTokenB] 
             }),
-            async () => {
-                 await new Promise(resolve => setTimeout(resolve, 2000)); // Delay for state update
+            async (txHash) => {
+                 if (!publicClient) return;
+                 await publicClient.waitForTransactionReceipt({ hash: txHash });
                  await fetchPools();
             }
         );
-    }, [pools, writeContractAsync, executeTransaction, fetchPools, toast]);
+    }, [pools, writeContractAsync, executeTransaction, fetchPools, toast, publicClient]);
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
         const tokenInfo = MOCK_TOKENS[token];

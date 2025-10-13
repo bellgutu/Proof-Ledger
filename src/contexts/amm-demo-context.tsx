@@ -42,11 +42,11 @@ const AMM_ABI = parseAbi([
     "event LiquidityAdded(uint256 indexed poolId, address provider, uint256 amountA, uint256 amountB)",
     "event LiquidityRemoved(uint256 indexed poolId, address provider, uint256 amountA, uint256 amountB)",
     "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
-    "event PoolCreated(uint256 indexed poolId, address indexed tokenA, address indexed tokenB)",
+    "event PoolCreated(uint256 indexed poolId, address indexed addr, address indexed creator)",
     "event Swap(uint256 indexed poolId, address trader, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
     "function addLiquidity(uint256 poolId, uint256 amountA, uint256 amountB) external",
     "function collectProtocolFees(address token) external",
-    "function createPool(address _lpAddr, address _ownership) external",
+    "function createPool(address _tokenA, address _tokenB) external returns (uint256 poolId)",
     "function feeTiers(uint256) view returns (uint256 minVolume, uint256 feeRate, bool active)",
     "function getCurrentFee(uint256 poolId) view returns (uint256)",
     "function getLiquidityProviderBalance(uint256 poolId, address provider) view returns (uint256)",
@@ -309,14 +309,11 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     
             const { tokenA: tokenA_addr, tokenB: tokenB_addr, reserveA, reserveB, totalLiquidity, currentFee } = poolData;
 
-            // The pool address is derived from the factory contract, which is not available here.
-            // For now, we will use a placeholder address, which might impact some functionality but will allow display.
-             const poolAddress = (await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'pools',
-                args: [BigInt(poolId)]
-            }))[0]; // Simplified: getting first element as placeholder address
+            // Since we cannot get the pool address directly from a creation event without a full indexer,
+            // and the `pools` array doesn't store the pool's own address, we will have to make a big assumption
+            // for this demo: that the pool address is the same as one of the tokens. THIS IS NOT CORRECT for a real app.
+            // For the demo purpose, we'll use tokenA's address as a placeholder pool address.
+            const poolAddress = tokenA_addr;
 
             const symbolA = findSymbolByAddress(tokenA_addr);
             const symbolB = findSymbolByAddress(tokenB_addr);
@@ -598,4 +595,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 

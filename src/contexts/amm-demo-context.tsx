@@ -67,13 +67,13 @@ const AMM_ABI = [
           "type": "uint256"
         },
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "address",
           "name": "tokenA",
           "type": "address"
         },
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "address",
           "name": "tokenB",
           "type": "address"
@@ -556,7 +556,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 try {
                     const poolCreatedLog = receipt.logs.find((log: any) => 
                         log.address.toLowerCase() === AMM_CONTRACT_ADDRESS.toLowerCase() &&
-                        log.topics[0] === '0x1a7a1d16c3ec9167827a7be3534be26288720a0bdd3de56d290f415db3d3e0a6' // PoolCreated event signature
+                        log.topics[0] === '0x1a7a1d16c3ec9167827a7be3534be26288720a0bdd3de56d290f415db3d3e0a6' && // PoolCreated event signature
+                        log.topics.length === 4 // Ensure it has 3 indexed topics + signature
                     );
     
                     if (poolCreatedLog && poolCreatedLog.topics[1]) {
@@ -725,6 +726,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 
 

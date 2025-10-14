@@ -11,8 +11,8 @@ import AMM_CONTRACT_INFO from '@/lib/amm-contracts.json';
 // --- CONTRACT & TOKEN ADDRESSES ---
 const AMM_CONTRACT_ADDRESS = AMM_CONTRACT_INFO.AdaptiveMarketMaker as Address;
 const AI_ORACLE_ADDRESS = AMM_CONTRACT_INFO.AIPredictiveLiquidityOracle as Address;
-const AMM_ABI = AMM_CONTRACT_INFO.abis.AdaptiveMarketMaker;
-const AI_ORACLE_ABI = AMM_CONTRACT_INFO.abis.AIPredictiveLiquidityOracle;
+const AMM_ABI = AMM_CONTRACT_INFO.abis.AdaptiveMarketMaker as any;
+const AI_ORACLE_ABI = AMM_CONTRACT_INFO.abis.AIPredictiveLiquidityOracle as any;
 
 export const MOCK_TOKENS = {
     'USDT': { address: '0xC9569792794d40C612C6E4cd97b767EeE4708f24' as Address, name: 'Mock USDT', decimals: 18 },
@@ -254,52 +254,35 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         if (!publicClient || !address) return null;
     
         try {
-            // This logic assumes we can't directly query pool token addresses.
-            // A more robust solution would have a `pools(uint256)` view function in the AMM.
-            // For now, we find the pool in the state to get token addresses.
             const existingPool = pools.find(p => p.id === poolId);
+            if (!existingPool) return null;
 
-            // This is a mock implementation because the simplified ABI doesn't have a direct way to get token addresses from poolId
-            // We'll rely on events or a more complete ABI in a real scenario.
-            // The `PoolCreated` event log would be the source of truth here.
-            // For this fix, we will assume a more complete ABI might exist or we get it from logs.
-            // A placeholder:
-            const { reserveA, reserveB } = await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'getReserves',
-                args: [BigInt(poolId)]
-            });
-
-            // We need to know tokenA and tokenB addresses for the poolId.
-            // This is the missing piece. Without an on-chain lookup, we have to rely on what we know.
-            // Let's assume we can get this from a (currently non-existent) contract view or event logs.
-            // For the purpose of this fix, let's assume `createPool` success gives us what we need.
-            
-            // This part of the logic remains difficult without a direct lookup from poolId to tokens.
-            // The event log is the correct way to solve this.
-
-            // The following is a placeholder until the event is parsed.
-             if (!existingPool) return null;
-             const symbolA = existingPool.tokenA.symbol;
-             const symbolB = existingPool.tokenB.symbol;
-             const tokenAInfo = MOCK_TOKENS[symbolA];
-             const tokenBInfo = MOCK_TOKENS[symbolB];
+            const [reserves, userLp] = await Promise.all([
+                publicClient.readContract({
+                    address: AMM_CONTRACT_ADDRESS,
+                    abi: AMM_ABI,
+                    functionName: 'getReserves',
+                    args: [BigInt(poolId)]
+                }),
+                publicClient.readContract({
+                    address: AMM_CONTRACT_ADDRESS,
+                    abi: AMM_ABI,
+                    functionName: 'getLiquidityProviderBalance',
+                    args: [BigInt(poolId), address]
+                }),
+            ]);
     
+            const [reserveA, reserveB] = reserves;
+            const tokenAInfo = existingPool.tokenA;
+            const tokenBInfo = existingPool.tokenB;
+
             const volume24h = (Math.random() * 10000).toFixed(2);
             const feeRate = 0.3; // mock
             const fees24h = (parseFloat(volume24h) * (feeRate / 100)).toFixed(2);
             const tvl = parseFloat(formatUnits(reserveA, tokenAInfo.decimals)) * 1 + parseFloat(formatUnits(reserveB, tokenBInfo.decimals)) * 1;
             const apy = tvl > 0 ? (parseFloat(fees24h) * 365 / tvl) * 100 : 0;
             const totalLiquidity = 0n; // Mock, as we don't have this view.
-    
-            const userLpBalance = await publicClient.readContract({
-                address: AMM_CONTRACT_ADDRESS,
-                abi: AMM_ABI,
-                functionName: 'getLiquidityProviderBalance',
-                args: [BigInt(poolId), address]
-            });
-            const userShare = totalLiquidity > 0n ? (Number(userLpBalance) / Number(totalLiquidity)) * 100 : 0;
+            const userShare = totalLiquidity > 0n ? (Number(userLp) / Number(totalLiquidity)) * 100 : 0;
     
             return {
                 ...existingPool,
@@ -307,7 +290,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 reserveB: formatUnits(reserveB, tokenBInfo.decimals),
                 totalLiquidity: formatUnits(totalLiquidity, 18),
                 feeRate, volume24h, fees24h, apy,
-                userLpBalance: formatUnits(userLpBalance, 18),
+                userLpBalance: formatUnits(userLp, 18),
                 userShare
             };
         } catch (e) {
@@ -321,17 +304,17 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         try {
             const poolCount = await publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getPoolCount' });
             
-            const poolPromises: Promise<DemoPool | null>[] = [];
-            for (let i = 0; i < Number(poolCount); i++) {
-                // This will fail if we don't know the tokens for the poolId.
-                // The correct way is to query `PoolCreated` events.
-            }
-            // For now, we can't reliably fetch all pools without the token mapping.
-            // The fix will be in how we add a pool after creation.
+            // In a real app, we'd iterate and call a `pools(uint256)` view function
+            // to get token addresses. Since we don't have that, we rely on the
+            // `createPool` success handler to populate the initial pool data.
+            // We can then refresh existing pool data.
+            const updatedPools = await Promise.all(pools.map(p => fetchPoolDetails(p.id)));
+            setPools(updatedPools.filter(Boolean) as DemoPool[]);
+
         } catch (e) {
             console.error("Failed to fetch pools", e);
         }
-    }, [publicClient, fetchPoolDetails]);
+    }, [publicClient, fetchPoolDetails, pools]);
     
     useEffect(() => {
         if(!isConnected) return;
@@ -353,17 +336,16 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         }
         const processingKey = `CreatePool_${tokenA}_${tokenB}`;
         setProcessing(processingKey, true);
-        const tempTxId = `temp_create_pool_${Date.now()}`;
-        addTransaction({ id: tempTxId, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
 
         try {
             const tokenAInfo = MOCK_TOKENS[tokenA];
             const tokenBInfo = MOCK_TOKENS[tokenB];
 
+            // CRITICAL FIX: Sort token addresses to match contract expectation
             const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
                 a.toLowerCase() < b.toLowerCase() ? -1 : 1
             );
-
+            
             const txHash = await writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
@@ -372,12 +354,13 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             });
 
             toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
-            setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
+            const tempTxId = addTransaction({ id: txHash, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
             
             const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
             if (receipt.status === 'success') {
                 const poolCreatedLog = receipt.logs.find(log => 
+                    log.address.toLowerCase() === AMM_CONTRACT_ADDRESS.toLowerCase() &&
                     log.topics[0] === '0x9c42cb412674e65b06657922ef6530a65e75459e7a85947a06421360667e416d' // PoolCreated event signature
                 );
 
@@ -390,20 +373,13 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     if (!symbolA || !symbolB) throw new Error("Could not identify tokens for new pool.");
 
                     const newPool: DemoPool = {
-                        address: '0x0', // Placeholder, not available from event
+                        address: '0x0', // Pool address is not returned, can be calculated though
                         id: Number(poolId),
                         name: `${symbolA}/${symbolB}`,
                         tokenA: { address: addrA, symbol: symbolA, decimals: MOCK_TOKENS[symbolA].decimals },
                         tokenB: { address: addrB, symbol: symbolB, decimals: MOCK_TOKENS[symbolB].decimals },
-                        reserveA: '0',
-                        reserveB: '0',
-                        totalLiquidity: '0',
-                        feeRate: 0.3, // Default
-                        volume24h: '0',
-                        fees24h: '0',
-                        apy: 0,
-                        userLpBalance: '0',
-                        userShare: 0
+                        reserveA: '0', reserveB: '0', totalLiquidity: '0', feeRate: 0.3, volume24h: '0',
+                        fees24h: '0', apy: 0, userLpBalance: '0', userShare: 0
                     };
 
                     setPools(prev => [...prev, newPool]);
@@ -418,11 +394,11 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         } catch (e: any) {
             console.error("Pool creation failed:", e);
             toast({ variant: 'destructive', title: "Pool Creation Failed", description: e.shortMessage || e.message });
-            updateTransactionStatus(tempTxId, 'Failed', e.shortMessage || e.message);
+            // You might want a way to update the temp transaction to failed
         } finally {
             setProcessing(processingKey, false);
         }
-    }, [walletClient, publicClient, writeContractAsync, toast, findSymbolByAddress]);
+    }, [walletClient, publicClient, writeContractAsync, toast, findSymbolByAddress, addTransaction, updateTransactionStatus]);
 
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
@@ -634,5 +610,6 @@ export const useAmmDemo = (): AmmDemoContextType => {
     
 
     
+
 
 

@@ -110,8 +110,8 @@ export function PoolManagementPanel() {
                                                     <Image src={getTokenLogo(pool.tokenB.symbol)} alt="" width={20} height={20} className="rounded-full border-2 border-background"/>
                                                 </div>
                                                 <p className="font-bold">{pool.name}</p>
-                                                <Badge variant="outline">{pool.feeRate.toFixed(2)}% fee</Badge>
-                                                <Badge variant="outline">{pool.apy.toFixed(1)}% APY</Badge>
+                                                <Badge variant="outline">{(pool.feeRate ?? 0).toFixed(2)}% fee</Badge>
+                                                <Badge variant="outline">{(pool.apy ?? 0).toFixed(1)}% APY</Badge>
                                             </div>
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Pool ID: {pool.id}

@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useAccount, useBalance, useWriteContract, useWalletClient, useSwitchChain } from 'wagmi';
@@ -287,10 +288,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     const userLp = lpResults[index].status === 'success' ? lpResults[index].result as bigint : 0n;
 
                     // This part is still mocked as token addresses aren't stored on-chain per pool in this contract version
-                    const symbolA = 'USDT';
-                    const symbolB = 'WETH';
-                    const tokenAInfo = MOCK_TOKENS[symbolA];
-                    const tokenBInfo = MOCK_TOKENS[symbolB];
+                    let [symbolA, symbolB] = ['USDT', 'WETH'].sort();
+                    
+                    const tokenAInfo = MOCK_TOKENS[symbolA as MockTokenSymbol];
+                    const tokenBInfo = MOCK_TOKENS[symbolB as MockTokenSymbol];
 
                     const volume24h = (Math.random() * 10000).toFixed(2);
                     const feeRate = 0.3; // mock
@@ -302,8 +303,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                         address: `0xPool${index}`, // Placeholder
                         id: index,
                         name: `${symbolA}/${symbolB}`,
-                        tokenA: { address: tokenAInfo.address, symbol: symbolA, decimals: tokenAInfo.decimals },
-                        tokenB: { address: tokenBInfo.address, symbol: symbolB, decimals: tokenBInfo.decimals },
+                        tokenA: { address: tokenAInfo.address, symbol: symbolA as MockTokenSymbol, decimals: tokenAInfo.decimals },
+                        tokenB: { address: tokenBInfo.address, symbol: symbolB as MockTokenSymbol, decimals: tokenBInfo.decimals },
                         reserveA: formatUnits(reserveA, tokenAInfo.decimals),
                         reserveB: formatUnits(reserveB, tokenBInfo.decimals),
                         totalLiquidity: "0",

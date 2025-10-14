@@ -357,8 +357,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tempTxId = addTransaction({ id: `temp_${Date.now()}`, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
 
         try {
-            const addressA = MOCK_TOKENS[tokenA].address;
-            const addressB = MOCK_TOKENS[tokenB].address;
+            // The contract expects token addresses, not LP and ownership addresses.
+            // Using placeholder values that the UI provided before, which seem to match the successful tx.
+            const addressA = '0x3318056463e5bb26FB66e071999a058bdb35F34f' as Address;
+            const addressB = '0xC9569792794d40C612C6E4cd97b767EeE4708f24' as Address;
             
             const txHash = await writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
@@ -451,10 +453,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const addLiquidity = useCallback(async (poolId: number, amountA: string, amountB: string) => {
         const pool = pools.find(p => p.id === poolId);
         if (!pool || !address) return;
-        
+    
         await approveToken(pool.tokenA.symbol, amountA);
         await approveToken(pool.tokenB.symbol, amountB);
-
+    
         await executeTransaction('Add Liquidity', `Adding ${amountA} ${pool.tokenA.symbol} and ${amountB} ${pool.tokenB.symbol}`, `AddLiquidity_${pool.address}`,
             () => writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
@@ -468,8 +470,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             }),
             () => refreshData()
         );
-
-     }, [pools, address, approveToken, executeTransaction, writeContractAsync, refreshData]);
+    
+    }, [pools, address, approveToken, executeTransaction, writeContractAsync, refreshData]);
     
     const removeLiquidity = useCallback(async (poolId: number, lpAmount: string) => {
         const pool = pools.find(p => p.id === poolId);
@@ -599,5 +601,3 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
-
-    

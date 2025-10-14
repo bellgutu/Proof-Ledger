@@ -255,19 +255,16 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         if (!publicClient || !address) return null;
     
         try {
-            const poolData = await publicClient.readContract({
+             const [reserveA, reserveB] = await publicClient.readContract({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
-                functionName: 'getPool',
+                functionName: 'getReserves',
                 args: [BigInt(poolId)]
             });
 
-            const [tokenAAddr, tokenBAddr, reserveA, reserveB] = poolData;
-
-            const symbolA = findSymbolByAddress(tokenAAddr);
-            const symbolB = findSymbolByAddress(tokenBAddr);
-
-            if (!symbolA || !symbolB) return null;
+            // This is a mock since token addresses aren't easily retrievable per pool
+            const symbolA = 'WETH';
+            const symbolB = 'USDT';
 
             const tokenAInfo = MOCK_TOKENS[symbolA];
             const tokenBInfo = MOCK_TOKENS[symbolB];
@@ -282,17 +279,17 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             const volume24h = (Math.random() * 10000).toFixed(2);
             const feeRate = 0.3; // mock
             const fees24h = (parseFloat(volume24h) * (feeRate / 100)).toFixed(2);
-            const tvl = parseFloat(formatUnits(reserveA, tokenAInfo.decimals)) * 1 + parseFloat(formatUnits(reserveB, tokenBInfo.decimals)) * 1;
+            const tvl = parseFloat(formatUnits(reserveA, tokenAInfo.decimals)) * 1800 + parseFloat(formatUnits(reserveB, tokenBInfo.decimals)) * 1;
             const apy = tvl > 0 ? (parseFloat(fees24h) * 365 / tvl) * 100 : 0;
             const totalLiquidity = 0n; // Mock, as we don't have this view.
             const userShare = totalLiquidity > 0n ? (Number(userLp) / Number(totalLiquidity)) * 100 : 0;
     
             return {
-                address: '0x0', // Pool address is not returned by getPool, can be calculated though
+                address: `0xPool${poolId}`, // Placeholder
                 id: poolId,
                 name: `${symbolA}/${symbolB}`,
-                tokenA: { address: tokenAAddr, symbol: symbolA, decimals: tokenAInfo.decimals },
-                tokenB: { address: tokenBAddr, symbol: symbolB, decimals: tokenBInfo.decimals },
+                tokenA: { address: tokenAInfo.address, symbol: symbolA, decimals: tokenAInfo.decimals },
+                tokenB: { address: tokenBInfo.address, symbol: symbolB, decimals: tokenBInfo.decimals },
                 reserveA: formatUnits(reserveA, tokenAInfo.decimals),
                 reserveB: formatUnits(reserveB, tokenBInfo.decimals),
                 totalLiquidity: formatUnits(totalLiquidity, 18),
@@ -344,19 +341,15 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tempTxId = addTransaction({ id: `temp_${Date.now()}`, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
 
         try {
-            const tokenAInfo = MOCK_TOKENS[tokenA];
-            const tokenBInfo = MOCK_TOKENS[tokenB];
-
-            // CRITICAL FIX: Sort token addresses to match contract expectation
-            const [sortedTokenA, sortedTokenB] = [tokenAInfo.address, tokenBInfo.address].sort((a, b) =>
-                a.toLowerCase() < b.toLowerCase() ? -1 : 1
-            );
+            // Using placeholder addresses for _lpAddr and _ownership as per the discovered ABI
+            const placeholderLpAddr = '0x0000000000000000000000000000000000000001';
+            const placeholderOwnershipAddr = walletClient.account.address;
             
             const txHash = await writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
                 functionName: 'createPool',
-                args: [sortedTokenA, sortedTokenB],
+                args: [placeholderLpAddr, placeholderOwnershipAddr],
             });
 
             setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
@@ -378,7 +371,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     if (newPoolDetails) {
                         setPools(prev => [...prev, newPoolDetails]);
                     }
-                    toast({ title: "Pool Created Successfully!", description: `The ${tokenA}/${tokenB} pool is now live.` });
+                    toast({ title: "Pool Created Successfully!", description: `A new pool has been created.` });
                     updateTransactionStatus(txHash, 'Completed');
                 } else {
                      throw new Error("PoolCreated event not found in transaction logs.");
@@ -599,15 +592,3 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
-    
-    
-
-    
-
-    
-
-
-
-
-
-    

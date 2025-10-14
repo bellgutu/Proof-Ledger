@@ -23,49 +23,17 @@ export function PoolManagementPanel() {
     const { toast } = useToast();
     const publicClient = getViemPublicClient();
 
-    const checkExistingPool = useCallback(async () => {
-        if (!tokenA || !tokenB || tokenA === tokenB) {
-            setPoolExists(false);
-            return;
-        }
-        
-        setIsCheckingExisting(true);
-        try {
-            const existing = state.pools.some(pool => 
-                (pool.tokenA.symbol === tokenA && pool.tokenB.symbol === tokenB) ||
-                (pool.tokenA.symbol === tokenB && pool.tokenB.symbol === tokenA)
-            );
-            setPoolExists(existing);
-        } catch (e) {
-            console.error("Failed to check existing pool", e);
-        } finally {
-            setIsCheckingExisting(false);
-        }
-    }, [tokenA, tokenB, state.pools]);
-
-    useEffect(() => {
-        checkExistingPool();
-    }, [tokenA, tokenB, checkExistingPool]);
-
-    useEffect(() => {
-        const info = {
-            poolsCount: state.pools.length,
-            pools: state.pools.map(p => ({
-                id: p.id,
-                name: p.name,
-                address: p.address,
-                tokenA: p.tokenA.symbol,
-                tokenB: p.tokenB.symbol,
-            })),
-            tokenBalances: state.tokenBalances,
-            processingStates: state.processingStates,
-            isConnected: state.isConnected
-        };
-        setDebugInfo(JSON.stringify(info, null, 2));
-    }, [state.pools, state.tokenBalances, state.processingStates, state.isConnected]);
-
     const handleCreatePool = () => {
         if (!tokenA || !tokenB || tokenA === tokenB) return;
+        // Simple check before calling action
+        const existing = state.pools.some(pool => 
+            (pool.tokenA.symbol === tokenA && pool.tokenB.symbol === tokenB) ||
+            (pool.tokenA.symbol === tokenB && pool.tokenB.symbol === tokenA)
+        );
+        if (existing) {
+            toast({ variant: 'destructive', title: "Pool Exists", description: `A pool for ${tokenA}/${tokenB} already exists.`});
+            return;
+        }
         actions.createPool(tokenA, tokenB);
     }
 
@@ -91,21 +59,6 @@ export function PoolManagementPanel() {
                         </Select>
                     </div>
                     
-                    {isCheckingExisting && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Loader2 size={14} className="animate-spin" />
-                            Checking if pool exists...
-                        </div>
-                    )}
-                    
-                    {poolExists && (
-                        <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
-                            <p className="text-sm text-yellow-300">
-                                A pool for {tokenA}/{tokenB} already exists. Please select a different token pair.
-                            </p>
-                        </div>
-                    )}
-                    
                     {tokenA && tokenB && tokenA === tokenB && (
                         <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
                             <p className="text-sm text-red-400">
@@ -116,19 +69,13 @@ export function PoolManagementPanel() {
                     
                     <Button 
                         onClick={handleCreatePool} 
-                        disabled={!tokenA || !tokenB || tokenA === tokenB || poolExists || !state.isConnected || state.isProcessing(`CreatePool_${tokenA}_${tokenB}`)} 
+                        disabled={!tokenA || !tokenB || tokenA === tokenB || !state.isConnected || state.isProcessing(`CreatePool_${tokenA}_${tokenB}`)} 
                         className="w-full"
                     >
                         {state.isProcessing(`CreatePool_${tokenA}_${tokenB}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null}
                         Create Pool
                     </Button>
 
-                    {debugInfo && (
-                        <div className="mt-4 p-3 bg-muted rounded-md">
-                            <h4 className="font-semibold mb-2">Debug Information</h4>
-                            <pre className="text-xs whitespace-pre-wrap max-h-60 overflow-y-auto">{debugInfo}</pre>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
             

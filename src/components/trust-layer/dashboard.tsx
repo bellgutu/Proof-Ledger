@@ -106,37 +106,9 @@ export const Dashboard = () => {
                     <p className="text-3xl font-bold">{proofBondData.activeBonds.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground mt-1">Total Value Locked: ${parseFloat(proofBondData.tvl).toLocaleString()}</p>
                 </div>
-            </CardCard>
-            
-            <ContractCard 
-                name="SafeVault"
-                address={trustLayerContracts.SafeVault}
-                description="A secure vault for depositing assets, which are then utilized in various yield-generating strategies managed by the ecosystem."
-                status="Verified"
-                isLoading={isLoading}
-            >
-                 <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Total Value Locked</p>
-                    <p className="text-3xl font-bold">${parseFloat(safeVaultData.totalAssets).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Across {safeVaultData.strategies.length} active strategies.</p>
-                </div>
             </ContractCard>
             
-            <ContractCard 
-                name="ForgeMarket"
-                address={trustLayerContracts.ForgeMarket}
-                description="A marketplace for trading tokenized assets, using the AdvancedPriceOracle for reliable pricing."
-                status="Configured"
-                isLoading={isLoading}
-            >
-                <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">24h Volume</p>
-                    <p className="text-3xl font-bold">${forgeMarketData.totalVolume}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Across all listed assets.</p>
-                </div>
-            </ContractCard>
-
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-2">
                  <ContractCard 
                     name="OpenGovernor" 
                     address={trustLayerContracts.OpenGovernor} 
@@ -151,7 +123,7 @@ export const Dashboard = () => {
                         </div>
                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Treasury Value</p>
-                            <p className="text-3xl font-bold">${parseFloat(openGovernorData.treasuryValue).toFixed(2)}</p>
+                            <p className="text-3xl font-bold">${parseFloat(openGovernorData.treasuryValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                         </div>
                     </div>
                 </ContractCard>

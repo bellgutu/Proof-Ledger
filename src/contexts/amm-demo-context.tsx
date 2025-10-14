@@ -287,8 +287,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     const userLp = lpResults[index].status === 'success' ? lpResults[index].result as bigint : 0n;
 
                     // This part is still mocked as token addresses aren't stored on-chain per pool in this contract version
-                    const symbolA = 'WETH';
-                    const symbolB = 'USDT';
+                    const symbolA = 'USDT';
+                    const symbolB = 'WETH';
                     const tokenAInfo = MOCK_TOKENS[symbolA];
                     const tokenBInfo = MOCK_TOKENS[symbolB];
 
@@ -416,7 +416,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const tokenInfo = MOCK_TOKENS[token];
         const onChainAmount = parseUnits(amount, tokenInfo.decimals);
         await executeTransaction('Approve', `Approving ${amount} ${token}`, `Approve_${token}_${spender}`,
-            () => writeContractAsync({ address: tokenInfo.address, abi: ERC20_ABI, functionName: 'approve', args: [spender, onChainAmount] }),
+            () => writeContractAsync({ address: tokenInfo.address, abi: ERC20_ABI, functionName: 'approve', args: [spender, onChainAmount] })
         );
     }, [writeContractAsync, executeTransaction]);
     
@@ -601,5 +601,7 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    
 
     

@@ -310,50 +310,70 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             
             const poolIds = Array.from({ length: Number(poolCount) }, (_, i) => i);
 
-            const updatedPools = await Promise.all(poolIds.map(id => fetchPoolDetails(id)));
-            setPools(updatedPools.filter(Boolean) as DemoPool[]);
+            const poolPromises = poolIds.map(id => fetchPoolDetails(id));
+            const settledPools = await Promise.allSettled(poolPromises);
+            
+            const updatedPools = settledPools
+                .filter(result => result.status === 'fulfilled' && result.value)
+                .map(result => (result as PromiseFulfilledResult<DemoPool>).value);
+
+            setPools(updatedPools);
 
         } catch (e) {
             console.error("Failed to fetch pools", e);
+            setPools([]); // Clear pools on error to avoid stale data
         }
     }, [publicClient, fetchPoolDetails]);
     
+    const refreshData = useCallback(async () => {
+        if (!isConnected) return;
+        setProcessing('refresh', true);
+        try {
+            await Promise.all([
+                fetchAmmBalances(), 
+                fetchPools(), 
+                fetchNetworkStats()
+            ]);
+            toast({ title: "Data Refreshed", description: "Balances and pool data have been updated." });
+        } catch(e) {
+             toast({ variant: 'destructive', title: "Refresh Failed", description: "Could not update data." });
+        } finally {
+            setProcessing('refresh', false);
+        }
+    }, [isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats, toast]);
+    
     useEffect(() => {
-        if(!isConnected) return;
-        fetchPools();
-        fetchAmmBalances();
-        fetchNetworkStats();
-        const interval = setInterval(() => {
-            fetchAmmBalances();
-            fetchNetworkStats();
-            fetchPools();
-        }, 15000);
-        return () => clearInterval(interval);
-    }, [isConnected, fetchAmmBalances, fetchPools, fetchNetworkStats]);
+        if (isConnected) {
+            refreshData();
+        }
+    }, [isConnected, refreshData]);
     
     const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => {
         if (!walletClient || !publicClient) {
             toast({ variant: "destructive", title: "Wallet not connected" });
             return;
         }
+
         const processingKey = `CreatePool_${tokenA}_${tokenB}`;
         setProcessing(processingKey, true);
         const tempTxId = addTransaction({ id: `temp_${Date.now()}`, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
 
         try {
-            // Using placeholder addresses for _lpAddr and _ownership as per the discovered ABI
-            const placeholderLpAddr = '0x0000000000000000000000000000000000000001';
-            const placeholderOwnershipAddr = walletClient.account.address;
-            
+            const addressA = MOCK_TOKENS[tokenA].address;
+            const addressB = MOCK_TOKENS[tokenB].address;
+
+            // Sort addresses to ensure canonical pool creation
+            const [sortedTokenA, sortedTokenB] = addressA.toLowerCase() < addressB.toLowerCase() ? [addressA, addressB] : [addressB, addressA];
+
             const txHash = await writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
                 functionName: 'createPool',
-                args: [placeholderLpAddr, placeholderOwnershipAddr],
+                args: [sortedTokenA, sortedTokenB],
             });
 
             setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));
-            toast({ title: "Pool Creation Submitted!", description: "Waiting for confirmation..." });
+            toast({ title: "Pool Creation Submitted!", description: "Waiting for transaction confirmation..." });
             
             const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
@@ -367,12 +387,9 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     const decodedLog = decodeEventLog({ abi: AMM_ABI, ...poolCreatedLog });
                     const { poolId } = decodedLog.args as { poolId: bigint };
                     
-                    const newPoolDetails = await fetchPoolDetails(Number(poolId));
-                    if (newPoolDetails) {
-                        setPools(prev => [...prev, newPoolDetails]);
-                    }
-                    toast({ title: "Pool Created Successfully!", description: `A new pool has been created.` });
+                    toast({ title: "Pool Created Successfully!", description: `A new pool has been created with ID: ${poolId}.` });
                     updateTransactionStatus(txHash, 'Completed');
+                    await refreshData();
                 } else {
                      throw new Error("PoolCreated event not found in transaction logs.");
                 }
@@ -382,11 +399,11 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         } catch (e: any) {
             console.error("Pool creation failed:", e);
             toast({ variant: 'destructive', title: "Pool Creation Failed", description: e.shortMessage || e.message });
-            updateTransactionStatus(`temp_${Date.now()}`, 'Failed', e.shortMessage || e.message);
+            updateTransactionStatus(tempTxId, 'Failed', e.shortMessage || e.message);
         } finally {
             setProcessing(processingKey, false);
         }
-    }, [walletClient, publicClient, writeContractAsync, toast, fetchPoolDetails, addTransaction, updateTransactionStatus]);
+    }, [walletClient, publicClient, writeContractAsync, toast, addTransaction, updateTransactionStatus, refreshData]);
 
 
     const getFaucetTokens = useCallback(async (token: MockTokenSymbol) => {
@@ -454,10 +471,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     parseUnits(amountB, pool.tokenB.decimals)
                 ]
             }),
-            () => Promise.all([fetchAmmBalances(), fetchPools()])
+            () => refreshData()
         );
 
-     }, [pools, address, approveToken, executeTransaction, writeContractAsync, fetchPools, fetchAmmBalances]);
+     }, [pools, address, approveToken, executeTransaction, writeContractAsync, refreshData]);
     
     const removeLiquidity = useCallback(async (poolId: number, lpAmount: string) => {
         const pool = pools.find(p => p.id === poolId);
@@ -473,9 +490,9 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     parseUnits(lpAmount, 18) // LP tokens are 18 decimals
                 ]
             }),
-            () => Promise.all([fetchAmmBalances(), fetchPools()])
+            () => refreshData()
         );
-    }, [pools, address, executeTransaction, writeContractAsync, fetchPools, fetchAmmBalances]);
+    }, [pools, address, executeTransaction, writeContractAsync, refreshData]);
     
     const swap = useCallback(async (fromToken: MockTokenSymbol, toToken: MockTokenSymbol, amountIn: string, minAmountOut: string) => {
         const pool = pools.find(p => (p.tokenA.symbol === fromToken && p.tokenB.symbol === toToken) || (p.tokenA.symbol === toToken && p.tokenB.symbol === fromToken));
@@ -499,10 +516,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                     parseUnits(amountIn, fromTokenInfo.decimals)
                 ]
             }),
-            () => Promise.all([fetchAmmBalances(), fetchPools()])
+            () => refreshData()
         );
 
-    }, [pools, executeTransaction, writeContractAsync, fetchAmmBalances, fetchPools, approveToken, toast]);
+    }, [pools, executeTransaction, writeContractAsync, approveToken, toast, refreshData]);
 
     const send = useCallback(async (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => {
         if (!walletClient || !publicClient || !address) {
@@ -568,11 +585,6 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [walletClient, publicClient, address, chain, switchChain, writeContractAsync, executeTransaction, fetchAmmBalances, toast]);
     
-    const refreshData = useCallback(async () => {
-        setProcessing('refresh', true);
-        await Promise.all([ fetchAmmBalances(), fetchPools(), fetchNetworkStats() ]);
-        setProcessing('refresh', false);
-    }, [fetchAmmBalances, fetchPools, fetchNetworkStats]);
     
     const state: AmmDemoState = { 
         transactions, pools, predictions, processingStates, isProcessing, gasPrice, networkStats,
@@ -592,3 +604,6 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+
+    

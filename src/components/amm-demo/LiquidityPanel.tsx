@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAmmDemo } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,21 +20,9 @@ export function LiquidityPanel() {
     
     const pool = state.pools.find(p => p.address === selectedPool);
     
-    useEffect(() => {
-        if (!pool || !amountA || pool.reserveA === '0') {
-            setAmountB(''); return;
-        }
-        const amountANum = parseFloat(amountA);
-        if (isNaN(amountANum)) { setAmountB(''); return; }
-        
-        const reserveA = parseFloat(pool.reserveA);
-        const reserveB = parseFloat(pool.reserveB);
-        setAmountB(((amountANum * reserveB) / reserveA).toFixed(6));
-    }, [pool, amountA]);
-    
     const handleAddLiquidity = () => {
         if (!pool || !amountA || !amountB) return;
-        actions.addLiquidity(pool.address, amountA, amountB);
+        actions.addLiquidity(pool.id, amountA, amountB);
     };
     
     const handleRemoveLiquidity = () => {
@@ -47,6 +35,11 @@ export function LiquidityPanel() {
         setAmountA(state.tokenBalances[pool.tokenA.symbol]);
     };
     
+    const handleSetMaxB = () => {
+        if (!pool) return;
+        setAmountB(state.tokenBalances[pool.tokenB.symbol]);
+    };
+
     const handleSetMaxLP = () => {
         if (!pool) return;
         setLpAmount(pool.userLpBalance);
@@ -92,8 +85,11 @@ export function LiquidityPanel() {
                             
                             <div className="space-y-2">
                                 <Label>Amount {pool.tokenB.symbol}</Label>
-                                <Input type="number" value={amountB} readOnly placeholder="0.0" />
-                                <div className="text-xs text-muted-foreground">Calculated based on pool ratio</div>
+                                <div className="flex gap-2">
+                                    <Input type="number" value={amountB} onChange={e => setAmountB(e.target.value)} placeholder="0.0" />
+                                    <Button size="sm" variant="outline" onClick={handleSetMaxB}>MAX</Button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">Balance: {parseFloat(state.tokenBalances[pool.tokenB.symbol]).toLocaleString()}</div>
                             </div>
                             
                             <Button onClick={handleAddLiquidity} disabled={!amountA || !amountB || !walletState.isConnected || state.isProcessing(`AddLiquidity_${pool.address}`)} className="w-full">

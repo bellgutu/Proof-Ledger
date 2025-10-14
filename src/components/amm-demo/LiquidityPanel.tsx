@@ -21,9 +21,32 @@ export function LiquidityPanel() {
     
     const pool = state.pools.find(p => p.address === selectedPool);
     
-    const handleAddLiquidity = () => {
+    const handleAddLiquidity = async () => {
         if (!pool || !amountA || !amountB) return;
-        actions.addLiquidity(pool.id, amountA, amountB);
+    
+        // Check for approvals first
+        const requiredA = parseUnits(amountA, pool.tokenA.decimals);
+        const allowanceA = state.tokenAllowances[pool.tokenA.symbol] || 0n;
+        if (requiredA > allowanceA) {
+            await actions.approveToken(pool.tokenA.symbol, amountA);
+        }
+    
+        const requiredB = parseUnits(amountB, pool.tokenB.decimals);
+        const allowanceB = state.tokenAllowances[pool.tokenB.symbol] || 0n;
+        if (requiredB > allowanceB) {
+            await actions.approveToken(pool.tokenB.symbol, amountB);
+        }
+    
+        // Re-check allowances after attempting approval
+        const newAllowanceA = state.tokenAllowances[pool.tokenA.symbol] || 0n;
+        const newAllowanceB = state.tokenAllowances[pool.tokenB.symbol] || 0n;
+    
+        if (requiredA <= newAllowanceA && requiredB <= newAllowanceB) {
+            actions.addLiquidity(pool.id, amountA, amountB);
+        } else {
+            // This case might happen if user rejects approval
+            console.log("Approvals still pending after trying.");
+        }
     };
     
     const handleRemoveLiquidity = () => {
@@ -60,17 +83,17 @@ export function LiquidityPanel() {
         return required > allowance;
     }, [pool, amountB, state.tokenAllowances]);
 
-    const handleApproveA = () => {
-        if (!pool || !amountA) return;
-        actions.approveToken(pool.tokenA.symbol, amountA);
+    const getButtonText = () => {
+        const processing = state.isProcessing(`AddLiquidity_${pool?.address}`) || state.isProcessing(`Approve_${pool?.tokenA.symbol}`) || state.isProcessing(`Approve_${pool?.tokenB.symbol}`);
+        if (processing) return 'Processing...';
+
+        if (needsApprovalA && needsApprovalB) return `Approve ${pool?.tokenA.symbol} & ${pool?.tokenB.symbol}`;
+        if (needsApprovalA) return `Approve ${pool?.tokenA.symbol}`;
+        if (needsApprovalB) return `Approve ${pool?.tokenB.symbol}`;
+        return 'Add Liquidity';
     };
     
-    const handleApproveB = () => {
-        if (!pool || !amountB) return;
-        actions.approveToken(pool.tokenB.symbol, amountB);
-    };
-
-    const isAddLiquidityDisabled = !amountA || !amountB || !walletState.isConnected || state.isProcessing(`AddLiquidity_${pool?.address}`) || needsApprovalA || needsApprovalB;
+    const isAddLiquidityDisabled = !amountA || !amountB || !walletState.isConnected || state.isProcessing(`AddLiquidity_${pool?.address}`) || state.isProcessing(`Approve_${pool?.tokenA.symbol}`) || state.isProcessing(`Approve_${pool?.tokenB.symbol}`);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -109,13 +132,6 @@ export function LiquidityPanel() {
                                 </div>
                                 <div className="text-xs text-muted-foreground">Balance: {parseFloat(state.tokenBalances[pool.tokenA.symbol]).toLocaleString()}</div>
                             </div>
-
-                            {needsApprovalA && amountA && (
-                                <Button onClick={handleApproveA} disabled={state.isProcessing(`Approve_${pool.tokenA.symbol}`)} className="w-full">
-                                    {state.isProcessing(`Approve_${pool.tokenA.symbol}`) ? <Loader2 className="animate-spin mr-2" /> : <ShieldCheck className="mr-2" />}
-                                    Approve {pool.tokenA.symbol}
-                                </Button>
-                            )}
                             
                             <div className="space-y-2">
                                 <Label>Amount {pool.tokenB.symbol}</Label>
@@ -125,17 +141,10 @@ export function LiquidityPanel() {
                                 </div>
                                 <div className="text-xs text-muted-foreground">Balance: {parseFloat(state.tokenBalances[pool.tokenB.symbol]).toLocaleString()}</div>
                             </div>
-                            
-                             {needsApprovalB && amountB && (
-                                <Button onClick={handleApproveB} disabled={state.isProcessing(`Approve_${pool.tokenB.symbol}`)} className="w-full">
-                                    {state.isProcessing(`Approve_${pool.tokenB.symbol}`) ? <Loader2 className="animate-spin mr-2" /> : <ShieldCheck className="mr-2" />}
-                                    Approve {pool.tokenB.symbol}
-                                </Button>
-                            )}
 
                             <Button onClick={handleAddLiquidity} disabled={isAddLiquidityDisabled} className="w-full">
-                                {state.isProcessing(`AddLiquidity_${pool.address}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null} 
-                                {needsApprovalA || needsApprovalB ? 'Approval Required' : 'Add Liquidity'}
+                                {(state.isProcessing(`AddLiquidity_${pool.address}`) || state.isProcessing(`Approve_${pool.tokenA.symbol}`) || state.isProcessing(`Approve_${pool.tokenB.symbol}`)) && <Loader2 size={16} className="animate-spin mr-2"/>}
+                                {getButtonText()}
                             </Button>
                         </>
                     )}
@@ -188,3 +197,5 @@ export function LiquidityPanel() {
         </div>
     );
 }
+
+    

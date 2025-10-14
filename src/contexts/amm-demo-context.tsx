@@ -1,5 +1,4 @@
 
-
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useAccount, useBalance, useWriteContract, useWalletClient, useSwitchChain } from 'wagmi';
@@ -128,7 +127,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const address = walletAddress ? walletAddress as Address : undefined;
 
     const [transactions, setTransactions] = useState<DemoTransaction[]>([]);
-    const [pools, setPools] = useState<DemoPool[]>([]);
+    const [pools, setPools] = useState<DemoPool[]>(POOL_DATA.pools as DemoPool[]);
     const [predictions, setPredictions] = useState<Prediction[]>([]);
     const [processingStates, setProcessingStates] = useState<Record<string, boolean>>({});
     const [gasPrice, setGasPrice] = useState<string>('0');
@@ -268,25 +267,30 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         try {
             const staticPools: any[] = POOL_DATA.pools;
             const livePoolsData = await Promise.all(staticPools.map(async (pool) => {
-                const [reserves, lpBalance] = await Promise.all([
+                const [reserves, lpBalance, feeRate] = await Promise.all([
                     publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getReserves', args: [BigInt(pool.id)] }),
-                    publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getLiquidityProviderBalance', args: [BigInt(pool.id), address] })
+                    publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getLiquidityProviderBalance', args: [BigInt(pool.id), address] }),
+                    publicClient.readContract({ address: AMM_CONTRACT_ADDRESS, abi: AMM_ABI, functionName: 'getCurrentFee', args: [BigInt(pool.id)] })
                 ]);
-
+    
                 const [reserveA, reserveB] = reserves as [bigint, bigint];
 
+                const sortedSymbols = [pool.tokenA.symbol, pool.tokenB.symbol].sort();
+    
                 return {
                     ...pool,
+                    name: sortedSymbols.join('/'),
                     reserveA: formatUnits(reserveA, pool.tokenA.decimals),
                     reserveB: formatUnits(reserveB, pool.tokenB.decimals),
                     userLpBalance: formatUnits(lpBalance as bigint, 18),
+                    feeRate: Number(feeRate) / 100 // Assuming fee is in basis points
                 };
             }));
             
             setPools(livePoolsData);
         } catch (e) {
             console.error("Failed to fetch pools", e);
-            setPools([]); // Set to empty on error
+            setPools(POOL_DATA.pools as DemoPool[]); // Fallback to static data on error
         }
     }, [publicClient, address]);
     
@@ -321,15 +325,20 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
 
         const processingKey = `CreatePool_${tokenA_symbol}_${tokenB_symbol}`;
         
-        let tokenA_addr = MOCK_TOKENS[tokenA_symbol].address;
-        let tokenB_addr = MOCK_TOKENS[tokenB_symbol].address;
+        let tokenA = MOCK_TOKENS[tokenA_symbol];
+        let tokenB = MOCK_TOKENS[tokenB_symbol];
 
-        await executeTransaction('Create Pool', `Creating ${tokenA_symbol}/${tokenB_symbol} pool`, processingKey, 
+        // Sort tokens alphabetically by address for consistency
+        if(tokenA.address > tokenB.address) {
+            [tokenA, tokenB] = [tokenB, tokenA];
+        }
+
+        await executeTransaction('Create Pool', `Creating ${tokenA.name}/${tokenB.name} pool`, processingKey, 
             () => writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
                 functionName: 'createPool',
-                args: [tokenA_addr, tokenB_addr],
+                args: [tokenA.address, tokenB.address],
             }),
             async (txHash, receipt) => {
                  const poolCreatedLog = receipt.logs.find((log: any) => 
@@ -381,7 +390,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'submitPrediction',
                 args: [
                     BigInt(poolId),
-                    BigInt(fee * 100), // fee basis points
+                    BigInt(Math.floor(fee * 100)), // fee basis points (e.g. 0.3% -> 30)
                     BigInt(50), // volatility
                     BigInt(10000), // volume
                     BigInt(confidence),
@@ -546,3 +555,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    

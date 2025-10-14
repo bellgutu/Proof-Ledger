@@ -269,6 +269,14 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'getReserves',
                 args: [id]
             }));
+            
+            const poolTokenCalls = poolIds.map(id => ({
+                address: AMM_CONTRACT_ADDRESS,
+                abi: AMM_ABI,
+                functionName: 'getPoolTokens',
+                args: [id]
+            }));
+
 
              const poolLpCalls = poolIds.map(id => ({
                 address: AMM_CONTRACT_ADDRESS,
@@ -277,34 +285,41 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 args: [id, address]
             }));
 
-            const [reservesResults, lpResults] = await Promise.all([
+            const [reservesResults, tokenResults, lpResults] = await Promise.all([
                  publicClient.multicall({ contracts: poolDataCalls as any }),
+                 publicClient.multicall({ contracts: poolTokenCalls as any }),
                  publicClient.multicall({ contracts: poolLpCalls as any })
             ]);
 
             const updatedPools: DemoPool[] = reservesResults.map((reserveRes, index) => {
-                 if (reserveRes.status === 'success') {
+                 if (reserveRes.status === 'success' && tokenResults[index].status === 'success') {
                     const [reserveA, reserveB] = reserveRes.result as [bigint, bigint];
+                    const [tokenA_addr, tokenB_addr] = tokenResults[index].result as [Address, Address];
                     const userLp = lpResults[index].status === 'success' ? lpResults[index].result as bigint : 0n;
-
-                    // This part is still mocked as token addresses aren't stored on-chain per pool in this contract version
-                    let [symbolA, symbolB] = ['USDT', 'WETH'].sort();
                     
-                    const tokenAInfo = MOCK_TOKENS[symbolA as MockTokenSymbol];
-                    const tokenBInfo = MOCK_TOKENS[symbolB as MockTokenSymbol];
+                    const originalSymbolA = findSymbolByAddress(tokenA_addr);
+                    const originalSymbolB = findSymbolByAddress(tokenB_addr);
+
+                    if (!originalSymbolA || !originalSymbolB) return null;
+
+                    const tokenAInfo = MOCK_TOKENS[originalSymbolA];
+                    const tokenBInfo = MOCK_TOKENS[originalSymbolB];
+                    
+                    // Sort by symbol for display name only
+                    const displayName = [originalSymbolA, originalSymbolB].sort().join('/');
 
                     const volume24h = (Math.random() * 10000).toFixed(2);
                     const feeRate = 0.3; // mock
                     const fees24h = (parseFloat(volume24h) * (feeRate / 100)).toFixed(2);
-                    const tvl = parseFloat(formatUnits(reserveA, tokenAInfo.decimals)) * 1800 + parseFloat(formatUnits(reserveB, tokenBInfo.decimals)) * 1;
+                    const tvl = parseFloat(formatUnits(reserveA, tokenAInfo.decimals)) * (walletState.marketData[originalSymbolA]?.price || 0) + parseFloat(formatUnits(reserveB, tokenBInfo.decimals)) * (walletState.marketData[originalSymbolB]?.price || 0);
                     const apy = tvl > 0 ? (parseFloat(fees24h) * 365 / tvl) * 100 : 0;
                     
                     return {
                         address: `0xPool${index}`, // Placeholder
                         id: index,
-                        name: `${symbolA}/${symbolB}`,
-                        tokenA: { address: tokenAInfo.address, symbol: symbolA as MockTokenSymbol, decimals: tokenAInfo.decimals },
-                        tokenB: { address: tokenBInfo.address, symbol: symbolB as MockTokenSymbol, decimals: tokenBInfo.decimals },
+                        name: displayName,
+                        tokenA: { address: tokenAInfo.address, symbol: originalSymbolA, decimals: tokenAInfo.decimals },
+                        tokenB: { address: tokenBInfo.address, symbol: originalSymbolB, decimals: tokenBInfo.decimals },
                         reserveA: formatUnits(reserveA, tokenAInfo.decimals),
                         reserveB: formatUnits(reserveB, tokenBInfo.decimals),
                         totalLiquidity: "0",
@@ -322,7 +337,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             console.error("Failed to fetch pools", e);
             setPools([]);
         }
-    }, [publicClient, address]);
+    }, [publicClient, address, walletState.marketData]);
     
     const refreshData = useCallback(async () => {
         if (!isConnected) return;
@@ -347,27 +362,25 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [isConnected, refreshData]);
     
-    const createPool = useCallback(async (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => {
+    const createPool = useCallback(async (tokenA_symbol: MockTokenSymbol, tokenB_symbol: MockTokenSymbol) => {
         if (!walletClient || !publicClient) {
             toast({ variant: "destructive", title: "Wallet not connected" });
             return;
         }
 
-        const processingKey = `CreatePool_${tokenA}_${tokenB}`;
+        const processingKey = `CreatePool_${tokenA_symbol}_${tokenB_symbol}`;
         setProcessing(processingKey, true);
-        const tempTxId = addTransaction({ id: `temp_${Date.now()}`, type: 'Create Pool', details: `Creating ${tokenA}/${tokenB} pool` });
+        const tempTxId = addTransaction({ id: `temp_${Date.now()}`, type: 'Create Pool', details: `Creating ${tokenA_symbol}/${tokenB_symbol} pool` });
+        
+        const tokenA_addr = MOCK_TOKENS[tokenA_symbol].address;
+        const tokenB_addr = MOCK_TOKENS[tokenB_symbol].address;
 
         try {
-            // The contract expects token addresses, not LP and ownership addresses.
-            // Using placeholder values that the UI provided before, which seem to match the successful tx.
-            const addressA = '0x3318056463e5bb26FB66e071999a058bdb35F34f' as Address;
-            const addressB = '0xC9569792794d40C612C6E4cd97b767EeE4708f24' as Address;
-            
             const txHash = await writeContractAsync({
                 address: AMM_CONTRACT_ADDRESS,
                 abi: AMM_ABI,
                 functionName: 'createPool',
-                args: [addressA, addressB],
+                args: [tokenA_addr, tokenB_addr],
             });
 
             setTransactions(prev => prev.map(tx => tx.id === tempTxId ? {...tx, id: txHash} : tx));

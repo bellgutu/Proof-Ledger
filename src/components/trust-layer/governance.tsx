@@ -1,3 +1,4 @@
+
 "use client";
 import React from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
@@ -5,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Landmark, Vote, FilePlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { OracleNetworkPanel } from './OracleNetworkPanel';
+import { useWallet } from '@/contexts/wallet-context';
 
 export const Governance = () => {
     const { state } = useTrustLayer();
+    const { walletState } = useWallet();
     const { openGovernorData, isLoading } = state;
 
     return (
@@ -61,7 +64,7 @@ export const Governance = () => {
                             <p>There are no active proposals at the moment.</p>
                         </div>
                      )}
-                     <Button className="w-full mt-4" disabled><FilePlus className="mr-2"/> Create New Proposal</Button>
+                     <Button className="w-full mt-4" disabled={!walletState.isConnected}><FilePlus className="mr-2"/> Create New Proposal</Button>
                 </CardContent>
             </Card>
         </div>

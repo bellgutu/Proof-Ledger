@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState } from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
@@ -7,12 +8,15 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { BondIssuancePanel } from './BondIssuancePanel';
 import { TreasuryStrategiesPanel } from './TreasuryStrategiesPanel';
+import { useWallet } from '@/contexts/wallet-context';
 
 export const YieldInsights = () => {
     const { state, actions } = useTrustLayer();
+    const { walletState } = useWallet();
     const { proofBondData, isLoading } = state;
     const [isRedeeming, setIsRedeeming] = useState<number | null>(null);
     const [purchaseAmount, setPurchaseAmount] = useState('');
+    const [isPurchasing, setIsPurchasing] = useState(false);
 
     const handleRedeem = async (bondId: number) => {
         setIsRedeeming(bondId);
@@ -25,9 +29,13 @@ export const YieldInsights = () => {
 
     const handlePurchase = async () => {
         if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) return;
-        // The purchase logic is now handled in the context
-        await actions.purchaseBond(purchaseAmount);
-        setPurchaseAmount('');
+        setIsPurchasing(true);
+        try {
+            await actions.purchaseBond(purchaseAmount);
+        } finally {
+            setIsPurchasing(false);
+            setPurchaseAmount('');
+        }
     };
     
     return (
@@ -50,7 +58,7 @@ export const YieldInsights = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Total Value Locked</p>
-                            <p className="text-2xl font-bold">${proofBondData.tvl}</p>
+                            <p className="text-2xl font-bold">${parseFloat(proofBondData.tvl).toLocaleString()}</p>
                         </div>
                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Active Bonds</p>
@@ -67,8 +75,11 @@ export const YieldInsights = () => {
                                 placeholder="Amount in USDC"
                                 value={purchaseAmount}
                                 onChange={e => setPurchaseAmount(e.target.value)}
+                                disabled={!walletState.isConnected}
                             />
-                            <Button onClick={handlePurchase} disabled={isLoading || !purchaseAmount}>Purchase</Button>
+                            <Button onClick={handlePurchase} disabled={isLoading || !purchaseAmount || isPurchasing || !walletState.isConnected}>
+                                {isPurchasing ? <Loader2 className="animate-spin"/> : "Purchase"}
+                            </Button>
                         </div>
                     </div>
                 </CardContent>
@@ -88,6 +99,8 @@ export const YieldInsights = () => {
                 <CardContent>
                     {isLoading ? (
                         <div className="text-center p-8 text-muted-foreground">Loading your bonds...</div>
+                    ) : !walletState.isConnected ? (
+                        <div className="text-center p-8 text-muted-foreground">Connect your wallet to see your bonds.</div>
                     ) : proofBondData.userBonds.length === 0 ? (
                         <div className="text-center p-8 text-muted-foreground">You do not hold any bonds.</div>
                     ) : (

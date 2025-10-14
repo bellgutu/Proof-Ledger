@@ -1,5 +1,4 @@
 
-
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
@@ -263,153 +262,139 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
     const publicClient = usePublicClient({ chainId: DEPLOYED_CONTRACTS.chainId });
     const { data: walletClient } = useWalletClient();
-    const { walletActions } = useWallet();
+    const { walletActions, walletState } = useWallet();
     const { toast } = useToast();
     const { writeContractAsync } = useWriteContract();
 
-    // Enhanced data fetching for all contracts
     const fetchData = useCallback(async () => {
         if (!publicClient) return;
 
         setState(prev => ({ ...prev, isLoading: true }));
-
-        // --- MainContract ---
-        let protocolFee: bigint = 0n;
         try {
-            protocolFee = await publicClient.readContract({
+            // MainContract
+            const protocolFee = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.MainContract as Address,
                 abi: DEPLOYED_CONTRACTS.abis.MainContract as any,
                 functionName: 'protocolFeeRate',
             });
-        } catch (e) {
-            console.log("Could not fetch protocolFeeRate, using fallback.", e);
-        }
 
-        // --- TrustOracle ---
-        let activeProviders: Address[] = [];
-        let providerDetails: { address: Address; stake: string; lastUpdate: number; }[] = [];
-        try {
-            // This is a mock since getActiveProviders is not in the ABI
-            // In a real app, you might iterate through known providers or have a contract function
-            activeProviders = []; 
+            // AIPredictiveLiquidityOracle
+            const [minStake, minSubmissions] = await Promise.all([
+                publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
+                    functionName: 'MIN_PROVIDER_STAKE',
+                }),
+                publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
+                    functionName: 'consensusThreshold',
+                }),
+            ]);
             
-            const providerDataPromises = activeProviders.map(async (providerAddr) => {
-                const [stake, lastUpdate] = await Promise.all([
-                    // Mocking since providerStakes is not in ABI
-                    Promise.resolve(parseEther('0.1')), 
-                    0 
-                ]);
-                return { address: providerAddr, stake: formatEther(stake as bigint), lastUpdate: Number(lastUpdate) };
-            });
-            providerDetails = await Promise.all(providerDataPromises);
-            
-        } catch (e) {
-            console.log("Could not fetch active providers, using fallback.", e);
-        }
-        let minStake: bigint = 0n;
-        try {
-            minStake = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
-                functionName: 'MIN_PROVIDER_STAKE',
-            });
-        } catch (e) {
-             console.log("Could not fetch minStake, using fallback.", e);
-        }
-        let minSubmissions: bigint = 0n;
-        try {
-             minSubmissions = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
-                functionName: 'consensusThreshold',
-            });
-        } catch (e) {
-             console.log("Could not fetch minSubmissions, using fallback.", e);
-        }
+            // Mock providers as there is no public getter for all providers
+            const mockProviders = [
+                { address: '0x1234...5678', stake: '0.1', lastUpdate: Date.now() - 1000 * 60 * 5 },
+                { address: '0xABCD...EFGH', stake: '0.25', lastUpdate: Date.now() - 1000 * 60 * 10 },
+            ];
 
-        // --- AdvancedPriceOracle ---
-        let latestPrice = '0';
-        let confidence = 0;
-        let lastUpdate = 0;
-        try {
-            const latestData = await publicClient.readContract({
+            // AdvancedPriceOracle
+            const latestPriceData = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle as any,
                 functionName: 'getPriceWithTimestamp',
                 args: [LEGACY_CONTRACTS.WETH_ADDRESS as Address]
             });
-            latestPrice = formatUnits((latestData as any[])[0], 18);
-            lastUpdate = Number((latestData as any[])[1]);
-            confidence = Number((latestData as any[])[2]);
-        } catch (error) {
-            console.log("AdvancedPriceOracle data not available:", error);
-        }
-        
-        // --- SafeVault ---
-        let totalAssets: bigint = 0n;
-        try {
-            totalAssets = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.SafeVault as Address,
-                abi: DEPLOYED_CONTRACTS.abis.SafeVault as any,
-                functionName: 'totalAssets',
-            });
-        } catch(e) {
-            console.error("Could not fetch totalAssets, using fallback.", e);
-        }
+            const [price, timestamp, confidence] = latestPriceData as [bigint, bigint, bigint];
 
-        // --- ProofBond ---
-        let activeBonds: bigint = 0n;
-        try {
-             activeBonds = await publicClient.readContract({
+            // ProofBond Data
+            const activeBonds = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
                 abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
                 functionName: 'totalSupply',
             });
-        } catch(e) {
-             console.error("Could not fetch active bonds, using fallback.", e);
-        }
-        let bondTvl: bigint = 0n;
-        try {
-            const usdcAddress = LEGACY_CONTRACTS.USDC_ADDRESS as Address;
-            bondTvl = await publicClient.readContract({
-                address: usdcAddress,
-                abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+            const bondTvl = await publicClient.readContract({
+                address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                 functionName: 'balanceOf',
-                args: [DEPLOYED_CONTRACTS.ProofBond as Address]
+                args: [DEPLOYED_CONTRACTS.ProofBond as Address],
             });
+            
+            // User Data
+            let isProvider = false;
+            let userBonds = [];
+            if (walletState.isConnected && walletClient) {
+                isProvider = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
+                    functionName: 'isProvider',
+                    args: [walletClient.account.address],
+                });
+
+                const userBondBalance = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
+                    functionName: 'balanceOf',
+                    args: [walletClient.account.address],
+                });
+
+                for(let i=0; i < Number(userBondBalance); i++) {
+                    const bondId = await publicClient.readContract({
+                         address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                         abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
+                         functionName: 'tokenOfOwnerByIndex',
+                         args: [walletClient.account.address, BigInt(i)],
+                    });
+                    const bondData = await publicClient.readContract({
+                         address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                         abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
+                         functionName: 'getTranche',
+                         args: [bondId],
+                    });
+                    const [investor, amount, interest, maturity, redeemed] = bondData as [Address, bigint, bigint, bigint, boolean];
+                    if(!redeemed) {
+                        userBonds.push({
+                            id: Number(bondId),
+                            amount: formatUnits(amount, 6),
+                            maturity: Number(maturity),
+                            yield: '0' // This would require more complex calculation
+                        });
+                    }
+                }
+            }
+            
+
+            setState(prev => ({
+                ...prev,
+                mainContractData: { protocolFee: Number(protocolFee) / 100 },
+                trustOracleData: { 
+                    activeProviders: mockProviders.length, 
+                    minStake: formatEther(minStake as bigint), 
+                    minSubmissions: Number(minSubmissions),
+                    latestPrice: formatUnits(price, 8),
+                    confidence: Number(confidence),
+                    lastUpdate: Number(timestamp),
+                    providers: mockProviders
+                },
+                proofBondData: {
+                    ...prev.proofBondData,
+                    activeBonds: Number(activeBonds),
+                    tvl: formatUnits(bondTvl, 6),
+                    userBonds: userBonds,
+                },
+                userData: {
+                    ...prev.userData,
+                    isOracleProvider: isProvider,
+                },
+                isLoading: false,
+                lastUpdated: Date.now(),
+            }));
         } catch (error) {
-            console.error("Could not fetch bond TVL, using fallback.", error);
+            console.error("Failed to fetch Trust Layer data:", error);
+            setState(prev => ({ ...prev, isLoading: false }));
         }
+    }, [publicClient, walletState.isConnected, walletClient]);
 
-        // --- And so on for other contracts...
-
-        setState(prev => ({
-            ...prev,
-            mainContractData: { protocolFee: Number(protocolFee) / 100 },
-            trustOracleData: { 
-                activeProviders: providerDetails.length, 
-                minStake: formatEther(minStake), 
-                minSubmissions: Number(minSubmissions),
-                latestPrice,
-                confidence,
-                lastUpdate,
-                providers: providerDetails
-            },
-            safeVaultData: {
-                ...prev.safeVaultData,
-                totalAssets: formatUnits(totalAssets, 6),
-            },
-            proofBondData: {
-                ...prev.proofBondData,
-                activeBonds: Number(activeBonds),
-                tvl: formatUnits(bondTvl, 6)
-            },
-            isLoading: false,
-            lastUpdated: Date.now(),
-        }));
-    }, [publicClient]);
-
-    // Enhanced Oracle Functions
     const registerOracleProvider = useCallback(async () => {
         if (!walletClient) {
             toast({ variant: 'destructive', title: 'Wallet not connected' });
@@ -449,7 +434,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             details: `Submitting Oracle data: ${price} with ${confidence}% confidence`,
         };
         
-        const MOCK_PAIR_ID = 0; // Assuming we're submitting for the first pair
+        const MOCK_PAIR_ID = 0;
 
         const txFunction = () =>
             writeContractAsync({
@@ -466,7 +451,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
          toast({ variant: 'destructive', title: 'Not Implemented' });
     }, [toast]);
     
-    // Bond Functions
     const purchaseBond = useCallback(async (amount: string) => {
         if (!walletClient) {
             toast({ variant: 'destructive', title: 'Wallet not connected' });
@@ -482,7 +466,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     
         const approveTxFunction = () => writeContractAsync({
             address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-            abi: parseAbi(['function approve(address spender, uint256 amount) returns (bool)']),
+            abi: DEPLOYED_CONTRACTS.abis.ProofBond, // Using proofbond abi as it includes erc20 approve
             functionName: 'approve',
             args: [DEPLOYED_CONTRACTS.ProofBond as Address, parseUnits(amount, 6)]
         });
@@ -572,6 +556,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         fetchData();
+        const interval = setInterval(fetchData, 30000);
+        return () => clearInterval(interval);
     }, [fetchData]);
     
     const value: TrustLayerContextType = {

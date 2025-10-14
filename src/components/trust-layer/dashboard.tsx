@@ -43,8 +43,8 @@ export const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
                 <ContractCard 
-                    name="Trust Layer Main Contract" 
-                    address={trustLayerContracts.TrustOracle} 
+                    name="Main Contract" 
+                    address={trustLayerContracts.MainContract} 
                     description="The central hub managing contract authorizations, the treasury, fees, and emergency pause functionality for the entire ecosystem."
                     status="Verified"
                     isLoading={isLoading}
@@ -58,7 +58,7 @@ export const Dashboard = () => {
             </div>
 
              <ContractCard 
-                name="AIPredictiveLiquidityOracle" 
+                name="AI Predictive Liquidity Oracle" 
                 address={trustLayerContracts.AIPredictiveLiquidityOracle} 
                 description="A multi-provider oracle where AI agents stake ETH to submit predictions on optimal fees and market volatility."
                 status="Configured"
@@ -81,16 +81,16 @@ export const Dashboard = () => {
             </ContractCard>
 
             <ContractCard 
-                name="AdvancedPriceOracle" 
+                name="Advanced Price Oracle" 
                 address={trustLayerContracts.AdvancedPriceOracle} 
                 description="A robust, multi-source price oracle with historical tracking and volatility calculations to provide secure and reliable price data."
                 status="Verified"
                 isLoading={isLoading}
             >
                 <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Total Value Secured</p>
-                    <p className="text-3xl font-bold">${parseFloat(proofBondData.tvl).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Across all integrated markets.</p>
+                    <p className="text-sm text-muted-foreground">WETH/USD Price</p>
+                    <p className="text-3xl font-bold">${parseFloat(trustOracleData.latestPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Confidence: {trustOracleData.confidence}%</p>
                 </div>
             </ContractCard>
             
@@ -104,9 +104,9 @@ export const Dashboard = () => {
                 <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">Active Bonds</p>
                     <p className="text-3xl font-bold">{proofBondData.activeBonds.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Total Value Locked: ${proofBondData.tvl}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Total Value Locked: ${parseFloat(proofBondData.tvl).toLocaleString()}</p>
                 </div>
-            </ContractCard>
+            </CardCard>
             
             <ContractCard 
                 name="SafeVault"
@@ -117,8 +117,8 @@ export const Dashboard = () => {
             >
                  <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">Total Value Locked</p>
-                    <p className="text-3xl font-bold">${safeVaultData.totalAssets}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Across 3 active strategies.</p>
+                    <p className="text-3xl font-bold">${parseFloat(safeVaultData.totalAssets).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Across {safeVaultData.strategies.length} active strategies.</p>
                 </div>
             </ContractCard>
             

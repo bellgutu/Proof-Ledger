@@ -3,7 +3,6 @@
 import React from 'react';
 import { useAmmDemo, type DemoTransaction } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { History } from 'lucide-react';
@@ -28,7 +27,7 @@ export function TransactionHistoryPanel() {
                 <CardDescription>A log of your actions within this demo.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-96">
+                <div className="h-96 overflow-y-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -59,7 +58,7 @@ export function TransactionHistoryPanel() {
                             )}
                         </TableBody>
                     </Table>
-                </ScrollArea>
+                </div>
             </CardContent>
         </Card>
     )

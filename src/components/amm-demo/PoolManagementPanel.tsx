@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAmmDemo, type MockTokenSymbol, MOCK_TOKENS } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Droplets, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
@@ -153,7 +152,7 @@ export function PoolManagementPanel() {
                             <p className="text-sm">Create your first pool to get started!</p>
                         </div>
                     ) : (
-                        <ScrollArea className="h-60">
+                        <div className="h-60 overflow-y-auto">
                             {state.pools.map(pool => (
                                 <div key={pool.address} className="p-3 border rounded-md mb-2 hover:bg-muted/50">
                                     <div className="flex justify-between items-start">
@@ -191,7 +190,7 @@ export function PoolManagementPanel() {
                                     </div>
                                 </div>
                             ))}
-                        </ScrollArea>
+                        </div>
                     )}
                 </CardContent>
             </Card>

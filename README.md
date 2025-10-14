@@ -1,44 +1,70 @@
-# ProfitForge
 
-This is a NextJS application built in Firebase Studio.
+# **ProfitForge: AI-Powered DeFi & Trading Platform**
 
-# ProfitForge: Technical Specifications & Architecture
+[![Status](https://img.shields.io/badge/status-live_on_testnet-green)](https://sepolia.etherscan.io/address/0xeD11d5816028FD0eb5b86C97b986Bf4fF21D61B8)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 1. Project Overview
+**ProfitForge is a next-generation decentralized finance (DeFi) platform showcasing two live, fully-deployed ecosystems on the Sepolia testnet: an AI-Powered Automated Market Maker (AMM) and a robust Trust Layer for tokenized Real-World Assets (RWAs).**
 
-**ProfitForge** is an AI-powered cryptocurrency trading and portfolio management platform designed to provide users with a competitive edge in the DeFi market. It combines real-time market data, on-chain trading environments, direct DeFi protocol interaction, and a suite of advanced AI-powered analytical tools.
+This is not a concept—it is a functional, on-chain application demonstrating a paradigm shift in AMM design and institutional-grade asset tokenization.
 
-The platform is architected as a modern, full-stack web application built on a robust and scalable technology stack, prioritizing user experience, security, and performance.
+> **[Read the Full Whitepaper](./WHITEPAPER.md)**
 
-## 2. Core Features
+---
 
-### 2.1. Market & Data Analysis
-- **Live Market Dashboard**: Real-time price tracking for major cryptocurrencies, sourced via the CoinGecko API.
-- **Detailed Asset View**: In-depth chart and metric analysis for individual cryptocurrencies, featuring TradingView for advanced charting.
-- **AI Intelligence Briefing**: An AI-generated summary for watched assets, synthesizing simulated news, on-chain activity, and technical analysis.
-- **Web3 News Feed**: An AI-curated news feed showcasing recent articles and developments in the blockchain industry.
+## **Two Live Ecosystems, One Platform**
 
-### 2.2. Trading & DeFi
-- **Perpetuals Trading**: A full-featured trading interface for ETH/USDC perpetual futures, including an order book, collateral management, and P&L tracking.
-- **Token Swap**: On-chain token swaps leveraging a DEX router architecture.
-- **Liquidity Provisioning**: Functionality to add and manage liquidity in V2, V3, and stable-swap pools.
-- **AI Strategy Vault**: A DeFi vault where users can deposit WETH and allow an AI agent to suggest and execute rebalancing strategies.
+ProfitForge's core innovation lies in its dual-ecosystem architecture, which you can interact with directly in this application.
 
-### 2.3. AI-Powered Tooling
-- **AI Trading Strategy Assistant**: Generates potential trading strategies based on user-defined market trends and risk profiles.
-- **AI White Paper Analyzer**: Ingests a URL to a white paper and provides a structured analysis covering the project's summary, tokenomics, and potential red flags.
-- **AI Auditors**:
-  - **Smart Contract Auditor**: Provides a simulated security analysis of a given contract address.
-  - **Token Auditor**: Analyzes a token address for risks associated with "meme coins" or scams.
-- **Whale Watcher**: Allows users to monitor specified wallet addresses. It uses AI to analyze significant on-chain movements to derive market sentiment.
+### 1. The AI-Powered AMM Ecosystem
 
-### 2.4. Portfolio Management
-- **Connected Wallet Dashboard**: A comprehensive view of the user's on-chain asset holdings, balances, and values.
-- **Transaction History**: A detailed log of all user-initiated on-chain activity.
-- **Send/Receive Functionality**: A standard interface for transferring and receiving crypto assets.
+This system reinvents the AMM by introducing a decentralized AI layer to optimize market parameters in real-time.
 
-### 2.5. Innovative AMM Demo
-- **AI-Powered AMM Ecosystem**: A technical demonstration of a next-generation DeFi ecosystem deployed on the Sepolia testnet. It showcases an `AdaptiveMarketMaker` with dynamic, volume-based fees, managed by an `AIPredictiveLiquidityOracle` and a central `MainContract` controller.
-- **AI Oracle Interaction**: A dedicated interface for authorized AI providers to submit fee and volatility predictions, demonstrating the consensus mechanism.
-- **Advanced DeFi Primitives**: Functionality for pool creation, liquidity management, and swaps within the isolated, AI-driven AMM environment.
-- **Impact Analysis**: Dashboards displaying the measurable benefits of the AI-driven optimizations, such as fee reduction and capital efficiency gains.
+*   **`AdaptiveMarketMaker`**: An advanced AMM that uses AI predictions to dynamically adjust trading fees based on volume, maximizing capital efficiency for liquidity providers and lowering costs for traders.
+*   **`AIPredictiveLiquidityOracle`**: A decentralized network where AI agents stake capital to submit predictions. A consensus mechanism with economic incentives (rewards) and penalties (slashing) ensures data integrity.
+*   **`AdvancedPriceOracle`**: A manipulation-resistant price oracle that aggregates multiple data sources to provide a secure price feed.
+
+**➡️ Explore this live on the [AMM Demo Page](/amm-demo).**
+
+### 2. The Trust Layer for Tokenized Assets
+
+This ecosystem provides a full suite of contracts for the secure issuance, governance, and management of tokenized, yield-bearing real-world assets.
+
+*   **`MainContract`**: The central security and governance hub, managing contract authorizations and the protocol treasury.
+*   **`ProofBond`**: An ERC721-based contract for minting unique, yield-bearing bond NFTs with all terms stored immutably on-chain.
+*   **`OpenGovernor`**: A DAO contract allowing for decentralized governance over the entire ecosystem.
+*   **`SafeVault`**: An autonomous treasury that collects protocol fees and deploys them into yield-generating strategies.
+
+**➡️ Explore this live on the [Trust Layer Page](/).**
+
+---
+
+## **Platform Features**
+
+Beyond the core ecosystems, ProfitForge offers a comprehensive suite of tools for traders and analysts:
+
+*   **Market Analysis**: Live market dashboards, TradingView charting, and AI-generated intelligence briefings.
+*   **AI-Powered Tools**:
+    *   **AI Trading Strategy Assistant**: Generates trading strategies based on user-defined risk profiles.
+    *   **AI Auditors**: Simulates security audits for smart contracts and risk analysis for tokens.
+    *   **Whale Watcher**: AI-driven analysis of significant on-chain movements.
+*   **Portfolio Management**: A comprehensive dashboard of asset holdings, transaction history, and wallet management.
+*   **DeFi Primitives**: Interfaces for perpetuals trading (simulated), token swaps, and liquidity provisioning.
+
+## **Technical Stack**
+
+*   **Frontend**: Next.js (App Router), TypeScript, Tailwind CSS, ShadCN UI
+*   **AI Backend**: Genkit with Google Gemini
+*   **Blockchain Interaction**: Viem, Wagmi, Web3Modal
+*   **Smart Contracts**: Solidity, Hardhat
+
+## **Getting Started**
+
+The application is configured to run on the **Sepolia testnet**.
+
+1.  Ensure you have a browser wallet (e.g., MetaMask) installed.
+2.  Connect your wallet within the application.
+3.  Switch your wallet's network to **Sepolia**.
+4.  Acquire Sepolia ETH from a public faucet.
+5.  Use the "Faucet" buttons on the **AMM Demo** page to get mock ERC20 tokens to interact with the pools.
+6.  Explore the **Trust Layer** and **AMM Demo** pages to interact with the live contracts.

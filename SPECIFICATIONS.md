@@ -1,50 +1,59 @@
-# ProfitForge: Project Specifications
 
-This document provides a comprehensive overview of the ProfitForge application, its core features, and links to more detailed technical documentation.
+# **ProfitForge: Detailed Project Specifications**
 
-**Jump to:**
-- [Technical Architecture](./docs/Technical-Architecture.md)
-- [Deployment Guide](./docs/Deployment-Guide.md)
+This document provides a comprehensive technical overview of the ProfitForge application, its dual-ecosystem architecture, and its core features.
 
----
-
-## 1. Project Overview
-
-**ProfitForge** is an AI-powered cryptocurrency trading and portfolio management platform designed to provide users with a competitive edge in the DeFi market. It combines real-time market data, on-chain trading environments, direct DeFi protocol interaction, and a suite of advanced AI-powered analytical tools.
-
-The platform is architected as a modern, full-stack web application built on a robust and scalable technology stack, prioritizing user experience, security, and performance.
+**[Read the Full Whitepaper](./WHITEPAPER.md)**
 
 ---
 
-## 2. Core Features
+## **1. Core Architecture: A Dual-Ecosystem Approach**
 
-### 2.1. Market & Data Analysis
-- **Live Market Dashboard**: Real-time price tracking for major cryptocurrencies, sourced via the CoinGecko API. The dashboard provides a quick, at-a-glance view of market performance.
-- **Detailed Asset View**: In-depth chart and metric analysis for individual cryptocurrencies, featuring TradingView for advanced, interactive charting capabilities.
-- **AI Intelligence Briefing**: An AI-generated summary for user-watched assets, synthesizing simulated news, on-chain activity, and technical analysis into a concise intelligence report.
-- **Web3 News Feed**: An AI-curated news feed showcasing recent articles and developments in the blockchain industry, providing users with timely market context.
+ProfitForge is architected around two distinct, on-chain ecosystems deployed on the Sepolia testnet. This design allows the platform to showcase innovations in both algorithmic DeFi (the AI-AMM) and institutional-grade finance (the Trust Layer).
 
-### 2.2. Trading & DeFi
-- **Perpetuals Trading**: A full-featured trading interface for perpetual futures on major assets (e.g., ETH/USDT). It includes an order book, collateral management, leverage controls, and P&L tracking.
-- **Token Swap**: On-chain token swaps leveraging a DEX router architecture, allowing for direct and efficient trading between various assets.
-- **Liquidity Provisioning**: Functionality to add and manage liquidity in V2 (standard), V3 (concentrated), and stable-swap pools, enabling users to earn trading fees.
-- **AI Strategy Vault**: A sophisticated DeFi vault where users can deposit WETH and allow an AI agent to suggest and execute rebalancing and yield-farming strategies.
+### **Ecosystem A: The AI-Powered AMM**
 
-### 2.3. AI-Powered Tooling
-- **AI Trading Strategy Assistant**: Generates potential trading strategies based on user-defined market trends and risk profiles (low, medium, high).
-- **AI White Paper Analyzer**: Ingests a URL to a white paper and provides a structured analysis covering the project's summary, tokenomics, and potential red flags.
-- **AI Auditors**:
-  - **Smart Contract Auditor**: Provides a simulated security analysis of a given smart contract address, checking for common vulnerabilities.
-  - **Token Auditor**: Analyzes a token address for risks commonly associated with "meme coins" or potential scams, such as liquidity and ownership concentration.
-- **Whale Watcher**: Allows users to monitor specified wallet addresses. It uses AI to analyze significant on-chain movements to derive and explain market sentiment (Bullish, Bearish, Neutral).
+This is a functional, self-contained decentralized exchange where market parameters are optimized by a decentralized AI network.
 
-### 2.4. Portfolio Management
-- **Connected Wallet Dashboard**: A comprehensive view of the user's on-chain asset holdings, balances, and real-time market values.
-- **Transaction History**: A detailed and filterable log of all user-initiated on-chain activity, including swaps, transfers, and trades.
-- **Send/Receive Functionality**: A standard, secure interface for transferring and receiving crypto assets directly from the user's connected wallet.
+*   **`AdaptiveMarketMaker`**: The core exchange contract. It facilitates swaps and liquidity provisioning. Its key feature is the ability to have its trading fee dynamically adjusted by consuming data from the `AIPredictiveLiquidityOracle`.
+*   **`AIPredictiveLiquidityOracle`**: A decentralized oracle network where AI providers stake ETH to submit predictions on optimal trading fees and market volatility. It uses a consensus mechanism to validate data and a reward/slashing system to ensure accuracy. This contract makes AI actions verifiable and transparent on-chain.
+*   **`AdvancedPriceOracle`**: A robust price oracle that aggregates multiple feeds to provide a secure, manipulation-resistant price for assets, crucial for accurate calculations within the AMM and treasury.
 
-### 2.5. Innovative AMM Demo
-- **AI-Powered AMM Ecosystem**: A technical demonstration of a next-generation DeFi ecosystem deployed on the Sepolia testnet. The ecosystem includes an `AdaptiveMarketMaker` with dynamic, volume-based fees, a multi-provider `AIPredictiveLiquidityOracle` with staking/slashing mechanics, an `AdvancedPriceOracle`, and a central `MainContract` controller.
-- **Full AMM Functionality**: Users can create new liquidity pools, add/remove liquidity, and perform swaps within this isolated, AI-driven environment.
-- **AI Oracle Simulation**: An interface for AI providers to submit fee and volatility predictions, demonstrating the consensus mechanism and its impact on pool parameters.
-- **Live Analytics & Impact Analysis**: Dashboards displaying real-time pool performance (TVL, volume, APY) and the measurable benefits of the AI optimizations, such as reduced fees and improved capital efficiency.
+**➡️ Live Interaction**: The [AMM Demo Page](/amm-demo) provides a full-featured UI to interact with this ecosystem, including creating pools, adding/removing liquidity, swapping tokens, and simulating AI data submission.
+
+### **Ecosystem B: The Trust Layer for RWAs**
+
+This ecosystem provides a secure and transparent framework for tokenizing and managing real-world assets and governing a protocol.
+
+*   **`MainContract`**: The ecosystem's controller and security anchor. It manages authorizations for all other contracts, governs the protocol-wide treasury, and includes an emergency pause function. No contract can operate within the Trust Layer without its explicit approval.
+*   **`ProofBond`**: An ERC721 contract for creating tokenized, yield-bearing bonds. Each bond is a unique NFT containing immutable on-chain data about its principal, yield, maturity, and collateral. This contract serves as a blueprint for institutional-grade RWA tokenization.
+*   **`OpenGovernor`**: A standard DAO governance contract that allows token holders to vote on binding proposals, such as changing the `protocolFeeRate` in the `MainContract` or authorizing a new strategy for the `SafeVault`.
+*   **`SafeVault`**: An autonomous treasury that collects fees generated by the protocol. It is designed to programmatically deploy these funds into a whitelist of approved, low-risk yield-generating strategies, creating a self-sustaining economic model.
+
+**➡️ Live Interaction**: The [Trust Layer Page](/), the application's home page, serves as a dashboard for this ecosystem, displaying real-time data from these contracts.
+
+---
+
+## **2. Core Platform Features**
+
+These features provide the user interface and tools to interact with the underlying ecosystems and the broader crypto market.
+
+### **2.1. Market & Data Analysis**
+*   **Live Market Dashboard**: Real-time price tracking for major cryptocurrencies.
+*   **Detailed Asset View**: In-depth chart and metric analysis using TradingView.
+*   **AI Intelligence Briefing**: AI-generated summaries for user-watched assets, synthesizing simulated news and technical analysis.
+
+### **2.2. Trading & DeFi**
+*   **Perpetuals Trading**: A simulated trading interface for ETH/USDC perpetual futures.
+*   **Token Swap**: A simple swap interface for on-chain token trades.
+*   **Liquidity Provisioning**: UI for adding and managing liquidity in various pool types.
+
+### **2.3. AI-Powered Tooling**
+*   **AI Strategy Assistant**: Generates trading strategies based on market trends and risk profiles.
+*   **AI Auditors**: Simulates security analysis for smart contracts and risk analysis for tokens.
+*   **Whale Watcher**: Monitors specified wallet addresses and uses AI to analyze significant on-chain movements.
+
+### **2.4. Portfolio Management**
+*   **Connected Wallet Dashboard**: A comprehensive view of the user's on-chain asset holdings.
+*   **Transaction History**: A detailed log of all user-initiated on-chain activity.
+*   **Send/Receive Functionality**: A standard interface for transferring crypto assets.

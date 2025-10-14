@@ -1,14 +1,15 @@
 
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAmmDemo } from '@/contexts/amm-demo-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Droplets, PieChart, Loader2 } from 'lucide-react';
+import { Droplets, PieChart, Loader2, ShieldCheck } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
+import { parseUnits } from 'viem';
 
 export function LiquidityPanel() {
     const { state, actions } = useAmmDemo();
@@ -27,7 +28,7 @@ export function LiquidityPanel() {
     
     const handleRemoveLiquidity = () => {
         if (!pool || !lpAmount) return;
-        actions.removeLiquidity(pool.address, lpAmount);
+        actions.removeLiquidity(pool.id, lpAmount);
     };
     
     const handleSetMaxA = () => {
@@ -44,6 +45,32 @@ export function LiquidityPanel() {
         if (!pool) return;
         setLpAmount(pool.userLpBalance);
     };
+
+    const needsApprovalA = useMemo(() => {
+        if (!pool || !amountA) return false;
+        const required = parseUnits(amountA, pool.tokenA.decimals);
+        const allowance = state.tokenAllowances[pool.tokenA.symbol] || 0n;
+        return required > allowance;
+    }, [pool, amountA, state.tokenAllowances]);
+
+    const needsApprovalB = useMemo(() => {
+        if (!pool || !amountB) return false;
+        const required = parseUnits(amountB, pool.tokenB.decimals);
+        const allowance = state.tokenAllowances[pool.tokenB.symbol] || 0n;
+        return required > allowance;
+    }, [pool, amountB, state.tokenAllowances]);
+
+    const handleApproveA = () => {
+        if (!pool || !amountA) return;
+        actions.approveToken(pool.tokenA.symbol, amountA);
+    };
+    
+    const handleApproveB = () => {
+        if (!pool || !amountB) return;
+        actions.approveToken(pool.tokenB.symbol, amountB);
+    };
+
+    const isAddLiquidityDisabled = !amountA || !amountB || !walletState.isConnected || state.isProcessing(`AddLiquidity_${pool?.address}`) || needsApprovalA || needsApprovalB;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -82,6 +109,13 @@ export function LiquidityPanel() {
                                 </div>
                                 <div className="text-xs text-muted-foreground">Balance: {parseFloat(state.tokenBalances[pool.tokenA.symbol]).toLocaleString()}</div>
                             </div>
+
+                            {needsApprovalA && amountA && (
+                                <Button onClick={handleApproveA} disabled={state.isProcessing(`Approve_${pool.tokenA.symbol}`)} className="w-full">
+                                    {state.isProcessing(`Approve_${pool.tokenA.symbol}`) ? <Loader2 className="animate-spin mr-2" /> : <ShieldCheck className="mr-2" />}
+                                    Approve {pool.tokenA.symbol}
+                                </Button>
+                            )}
                             
                             <div className="space-y-2">
                                 <Label>Amount {pool.tokenB.symbol}</Label>
@@ -92,8 +126,16 @@ export function LiquidityPanel() {
                                 <div className="text-xs text-muted-foreground">Balance: {parseFloat(state.tokenBalances[pool.tokenB.symbol]).toLocaleString()}</div>
                             </div>
                             
-                            <Button onClick={handleAddLiquidity} disabled={!amountA || !amountB || !walletState.isConnected || state.isProcessing(`AddLiquidity_${pool.address}`)} className="w-full">
-                                {state.isProcessing(`AddLiquidity_${pool.address}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null} Add Liquidity
+                             {needsApprovalB && amountB && (
+                                <Button onClick={handleApproveB} disabled={state.isProcessing(`Approve_${pool.tokenB.symbol}`)} className="w-full">
+                                    {state.isProcessing(`Approve_${pool.tokenB.symbol}`) ? <Loader2 className="animate-spin mr-2" /> : <ShieldCheck className="mr-2" />}
+                                    Approve {pool.tokenB.symbol}
+                                </Button>
+                            )}
+
+                            <Button onClick={handleAddLiquidity} disabled={isAddLiquidityDisabled} className="w-full">
+                                {state.isProcessing(`AddLiquidity_${pool.address}`) ? <Loader2 size={16} className="animate-spin mr-2"/> : null} 
+                                {needsApprovalA || needsApprovalB ? 'Approval Required' : 'Add Liquidity'}
                             </Button>
                         </>
                     )}
@@ -131,8 +173,8 @@ export function LiquidityPanel() {
                             {lpAmount && (
                                 <div className="p-3 bg-muted rounded-md text-sm space-y-1">
                                     <p>You'll receive (est.):</p>
-                                    <div className="flex justify-between"><span>{pool.tokenA.symbol}:</span> <span>{(parseFloat(lpAmount) / parseFloat(pool.totalLiquidity) * parseFloat(pool.reserveA)).toFixed(6)}</span></div>
-                                    <div className="flex justify-between"><span>{pool.tokenB.symbol}:</span> <span>{(parseFloat(lpAmount) / parseFloat(pool.totalLiquidity) * parseFloat(pool.reserveB)).toFixed(6)}</span></div>
+                                    {/* <div className="flex justify-between"><span>{pool.tokenA.symbol}:</span> <span>{(parseFloat(lpAmount) / parseFloat(pool.totalLiquidity) * parseFloat(pool.reserveA)).toFixed(6)}</span></div> */}
+                                    {/* <div className="flex justify-between"><span>{pool.tokenB.symbol}:</span> <span>{(parseFloat(lpAmount) / parseFloat(pool.totalLiquidity) * parseFloat(pool.reserveB)).toFixed(6)}</span></div> */}
                                 </div>
                             )}
                             

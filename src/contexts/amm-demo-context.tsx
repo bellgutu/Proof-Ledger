@@ -454,8 +454,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         const pool = pools.find(p => p.id === poolId);
         if (!pool || !address) return;
     
-        await approveToken(pool.tokenA.symbol, amountA);
-        await approveToken(pool.tokenB.symbol, amountB);
+        await approveToken(pool.tokenA.symbol, amountA, AMM_CONTRACT_ADDRESS);
+        await approveToken(pool.tokenB.symbol, amountB, AMM_CONTRACT_ADDRESS);
     
         await executeTransaction('Add Liquidity', `Adding ${amountA} ${pool.tokenA.symbol} and ${amountB} ${pool.tokenB.symbol}`, `AddLiquidity_${pool.address}`,
             () => writeContractAsync({
@@ -601,3 +601,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    

@@ -15,8 +15,8 @@ The frontend is a modern, performant, and type-safe web application built with i
 - **Framework**: **Next.js (App Router)** - We leverage the Next.js App Router to take full advantage of React Server Components, which reduce the amount of JavaScript sent to the client, leading to faster page loads. This also allows for a clean, file-based routing system and improved data fetching patterns.
 - **Language**: **TypeScript** - The entire frontend is written in TypeScript, ensuring type safety, better autocompletion, and fewer runtime errors.
 - **UI Components**: **ShadCN UI** - A collection of beautifully designed, accessible, and composable components built on Radix UI and Tailwind CSS. This allows for rapid development of a consistent and professional-looking user interface.
-- **State Management**: **React Context API** (`WalletContext`, `AmmDemoContext`) - All wallet-related state is managed centrally in contexts. `WalletContext` handles main application state (balances, transactions, connection), while `AmmDemoContext` isolates the state and logic for the innovative AMM showcase, preventing conflicts with legacy contracts.
-- **Charting**: **Recharts** is used for simple, static charts, while **TradingView Advanced Charts** are integrated for interactive, professional-grade financial charting.
+- **State Management**: **React Context API** (`WalletContext`, `AmmDemoContext`, `TrustLayerContext`) - All wallet-related state is managed centrally in contexts. `WalletContext` handles main application state, while `AmmDemoContext` and `TrustLayerContext` isolate the state and logic for the innovative on-chain ecosystems.
+- **Charting**: **TradingView Advanced Charts** are integrated for interactive, professional-grade financial charting.
 
 ---
 
@@ -29,30 +29,39 @@ All AI-powered features are built using Genkit, Google's open-source framework f
 
 ---
 
-## 3. Blockchain Interaction
+## 3. Blockchain Interaction & Contract Addresses
 
-The application interacts with the blockchain using modern, type-safe tools. It manages two distinct sets of smart contracts: a "legacy" set for the main application features and a new, advanced AI-powered ecosystem for the "AMM Demo" page.
+The application interacts with the blockchain using modern, type-safe tools. It manages two distinct sets of smart contracts: a "legacy" set for features like the basic Swap and Perpetuals Trading, and the new, advanced AI-powered ecosystem for the "AMM Demo" and "Trust Layer" pages.
 
-### 3.1. Core Application Contracts (Legacy)
-- **Contracts**: Includes a standard DEX Router, Perpetuals Vault, and Governance contracts.
-- **Client Library**: **Viem** - A modern, lightweight, and type-safe TypeScript interface for interacting with Ethereum.
-- **Wallet Integration**: Relies on a browser-injected `window.ethereum` provider (like MetaMask) via **Wagmi** and **Web3Modal**.
+### 3.1. Trust Layer & AI-AMM Ecosystem (Live on Sepolia)
 
-### 3.2. Innovative AMM Demo Contracts (AI-Powered Ecosystem)
-This is a technical showcase of a next-generation DeFi ecosystem, fully deployed and verified on the **Sepolia testnet**.
+This is the cutting-edge showcase of a next-generation DeFi ecosystem, fully deployed and verified on the **Sepolia testnet**.
 
-- **Deployment**: A full suite of four production-ready smart contracts.
-- **`MainContract` (Controller)**: A central hub managing contract authorizations, treasury, fees, and emergency pause functionality. Address: `0xD5162798db7eBC4f55a7197EAAb60eBdb09b9A9C`
-- **`AdaptiveMarketMaker`**: An advanced AMM with dynamic, volume-based fee optimization. Address: `0xC687Dc2e94B6D2591551A5506236Dd64bd930C3C`
-- **`AIPredictiveLiquidityOracle`**: A multi-provider oracle with staking/slashing mechanics to ensure accurate AI-driven liquidity predictions. Address: `0xc6a74BB5B17Ad5f56754AE3860750CcFff98524D`
-- **`AdvancedPriceOracle`**: A robust, multi-source price oracle with historical tracking and volatility calculations. Address: `0xe80fb21a9F638C5A4244c27719DEBdA27e580563`
-- **Interaction**: The AMM Demo page interacts with this isolated ecosystem via a dedicated React Context (`AmmDemoContext`), preventing conflicts with the legacy contracts used elsewhere in the application.
+- **`MainContract`**: `0xeD11d5816028FD0eb5b86C97b986Bf4fF21D61B8`
+- **`AIPredictiveLiquidityOracle`**: `0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7`
+- **`AdvancedPriceOracle`**: `0x68cB1F4F2E22C4e85667C2EB05Db8b0F68DE1648`
+- **`AdaptiveMarketMaker`**: `0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e`
+- **`ProofBond`**: `0x400e9652A5A0391a92e1F2aD22F53c1C2667b140`
+- **`OpenGovernor`**: `0x1EE99F543881335A71a2542B774483B527A5c6D7`
+- **`SafeVault`**: `0x7f9a1f2C474f7A0F1F072183e9bC1A5702213a45`
+
+### 3.2. Legacy Application Contracts (Trading & Basic Swap)
+
+These contracts power the original features of the application.
+
+- **`DEX_FACTORY_ADDRESS`**: `0x6D15A4461a30F6999FEfB3a9292332403af131E7`
+- **`DEX_ROUTER_ADDRESS`**: `0x56d214cf5b85E8a4743f297C8E277C702eC746Ab`
+- **`PERPETUALS_CONTRACT_ADDRESS`**: `0xe59E98774CB4902E2a8CB237c26191C3e96d8EB4`
+- **`PERPETUALS_VAULT_ADDRESS`**: `0xd9cd4C08772fBadCFc496dc752Be09d9ea18881C`
+- **`USDT_ADDRESS`**: `0x17a6039513bB60369e5246164Cb918973dF902BD`
+- **`USDC_ADDRESS`**: `0x09d011D52413DC89DFe3fa64694d67451ee49Cef`
+- **`WETH_ADDRESS`**: `0x3318056463e5bb26FB66e071999a058bdb35F34f`
 
 ---
 
 ## 4. Security & Best Practices
 
-- **Separation of Concerns**: Client-side logic is clearly separated from server-side (AI) logic. The state for the AMM Demo is also isolated in its own context.
+- **Separation of Concerns**: Client-side logic is clearly separated from server-side (AI) logic. The state for the AMM Demo and Trust Layer are isolated in their own contexts.
 - **Environment Variables**: Sensitive data like private keys and RPC URLs are stored in environment variables (`.env.local`) and are never exposed to the client.
 - **Type Safety**: TypeScript is used across the entire stack to minimize runtime errors and improve code maintainability.
 - **On-chain Logic**: All state-changing blockchain operations are deferred to the user's wallet for signing, ensuring users always maintain control of their assets.

@@ -279,7 +279,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             });
 
             // AIPredictiveLiquidityOracle
-            const [minStake, minSubmissions] = await Promise.all([
+            const [minStake, minSubmissions, allProviders] = await Promise.all([
                 publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                     abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
@@ -290,13 +290,27 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
                     functionName: 'consensusThreshold',
                 }),
+                publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
+                    functionName: 'getAllProviders',
+                }),
             ]);
             
-            // Mock providers as there is no public getter for all providers
-            const mockProviders = [
-                { address: '0x1234...5678', stake: '0.1', lastUpdate: Date.now() - 1000 * 60 * 5 },
-                { address: '0xABCD...EFGH', stake: '0.25', lastUpdate: Date.now() - 1000 * 60 * 10 },
-            ];
+            const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress: Address) => {
+                const providerData = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
+                    functionName: 'getProvider',
+                    args: [providerAddress],
+                });
+                const [stake, lastUpdate] = providerData as [bigint, bigint];
+                return {
+                    address: providerAddress,
+                    stake: formatEther(stake),
+                    lastUpdate: Number(lastUpdate) * 1000 // Convert to JS timestamp
+                };
+            }));
 
             // AdvancedPriceOracle
             const latestPriceData = await publicClient.readContract({
@@ -315,7 +329,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             });
             const bondTvl = await publicClient.readContract({
                 address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
                 functionName: 'balanceOf',
                 args: [DEPLOYED_CONTRACTS.ProofBond as Address],
             });
@@ -368,13 +382,13 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 ...prev,
                 mainContractData: { protocolFee: Number(protocolFee) / 100 },
                 trustOracleData: { 
-                    activeProviders: mockProviders.length, 
+                    activeProviders: (allProviders as Address[]).length, 
                     minStake: formatEther(minStake as bigint), 
                     minSubmissions: Number(minSubmissions),
                     latestPrice: formatUnits(price, 8),
                     confidence: Number(confidence),
                     lastUpdate: Number(timestamp),
-                    providers: mockProviders
+                    providers: providerDetails
                 },
                 proofBondData: {
                     ...prev.proofBondData,
@@ -466,7 +480,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     
         const approveTxFunction = () => writeContractAsync({
             address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-            abi: DEPLOYED_CONTRACTS.abis.ProofBond, // Using proofbond abi as it includes erc20 approve
+            abi: DEPLOYED_CONTRACTS.abis.ProofBond as any, // Using proofbond abi as it includes erc20 approve
             functionName: 'approve',
             args: [DEPLOYED_CONTRACTS.ProofBond as Address, parseUnits(amount, 6)]
         });

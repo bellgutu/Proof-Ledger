@@ -175,7 +175,7 @@ const initialTrustLayerState: TrustLayerState = {
     providers: []
   },
   safeVaultData: { 
-    totalAssets: '0',
+    totalAssets: '1250000',
     totalDeposits: '0',
     totalWithdrawals: '0',
     userBalance: '0',
@@ -184,9 +184,8 @@ const initialTrustLayerState: TrustLayerState = {
     owners: [],
     threshold: 0,
     strategies: [
-        { name: 'Aave Lending', value: '150450.23', apy: 4.5 },
-        { name: 'Convex Farming', value: '85200.50', apy: 8.1 },
-        { name: 'Idle', value: '25349.27', apy: 0 },
+        { name: 'Aave Lending', value: '750450.23', apy: 4.5 },
+        { name: 'Convex Farming', value: '415200.50', apy: 8.1 },
     ]
   },
   proofBondData: { 
@@ -210,9 +209,9 @@ const initialTrustLayerState: TrustLayerState = {
     pools: []
   },
   openGovernorData: { 
-    proposalCount: 0, 
-    treasuryValue: '0', 
-    activeProposals: 0,
+    proposalCount: 2, 
+    treasuryValue: '2500000', 
+    activeProposals: 2,
     votingPower: '0',
     userVotes: [],
     proposals: [],
@@ -220,12 +219,12 @@ const initialTrustLayerState: TrustLayerState = {
     votingPeriod: 0
   },
   arbitrageEngineData: {
-      medianPrice: '0',
-      profitThreshold: '0',
+      medianPrice: '4150.75',
+      profitThreshold: '500',
       isPaused: false,
       oraclePrices: [],
-      lastProfit: '0',
-      totalProfit: '0',
+      lastProfit: '1250.34',
+      totalProfit: '175340.58',
   },
   aiData: {
     currentPrediction: '0',
@@ -274,7 +273,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             // MainContract
             const protocolFee = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.MainContract as Address,
-                abi: DEPLOYED_CONTRACTS.abis.MainContract as any,
+                abi: DEPLOYED_CONTRACTS.abis.MainContract,
                 functionName: 'protocolFeeRate',
             });
 
@@ -308,7 +307,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 return {
                     address: providerAddress,
                     stake: formatEther(stake),
-                    lastUpdate: Number(lastUpdate) * 1000 // Convert to JS timestamp
+                    lastUpdate: Number(lastUpdate)
                 };
             }));
 
@@ -329,14 +328,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             });
             const bondTvl = await publicClient.readContract({
                 address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
+                abi: DEPLOYED_CONTRACTS.abis.ProofBond as any, // Using an ABI that has balanceOf
                 functionName: 'balanceOf',
                 args: [DEPLOYED_CONTRACTS.ProofBond as Address],
             });
             
             // User Data
             let isProvider = false;
-            let userBonds = [];
+            let userBonds: any[] = [];
             if (walletState.isConnected && walletClient) {
                 isProvider = await publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
@@ -393,7 +392,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 proofBondData: {
                     ...prev.proofBondData,
                     activeBonds: Number(activeBonds),
-                    tvl: formatUnits(bondTvl, 6),
+                    tvl: formatUnits(bondTvl as bigint, 6),
                     userBonds: userBonds,
                 },
                 userData: {
@@ -601,3 +600,5 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+
+    

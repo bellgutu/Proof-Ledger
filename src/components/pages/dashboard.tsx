@@ -5,7 +5,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, Bot, ShieldCheck, TrendingUp, BrainCircuit, Droplets, LineChart } from 'lucide-react';
+import { ArrowRight, Bot, ShieldCheck, TrendingUp, BrainCircuit, Droplets, RefreshCw } from 'lucide-react';
 import { WalletHeader } from '../shared/wallet-header';
 
 const FeatureCard = ({ title, description, icon, link }: { title: string, description: string, icon: React.ReactNode, link: string }) => (
@@ -66,7 +66,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link href="/trading"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><TrendingUp className="mr-4"/><div><p className="font-bold">Perpetuals Trading</p><p className="text-xs text-muted-foreground">Trade futures with leverage.</p></div></Button></Link>
-                <Link href="/markets"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><LineChart className="mr-4"/><div><p className="font-bold">Market Analysis</p><p className="text-xs text-muted-foreground">Live charts and data.</p></div></Button></Link>
+                <Link href="/swap"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><RefreshCw className="mr-4"/><div><p className="font-bold">Token Swap</p><p className="text-xs text-muted-foreground">Exchange tokens on-chain.</p></div></Button></Link>
                 <Link href="/intelligence"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><BrainCircuit className="mr-4"/><div><p className="font-bold">AI Intelligence</p><p className="text-xs text-muted-foreground">Get AI briefings on assets.</p></div></Button></Link>
                 <Link href="/liquidity"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><Droplets className="mr-4"/><div><p className="font-bold">Provide Liquidity</p><p className="text-xs text-muted-foreground">Earn fees on your assets.</p></div></Button></Link>
             </CardContent>

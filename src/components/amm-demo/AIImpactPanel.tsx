@@ -26,8 +26,8 @@ export function AIImpactPanel() {
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-3"><Cpu /> AI Impact Analysis</CardTitle>
-                    <CardDescription>Measurable benefits of AI-driven fee optimization</CardDescription>
+                    <CardTitle className="flex items-center gap-3"><Cpu /> Automation Impact Analysis</CardTitle>
+                    <CardDescription>Measurable benefits of data-driven fee optimization</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -69,12 +69,12 @@ export function AIImpactPanel() {
                     </div>
                     
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">AI Optimization Benefits</h3>
+                        <h3 className="text-lg font-semibold">Autonomous Optimization Benefits</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="p-4 border rounded-lg">
                                 <h4 className="font-medium mb-2">Dynamic Fee Adjustment</h4>
                                 <p className="text-sm text-muted-foreground">
-                                    AI algorithms continuously analyze market conditions to optimize trading fees, 
+                                    Autonomous algorithms continuously analyze market conditions to optimize trading fees, 
                                     resulting in an average reduction of {(avgFeeReduction * 100).toFixed(2)}% compared to static fee models.
                                 </p>
                             </div>
@@ -82,7 +82,7 @@ export function AIImpactPanel() {
                             <div className="p-4 border rounded-lg">
                                 <h4 className="font-medium mb-2">Liquidity Optimization</h4>
                                 <p className="text-sm text-muted-foreground">
-                                    AI predictions help maintain optimal liquidity distribution across pools, 
+                                    Data-driven predictions help maintain optimal liquidity distribution across pools, 
                                     reducing slippage and improving capital efficiency by up to 40%.
                                 </p>
                             </div>
@@ -98,7 +98,7 @@ export function AIImpactPanel() {
                             <div className="p-4 border rounded-lg">
                                 <h4 className="font-medium mb-2">Confidence-Weighted Decisions</h4>
                                 <p className="text-sm text-muted-foreground">
-                                    Each AI prediction includes a confidence score, allowing the system to weigh 
+                                    Each prediction includes a confidence score, allowing the system to weigh 
                                     recommendations appropriately and maintain stability even with uncertain predictions.
                                 </p>
                             </div>

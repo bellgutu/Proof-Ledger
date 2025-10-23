@@ -45,7 +45,7 @@ const IntelligencePageContent = () => {
       setBriefings(prev => ({ ...prev, [symbol]: result }));
     } catch (e) {
       console.error(`Failed to fetch briefing for ${symbol}:`, e);
-      setBriefings(prev => ({ ...prev, [symbol]: { symbol, briefing: "Failed to load AI briefing. Please try again." } }));
+      setBriefings(prev => ({ ...prev, [symbol]: { symbol, briefing: "Failed to load briefing. Please try again." } }));
     } finally {
       setIsBriefingLoading(prev => ({ ...prev, [symbol]: false }));
     }
@@ -123,8 +123,8 @@ const IntelligencePageContent = () => {
         </Card>
         <Card>
             <CardHeader>
-              <CardTitle>AI-Powered Asset Watchlist</CardTitle>
-              <CardDescription>Add assets to your watchlist to get personalized AI intelligence briefings.</CardDescription>
+              <CardTitle>Asset Watchlist</CardTitle>
+              <CardDescription>Add assets to your watchlist to get personalized intelligence briefings.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <form onSubmit={watchlistForm.handleSubmit(handleAddToWatchlist)} className="flex items-center gap-2">
@@ -160,7 +160,7 @@ const IntelligencePageContent = () => {
                                      <div className="flex items-start gap-3">
                                         <Bot className="text-primary mt-1 flex-shrink-0"/>
                                         <p className="text-sm text-muted-foreground">
-                                            {briefings[symbol]?.briefing || "Click the search icon to generate an AI briefing."}
+                                            {briefings[symbol]?.briefing || "Click the search icon to generate an intelligence briefing."}
                                         </p>
                                     </div>
                                 )}

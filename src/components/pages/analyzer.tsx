@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, auseState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,13 +40,13 @@ export default function AnalyzerPage() {
     try {
       const result = await analyzeWhitePaper(values.whitePaperUrl);
       if (!result || !result.analysis) {
-        throw new Error("AI failed to produce an analysis.");
+        throw new Error("Analysis engine failed to produce a result.");
       }
       const htmlResult = await marked(result.analysis);
       setAnalysisResult(htmlResult);
     } catch (e: any) {
       console.error("Analysis failed:", e);
-      setError(e.message || "Failed to analyze the white paper. Please check the URL and try again.");
+      setError(e.message || "Failed to analyze the document. Please check the URL and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -57,15 +57,15 @@ export default function AnalyzerPage() {
       <div className="flex items-center space-x-4">
         <FileText className="w-10 h-10 text-primary" />
         <div>
-          <h1 className="text-3xl font-bold">AI White Paper Analyzer</h1>
-          <p className="text-muted-foreground">Submit a URL to a white paper to get an AI-generated summary and analysis.</p>
+          <h1 className="text-3xl font-bold">Document Analyzer</h1>
+          <p className="text-muted-foreground">Submit a URL to a white paper or document to get an automated summary and analysis.</p>
         </div>
       </div>
 
       <Card className="transform transition-transform duration-300 hover:scale-[1.01]">
         <CardHeader>
-          <CardTitle>Analyze a White Paper</CardTitle>
-          <CardDescription>Enter the public URL of a white paper PDF or a page linking to one.</CardDescription>
+          <CardTitle>Analyze a Document</CardTitle>
+          <CardDescription>Enter the public URL of a document PDF or a page linking to one.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -75,14 +75,14 @@ export default function AnalyzerPage() {
                 name="whitePaperUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>White Paper URL</FormLabel>
+                    <FormLabel>Document URL</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="https://example.com/whitepaper.pdf"
                         {...field}
                       />
                     </FormControl>
-                    <FormDesc>The URL must be publicly accessible. The AI will attempt to fetch and parse it.</FormDesc>
+                    <FormDesc>The URL must be publicly accessible. The system will attempt to fetch and parse it.</FormDesc>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -96,7 +96,7 @@ export default function AnalyzerPage() {
                 ) : (
                   <>
                     <Zap className="mr-2 h-4 w-4" />
-                    Analyze with AI
+                    Analyze
                   </>
                 )}
               </Button>
@@ -110,7 +110,7 @@ export default function AnalyzerPage() {
       {isLoading && (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center"><Bot className="mr-2 text-primary" /> AI Analysis</CardTitle>
+                <CardTitle className="flex items-center"><Bot className="mr-2 text-primary" /> Analysis</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                 <Skeleton className="h-4 w-1/4" />
@@ -130,7 +130,7 @@ export default function AnalyzerPage() {
       {analysisResult && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center"><Bot className="mr-2 text-primary" /> AI Analysis</CardTitle>
+            <CardTitle className="flex items-center"><Bot className="mr-2 text-primary" /> Analysis</CardTitle>
           </CardHeader>
           <CardContent className="prose prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground">
             <div dangerouslySetInnerHTML={{ __html: analysisResult }} />

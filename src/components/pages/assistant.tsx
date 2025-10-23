@@ -45,7 +45,7 @@ export default function AssistantPage() {
       const result = await getTradingStrategy(values);
 
       if (!result || !result.strategySuggestion || !result.riskConsiderations) {
-        throw new Error("The AI failed to generate a valid strategy. Please try again.");
+        throw new Error("The automation failed to generate a valid strategy. Please try again.");
       }
 
       // Convert markdown fields to HTML
@@ -68,8 +68,8 @@ export default function AssistantPage() {
       <div className="flex items-center space-x-4">
         <BrainCircuit className="w-10 h-10 text-primary" />
         <div>
-          <h1 className="text-3xl font-bold">AI Trading Strategy Assistant</h1>
-          <p className="text-muted-foreground">Get AI-powered insights based on market conditions and your risk appetite.</p>
+          <h1 className="text-3xl font-bold">Trading Strategy Assistant</h1>
+          <p className="text-muted-foreground">Get insights based on market conditions and your risk appetite.</p>
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export default function AssistantPage() {
                 ) : (
                   <>
                     <Zap className="mr-2 h-4 w-4" />
-                    Generate AI Strategy
+                    Generate Strategy
                   </>
                 )}
               </Button>

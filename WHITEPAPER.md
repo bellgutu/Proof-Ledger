@@ -1,4 +1,3 @@
-
 # **ProfitForge: The Autonomous Financial Platform**
 
 ## **Abstract**

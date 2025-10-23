@@ -27,8 +27,8 @@ export function AiOraclePanel() {
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-3"><Bot /> AI Oracle Interface</CardTitle>
-                    <CardDescription>Submit AI predictions to influence pool parameters like fees.</CardDescription>
+                    <CardTitle className="flex items-center gap-3"><Bot /> Oracle Interface</CardTitle>
+                    <CardDescription>Submit data predictions to influence pool parameters like fees.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -71,7 +71,7 @@ export function AiOraclePanel() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3"><BarChart3 /> Prediction History</CardTitle>
-                        <CardDescription>Historical AI predictions and their outcomes.</CardDescription>
+                        <CardDescription>Historical data submissions and their outcomes.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>

@@ -1,4 +1,3 @@
-
 # **ProfitForge: The Infrastructure for Your Own Decentralized Bank**
 
 **ProfitForge is a next-generation platform providing the infrastructure for communities, DAOs, and individuals to deploy, customize, and own their own autonomous financial systems on-chain.**

@@ -18,9 +18,9 @@ function InnovativeAMMDemo() {
     return (
         <div className="container mx-auto p-0 space-y-8">
              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold tracking-tight text-primary">Innovative Automatic Market Maker</h1>
+                <h1 className="text-4xl font-bold tracking-tight text-primary">Autonomous Market Engine</h1>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                    A technical showcase of the autonomous, data-driven logic that powers the platform's liquidity and market-making capabilities.
+                    A technical showcase of the data-driven logic that powers the platform's liquidity and market-making capabilities.
                 </p>
             </div>
             
@@ -36,7 +36,7 @@ function InnovativeAMMDemo() {
                     </TabsTrigger>
                     <TabsTrigger value="oracle" className="flex items-center gap-2">
                         <Bot className="h-4 w-4" />
-                        <span>AI Oracle</span>
+                        <span>Oracle Interface</span>
                     </TabsTrigger>
                     <TabsTrigger value="pools" className="flex items-center gap-2">
                         <Droplets className="h-4 w-4" />
@@ -56,7 +56,7 @@ function InnovativeAMMDemo() {
                     </TabsTrigger>
                     <TabsTrigger value="ai-impact" className="flex items-center gap-2">
                         <Cpu className="h-4 w-4" />
-                        <span>AI Impact</span>
+                        <span>Automation Impact</span>
                     </TabsTrigger>
                 </TabsList>
                 

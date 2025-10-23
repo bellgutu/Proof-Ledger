@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState } from 'react';
@@ -80,7 +79,7 @@ export default function ToolsPage() {
         });
         setIsAlertOpen(true);
     } catch(e: any) {
-        setError(e.message || "The AI transaction simulator failed. Please try again.");
+        setError(e.message || "The transaction simulator failed. Please try again.");
     } finally {
         setIsLoading(false);
     }
@@ -115,7 +114,7 @@ export default function ToolsPage() {
       const htmlResult = await marked(result.analysis);
       setAnalysisResult(htmlResult);
     } catch (e: any) {
-      setError(e.message || "Failed to analyze the white paper. Please check the URL and try again.");
+      setError(e.message || "Failed to analyze the document. Please check the URL and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +135,7 @@ export default function ToolsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Cross-Chain Bridge Simulator</CardTitle>
-                    <CardDescription>Simulate asset transfers between different blockchains with AI-generated transaction details.</CardDescription>
+                    <CardDescription>Simulate asset transfers between different blockchains with automated transaction details.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={bridgeForm.handleSubmit(handleBridge)} className="space-y-4">
@@ -182,7 +181,7 @@ export default function ToolsPage() {
             <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center"><ShieldCheck className="mr-2 text-primary"/> Smart Contract Auditor</CardTitle>
-                  <CardDescription>Enter a contract address for an AI security analysis.</CardDescription>
+                  <CardDescription>Enter a contract address for a security analysis.</CardDescription>
                 </CardHeader>
                 <CardContent>
                    <form onSubmit={contractAuditorForm.handleSubmit(data => handleAudit('contract', data))} className="space-y-4">
@@ -218,15 +217,15 @@ export default function ToolsPage() {
             <div className="space-y-8">
                  <Card>
                     <CardHeader>
-                        <CardTitle>AI White Paper Analyzer</CardTitle>
-                        <CardDescription>Submit a URL to a white paper to get an AI-generated summary and analysis.</CardDescription>
+                        <CardTitle>Document Analyzer</CardTitle>
+                        <CardDescription>Submit a URL to a white paper or document to get a generated summary and analysis.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={analyzerForm.handleSubmit(handleAnalyze)} className="space-y-4">
                             <Input placeholder="https://example.com/whitepaper.pdf" {...analyzerForm.register("whitePaperUrl")} />
                             <Button type="submit" className="w-full" disabled={isLoading}>
                                 {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Search className="mr-2" />}
-                                Analyze White Paper
+                                Analyze Document
                             </Button>
                         </form>
                     </CardContent>
@@ -235,7 +234,7 @@ export default function ToolsPage() {
                 {isLoading && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>AI Analysis</CardTitle>
+                            <CardTitle>Analysis</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <Skeleton className="h-4 w-1/4" />
@@ -247,7 +246,7 @@ export default function ToolsPage() {
                 {analysisResult && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>AI Analysis Result</CardTitle>
+                            <CardTitle>Analysis Result</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="prose prose-sm prose-invert max-w-none prose-p:text-muted-foreground" dangerouslySetInnerHTML={{ __html: analysisResult }} />

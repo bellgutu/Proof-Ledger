@@ -15,10 +15,10 @@ export default function TrustLayerPage() {
             <WalletHeader />
             <div className="text-center space-y-2 mt-8">
                 <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center justify-center gap-3">
-                    <ShieldCheck className="w-10 h-10" /> Trust Layer Ecosystem
+                    <ShieldCheck className="w-10 h-10" /> Trust Layer
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                    The core infrastructure for your autonomous bank. Explore a verified, on-chain ecosystem for tokenized assets, governance, and automated yield strategies.
+                    The core infrastructure for an autonomous financial entity. Explore a verified, on-chain ecosystem for tokenized assets, governance, and automated yield strategies.
                 </p>
             </div>
             

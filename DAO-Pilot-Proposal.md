@@ -1,4 +1,3 @@
-
 # Proposal: Aave Treasury Optimization Pilot with ProfitForge Autonomous Stack
 
 ## 1. Abstract

@@ -40,20 +40,20 @@ export default function DashboardPage() {
                 The Infrastructure for Your Own Decentralized Bank
             </h1>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                This isn't just a DeFi app. It's an autonomous financial platform that you can deploy, customize, and own outright — without giving custody to anyone.
+                This isn't just a DeFi app. It’s a platform that lets anyone, anywhere, run their own autonomous financial system — with built-in yield, governance, and automation.
             </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-8">
             <FeatureCard 
-                title="AI-Powered AMM"
-                description="Interact with a live, next-generation Automated Market Maker on the Sepolia testnet. Experience dynamic fees, AI-driven oracles, and enhanced capital efficiency."
+                title="Autonomous Market Engine"
+                description="Interact with a live, next-generation Automated Market Maker on the Sepolia testnet. Experience dynamic fees, data-driven oracles, and enhanced capital efficiency."
                 icon={<Bot className="w-8 h-8 text-primary" />}
                 link="/amm-demo"
             />
             <FeatureCard 
-                title="Trust Layer for RWAs"
-                description="Explore a verified on-chain framework for issuing, governing, and managing tokenized Real-World Assets. View system health, oracle networks, and yield products."
+                title="Trust Layer"
+                description="Explore a verified on-chain framework for issuing, governing, and managing tokenized assets. View system health, oracle networks, and yield products."
                 icon={<ShieldCheck className="w-8 h-8 text-primary" />}
                 link="/trust-layer"
             />
@@ -67,7 +67,7 @@ export default function DashboardPage() {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link href="/trading"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><TrendingUp className="mr-4"/><div><p className="font-bold">Perpetuals Trading</p><p className="text-xs text-muted-foreground">Trade futures with leverage.</p></div></Button></Link>
                 <Link href="/swap"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><RefreshCw className="mr-4"/><div><p className="font-bold">Token Swap</p><p className="text-xs text-muted-foreground">Exchange tokens on-chain.</p></div></Button></Link>
-                <Link href="/intelligence"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><BrainCircuit className="mr-4"/><div><p className="font-bold">AI Intelligence</p><p className="text-xs text-muted-foreground">Get AI briefings on assets.</p></div></Button></Link>
+                <Link href="/intelligence"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><BrainCircuit className="mr-4"/><div><p className="font-bold">Market Intelligence</p><p className="text-xs text-muted-foreground">Get briefings on assets.</p></div></Button></Link>
                 <Link href="/liquidity"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><Droplets className="mr-4"/><div><p className="font-bold">Provide Liquidity</p><p className="text-xs text-muted-foreground">Earn fees on your assets.</p></div></Button></Link>
             </CardContent>
         </Card>

@@ -37,10 +37,10 @@ export default function DashboardPage() {
 
         <div className="text-center space-y-2 mt-8">
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                Welcome to ProfitForge
+                The Infrastructure for Your Own Decentralized Bank
             </h1>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                An on-chain application showcasing a dual-ecosystem for AI-powered market making and institutional-grade tokenized assets.
+                This isn't just a DeFi app. It's an autonomous financial platform that you can deploy, customize, and own outright — without giving custody to anyone.
             </p>
         </div>
 

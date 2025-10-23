@@ -9,8 +9,8 @@ import { Providers } from '@/contexts/providers';
 
 
 export const metadata: Metadata = {
-  title: 'ProfitForge',
-  description: 'AI-powered tools for DeFi and crypto trading.',
+  title: 'ProfitForge - Your Autonomous Financial Platform',
+  description: 'The infrastructure for communities, DAOs, and everyday users to run their own decentralized bank.',
 };
 
 export default function RootLayout({

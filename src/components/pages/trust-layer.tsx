@@ -18,7 +18,7 @@ export default function TrustLayerPage() {
                     <ShieldCheck className="w-10 h-10" /> Trust Layer Ecosystem
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                    An interactive dashboard showcasing a verified, on-chain ecosystem for tokenized assets, demonstrating transparency, security, and advanced DeFi mechanics.
+                    The core infrastructure for your autonomous bank. Explore a verified, on-chain ecosystem for tokenized assets, governance, and automated yield strategies.
                 </p>
             </div>
             
@@ -58,5 +58,3 @@ export default function TrustLayerPage() {
         </div>
     );
 }
-
-    

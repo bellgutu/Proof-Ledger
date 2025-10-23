@@ -4,6 +4,7 @@
   "AIPredictiveLiquidityOracle": "0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7",
   "AdvancedPriceOracle": "0x68cB1F4F2E22C4e85667C2EB05Db8b0F68DE1648",
   "AdaptiveMarketMaker": "0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e",
+  "ProofBond": "0x98e84f8F812cDFD21debF85f85cbe46a729E608a",
   "network": "sepolia",
   "chainId": 11155111,
   "abis": {

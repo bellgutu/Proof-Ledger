@@ -50,7 +50,7 @@ These features provide the user interface and tools to interact with the underly
 
 ### **2.3. AI-Powered Tooling**
 *   **AI Strategy Assistant**: Generates trading strategies based on market trends and risk profiles.
-*   **AI Auditors**: Simulates security analysis for smart contracts and risk analysis for tokens.
+*   **AI Auditors**: security analysis for smart contracts and risk analysis for tokens.
 *   **Whale Watcher**: Monitors specified wallet addresses and uses AI to analyze significant on-chain movements.
 
 ### **2.4. Portfolio Management**

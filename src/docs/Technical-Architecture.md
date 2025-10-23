@@ -1,3 +1,4 @@
+
 # ProfitForge: Technical Architecture
 
 This document provides a detailed breakdown of the technical architecture, technology stack, and security best practices for the ProfitForge application.
@@ -41,8 +42,8 @@ This is the cutting-edge showcase of a next-generation DeFi ecosystem, fully dep
 - **`AIPredictiveLiquidityOracle`**: `0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7`
 - **`AdvancedPriceOracle`**: `0x68cB1F4F2E22C4e85667C2EB05Db8b0F68DE1648`
 - **`AdaptiveMarketMaker`**: `0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e`
-- **`ProofBond`**: `0x400e9652A5A0391a92e1F2aD22F53c1C2667b140`
-- **`OpenGovernor`**: `0x1EE99F543881335A71a2542B774483B527A5c6D7`
+- **`ProofBond`**: `0x98e84f8F812cDFD21debF85f85cbe46a729E608a`
+- **`OpenGovernor`**: `0x1EE99F543881335A71a2542B774483B367332ff61F`
 - **`SafeVault`**: `0x7f9a1f2C474f7A0F1F072183e9bC1A5702213a45`
 
 ### 3.2. Legacy Application Contracts (Trading & Basic Swap)

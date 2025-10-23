@@ -102,8 +102,8 @@ export const Dashboard = () => {
                 isLoading={isLoading}
             >
                 <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Active Bonds</p>
-                    <p className="text-3xl font-bold">{proofBondData.activeBonds.toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground">Total Supply</p>
+                    <p className="text-3xl font-bold">{parseFloat(proofBondData.totalSupply).toLocaleString()} PBND</p>
                     <p className="text-xs text-muted-foreground mt-1">Total Value Locked: ${parseFloat(proofBondData.tvl).toLocaleString()}</p>
                 </div>
             </ContractCard>

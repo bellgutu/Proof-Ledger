@@ -321,17 +321,24 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             const [price, timestamp, confidence] = latestPriceData as [bigint, bigint, bigint];
 
             // ProofBond Data
-            const activeBonds = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
-                functionName: 'totalSupply',
-            });
-            const bondTvl = await publicClient.readContract({
-                address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-                abi: DEPLOYED_CONTRACTS.abis.ProofBond as any, // Using an ABI that has balanceOf
-                functionName: 'balanceOf',
-                args: [DEPLOYED_CONTRACTS.ProofBond as Address],
-            });
+            const [activeBonds, bondTvl, bondTotalSupply] = await Promise.all([
+                publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
+                    functionName: 'totalSupply',
+                }),
+                publicClient.readContract({
+                    address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond as any, // Using an ABI that has balanceOf
+                    functionName: 'balanceOf',
+                    args: [DEPLOYED_CONTRACTS.ProofBond as Address],
+                }),
+                publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond as any,
+                    functionName: 'totalSupply',
+                }),
+            ]);
             
             // User Data
             let isProvider = false;
@@ -393,6 +400,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     ...prev.proofBondData,
                     activeBonds: Number(activeBonds),
                     tvl: formatUnits(bondTvl as bigint, 6),
+                    totalSupply: formatUnits(bondTotalSupply as bigint, 18), // Assuming PBND is 18 decimals
                     userBonds: userBonds,
                 },
                 userData: {
@@ -600,5 +608,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-
-    

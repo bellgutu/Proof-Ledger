@@ -166,7 +166,7 @@ export default function SwapPage() {
   };
   
   const swapTransactions = useMemo(() => {
-    return transactions.filter(tx => tx.type === 'Swap');
+    return transactions.filter(tx => tx.type === 'Swap').sort((a, b) => b.timestamp - a.timestamp);
   }, [transactions]);
 
 

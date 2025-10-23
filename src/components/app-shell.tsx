@@ -32,12 +32,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   const getActivePage = () => {
      const segments = pathname.split('/').filter(Boolean);
-     // The root path is now 'trust-layer', but we want the nav item to be highlighted.
-     if (pathname === '/') return 'trust-layer';
+     if (pathname === '/') return 'dashboard'; // New homepage
      if(segments[0] === 'markets' && segments[1]){
       return 'markets';
     }
-    return segments[0] || 'trust-layer';
+    return segments[0] || 'dashboard';
   };
   
   const activePage = getActivePage();
@@ -71,12 +70,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const navItems = [
-    { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/' },
+    { id: 'dashboard', label: 'Dashboard', icon: <BarChartHorizontalBig size={20}/>, path: '/' },
+    { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/trust-layer' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
-    { id: 'amm-demo', label: 'Automatic Market Maker', icon: <Bot size={20} />, path: '/amm-demo' },
+    { id: 'amm-demo', label: 'AI AMM', icon: <Bot size={20} />, path: '/amm-demo' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
     { id: 'swap', label: 'Swap', icon: <RefreshCw size={20} />, path: '/swap' },
-    { id: 'liquidity', label: 'Liquidity Pro', icon: <Droplets size={20} />, path: '/liquidity' },
+    { id: 'liquidity', label: 'Liquidity', icon: <Droplets size={20} />, path: '/liquidity' },
     { id: 'finance', label: 'DeFi', icon: <HandCoins size={20} />, path: '/finance' },
     { id: 'intelligence', label: 'Intelligence', icon: <BrainCircuit size={20} />, path: '/intelligence' },
     { id: 'tools', label: 'Web3 Tools', icon: <Plug size={20} />, path: '/tools' },

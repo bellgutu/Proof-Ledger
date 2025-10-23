@@ -1,11 +1,8 @@
 
-import TrustLayerPage from '@/components/pages/trust-layer';
-import { TrustLayerProvider } from '@/contexts/trust-layer-context';
+import DashboardPage from '@/components/pages/dashboard';
 
 export default function Home() {
   return (
-    <TrustLayerProvider>
-      <TrustLayerPage />
-    </TrustLayerProvider>
+    <DashboardPage />
   );
 }

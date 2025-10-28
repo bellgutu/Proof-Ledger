@@ -7,13 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TrendingUp, Activity, Zap, Shield, BarChart3 } from 'lucide-react';
 import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
+import { useWallet } from '@/contexts/wallet-context';
 
 export function AnalyticsPanel() {
     const { state } = useAmmDemo();
+    const { walletState } = useWallet(); // Get market data for pricing
     
     const totalTVL = state.pools.reduce((sum, pool) => {
-        const tokenAPrice = pool.tokenA.symbol.includes('WETH') ? 1800 : 1;
-        const tokenBPrice = pool.tokenB.symbol.includes('WETH') ? 1800 : 1;
+        const tokenAPrice = walletState.marketData[pool.tokenA.symbol]?.price || 0;
+        const tokenBPrice = walletState.marketData[pool.tokenB.symbol]?.price || 0;
         const tokenAValue = parseFloat(pool.reserveA) * tokenAPrice;
         const tokenBValue = parseFloat(pool.reserveB) * tokenBPrice;
         return sum + tokenAValue + tokenBValue;
@@ -91,8 +93,8 @@ export function AnalyticsPanel() {
                         </TableHeader>
                         <TableBody>
                             {state.pools.map(pool => {
-                                const tokenAPrice = pool.tokenA.symbol.includes('WETH') ? 1800 : 1;
-                                const tokenBPrice = pool.tokenB.symbol.includes('WETH') ? 1800 : 1;
+                                const tokenAPrice = walletState.marketData[pool.tokenA.symbol]?.price || 0;
+                                const tokenBPrice = walletState.marketData[pool.tokenB.symbol]?.price || 0;
                                 const tvl = parseFloat(pool.reserveA) * tokenAPrice + parseFloat(pool.reserveB) * tokenBPrice;
                                 
                                 return (

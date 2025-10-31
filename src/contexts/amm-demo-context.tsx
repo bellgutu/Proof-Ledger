@@ -378,17 +378,20 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     }, [writeContractAsync, executeTransaction, fetchAmmBalancesAndAllowances]);
     
     const submitFeePrediction = useCallback(async (poolAddress: Address, fee: number, confidence: number) => {
-       const poolId = pools.find(p => p.address === poolAddress)?.id;
-       if (poolId === undefined) {
+       const pool = pools.find(p => p.address === poolAddress);
+       if (!pool) {
            toast({ variant: 'destructive', title: 'Pool not found' });
            return;
        }
-        await executeTransaction('Submit Prediction', `Submitting prediction for pool ${poolId}`, `Prediction_${poolAddress}`,
+       const MOCK_ROUND_ID = 0; // In a real scenario, this would be dynamically determined
+       const feeAsInteger = BigInt(Math.round(fee * 10000)); // e.g., 0.3% -> 30
+
+        await executeTransaction('Submit Prediction', `Submitting prediction for pool ${pool.id}`, `Prediction_${pool.address}`,
             () => writeContractAsync({
                 address: AI_ORACLE_ADDRESS,
                 abi: AI_ORACLE_ABI,
                 functionName: 'submitObservation',
-                args: [BigInt(poolId), parseUnits(fee.toString(), 8)]
+                args: [BigInt(MOCK_ROUND_ID), feeAsInteger]
             })
         );
     }, [pools, writeContractAsync, executeTransaction, toast]);

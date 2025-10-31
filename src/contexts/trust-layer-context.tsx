@@ -40,6 +40,7 @@ interface TrustOracleData {
   minStake: string;
   minSubmissions: number;
   providers: Array<{ address: Address; stake: string; lastUpdate: number }>;
+  activePairIds: bigint[];
 }
 
 interface MainContractData {
@@ -77,6 +78,7 @@ interface TrustLayerActions {
   refresh: () => Promise<void>;
   registerAsProvider: () => Promise<void>;
   submitObservation: (price: string, confidence: number) => Promise<void>;
+  addAssetPair: (tokenA: Address, tokenB: Address) => Promise<void>;
   purchaseBond: (amount: string) => Promise<void>;
   issueTranche: (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => Promise<void>;
   redeemBond: (bondId: number) => Promise<void>;
@@ -95,7 +97,8 @@ const initialTrustLayerState: TrustLayerState = {
     activeProviders: 0, 
     minStake: '0', 
     minSubmissions: 0,
-    providers: []
+    providers: [],
+    activePairIds: []
   },
   safeVaultData: { 
     totalAssets: '1250000',
@@ -137,11 +140,18 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             });
 
             // AIPredictiveLiquidityOracle Data
-            const [minStake, minSubmissions, allProviders] = await Promise.all([
+            const [minStake, minSubmissions, allProviders, activePairCount] = await Promise.all([
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'MIN_PROVIDER_STAKE' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getAllProviders' }),
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getActivePairCount' }),
             ]);
+
+            const activePairIds = [];
+            for (let i = 0; i < Number(activePairCount); i++) {
+                const pairId = await publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'activePairIds', args: [BigInt(i)] });
+                activePairIds.push(pairId as bigint);
+            }
 
             const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
                 const [stake, lastUpdate] = await Promise.all([
@@ -186,27 +196,30 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     });
                     
                     if (userTrancheIds && Array.isArray(userTrancheIds)) {
-                        for(const bondId of (userTrancheIds as bigint[])) {
-                            const bondData = await publicClient.readContract({
-                                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                                 functionName: 'tranches',
-                                 args: [bondId],
-                            });
-                            const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean];
-                            if(!redeemed) {
-                                freshUserBonds.push({
-                                    id: Number(bondId),
-                                    amount: formatUnits(amount, 6), // Assuming USDC decimals
-                                    maturity: Number(maturity),
-                                    yield: (Number(interest) / 100).toFixed(2)
+                        const newBonds = await Promise.all(
+                            (userTrancheIds as bigint[]).map(async (bondId) => {
+                                const bondData = await publicClient.readContract({
+                                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                                    functionName: 'tranches',
+                                    args: [bondId],
                                 });
-                            }
-                        }
+                                const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean];
+                                if (!redeemed) {
+                                    return {
+                                        id: Number(bondId),
+                                        amount: formatUnits(amount, 6), // Assuming USDC decimals
+                                        maturity: Number(maturity),
+                                        yield: (Number(interest) / 100).toFixed(2)
+                                    };
+                                }
+                                return null;
+                            })
+                        );
+                        freshUserBonds = newBonds.filter(b => b !== null) as UserBond[];
                     }
                 } catch (e) {
                     console.error("Error fetching user bonds:", e);
-                    // Continue without user bonds if this call fails
                 }
             }
             const tvl = freshUserBonds.reduce((acc, bond) => acc + parseFloat(bond.amount), 0);
@@ -218,7 +231,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     minStake: formatEther(minStake as bigint),
                     minSubmissions: Number(minSubmissions),
                     activeProviders: providerDetails.length,
-                    providers: providerDetails
+                    providers: providerDetails,
+                    activePairIds
                 },
                 proofBondData: {
                     trancheSize: formatUnits(bondTrancheSize as bigint, bondDecimals as number),
@@ -266,6 +280,17 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         await walletActions.executeTransaction('Submit Observation', details, txFunction, fetchData);
     }, [writeContractAsync, walletActions, fetchData]);
     
+    const addAssetPair = useCallback(async (tokenA: Address, tokenB: Address) => {
+        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Adding asset pair` };
+        const txFunction = () => writeContractAsync({
+            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+            functionName: 'addAssetPair',
+            args: [tokenA, tokenB, BigInt(3600)] // 1 hour update interval
+        });
+        await walletActions.executeTransaction('Add Asset Pair', details, txFunction, fetchData);
+    }, [writeContractAsync, walletActions, fetchData]);
+
     const purchaseBond = useCallback(async (amount: string) => {
         if (!walletClient) {
             toast({ variant: 'destructive', title: 'Wallet not connected' });
@@ -381,6 +406,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             refresh: fetchData,
             registerAsProvider,
             submitObservation,
+            addAssetPair,
             purchaseBond,
             issueTranche,
             redeemBond
@@ -401,3 +427,5 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+
+    

@@ -72,8 +72,8 @@ export const Dashboard = () => {
                         <p className="text-sm font-mono">{trustOracleData.minStake} ETH</p>
                     </div>
                      <div className="flex justify-between items-center">
-                        <p className="text-sm text-muted-foreground">Min Submissions</p>
-                        <p className="text-sm font-mono">{trustOracleData.minSubmissions}</p>
+                        <p className="text-sm text-muted-foreground">Monitored Pairs</p>
+                        <p className="text-sm font-mono">{trustOracleData.activePairIds.length}</p>
                     </div>
                 </div>
             </ContractCard>
@@ -94,3 +94,5 @@ export const Dashboard = () => {
         </div>
     );
 };
+
+    

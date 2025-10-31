@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -12,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Image from 'next/image';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { useToast } from '@/hooks/use-toast';
-import { DEX_CONTRACT_ADDRESS } from '@/services/blockchain-service';
+import { DEX_CONTRACT_ADDRESS, DEX_ABI, getViemPublicClient } from '@/services/blockchain-service';
 import { ContractStatusPanel } from '../shared/ContractStatusPanel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { TransactionDetailDialog } from '@/components/shared/transaction-detail-dialog';
 import type { Transaction } from '@/contexts/wallet-context';
 import { ScrollArea } from '../ui/scroll-area';
+import { formatUnits, parseUnits } from 'viem';
 
 type Token = 'USDT' | 'USDC';
 
@@ -28,7 +30,7 @@ export default function SwapPage() {
   const { 
     isConnected, 
     balances, 
-    marketData,
+    decimals,
     allowances,
     transactions
   } = walletState;
@@ -38,6 +40,7 @@ export default function SwapPage() {
     checkAllowance,
   } = walletActions;
   const { toast } = useToast();
+  const publicClient = getViemPublicClient();
 
   const [fromToken, setFromToken] = useState<Token>('USDT');
   const [toToken, setToToken] = useState<Token>('USDC');
@@ -65,28 +68,47 @@ export default function SwapPage() {
   
   const tokenNames: Token[] = useMemo(() => ['USDT', 'USDC'], []);
 
-  const exchangeRates = useMemo(() => {
-    return Object.keys(marketData).reduce((acc, key) => {
-        acc[key as Token] = marketData[key].price;
-        return acc;
-    }, {} as Record<Token, number>);
-  }, [marketData]);
-
-  const conversionRate = useMemo(() => {
-    if (!fromToken || !toToken || !exchangeRates[fromToken] || !exchangeRates[toToken]) return 1;
-    return exchangeRates[fromToken] / exchangeRates[toToken];
-  }, [fromToken, toToken, exchangeRates]);
-
-  const handleAmountChange = useCallback((val: string) => {
-    if (val === '' || parseFloat(val) < 0) {
-      setFromAmount('');
+  const handleAmountChange = useCallback(async (val: string) => {
+    setFromAmount(val);
+    if (val === '' || parseFloat(val) <= 0 || !publicClient) {
       setToAmount('');
       return;
     }
-    const numVal = parseFloat(val);
-    setFromAmount(val);
-    setToAmount((numVal * conversionRate).toFixed(4));
-  }, [conversionRate]);
+
+    try {
+      const fromTokenDecimals = decimals[fromToken];
+      const toTokenDecimals = decimals[toToken];
+      if (fromTokenDecimals === undefined || toTokenDecimals === undefined) {
+        throw new Error("Token decimals not loaded");
+      }
+
+      const amountInWei = parseUnits(val, fromTokenDecimals);
+      
+      const [reserveA, reserveB, contractTokenA] = await Promise.all([
+          publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveA' }),
+          publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveB' }),
+          publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'tokenA' }),
+      ]);
+
+      const fromIsTokenA = walletState.marketData[fromToken]?.address?.toLowerCase() === contractTokenA.toLowerCase();
+
+      const reserveIn = fromIsTokenA ? reserveA : reserveB;
+      const reserveOut = fromIsTokenA ? reserveB : reserveA;
+
+      const amountOutWei = await publicClient.readContract({
+        address: DEX_CONTRACT_ADDRESS,
+        abi: DEX_ABI,
+        functionName: 'getAmountOut',
+        args: [amountInWei, reserveIn, reserveOut]
+      });
+
+      setToAmount(formatUnits(amountOutWei, toTokenDecimals));
+
+    } catch (e) {
+      console.error("Failed to get swap estimate:", e);
+      setToAmount('0');
+    }
+  }, [publicClient, fromToken, toToken, decimals, walletState.marketData]);
 
   const handleSwapTokens = () => {
     if (fromToken === toToken) return;
@@ -148,7 +170,7 @@ export default function SwapPage() {
   
   useEffect(() => {
     handleAmountChange(fromAmount);
-  }, [fromToken, toToken, conversionRate, fromAmount, handleAmountChange]);
+  }, [fromToken, toToken, fromAmount, handleAmountChange]);
 
 
   const handleTxClick = (tx: Transaction) => {
@@ -216,7 +238,7 @@ export default function SwapPage() {
 
                     <div className="p-4 bg-background rounded-md border space-y-2">
                         <div className="flex justify-between items-center">
-                        <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To</label>
+                        <label htmlFor="to-token" className="block text-sm font-medium text-muted-foreground mb-1">To (estimated)</label>
                         <p className="text-xs text-muted-foreground mt-1">Balance: {(balances[toToken] || 0).toLocaleString('en-US', {maximumFractionDigits: 4})}</p>
                         </div>
                         <div className="flex gap-2">

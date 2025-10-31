@@ -190,8 +190,7 @@ export const DEX_ABI = [
         "name": "getAmountOut",
         "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
         "stateMutability": "pure",
-        "type": "function",
-        "constant": true
+        "type": "function"
     },
     {
       "inputs": [],

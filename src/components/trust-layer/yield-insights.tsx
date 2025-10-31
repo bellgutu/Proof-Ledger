@@ -55,7 +55,11 @@ export const YieldInsights = () => {
                      {isLoading ? (
                         <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
                     ) : (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">Total Bond Size</p>
+                            <p className="text-2xl font-bold">{parseFloat(proofBondData.trancheSize).toLocaleString()} PBND</p>
+                        </div>
                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Total Value Locked</p>
                             <p className="text-2xl font-bold">${parseFloat(proofBondData.tvl).toLocaleString()}</p>

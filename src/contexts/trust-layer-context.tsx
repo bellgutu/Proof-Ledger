@@ -8,6 +8,34 @@ import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
 import LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
 
+// --- Generic ERC20 ABI for approvals ---
+const ERC20_ABI = [
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_spender",
+        "type": "address"
+      },
+      {
+        "name": "_value",
+        "type": "uint256"
+      }
+    ],
+    "name": "approve",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+] as const;
+
+
 // Enhanced Types for All Contracts
 interface TrustOracleData {
   activeProviders: number;
@@ -321,7 +349,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             const [price, timestamp, confidence] = latestPriceData as [bigint, bigint, bigint];
 
             // ProofBond Data
-            const [bondTotalSupply, bondDecimals] = await Promise.all([
+            const [bondTotalSupply, bondDecimals, bondTrancheSize] = await Promise.all([
                 publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
@@ -331,6 +359,11 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'decimals',
+                }),
+                publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                    functionName: 'trancheSize',
                 }),
             ]);
             
@@ -390,6 +423,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     activeBonds: userBonds.length,
                     tvl: '0', // TVL calculation for bonds is complex, leave as 0 for now
                     totalSupply: formatUnits(bondTotalSupply as bigint, bondDecimals as number),
+                    trancheSize: formatUnits(bondTrancheSize as bigint, bondDecimals as number),
                     userBonds: userBonds,
                 },
                 userData: {
@@ -476,7 +510,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     
         const approveTxFunction = () => writeContractAsync({
             address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-            abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+            abi: ERC20_ABI,
             functionName: 'approve',
             args: [DEPLOYED_CONTRACTS.ProofBond as Address, parseUnits(amount, 6)]
         });
@@ -485,9 +519,10 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
         } catch (e) {
             console.error("Approval failed, stopping bond purchase.", e);
-            return;
+            return; // Stop if approval fails
         }
         
+        // After successful approval, proceed with issuing the tranche
         const issueDetails = {
             amount: parseFloat(amount),
             token: 'USDC',

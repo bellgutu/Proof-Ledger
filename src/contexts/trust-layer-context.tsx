@@ -303,7 +303,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     functionName: 'oracles',
                     args: [providerAddress],
                 });
-                const [stake, active] = providerData as [bigint, boolean];
+                const [stake, active] = providerData as [bigint, boolean, bigint];
                 return {
                     address: providerAddress,
                     stake: formatEther(stake),
@@ -321,22 +321,16 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             const [price, timestamp, confidence] = latestPriceData as [bigint, bigint, bigint];
 
             // ProofBond Data
-            const [activeBonds, bondTvl, bondTotalSupply] = await Promise.all([
+            const [bondTotalSupply, bondDecimals] = await Promise.all([
                 publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'totalSupply',
                 }),
                 publicClient.readContract({
-                    address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond, // Using an ABI that has balanceOf
-                    functionName: 'balanceOf',
-                    args: [DEPLOYED_CONTRACTS.ProofBond as Address],
-                }),
-                publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'totalSupply',
+                    functionName: 'decimals',
                 }),
             ]);
             
@@ -350,36 +344,29 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     functionName: 'oracles',
                     args: [walletClient.account.address],
                 });
-                isProvider = (oracleData as [bigint, boolean])[1];
+                isProvider = (oracleData as [bigint, boolean, bigint])[1];
 
-
-                const userBondBalance = await publicClient.readContract({
+                const userTrancheIds = await publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'balanceOf',
+                    functionName: 'getInvestorTranches',
                     args: [walletClient.account.address],
                 });
-
-                for(let i=0; i < Number(userBondBalance); i++) {
-                    const bondId = await publicClient.readContract({
-                         address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                         abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                         functionName: 'tokenOfOwnerByIndex',
-                         args: [walletClient.account.address, BigInt(i)],
-                    });
+                
+                for(const bondId of (userTrancheIds as bigint[])) {
                     const bondData = await publicClient.readContract({
                          address: DEPLOYED_CONTRACTS.ProofBond as Address,
                          abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                         functionName: 'getTranche',
+                         functionName: 'tranches',
                          args: [bondId],
                     });
-                    const [investor, amount, interest, maturity, redeemed] = bondData as [Address, bigint, bigint, bigint, boolean];
+                    const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean, Address, bigint];
                     if(!redeemed) {
                         userBonds.push({
                             id: Number(bondId),
-                            amount: formatUnits(amount, 6),
+                            amount: formatUnits(amount, 6), // Assuming USDC decimals
                             maturity: Number(maturity),
-                            yield: '0' // This would require more complex calculation
+                            yield: (Number(interest) / 100).toFixed(2) // Assuming interest is in basis points
                         });
                     }
                 }
@@ -400,9 +387,9 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 },
                 proofBondData: {
                     ...prev.proofBondData,
-                    activeBonds: Number(activeBonds),
-                    tvl: formatUnits(bondTvl as bigint, 6),
-                    totalSupply: formatUnits(bondTotalSupply as bigint, 0), // Assuming no decimals for NFT count
+                    activeBonds: userBonds.length,
+                    tvl: '0', // TVL calculation for bonds is complex, leave as 0 for now
+                    totalSupply: formatUnits(bondTotalSupply as bigint, bondDecimals as number),
                     userBonds: userBonds,
                 },
                 userData: {
@@ -489,7 +476,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     
         const approveTxFunction = () => writeContractAsync({
             address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
-            abi: DEPLOYED_CONTRACTS.abis.ProofBond, // Using proofbond abi as it includes erc20 approve
+            abi: DEPLOYED_CONTRACTS.abis.ProofBond,
             functionName: 'approve',
             args: [DEPLOYED_CONTRACTS.ProofBond as Address, parseUnits(amount, 6)]
         });

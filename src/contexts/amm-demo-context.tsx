@@ -75,6 +75,10 @@ export interface Prediction {
     accuracy?: number;
 }
 
+export interface UserData {
+    isOracleProvider: boolean;
+}
+
 interface AmmDemoState {
     transactions: DemoTransaction[];
     pools: DemoPool[];
@@ -91,6 +95,7 @@ interface AmmDemoState {
     ethBalance: string;
     isConnected: boolean;
     address?: Address;
+    userData: UserData;
 }
 
 interface AmmDemoActions {
@@ -134,6 +139,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     const [networkStats, setNetworkStats] = useState({ blockNumber: 0, gasLimit: '15000000' });
     const [tokenBalances, setTokenBalances] = useState<Record<MockTokenSymbol, string>>({ USDT: '0', USDC: '0', WETH: '0' });
     const [tokenAllowances, setTokenAllowances] = useState<Record<string, bigint>>({});
+    const [userData, setUserData] = useState<UserData>({ isOracleProvider: false });
     
     const { data: nativeBalance } = useBalance({ address });
     const ethBalance = useMemo(() => nativeBalance ? parseFloat(nativeBalance.formatted).toFixed(4) : '0', [nativeBalance]);
@@ -261,6 +267,21 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         setTokenAllowances(newAllowances);
     }, [address, publicClient]);
 
+    const fetchUserData = useCallback(async () => {
+        if (!address || !publicClient) return;
+        try {
+            const isProvider = await publicClient.readContract({
+                address: AI_ORACLE_ADDRESS,
+                abi: AI_ORACLE_ABI,
+                functionName: 'aiProviders',
+                args: [address]
+            });
+            setUserData({ isOracleProvider: isProvider });
+        } catch (e) {
+            console.error("Failed to fetch user data", e);
+        }
+    }, [address, publicClient]);
+
 
     const fetchPools = useCallback(async () => {
         if (!publicClient || !address) return;
@@ -301,7 +322,8 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             await Promise.all([
                 fetchAmmBalancesAndAllowances(), 
                 fetchPools(), 
-                fetchNetworkStats()
+                fetchNetworkStats(),
+                fetchUserData(),
             ]);
             toast({ title: "Data Refreshed", description: "Balances and pool data have been updated." });
         } catch(e) {
@@ -309,7 +331,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setProcessing('refresh', false);
         }
-    }, [isConnected, fetchAmmBalancesAndAllowances, fetchPools, fetchNetworkStats, toast]);
+    }, [isConnected, fetchAmmBalancesAndAllowances, fetchPools, fetchNetworkStats, fetchUserData, toast]);
     
     useEffect(() => {
         if (isConnected) {
@@ -412,9 +434,10 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             functionName: 'MIN_PROVIDER_STAKE'
         });
         await executeTransaction('Register Provider', `Registering as an AI Oracle provider`, `RegisterProvider`,
-            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerAsProvider', value: minStake })
+            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerAsProvider', value: minStake }),
+            fetchUserData
         );
-    }, [executeTransaction, writeContractAsync, publicClient]);
+    }, [executeTransaction, writeContractAsync, publicClient, fetchUserData]);
     
     const addLiquidity = useCallback(async (poolId: number, amountA: string, amountB: string) => {
         const pool = pools.find(p => p.id === poolId);
@@ -548,7 +571,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     
     const state: AmmDemoState = { 
         transactions, pools, predictions, processingStates, isProcessing, gasPrice, networkStats,
-        tokenBalances, tokenAllowances, ethBalance, isConnected, address
+        tokenBalances, tokenAllowances, ethBalance, isConnected, address, userData
     };
     
     const actions: AmmDemoActions = { 

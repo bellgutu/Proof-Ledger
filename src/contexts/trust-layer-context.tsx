@@ -7,6 +7,7 @@ import { type Address, formatUnits, formatEther, parseEther, maxUint256, parseUn
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
 import LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
+import { useAmmDemo, AmmDemoProvider } from './amm-demo-context';
 
 // --- Generic ERC20 ABI for approvals ---
 const ERC20_ABI = [
@@ -155,7 +156,7 @@ interface TrustLayerState {
     recommendations: Array<{ action: string; confidence: number }>;
   };
   
-  // User-specific data
+  // User-specific data from AmmDemoContext
   userData: {
     isOracleProvider: boolean;
     oracleStake: string;
@@ -287,6 +288,7 @@ const initialTrustLayerState: TrustLayerState = {
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
+    const { state: ammState, actions: ammActions } = useAmmDemo();
     const publicClient = usePublicClient({ chainId: DEPLOYED_CONTRACTS.chainId });
     const { data: walletClient } = useWalletClient();
     const { walletActions, walletState } = useWallet();
@@ -304,49 +306,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 abi: DEPLOYED_CONTRACTS.abis.MainContract,
                 functionName: 'protocolFeeRate',
             });
-
-            // AIPredictiveLiquidityOracle (TrustOracle)
-            const [minStake, minSubmissions, allProviders] = await Promise.all([
-                publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'minStake',
-                }),
-                publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'minSubmissions',
-                }),
-                publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'listActiveOracles',
-                }),
-            ]);
-            
-            const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress: Address) => {
-                const providerData = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'oracles',
-                    args: [providerAddress],
-                });
-                const [stake, active, index] = providerData as [bigint, boolean, bigint];
-                return {
-                    address: providerAddress,
-                    stake: formatEther(stake),
-                    lastUpdate: 0 // This ABI doesn't have lastUpdate per oracle
-                };
-            }));
-
-            // AdvancedPriceOracle
-            const latestPriceData = await publicClient.readContract({
-                address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address,
-                abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle,
-                functionName: 'getPriceWithTimestamp',
-                args: [LEGACY_CONTRACTS.WETH_ADDRESS as Address]
-            });
-            const [price, timestamp, confidence] = latestPriceData as [bigint, bigint, bigint];
 
             // ProofBond Data
             const [bondTotalSupply, bondDecimals, bondTrancheSize] = await Promise.all([
@@ -368,17 +327,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             ]);
             
             // User Data
-            let isProvider = false;
             let userBonds: any[] = [];
             if (walletState.isConnected && walletClient) {
-                const oracleData = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'oracles',
-                    args: [walletClient.account.address],
-                });
-                isProvider = (oracleData as [bigint, boolean, bigint])[1];
-
                 const userTrancheIds = await publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
@@ -409,15 +359,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             setState(prev => ({
                 ...prev,
                 mainContractData: { protocolFee: Number(protocolFee) / 100 },
-                trustOracleData: { 
-                    activeProviders: (allProviders as Address[]).length, 
-                    minStake: formatEther(minStake as bigint), 
-                    minSubmissions: Number(minSubmissions),
-                    latestPrice: formatUnits(price, 8),
-                    confidence: Number(confidence),
-                    lastUpdate: Number(timestamp),
-                    providers: providerDetails
-                },
                 proofBondData: {
                     ...prev.proofBondData,
                     activeBonds: userBonds.length,
@@ -428,7 +369,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 },
                 userData: {
                     ...prev.userData,
-                    isOracleProvider: isProvider,
+                    isOracleProvider: ammState.userData.isOracleProvider,
                 },
                 isLoading: false,
                 lastUpdated: Date.now(),
@@ -437,59 +378,15 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             console.error("Failed to fetch Trust Layer data:", error);
             setState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [publicClient, walletState.isConnected, walletClient]);
-
-    const registerOracleProvider = useCallback(async () => {
-        if (!walletClient) {
-            toast({ variant: 'destructive', title: 'Wallet not connected' });
-            return;
-        }
-
-        const minStakeValue = parseEther(state.trustOracleData.minStake);
-
-        const dialogDetails = {
-            amount: parseFloat(state.trustOracleData.minStake),
-            token: 'ETH',
-            to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle,
-            details: 'Staking to become an AI Oracle Provider',
-        };
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                functionName: 'registerAsProvider',
-                value: minStakeValue,
-            });
-        
-        await walletActions.executeTransaction('Register as Oracle', dialogDetails, txFunction, fetchData);
-    }, [walletClient, state.trustOracleData.minStake, toast, writeContractAsync, walletActions, fetchData]);
-
-    const submitOracleData = useCallback(async (price: string, confidence: number) => {
-        if (!walletClient) {
-            toast({ variant: 'destructive', title: 'Wallet not connected' });
-            return;
-        }
-
-        const dialogDetails = {
-            amount: 0,
-            token: 'ETH',
-            to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle,
-            details: `Submitting Oracle data: ${price} with ${confidence}% confidence`,
-        };
-        
-        const MOCK_ROUND_ID = 0; // In a real scenario, this would be dynamically determined
-
-        const txFunction = () =>
-            writeContractAsync({
-                address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                functionName: 'submitObservation',
-                args: [BigInt(MOCK_ROUND_ID), parseUnits(price, 8)],
-            });
-        
-        await walletActions.executeTransaction('Submit Oracle Data', dialogDetails, txFunction, fetchData);
-    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+    }, [publicClient, walletState.isConnected, walletClient, ammState.userData.isOracleProvider]);
+    
+    // Use actions from AmmDemoContext
+    const registerOracleProvider = ammActions.registerAsProvider;
+    const submitOracleData = (price: string, confidence: number) => {
+        // Find a pool to submit for. In a real app, this would be more sophisticated.
+        const poolId = ammState.pools.length > 0 ? ammState.pools[0].id : 0;
+        return ammActions.submitFeePrediction(poolId, parseFloat(price), confidence);
+    };
 
     const unstakeOracle = useCallback(async () => {
          toast({ variant: 'destructive', title: 'Not Implemented' });
@@ -632,5 +529,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-
-    

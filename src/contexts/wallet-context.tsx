@@ -706,6 +706,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       toast({ title: 'Rewards Claimed!', description: `$${position.unclaimedRewards.toFixed(2)} has been added to your wallet.`});
   }, [addTransaction, address, updateBalance, toast]);
   
+  const updateVaultCollateral = useCallback(async () => {
+    if (!isConnected || !address) return;
+    
+    try {
+      const collateral = await getVaultCollateral(address);
+      setVaultCollateral(collateral);
+    } catch (error) {
+      console.error("Failed to update vault collateral:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update vault collateral",
+      });
+    }
+  }, [isConnected, address, toast]);
+
  const depositCollateral = useCallback(async (amount: string) => {
     if (!address) throw new Error("Wallet not connected");
 
@@ -755,22 +771,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
           await updateVaultCollateral();
       });
   }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, publicClient]);
-
-  const updateVaultCollateral = useCallback(async () => {
-    if (!isConnected || !address) return;
-    
-    try {
-      const collateral = await getVaultCollateral(address);
-      setVaultCollateral(collateral);
-    } catch (error) {
-      console.error("Failed to update vault collateral:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update vault collateral",
-      });
-    }
-  }, [isConnected, address, toast]);
   
   const getActivePosition = useCallback(async (addr: `0x${string}`) => {
     try {

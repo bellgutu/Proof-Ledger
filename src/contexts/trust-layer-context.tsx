@@ -307,22 +307,21 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
             // TrustOracle (AIPredictiveLiquidityOracle)
             const [minStake, minSubmissions, activeOracles, price, confidence] = await Promise.all([
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minStake' }),
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'MIN_PROVIDER_STAKE' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'listActiveOracles' }),
+                 Promise.resolve([]), // Placeholder for active oracles
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'getPriceWithTimestamp', args: [LEGACY_CONTRACTS.WETH_ADDRESS as Address] }),
                  Promise.resolve(98), // Mock confidence
             ]);
 
             let isProvider = false;
             if (walletState.isConnected && walletClient) {
-                const oracleData = await publicClient.readContract({
+                isProvider = await publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                     abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'oracles',
+                    functionName: 'aiProviders',
                     args: [walletClient.account.address]
                 });
-                isProvider = (oracleData as any)[1]; // res is a tuple [stake, active, index]
             }
 
             // ProofBond Data
@@ -576,3 +575,5 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+
+    

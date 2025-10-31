@@ -12,7 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 export const OracleNetworkPanel = () => {
     const { state, actions } = useTrustLayer();
-    const { trustOracleData, isLoading, userData } = state;
+    const { trustOracleData, isLoading, isUserOracleProvider } = state;
     
     const [isRegistering, setIsRegistering] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +23,7 @@ export const OracleNetworkPanel = () => {
     const handleRegister = async () => {
         setIsRegistering(true);
         try {
-            await actions.registerOracleProvider();
+            await actions.registerAsProvider();
         } finally {
             setIsRegistering(false);
         }
@@ -33,7 +33,7 @@ export const OracleNetworkPanel = () => {
         if (!price || !confidence) return;
         setIsSubmitting(true);
         try {
-            await actions.submitOracleData(price, parseInt(confidence));
+            await actions.submitObservation(price, parseInt(confidence));
         } finally {
             setIsSubmitting(false);
         }
@@ -63,14 +63,14 @@ export const OracleNetworkPanel = () => {
                             <p className="text-sm text-muted-foreground">Minimum Stake</p>
                             <p className="text-3xl font-bold">{trustOracleData.minStake} ETH</p>
                         </div>
-                        <div className="p-4 bg-muted rounded-lg">
+                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Min. Submissions</p>
                             <p className="text-3xl font-bold">{trustOracleData.minSubmissions}</p>
                         </div>
                     </div>
                     )}
 
-                    {userData.isOracleProvider ? (
+                    {isUserOracleProvider ? (
                         <div className="p-4 border rounded-lg space-y-4">
                             <h4 className="font-semibold">Submit Oracle Data</h4>
                             <div className="flex gap-4">
@@ -79,7 +79,7 @@ export const OracleNetworkPanel = () => {
                             </div>
                             <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
                                 {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : <Send className="mr-2" />}
-                                Submit Prediction
+                                Submit Observation
                             </Button>
                         </div>
                     ) : (

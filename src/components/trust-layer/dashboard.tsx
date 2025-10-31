@@ -5,7 +5,7 @@ import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldCheck, Users, FileCheck, Landmark, GitCommit, LineChart } from 'lucide-react';
+import { ShieldCheck, Users } from 'lucide-react';
 import trustLayerContracts from '@/lib/trustlayer-contract-addresses.json';
 
 const ContractCard = ({ name, address, description, children, status, isLoading }: { name: string, address: string, description: string, children?: React.ReactNode, status?: 'Verified' | 'Configured', isLoading?: boolean }) => (
@@ -37,25 +37,23 @@ const ContractCard = ({ name, address, description, children, status, isLoading 
 
 export const Dashboard = () => {
     const { state } = useTrustLayer();
-    const { isLoading, mainContractData, trustOracleData, safeVaultData, proofBondData, forgeMarketData, openGovernorData } = state;
+    const { isLoading, mainContractData, trustOracleData, proofBondData } = state;
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-                <ContractCard 
-                    name="Main Contract" 
-                    address={trustLayerContracts.MainContract} 
-                    description="The central hub managing contract authorizations, the treasury, fees, and emergency pause functionality for the entire ecosystem."
-                    status="Verified"
-                    isLoading={isLoading}
-                >
-                    <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Protocol Fee on All Trades</p>
-                        <p className="text-3xl font-bold">{mainContractData.protocolFee}%</p>
-                        <p className="text-xs text-muted-foreground mt-1">Collected and stored in the MainContract treasury.</p>
-                    </div>
-                </ContractCard>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ContractCard 
+                name="Main Contract" 
+                address={trustLayerContracts.MainContract} 
+                description="The central hub managing contract authorizations, the treasury, fees, and emergency pause functionality for the entire ecosystem."
+                status="Verified"
+                isLoading={isLoading}
+            >
+                <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Protocol Fee on All Trades</p>
+                    <p className="text-3xl font-bold">{mainContractData.protocolFee}%</p>
+                    <p className="text-xs text-muted-foreground mt-1">Collected and stored in the MainContract treasury.</p>
+                </div>
+            </ContractCard>
 
              <ContractCard 
                 name="AI Predictive Liquidity Oracle" 
@@ -79,20 +77,6 @@ export const Dashboard = () => {
                     </div>
                 </div>
             </ContractCard>
-
-            <ContractCard 
-                name="Advanced Price Oracle" 
-                address={trustLayerContracts.AdvancedPriceOracle} 
-                description="A robust, multi-source price oracle with historical tracking and volatility calculations to provide secure and reliable price data."
-                status="Verified"
-                isLoading={isLoading}
-            >
-                <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">WETH/USD Price</p>
-                    <p className="text-3xl font-bold">${parseFloat(trustOracleData.latestPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Confidence: {trustOracleData.confidence}%</p>
-                </div>
-            </ContractCard>
             
             <ContractCard 
                 name="ProofBond"
@@ -103,31 +87,10 @@ export const Dashboard = () => {
             >
                 <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">Total Supply</p>
-                    <p className="text-3xl font-bold">{parseFloat(proofBondData.totalSupply).toLocaleString()} PBND</p>
+                    <p className="text-3xl font-bold">{parseFloat(proofBondData.trancheSize).toLocaleString()} PBND</p>
                     <p className="text-xs text-muted-foreground mt-1">Total Value Locked: ${parseFloat(proofBondData.tvl).toLocaleString()}</p>
                 </div>
             </ContractCard>
-            
-            <div className="lg:col-span-2">
-                 <ContractCard 
-                    name="OpenGovernor" 
-                    address={trustLayerContracts.OpenGovernor} 
-                    description="A DAO for governing the entire Trust Layer ecosystem, allowing token holders to create and vote on proposals."
-                    status="Verified"
-                    isLoading={isLoading}
-                >
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-muted rounded-lg">
-                            <p className="text-sm text-muted-foreground">Active Proposals</p>
-                            <p className="text-3xl font-bold">{openGovernorData.activeProposals}</p>
-                        </div>
-                        <div className="p-4 bg-muted rounded-lg">
-                            <p className="text-sm text-muted-foreground">Treasury Value</p>
-                            <p className="text-3xl font-bold">${parseFloat(openGovernorData.treasuryValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                        </div>
-                    </div>
-                </ContractCard>
-            </div>
         </div>
     );
 };

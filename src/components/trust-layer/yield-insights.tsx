@@ -55,7 +55,7 @@ export const YieldInsights = () => {
                      {isLoading ? (
                         <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin"/></div>
                     ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Total Bond Size</p>
                             <p className="text-2xl font-bold">{parseFloat(proofBondData.trancheSize).toLocaleString()} PBND</p>
@@ -63,10 +63,6 @@ export const YieldInsights = () => {
                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Total Value Locked</p>
                             <p className="text-2xl font-bold">${parseFloat(proofBondData.tvl).toLocaleString()}</p>
-                        </div>
-                        <div className="p-4 bg-muted rounded-lg">
-                            <p className="text-sm text-muted-foreground">Active Bonds</p>
-                            <p className="text-2xl font-bold">{proofBondData.userBonds.length}</p>
                         </div>
                     </div>
                     )}
@@ -116,7 +112,7 @@ export const YieldInsights = () => {
                                         <p className="text-sm text-muted-foreground">Amount: {bond.amount} USDC</p>
                                         <p className="text-sm text-muted-foreground">Matures: {new Date(bond.maturity * 1000).toLocaleDateString()}</p>
                                     </div>
-                                    <Button onClick={() => handleRedeem(bond.id)} disabled={isRedeeming === bond.id || new Date() < new Date(bond.maturity * 1000)}>
+                                    <Button onClick={() => handleRedeem(bond.id)} disabled={isRedeeming === bond.id || new Date() > new Date(bond.maturity * 1000)}>
                                         {isRedeeming === bond.id ? <Loader2 className="mr-2 animate-spin" /> : 'Redeem'}
                                     </Button>
                                 </div>

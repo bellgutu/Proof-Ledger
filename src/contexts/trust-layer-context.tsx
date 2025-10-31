@@ -6,7 +6,6 @@ import DEPLOYED_CONTRACTS from '@/lib/trustlayer-contract-addresses.json';
 import { type Address, formatUnits, formatEther, parseEther, maxUint256, parseUnits } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
-import LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
 
 // --- Generic ERC20 ABI for approvals ---
 const ERC20_ABI = [
@@ -35,27 +34,20 @@ const ERC20_ABI = [
   }
 ] as const;
 
-
-// Enhanced Types for All Contracts
+// Types for contract data
 interface TrustOracleData {
   activeProviders: number;
   minStake: string;
   minSubmissions: number;
-  latestPrice: string;
-  confidence: number;
-  lastUpdate: number;
   providers: Array<{ address: Address; stake: string; lastUpdate: number }>;
+}
+
+interface MainContractData {
+    protocolFee: number;
 }
 
 interface SafeVaultData {
   totalAssets: string;
-  totalDeposits: string;
-  totalWithdrawals: string;
-  userBalance: string;
-  isLocked: boolean;
-  lockDuration: number;
-  owners: Address[];
-  threshold: number;
   strategies: Array<{ name: string; value: string; apy: number }>;
 }
 
@@ -66,125 +58,25 @@ export interface UserBond {
     yield: string;
 }
 interface ProofBondData {
-  activeBonds: number;
   tvl: string;
-  totalSupply: string;
-  bondPrice: string;
-  apy: number;
   userBonds: UserBond[];
   trancheSize: string;
-  nextTrancheId: number;
-}
-
-interface ForgeMarketData {
-  totalVolume: string;
-  totalLiquidity: string;
-  activePools: number;
-  currentFee: number;
-  aiOptimizedFee: number;
-  efficiency: number;
-  userLiquidity: string;
-  pools: Array<{
-    tokenA: Address;
-    tokenB: Address;
-    reserveA: string;
-    reserveB: string;
-    fee: number;
-    aiOptimized: boolean;
-  }>;
-}
-
-interface OpenGovernorData {
-  proposalCount: number;
-  treasuryValue: string;
-  activeProposals: number;
-  votingPower: string;
-  userVotes: Array<{ proposalId: number; support: boolean; votes: string }>;
-  proposals: Array<{
-    id: number;
-    title: string;
-    description: string;
-    forVotes: string;
-    againstVotes: string;
-    deadline: number;
-    executed: boolean;
-  }>;
-  quorum: number;
-  votingPeriod: number;
-}
-
-interface AIData {
-  currentPrediction: string;
-  confidence: number;
-  lastOptimization: number;
-  efficiencyGain: number;
-  gasSavings: number;
-  predictions: Array<{
-    timestamp: number;
-    prediction: string;
-    confidence: number;
-    actual: string;
-    accuracy: number;
-  }>;
-}
-
-interface ArbitrageEngineData {
-    medianPrice: string;
-    profitThreshold: string;
-    isPaused: boolean;
-    oraclePrices: { address: Address; price: string; name: string }[];
-    lastProfit: string;
-    totalProfit: string;
 }
 
 interface TrustLayerState {
-  // Core Contract Data
-  mainContractData: { protocolFee: number };
+  mainContractData: MainContractData;
   trustOracleData: TrustOracleData;
   safeVaultData: SafeVaultData;
   proofBondData: ProofBondData;
-  forgeMarketData: ForgeMarketData;
-  openGovernorData: OpenGovernorData;
-  arbitrageEngineData: ArbitrageEngineData;
-  
-  // AI Enhancement Data
-  aiData: AIData;
-  adaptiveAMMData: {
-    currentFee: number;
-    optimizedFee: number;
-    efficiency: number;
-    volume24h: string;
-  };
-  predictiveLiquidityData: {
-    predictedLiquidity: string;
-    accuracy: number;
-    recommendations: Array<{ action: string; confidence: number }>;
-  };
-  
-  // User-specific data
-  userData: {
-    isOracleProvider: boolean;
-    oracleStake: string;
-    vaultBalance: string;
-    bondHoldings: string;
-    liquidityPositions: string;
-    votingPower: string;
-  };
-  
   isLoading: boolean;
   lastUpdated: number;
+  isUserOracleProvider: boolean;
 }
 
 interface TrustLayerActions {
-  // Refresh data
   refresh: () => Promise<void>;
-  
-  // Oracle Functions
   registerAsProvider: () => Promise<void>;
   submitObservation: (price: string, confidence: number) => Promise<void>;
-  unstakeOracle: () => Promise<void>;
-  
-  // Bond Functions
   purchaseBond: (amount: string) => Promise<void>;
   issueTranche: (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => Promise<void>;
   redeemBond: (bondId: number) => Promise<void>;
@@ -203,93 +95,26 @@ const initialTrustLayerState: TrustLayerState = {
     activeProviders: 0, 
     minStake: '0', 
     minSubmissions: 0,
-    latestPrice: '0',
-    confidence: 0,
-    lastUpdate: 0,
     providers: []
   },
   safeVaultData: { 
     totalAssets: '1250000',
-    totalDeposits: '0',
-    totalWithdrawals: '0',
-    userBalance: '0',
-    isLocked: false,
-    lockDuration: 0,
-    owners: [],
-    threshold: 0,
     strategies: [
         { name: 'Aave Lending', value: '750450.23', apy: 4.5 },
         { name: 'Convex Farming', value: '415200.50', apy: 8.1 },
     ]
   },
   proofBondData: { 
-    activeBonds: 0, 
     tvl: '0',
-    totalSupply: '0',
-    bondPrice: '0',
-    apy: 0,
     userBonds: [],
     trancheSize: '0',
-    nextTrancheId: 0
-  },
-  forgeMarketData: { 
-    totalVolume: '0',
-    totalLiquidity: '0',
-    activePools: 0,
-    currentFee: 0,
-    aiOptimizedFee: 0,
-    efficiency: 0,
-    userLiquidity: '0',
-    pools: []
-  },
-  openGovernorData: { 
-    proposalCount: 2, 
-    treasuryValue: '2500000', 
-    activeProposals: 2,
-    votingPower: '0',
-    userVotes: [],
-    proposals: [],
-    quorum: 0,
-    votingPeriod: 0
-  },
-  arbitrageEngineData: {
-      medianPrice: '4150.75',
-      profitThreshold: '500',
-      isPaused: false,
-      oraclePrices: [],
-      lastProfit: '1250.34',
-      totalProfit: '175340.58',
-  },
-  aiData: {
-    currentPrediction: '0',
-    confidence: 0,
-    lastOptimization: 0,
-    efficiencyGain: 0,
-    gasSavings: 0,
-    predictions: []
-  },
-  adaptiveAMMData: {
-    currentFee: 0,
-    optimizedFee: 0,
-    efficiency: 0,
-    volume24h: '0'
-  },
-  predictiveLiquidityData: {
-    predictedLiquidity: '0',
-    accuracy: 0,
-    recommendations: []
-  },
-  userData: {
-    isOracleProvider: false,
-    oracleStake: '0',
-    vaultBalance: '0',
-    bondHoldings: '0',
-    liquidityPositions: '0',
-    votingPower: '0'
   },
   isLoading: true,
   lastUpdated: 0,
+  isUserOracleProvider: false
 };
+
+const USDC_ADDRESS = '0x09d011D52413DC89DFe3fa64694d67451ee49Cef' as Address;
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
@@ -305,46 +130,48 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         setState(prev => ({ ...prev, isLoading: true }));
         try {
             // MainContract
-            const protocolFee = await publicClient.readContract({
+            const protocolFeeRate = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.MainContract as Address,
                 abi: DEPLOYED_CONTRACTS.abis.MainContract,
                 functionName: 'protocolFeeRate',
             });
 
-            // TrustOracle (AIPredictiveLiquidityOracle)
-            const [minStake, minSubmissions, price, confidence] = await Promise.all([
+            // AIPredictiveLiquidityOracle
+            const [minStake, minSubmissions, allProviders] = await Promise.all([
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'MIN_PROVIDER_STAKE' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'getPriceWithTimestamp', args: [LEGACY_CONTRACTS.WETH_ADDRESS as Address] }),
-                 Promise.resolve(98), // Mock confidence
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getAllProviders' }),
             ]);
 
-            let isProvider = false;
+            const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
+                const [stake, lastUpdate] = await Promise.all([
+                     publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'providerStakes', args: [providerAddress] }),
+                     publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getProviderLastUpdate', args: [providerAddress] }),
+                ]);
+                return {
+                    address: providerAddress,
+                    stake: formatEther(stake as bigint),
+                    lastUpdate: Number(lastUpdate)
+                };
+            }));
+
+            let isUserProvider = false;
             if (walletState.isConnected && walletClient) {
-                isProvider = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                    functionName: 'aiProviders',
-                    args: [walletClient.account.address]
-                });
+                const userAddress = walletClient.account.address;
+                isUserProvider = (allProviders as Address[]).some(p => p.toLowerCase() === userAddress.toLowerCase());
             }
 
             // ProofBond Data
-            const [bondTotalSupply, bondDecimals, bondTrancheSize] = await Promise.all([
+            const [bondTrancheSize, bondDecimals] = await Promise.all([
                 publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'totalSupply',
+                    functionName: 'trancheSize',
                 }),
                 publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.ProofBond as Address,
                     abi: DEPLOYED_CONTRACTS.abis.ProofBond,
                     functionName: 'decimals',
-                }),
-                publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'trancheSize',
                 }),
             ]);
             
@@ -364,7 +191,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                          functionName: 'tranches',
                          args: [bondId],
                     });
-                    const [amount, interest, maturity, investor, redeemed, collateralToken, collateralAmount] = bondData as [bigint, bigint, bigint, Address, boolean, Address, bigint];
+                    const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean];
                     if(!redeemed) {
                         freshUserBonds.push({
                             id: Number(bondId),
@@ -375,28 +202,23 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             }
+            const tvl = freshUserBonds.reduce((acc, bond) => acc + parseFloat(bond.amount), 0);
 
             setState(prev => ({
                 ...prev,
-                mainContractData: { protocolFee: Number(protocolFee) / 100 },
+                mainContractData: { protocolFee: Number(protocolFeeRate) / 100 },
                 trustOracleData: {
-                    ...prev.trustOracleData,
                     minStake: formatEther(minStake as bigint),
                     minSubmissions: Number(minSubmissions),
-                    latestPrice: formatUnits((price as any)[0], 8),
-                    confidence,
+                    activeProviders: providerDetails.length,
+                    providers: providerDetails
                 },
                 proofBondData: {
-                    ...prev.proofBondData,
-                    activeBonds: freshUserBonds.length,
-                    totalSupply: formatUnits(bondTotalSupply as bigint, bondDecimals as number),
                     trancheSize: formatUnits(bondTrancheSize as bigint, bondDecimals as number),
                     userBonds: freshUserBonds,
+                    tvl: tvl.toString(),
                 },
-                userData: {
-                    ...prev.userData,
-                    isOracleProvider: isProvider,
-                },
+                isUserOracleProvider: isUserProvider,
                 isLoading: false,
                 lastUpdated: Date.now(),
             }));
@@ -436,10 +258,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         });
         await walletActions.executeTransaction('Submit Observation', details, txFunction, fetchData);
     }, [writeContractAsync, walletActions, fetchData]);
-
-    const unstakeOracle = useCallback(async () => {
-         toast({ variant: 'destructive', title: 'Not Implemented' });
-    }, [toast]);
     
     const purchaseBond = useCallback(async (amount: string) => {
         if (!walletClient) {
@@ -455,7 +273,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         };
     
         const approveTxFunction = () => writeContractAsync({
-            address: LEGACY_CONTRACTS.USDC_ADDRESS as Address,
+            address: USDC_ADDRESS,
             abi: ERC20_ABI,
             functionName: 'approve',
             args: [DEPLOYED_CONTRACTS.ProofBond as Address, parseUnits(amount, 6)]
@@ -487,7 +305,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 parseUnits(amount, 6), 
                 BigInt(interestBP), 
                 BigInt(durationSeconds),
-                LEGACY_CONTRACTS.USDC_ADDRESS as Address, 
+                USDC_ADDRESS, 
                 parseUnits(amount, 6)
             ]
         });
@@ -556,7 +374,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             refresh: fetchData,
             registerAsProvider,
             submitObservation,
-            unstakeOracle,
             purchaseBond,
             issueTranche,
             redeemBond
@@ -577,6 +394,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-
-
-    

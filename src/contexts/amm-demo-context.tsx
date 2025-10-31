@@ -383,15 +383,15 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
            toast({ variant: 'destructive', title: 'Pool not found' });
            return;
        }
-       const MOCK_ROUND_ID = 0; // In a real scenario, this would be dynamically determined
-       const feeAsInteger = BigInt(Math.round(fee * 10000)); // e.g., 0.3% -> 30
+       const MOCK_ROUND_ID = BigInt(Math.floor(Date.now() / 60000)); // New round every minute for demo
+       const feeAsInteger = BigInt(Math.round(fee * 100)); // e.g., 0.3% -> 30
 
-        await executeTransaction('Submit Prediction', `Submitting prediction for pool ${pool.id}`, `Prediction_${pool.address}`,
+        await executeTransaction('Submit Prediction', `Submitting fee prediction for pool ${pool.name}`, `Prediction_${pool.address}`,
             () => writeContractAsync({
                 address: AI_ORACLE_ADDRESS,
                 abi: AI_ORACLE_ABI,
                 functionName: 'submitObservation',
-                args: [BigInt(MOCK_ROUND_ID), feeAsInteger]
+                args: [MOCK_ROUND_ID, feeAsInteger]
             })
         );
     }, [pools, writeContractAsync, executeTransaction, toast]);
@@ -550,3 +550,5 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
+
+    

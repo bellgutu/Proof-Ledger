@@ -6,7 +6,7 @@ import { getViemPublicClient } from '@/services/blockchain-service';
 import { type Address, parseAbi, formatUnits, parseEther, getContract, parseUnits, decodeEventLog } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
-import AMM_CONTRACT_INFO from '@/lib/amm-contracts.json';
+import AMM_CONTRACT_INFO from '@/lib/trustlayer-contract-addresses.json';
 import POOL_DATA from '@/lib/amm-pools.json';
 
 // --- CONTRACT & TOKEN ADDRESSES ---
@@ -387,23 +387,15 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             () => writeContractAsync({
                 address: AI_ORACLE_ADDRESS,
                 abi: AI_ORACLE_ABI,
-                functionName: 'submitPrediction',
-                args: [
-                    BigInt(poolId),
-                    BigInt(Math.floor(fee * 100)), // fee basis points (e.g. 0.3% -> 30)
-                    BigInt(50), // volatility
-                    BigInt(10000), // volume
-                    BigInt(confidence),
-                    '0x0000000000000000000000000000000000000000000000000000000000000000',
-                    '0x'
-                ]
+                functionName: 'submitObservation',
+                args: [BigInt(poolId), parseUnits(fee.toString(), 8)]
             })
         );
     }, [pools, writeContractAsync, executeTransaction, toast]);
 
     const registerOracleProvider = useCallback(async () => {
         await executeTransaction('Register Provider', `Registering as an AI Oracle provider`, `RegisterProvider`,
-            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerAsProvider', value: parseEther('0.1') })
+            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerOracle', value: parseEther('0.1') })
         );
     }, [executeTransaction, writeContractAsync]);
     
@@ -555,5 +547,3 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
-
-    

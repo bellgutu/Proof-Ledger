@@ -1,8 +1,0 @@
-{
-  "MainContract": "0xeD11d5816028FD0eb5b86C97b986Bf4fF21D61B8",
-  "AIPredictiveLiquidityOracle": "0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7",
-  "AdvancedPriceOracle": "0x68cB1F4F2E22C4e85667C2EB05dB8b0F68DE1648",
-  "AdaptiveMarketMaker": "0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e",
-  "network": "sepolia",
-  "chainId": 11155111
-}

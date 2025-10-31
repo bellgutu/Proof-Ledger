@@ -5,7 +5,7 @@ import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldCheck, Users } from 'lucide-react';
+import { ShieldCheck, Users, FileArchive } from 'lucide-react';
 import trustLayerContracts from '@/lib/trustlayer-contract-addresses.json';
 
 const ContractCard = ({ name, address, description, children, status, isLoading }: { name: string, address: string, description: string, children?: React.ReactNode, status?: 'Verified' | 'Configured', isLoading?: boolean }) => (
@@ -40,7 +40,7 @@ export const Dashboard = () => {
     const { isLoading, mainContractData, trustOracleData, proofBondData } = state;
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             <ContractCard 
                 name="Main Contract" 
                 address={trustLayerContracts.MainContract} 

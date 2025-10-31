@@ -129,14 +129,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         setState(prev => ({ ...prev, isLoading: true }));
         try {
-            // MainContract
+            // MainContract Data
             const protocolFeeRate = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.MainContract as Address,
                 abi: DEPLOYED_CONTRACTS.abis.MainContract,
                 functionName: 'protocolFeeRate',
             });
 
-            // AIPredictiveLiquidityOracle
+            // AIPredictiveLiquidityOracle Data
             const [minStake, minSubmissions, allProviders] = await Promise.all([
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'MIN_PROVIDER_STAKE' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
@@ -175,31 +175,38 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 }),
             ]);
             
-            const freshUserBonds: UserBond[] = [];
+            let freshUserBonds: UserBond[] = [];
             if (walletState.isConnected && walletClient) {
-                const userTrancheIds = await publicClient.readContract({
-                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                    functionName: 'getInvestorTranches',
-                    args: [walletClient.account.address],
-                });
-                
-                for(const bondId of (userTrancheIds as bigint[])) {
-                    const bondData = await publicClient.readContract({
-                         address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                         abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                         functionName: 'tranches',
-                         args: [bondId],
+                try {
+                    const userTrancheIds = await publicClient.readContract({
+                        address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                        abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                        functionName: 'getInvestorTranches',
+                        args: [walletClient.account.address],
                     });
-                    const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean];
-                    if(!redeemed) {
-                        freshUserBonds.push({
-                            id: Number(bondId),
-                            amount: formatUnits(amount, 6), // Assuming USDC decimals
-                            maturity: Number(maturity),
-                            yield: (Number(interest) / 100).toFixed(2)
-                        });
+                    
+                    if (userTrancheIds && Array.isArray(userTrancheIds)) {
+                        for(const bondId of (userTrancheIds as bigint[])) {
+                            const bondData = await publicClient.readContract({
+                                 address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                                 abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                                 functionName: 'tranches',
+                                 args: [bondId],
+                            });
+                            const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean];
+                            if(!redeemed) {
+                                freshUserBonds.push({
+                                    id: Number(bondId),
+                                    amount: formatUnits(amount, 6), // Assuming USDC decimals
+                                    maturity: Number(maturity),
+                                    yield: (Number(interest) / 100).toFixed(2)
+                                });
+                            }
+                        }
                     }
+                } catch (e) {
+                    console.error("Error fetching user bonds:", e);
+                    // Continue without user bonds if this call fails
                 }
             }
             const tvl = freshUserBonds.reduce((acc, bond) => acc + parseFloat(bond.amount), 0);

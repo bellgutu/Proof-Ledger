@@ -7,7 +7,7 @@ import { type Address, formatUnits, formatEther, parseEther, maxUint256, parseUn
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
 import LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
-import { useAmmDemo, AmmDemoProvider } from './amm-demo-context';
+import { useAmmDemo } from './amm-demo-context';
 
 // --- Generic ERC20 ABI for approvals ---
 const ERC20_ABI = [
@@ -156,7 +156,7 @@ interface TrustLayerState {
     recommendations: Array<{ action: string; confidence: number }>;
   };
   
-  // User-specific data from AmmDemoContext
+  // User-specific data
   userData: {
     isOracleProvider: boolean;
     oracleStake: string;
@@ -288,7 +288,6 @@ const initialTrustLayerState: TrustLayerState = {
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
-    const { state: ammState, actions: ammActions } = useAmmDemo();
     const publicClient = usePublicClient({ chainId: DEPLOYED_CONTRACTS.chainId });
     const { data: walletClient } = useWalletClient();
     const { walletActions, walletState } = useWallet();
@@ -306,6 +305,25 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 abi: DEPLOYED_CONTRACTS.abis.MainContract,
                 functionName: 'protocolFeeRate',
             });
+
+            // TrustOracle (AIPredictiveLiquidityOracle)
+            const [minStake, minSubmissions, activeOracles, price, confidence] = await Promise.all([
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minStake' }),
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'listActiveOracles' }),
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'getPriceWithTimestamp', args: [LEGACY_CONTRACTS.WETH_ADDRESS as Address] }),
+                 Promise.resolve(98), // Mock confidence
+            ]);
+
+            let isProvider = false;
+            if (walletState.isConnected && walletClient) {
+                isProvider = await publicClient.readContract({
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+                    functionName: 'oracles',
+                    args: [walletClient.account.address]
+                }).then(res => (res as any)[1]); // res is a tuple [stake, active, index]
+            }
 
             // ProofBond Data
             const [bondTotalSupply, bondDecimals, bondTrancheSize] = await Promise.all([
@@ -326,7 +344,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 }),
             ]);
             
-            // User Data
             let userBonds: any[] = [];
             if (walletState.isConnected && walletClient) {
                 const userTrancheIds = await publicClient.readContract({
@@ -349,27 +366,35 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                             id: Number(bondId),
                             amount: formatUnits(amount, 6), // Assuming USDC decimals
                             maturity: Number(maturity),
-                            yield: (Number(interest) / 100).toFixed(2) // Assuming interest is in basis points
+                            yield: (Number(interest) / 100).toFixed(2)
                         });
                     }
                 }
             }
-            
 
             setState(prev => ({
                 ...prev,
                 mainContractData: { protocolFee: Number(protocolFee) / 100 },
+                trustOracleData: {
+                    ...prev.trustOracleData,
+                    activeProviders: (activeOracles as Address[]).length,
+                    minStake: formatEther(minStake as bigint),
+                    minSubmissions: Number(minSubmissions),
+                    latestPrice: formatUnits((price as any)[0], 8),
+                    confidence,
+                    providers: (activeOracles as Address[]).map(addr => ({ address: addr, stake: 'N/A', lastUpdate: 0})),
+                },
                 proofBondData: {
                     ...prev.proofBondData,
                     activeBonds: userBonds.length,
-                    tvl: '0', // TVL calculation for bonds is complex, leave as 0 for now
+                    tvl: '0', 
                     totalSupply: formatUnits(bondTotalSupply as bigint, bondDecimals as number),
                     trancheSize: formatUnits(bondTrancheSize as bigint, bondDecimals as number),
                     userBonds: userBonds,
                 },
                 userData: {
                     ...prev.userData,
-                    isOracleProvider: ammState.userData.isOracleProvider,
+                    isOracleProvider: isProvider,
                 },
                 isLoading: false,
                 lastUpdated: Date.now(),
@@ -378,15 +403,38 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             console.error("Failed to fetch Trust Layer data:", error);
             setState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [publicClient, walletState.isConnected, walletClient, ammState.userData.isOracleProvider]);
+    }, [publicClient, walletState.isConnected, walletClient]);
     
-    // Use actions from AmmDemoContext
-    const registerOracleProvider = ammActions.registerAsProvider;
-    const submitOracleData = (price: string, confidence: number) => {
-        // Find a pool to submit for. In a real app, this would be more sophisticated.
-        const poolId = ammState.pools.length > 0 ? ammState.pools[0].id : 0;
-        return ammActions.submitFeePrediction(poolId, parseFloat(price), confidence);
-    };
+    const registerOracleProvider = useCallback(async () => {
+        if (!walletClient || !state.trustOracleData.minStake) {
+            toast({ variant: 'destructive', title: 'Could not register provider', description: 'Wallet not connected or min stake not loaded.'});
+            return;
+        }
+
+        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Registering as Oracle Provider` };
+        const txFunction = () => writeContractAsync({
+            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+            functionName: 'registerOracle',
+            value: parseEther(state.trustOracleData.minStake)
+        });
+
+        await walletActions.executeTransaction('Register as Oracle', details, txFunction, fetchData);
+    }, [walletClient, state.trustOracleData.minStake, toast, writeContractAsync, walletActions, fetchData]);
+
+    const submitOracleData = useCallback(async (price: string, confidence: number) => {
+        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Submitting observation: ${price}` };
+        const txFunction = () => writeContractAsync({
+            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+            functionName: 'submitObservation',
+            args: [
+                BigInt(Math.floor(Date.now() / 1000)), // roundId
+                parseUnits(price, 8) // value
+            ]
+        });
+        await walletActions.executeTransaction('Submit Observation', details, txFunction, fetchData);
+    }, [writeContractAsync, walletActions, fetchData]);
 
     const unstakeOracle = useCallback(async () => {
          toast({ variant: 'destructive', title: 'Not Implemented' });
@@ -416,10 +464,9 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
         } catch (e) {
             console.error("Approval failed, stopping bond purchase.", e);
-            return; // Stop if approval fails
+            return;
         }
         
-        // After successful approval, proceed with issuing the tranche
         const issueDetails = {
             amount: parseFloat(amount),
             token: 'USDC',

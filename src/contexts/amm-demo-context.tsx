@@ -276,9 +276,9 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'aiProviders',
                 args: [address]
             });
-            setUserData({ isOracleProvider: isProvider });
+            setUserData({ isOracleProvider: isProvider as boolean });
         } catch (e) {
-            console.error("Failed to fetch user data", e);
+            console.error("Failed to fetch user data for AMM Demo", e);
         }
     }, [address, publicClient]);
 
@@ -400,33 +400,33 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     }, [writeContractAsync, executeTransaction, fetchAmmBalancesAndAllowances]);
     
     const submitFeePrediction = useCallback(async (poolId: number, fee: number, confidence: number) => {
-       const pool = pools.find(p => p.id === poolId);
-       if (!pool) {
-           toast({ variant: 'destructive', title: 'Pool not found' });
-           return;
-       }
-       
-       const MOCK_MODEL_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as const;
-       const MOCK_SIGNATURE = '0x' as const;
-       
-       await executeTransaction('Submit Prediction', `Submitting fee prediction for pool ${pool.name}`, `Prediction_${pool.address}`,
-           () => writeContractAsync({
-               address: AI_ORACLE_ADDRESS,
-               abi: AI_ORACLE_ABI,
-               functionName: 'submitPrediction',
-               args: [
-                   BigInt(poolId),
-                   BigInt(Math.round(fee * 100)), // fee (e.g. 0.3 -> 30)
-                   BigInt(50), // priceVolatility
-                   BigInt(10000), // volumeForecast
-                   BigInt(confidence), // confidence
-                   MOCK_MODEL_HASH, // modelHash
-                   MOCK_SIGNATURE, // signature
-               ],
-           })
-       );
-    }, [pools, writeContractAsync, executeTransaction, toast]);
+        const pool = pools.find(p => p.id === poolId);
+        if (!pool) {
+            toast({ variant: 'destructive', title: 'Pool not found' });
+            return;
+        }
 
+        const MOCK_MODEL_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as const;
+        const MOCK_SIGNATURE = '0x' as const;
+        
+        await executeTransaction('Submit Prediction', `Submitting fee prediction for pool ${pool.name}`, `Prediction_${pool.address}`,
+            () => writeContractAsync({
+                address: AI_ORACLE_ADDRESS,
+                abi: AI_ORACLE_ABI,
+                functionName: 'submitPrediction',
+                args: [
+                    BigInt(poolId),
+                    BigInt(Math.round(fee * 100)),
+                    BigInt(50), 
+                    BigInt(10000), 
+                    BigInt(confidence), 
+                    MOCK_MODEL_HASH,
+                    MOCK_SIGNATURE,
+                ],
+            })
+        );
+    }, [pools, writeContractAsync, executeTransaction, toast]);
+    
     const registerAsProvider = useCallback(async () => {
         const minStake = await publicClient.readContract({
             address: AI_ORACLE_ADDRESS,
@@ -434,7 +434,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
             functionName: 'MIN_PROVIDER_STAKE'
         });
         await executeTransaction('Register Provider', `Registering as an AI Oracle provider`, `RegisterProvider`,
-            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerAsProvider', value: minStake }),
+            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerAsProvider', value: minStake as bigint }),
             fetchUserData
         );
     }, [executeTransaction, writeContractAsync, publicClient, fetchUserData]);

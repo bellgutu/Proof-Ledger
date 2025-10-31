@@ -21,9 +21,9 @@ The frontend is a modern, performant, and type-safe web application built with i
 
 ---
 
-## 2. AI Backend (Genkit)
+## 2. Autonomous Logic (Genkit)
 
-All AI-powered features are built using Genkit, Google's open-source framework for building production-ready AI applications.
+All automation features are built using Genkit, Google's open-source framework for building production-ready applications with data-driven logic.
 
 - **Framework**: **Genkit** with **Google Gemini** models.
 - **Deployment**: Genkit flows are defined as server-side TypeScript modules (`'use server';`) and seamlessly integrated as server actions within the Next.js application, ready for deployment to any serverless environment.
@@ -32,19 +32,19 @@ All AI-powered features are built using Genkit, Google's open-source framework f
 
 ## 3. Blockchain Interaction & Contract Addresses
 
-The application interacts with the blockchain using modern, type-safe tools. It manages two distinct sets of smart contracts: a "legacy" set for features like the basic Swap and Perpetuals Trading, and the new, advanced AI-powered ecosystem for the "AMM Demo" and "Trust Layer" pages.
+The application interacts with the blockchain using modern, type-safe tools. It manages two distinct sets of smart contracts: a "legacy" set for features like the basic Swap and Perpetuals Trading, and the new, advanced ecosystem for the "AMM Demo" and "Trust Layer" pages.
 
-### 3.1. Trust Layer & AI-AMM Ecosystem (Live on Sepolia)
+### 3.1. Trust Layer & Autonomous AMM Ecosystem (Live on Sepolia)
 
 This is the cutting-edge showcase of a next-generation DeFi ecosystem, fully deployed and verified on the **Sepolia testnet**.
 
-- **`MainContract`**: `0xeD11d5816028FD0eb5b86C97b986Bf4fF21D61B8`
-- **`AIPredictiveLiquidityOracle`**: `0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7`
-- **`AdvancedPriceOracle`**: `0x68cB1F4F2E22C4e85667C2EB05Db8b0F68DE1648`
-- **`AdaptiveMarketMaker`**: `0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e`
-- **`ProofBond`**: `0x98e84f8F812cDFD21debF85f85cbe46a729E608a`
-- **`OpenGovernor`**: `0x1EE99F543881335A71a2542B774483B367332ff61F`
-- **`SafeVault`**: `0x7f9a1f2C474f7A0F1F072183e9bC1A5702213a45`
+-   **`MainContract`**: `0xeD11d5816028FD0eb5b86C97b986Bf4fF21D61B8`
+-   **`Trust Oracle (AIPredictiveLiquidityOracle)`**: `0x5a92b7E95dC3537E87eC6a755403B9191C9055cD`
+-   **`AdvancedPriceOracle`**: `0x68cB1F4F2E22C4e85667C2EB05Db8b0F68DE1648`
+-   **`ForgeMarket (AdaptiveMarketMaker)`**: `0xD2c449f3FFf7713cFE9E1f45e5B96E19EFAC49a6`
+-   **`ProofBond`**: `0x98e84f8F812cDFD21debF85f85cbe46a729E608a`
+-   **`OpenGovernor`**: `0xf2500D9170e6f85D29a69d5a50764a8b44370AD6`
+-   **`SafeVault`**: `0xbE5dd587b17eb4c0e2c6156c599851e164D37A37`
 
 ### 3.2. Legacy Application Contracts (Trading & Basic Swap)
 
@@ -62,7 +62,7 @@ These contracts power the original features of the application.
 
 ## 4. Security & Best Practices
 
-- **Separation of Concerns**: Client-side logic is clearly separated from server-side (AI) logic. The state for the AMM Demo and Trust Layer are isolated in their own contexts.
+- **Separation of Concerns**: Client-side logic is clearly separated from server-side (automation) logic. The state for the AMM Demo and Trust Layer are isolated in their own contexts.
 - **Environment Variables**: Sensitive data like private keys and RPC URLs are stored in environment variables (`.env.local`) and are never exposed to the client.
 - **Type Safety**: TypeScript is used across the entire stack to minimize runtime errors and improve code maintainability.
 - **On-chain Logic**: All state-changing blockchain operations are deferred to the user's wallet for signing, ensuring users always maintain control of their assets.

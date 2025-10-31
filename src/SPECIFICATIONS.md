@@ -43,6 +43,6 @@ The technical centerpiece of ProfitForge is a **live, fully deployed AI-powered 
 -   **`AdaptiveMarketMaker` with Dynamic Fees**: An advanced AMM that moves beyond static fees. It leverages AI predictions to optimize trading fees based on real-time trade volume, creating a more efficient market for both traders and liquidity providers.
 -   **`AIPredictiveLiquidityOracle`**: A sophisticated, multi-provider oracle where AI agents can stake ETH to submit predictions on optimal fees and market volatility. A consensus mechanism with slashing ensures accuracy and discourages malicious actors.
 -   **`AdvancedPriceOracle`**: A robust, multi-source price oracle with historical tracking and volatility calculations to provide secure and reliable price data.
--   **`MainContract` (Ecosystem Controller)**: A central hub that manages contract authorizations, the protocol treasury, emergency pause functionality, and fee collection, ensuring robust security and governance.
+-   **`Trustlayer ` (Ecosystem Controller)**: A central hub that manages contract authorizations, the protocol treasury, emergency pause functionality, and fee collection, ensuring robust security and governance.
 
 The "AMM Demo" page provides a dedicated interface to interact with this live ecosystem, allowing users to create pools, manage liquidity, and perform swaps in a truly next-generation DeFi environment.

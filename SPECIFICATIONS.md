@@ -55,4 +55,4 @@ These features provide the user interface and tools to interact with the underly
 ### **2.4. Portfolio Management**
 *   **Connected Wallet Dashboard**: A comprehensive view of the user's on-chain asset holdings.
 *   **Transaction History**: A detailed log of all user-initiated on-chain activity.
-*   **Send/Receive Functionality**: A standard interface for transferring crypto assets.
+*   **Send/Receive Functionality**: A standard interface for transferring crypto assets. 

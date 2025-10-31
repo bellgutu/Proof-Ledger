@@ -1,12 +1,12 @@
 
 {
   "MainContract": "0xeD11d5816028FD0eb5b86C97b986Bf4fF21D61B8",
-  "AIPredictiveLiquidityOracle": "0xf9606B7122AF78A17EA9aD931FB5Db358E875FC7",
+  "AIPredictiveLiquidityOracle": "0x5a92b7E95dC3537E87eC6a755403B9191C9055cD",
   "AdvancedPriceOracle": "0x68cB1F4F2E22C4e85667C2EB05Db8b0F68DE1648",
-  "AdaptiveMarketMaker": "0x3967c18E40c3fAd2F602Ba0Efef39C6407191d5e",
+  "AdaptiveMarketMaker": "0xD2c449f3FFf7713cFE9E1f45e5B96E19EFAC49a6",
   "ProofBond": "0x98e84f8F812cDFD21debF85f85cbe46a729E608a",
-  "OpenGovernor": "0x1EE99F543881335A71a2542B774483B367332ff61F",
-  "SafeVault": "0x7f9a1f2C474f7A0F1F072183e9bC1A5702213a45",
+  "OpenGovernor": "0xf2500D9170e6f85D29a69d5a50764a8b44370AD6",
+  "SafeVault": "0xbE5dd587b17eb4c0e2c6156c599851e164D37A37",
   "network": "sepolia",
   "chainId": 11155111,
   "abis": {
@@ -100,8 +100,27 @@
       { "inputs": [], "name": "totalSupply", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
       { "inputs": [{ "internalType": "address", "name": "from", "type": "address" }, { "internalType": "address", "name": "to", "type": "address" }, { "internalType": "uint256", "name": "tokenId", "type": "uint256" }], "name": "transferFrom", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }], "name": "transferOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
+    ],
+    "AIPredictiveLiquidityOracle": [
+        { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
+        { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "pairId", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "provider", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" } ], "name": "ProviderSlashed", "type": "event" },
+        { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "pairId", "type": "uint256" }, { "indexed": false, "internalType": "uint256", "name": "optimalFee", "type": "uint256" }, { "indexed": false, "internalType": "uint256", "name": "confidence", "type": "uint256" } ], "name": "PredictionUpdated", "type": "event" },
+        { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "provider", "type": "address" } ], "name": "ProviderRegistered", "type": "event" },
+        { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "provider", "type": "address" } ], "name": "ProviderUnregistered", "type": "event" },
+        { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "pairId", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "provider", "type": "address" } ], "name": "PredictionSubmitted", "type": "event" },
+        { "inputs": [], "name": "MIN_PROVIDER_STAKE", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+        { "inputs": [], "name": "consensusThreshold", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+        { "inputs": [ { "internalType": "uint256", "name": "pairId", "type": "uint256" } ], "name": "getCurrentPrediction", "outputs": [ { "components": [ { "internalType": "uint256", "name": "timestamp", "type": "uint256" }, { "internalType": "uint256", "name": "optimalFee", "type": "uint256" }, { "internalType": "uint256", "name": "priceVolatility", "type": "uint256" }, { "internalType": "uint256", "name": "volumeForecast", "type": "uint256" }, { "internalType": "uint256", "name": "confidence", "type": "uint256" }, { "internalType": "bytes32", "name": "modelHash", "type": "bytes32" } ], "internalType": "struct AIPredictiveLiquidityOracle.Prediction", "name": "", "type": "tuple" } ], "stateMutability": "view", "type": "function" },
+        { "inputs": [], "name": "getAllProviders", "outputs": [ { "internalType": "address[]", "name": "", "type": "address[]" } ], "stateMutability": "view", "type": "function" },
+        { "inputs": [ { "internalType": "address", "name": "providerAddress", "type": "address" } ], "name": "getProvider", "outputs": [ { "components": [ { "internalType": "uint256", "name": "stake", "type": "uint256" }, { "internalType": "uint256", "name": "lastUpdate", "type": "uint256" } ], "internalType": "struct AIPredictiveLiquidityOracle.Provider", "name": "", "type": "tuple" } ], "stateMutability": "view", "type": "function" },
+        { "inputs": [ { "internalType": "address", "name": "providerAddress", "type": "address" } ], "name": "isProvider", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
+        { "inputs": [], "name": "registerAsProvider", "outputs": [], "stateMutability": "payable", "type": "function" },
+        { "inputs": [ { "internalType": "uint256", "name": "pairId", "type": "uint256" }, { "internalType": "uint256", "name": "optimalFee", "type": "uint256" }, { "internalType": "uint256", "name": "priceVolatility", "type": "uint256" }, { "internalType": "uint256", "name": "volumeForecast", "type": "uint256" }, { "internalType": "uint256", "name": "confidence", "type": "uint256" }, { "internalType": "bytes32", "name": "modelHash", "type": "bytes32" }, { "internalType": "bytes", "name": "signature", "type": "bytes" } ], "name": "submitPrediction", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
+    ],
+    "AdvancedPriceOracle": [
+        { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
+        { "inputs": [{ "internalType": "address", "name": "token", "type": "address" }, { "internalType": "string", "name": "symbol", "type": "string" }, { "internalType": "uint8", "name": "decimals", "type": "uint8" }], "name": "addToken", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+        { "inputs": [{ "internalType": "address", "name": "tokenAddress", "type": "address" }], "name": "getPriceWithTimestamp", "outputs": [ { "internalType": "uint256", "name": "price", "type": "uint256" }, { "internalType": "uint256", "name": "timestamp", "type": "uint256" }, { "internalType": "uint256", "name": "confidence", "type": "uint256" } ], "stateMutability": "view", "type": "function" }
     ]
   }
 }
-
-    

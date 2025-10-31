@@ -331,7 +331,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     functionName: 'oracles',
                     args: [providerAddress],
                 });
-                const [stake, active] = providerData as [bigint, boolean, bigint];
+                const [stake, active, index] = providerData as [bigint, boolean, bigint];
                 return {
                     address: providerAddress,
                     stake: formatEther(stake),
@@ -458,7 +458,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             writeContractAsync({
                 address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                 abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-                functionName: 'registerOracle',
+                functionName: 'registerAsProvider',
                 value: minStakeValue,
             });
         
@@ -632,3 +632,5 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+
+    

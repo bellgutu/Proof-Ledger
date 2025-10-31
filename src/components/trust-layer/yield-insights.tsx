@@ -66,7 +66,7 @@ export const YieldInsights = () => {
                         </div>
                         <div className="p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Active Bonds</p>
-                            <p className="text-2xl font-bold">{proofBondData.activeBonds}</p>
+                            <p className="text-2xl font-bold">{proofBondData.userBonds.length}</p>
                         </div>
                     </div>
                     )}

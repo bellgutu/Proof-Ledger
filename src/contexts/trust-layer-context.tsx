@@ -7,7 +7,6 @@ import { type Address, formatUnits, formatEther, parseEther, maxUint256, parseUn
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
 import LEGACY_CONTRACTS from '@/lib/legacy-contract-addresses.json';
-import { useAmmDemo } from './amm-demo-context';
 
 // --- Generic ERC20 ABI for approvals ---
 const ERC20_ABI = [
@@ -317,12 +316,13 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
             let isProvider = false;
             if (walletState.isConnected && walletClient) {
-                isProvider = await publicClient.readContract({
+                const oracleData = await publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                     abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
                     functionName: 'oracles',
                     args: [walletClient.account.address]
-                }).then(res => (res as any)[1]); // res is a tuple [stake, active, index]
+                });
+                isProvider = (oracleData as any)[1]; // res is a tuple [stake, active, index]
             }
 
             // ProofBond Data
@@ -415,7 +415,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const txFunction = () => writeContractAsync({
             address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
             abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-            functionName: 'registerOracle',
+            functionName: 'registerAsProvider',
             value: parseEther(state.trustOracleData.minStake)
         });
 

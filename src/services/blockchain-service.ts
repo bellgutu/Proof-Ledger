@@ -182,33 +182,16 @@ export const DEX_ABI = [
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "amountIn",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "reserveIn",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "reserveOut",
-          "type": "uint256"
-        }
-      ],
-      "name": "getAmountOut",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "pure",
-      "type": "function"
+        "inputs": [
+            { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
+            { "internalType": "uint256", "name": "reserveIn", "type": "uint256" },
+            { "internalType": "uint256", "name": "reserveOut", "type": "uint256" }
+        ],
+        "name": "getAmountOut",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "pure",
+        "type": "function",
+        "constant": true
     },
     {
       "inputs": [],

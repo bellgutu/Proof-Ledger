@@ -409,18 +409,11 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         await walletActions.executeTransaction('Redeem Bond', dialogDetails, txFunction, fetchData);
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
     
-
     useEffect(() => {
         if (walletState.isConnected && walletClient) {
             fetchData();
         }
-        const interval = setInterval(() => {
-            if (walletState.isConnected && walletClient) {
-                fetchData();
-            }
-        }, 30000);
-        return () => clearInterval(interval);
-    }, [fetchData, walletState.isConnected, walletClient]);
+    }, [walletState.isConnected, walletClient, fetchData]);
     
     const value: TrustLayerContextType = {
         state,

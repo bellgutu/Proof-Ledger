@@ -41,6 +41,7 @@ interface TrustOracleData {
   minSubmissions: number;
   providers: Array<{ address: Address; stake: string; lastUpdate: number }>;
   activePairIds: bigint[];
+  latestPrice: string;
 }
 
 interface MainContractData {
@@ -64,11 +65,18 @@ interface ProofBondData {
   trancheSize: string;
 }
 
+interface ArbitrageEngineData {
+  isPaused: boolean;
+  profitThreshold: string;
+  totalProfit: string;
+}
+
 interface TrustLayerState {
   mainContractData: MainContractData;
   trustOracleData: TrustOracleData;
   safeVaultData: SafeVaultData;
   proofBondData: ProofBondData;
+  arbitrageEngineData: ArbitrageEngineData;
   isLoading: boolean;
   lastUpdated: number;
   isUserOracleProvider: boolean;
@@ -98,7 +106,8 @@ const initialTrustLayerState: TrustLayerState = {
     minStake: '0', 
     minSubmissions: 0,
     providers: [],
-    activePairIds: []
+    activePairIds: [],
+    latestPrice: '0'
   },
   safeVaultData: { 
     totalAssets: '1250000',
@@ -111,6 +120,11 @@ const initialTrustLayerState: TrustLayerState = {
     tvl: '0',
     userBonds: [],
     trancheSize: '0',
+  },
+  arbitrageEngineData: {
+    isPaused: false,
+    profitThreshold: '100',
+    totalProfit: '12850.75'
   },
   isLoading: true,
   lastUpdated: 0,
@@ -140,11 +154,12 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             });
 
             // AIPredictiveLiquidityOracle Data
-            const [minStake, minSubmissions, allProviders, activePairCount] = await Promise.all([
+            const [minStake, minSubmissions, allProviders, activePairCount, latestPrice] = await Promise.all([
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'MIN_PROVIDER_STAKE' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getAllProviders' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getActivePairCount' }),
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'latestAnswer' }),
             ]);
 
             const activePairIds = [];
@@ -232,7 +247,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     minSubmissions: Number(minSubmissions),
                     activeProviders: providerDetails.length,
                     providers: providerDetails,
-                    activePairIds
+                    activePairIds,
+                    latestPrice: formatUnits(latestPrice as bigint, 8)
                 },
                 proofBondData: {
                     trancheSize: formatUnits(bondTrancheSize as bigint, bondDecimals as number),
@@ -427,5 +443,3 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
-
-    

@@ -292,7 +292,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 publicClient.readContract({
                     address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
                     abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle as any,
-                    functionName: 'getAllProviders',
+                    functionName: 'listActiveOracles',
                 }),
             ]);
             
@@ -400,7 +400,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     ...prev.proofBondData,
                     activeBonds: Number(activeBonds),
                     tvl: formatUnits(bondTvl as bigint, 6),
-                    totalSupply: formatUnits(bondTotalSupply as bigint, 18), // Assuming PBND is 18 decimals
+                    totalSupply: formatUnits(bondTotalSupply as bigint, 0), // Assuming no decimals for NFT count
                     userBonds: userBonds,
                 },
                 userData: {

@@ -96,14 +96,14 @@ interface AmmDemoState {
 interface AmmDemoActions {
     getFaucetTokens: (token: MockTokenSymbol) => Promise<void>;
     approveToken: (token: MockTokenSymbol, amount: string, spender?: Address) => Promise<void>;
-    submitFeePrediction: (poolAddress: Address, fee: number, confidence: number) => Promise<void>;
+    submitFeePrediction: (poolId: number, fee: number, confidence: number) => Promise<void>;
     createPool: (tokenA: MockTokenSymbol, tokenB: MockTokenSymbol) => Promise<void>;
     addLiquidity: (poolId: number, amountA: string, amountB: string) => Promise<void>;
     removeLiquidity: (poolId: number, lpAmount: string) => Promise<void>;
     swap: (fromToken: MockTokenSymbol, toToken: MockTokenSymbol, amountIn: string, minAmountOut: string) => Promise<void>;
     send: (token: MockTokenSymbol | 'ETH', recipient: Address, amount: string) => Promise<void>;
     refreshData: () => Promise<void>;
-    registerOracleProvider: () => Promise<void>;
+    registerAsProvider: () => Promise<void>;
 }
 
 interface AmmDemoContextType {
@@ -377,30 +377,44 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
         );
     }, [writeContractAsync, executeTransaction, fetchAmmBalancesAndAllowances]);
     
-    const submitFeePrediction = useCallback(async (poolAddress: Address, fee: number, confidence: number) => {
-       const pool = pools.find(p => p.address === poolAddress);
+    const submitFeePrediction = useCallback(async (poolId: number, fee: number, confidence: number) => {
+       const pool = pools.find(p => p.id === poolId);
        if (!pool) {
            toast({ variant: 'destructive', title: 'Pool not found' });
            return;
        }
-       const MOCK_ROUND_ID = BigInt(Math.floor(Date.now() / 60000)); // New round every minute for demo
-       const feeAsInteger = BigInt(Math.round(fee * 100)); // e.g., 0.3% -> 30
-
-        await executeTransaction('Submit Prediction', `Submitting fee prediction for pool ${pool.name}`, `Prediction_${pool.address}`,
-            () => writeContractAsync({
-                address: AI_ORACLE_ADDRESS,
-                abi: AI_ORACLE_ABI,
-                functionName: 'submitObservation',
-                args: [MOCK_ROUND_ID, feeAsInteger]
-            })
-        );
+       
+       const MOCK_MODEL_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000' as const;
+       const MOCK_SIGNATURE = '0x' as const;
+       
+       await executeTransaction('Submit Prediction', `Submitting fee prediction for pool ${pool.name}`, `Prediction_${pool.address}`,
+           () => writeContractAsync({
+               address: AI_ORACLE_ADDRESS,
+               abi: AI_ORACLE_ABI,
+               functionName: 'submitPrediction',
+               args: [
+                   BigInt(poolId),
+                   BigInt(Math.round(fee * 100)), // fee (e.g. 0.3 -> 30)
+                   BigInt(50), // priceVolatility
+                   BigInt(10000), // volumeForecast
+                   BigInt(confidence), // confidence
+                   MOCK_MODEL_HASH, // modelHash
+                   MOCK_SIGNATURE, // signature
+               ],
+           })
+       );
     }, [pools, writeContractAsync, executeTransaction, toast]);
 
-    const registerOracleProvider = useCallback(async () => {
+    const registerAsProvider = useCallback(async () => {
+        const minStake = await publicClient.readContract({
+            address: AI_ORACLE_ADDRESS,
+            abi: AI_ORACLE_ABI,
+            functionName: 'MIN_PROVIDER_STAKE'
+        });
         await executeTransaction('Register Provider', `Registering as an AI Oracle provider`, `RegisterProvider`,
-            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerOracle', value: parseEther('0.1') })
+            () => writeContractAsync({ address: AI_ORACLE_ADDRESS, abi: AI_ORACLE_ABI, functionName: 'registerAsProvider', value: minStake })
         );
-    }, [executeTransaction, writeContractAsync]);
+    }, [executeTransaction, writeContractAsync, publicClient]);
     
     const addLiquidity = useCallback(async (poolId: number, amountA: string, amountB: string) => {
         const pool = pools.find(p => p.id === poolId);
@@ -539,7 +553,7 @@ export const AmmDemoProvider = ({ children }: { children: ReactNode }) => {
     
     const actions: AmmDemoActions = { 
         getFaucetTokens, approveToken, submitFeePrediction, createPool, addLiquidity,
-        removeLiquidity, swap, send, refreshData, registerOracleProvider
+        removeLiquidity, swap, send, refreshData, registerAsProvider
     };
     
     return <AmmDemoContext.Provider value={{ state, actions }}>{children}</AmmDemoContext.Provider>;
@@ -550,5 +564,3 @@ export const useAmmDemo = (): AmmDemoContextType => {
     if (context === undefined) { throw new Error('useAmmDemo must be used within an AmmDemoProvider'); }
     return context;
 };
-
-    

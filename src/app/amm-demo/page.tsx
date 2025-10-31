@@ -1,13 +1,6 @@
 
-import InnovativeAMMDemo from '@/components/pages/amm-demo';
-import { AmmDemoProvider } from '@/contexts/amm-demo-context';
+import AmmDemoPage from '@/components/pages/amm-demo';
 
-const AmmDemoPage = () => {
-    return (
-        <AmmDemoProvider>
-            <InnovativeAMMDemo />
-        </AmmDemoProvider>
-    );
-};
-
-export default AmmDemoPage;
+export default function Page() {
+  return <AmmDemoPage />;
+}

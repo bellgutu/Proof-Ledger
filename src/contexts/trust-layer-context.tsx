@@ -411,10 +411,16 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     
 
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 30000);
+        if (walletState.isConnected && walletClient) {
+            fetchData();
+        }
+        const interval = setInterval(() => {
+            if (walletState.isConnected && walletClient) {
+                fetchData();
+            }
+        }, 30000);
         return () => clearInterval(interval);
-    }, [fetchData]);
+    }, [fetchData, walletState.isConnected, walletClient]);
     
     const value: TrustLayerContextType = {
         state,

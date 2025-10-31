@@ -393,7 +393,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                          functionName: 'tranches',
                          args: [bondId],
                     });
-                    const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean, Address, bigint];
+                    const [amount, interest, maturity, investor, redeemed, collateralToken, collateralAmount] = bondData as [bigint, bigint, bigint, Address, boolean, Address, bigint];
                     if(!redeemed) {
                         userBonds.push({
                             id: Number(bondId),

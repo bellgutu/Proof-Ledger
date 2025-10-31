@@ -3,7 +3,7 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wallet, Bot, Droplets, ArrowLeftRight, PlusCircle, BarChart3, Cpu, RefreshCw, Send, Loader2 } from 'lucide-react';
-import { AmmDemoProvider, useAmmDemo } from '@/contexts/amm-demo-context';
+import { useAmmDemo } from '@/contexts/amm-demo-context';
 import { WalletPanel } from '@/components/amm-demo/WalletPanel';
 import { TransactionHistoryPanel } from '@/components/amm-demo/TransactionHistoryPanel';
 import { AiOraclePanel } from '@/components/amm-demo/AiOraclePanel';
@@ -14,7 +14,7 @@ import { AnalyticsPanel } from '@/components/amm-demo/AnalyticsPanel';
 import { SendReceivePanel } from '@/components/amm-demo/SendReceivePanel';
 import { AIImpactPanel } from '@/components/amm-demo/AIImpactPanel';
 
-function InnovativeAMMDemo() {
+export default function AmmDemoPage() {
     return (
         <div className="container mx-auto p-0 space-y-8">
              <div className="text-center space-y-2">
@@ -102,13 +102,3 @@ function InnovativeAMMDemo() {
         </div>
     );
 }
-
-const AmmDemoPage = () => {
-    return (
-        <AmmDemoProvider>
-            <InnovativeAMMDemo />
-        </AmmDemoProvider>
-    );
-};
-
-export default AmmDemoPage;

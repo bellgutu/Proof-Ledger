@@ -77,7 +77,7 @@ export default function SwapPage() {
     return exchangeRates[fromToken] / exchangeRates[toToken];
   }, [fromToken, toToken, exchangeRates]);
 
-  const handleAmountChange = (val: string) => {
+  const handleAmountChange = useCallback((val: string) => {
     if (val === '' || parseFloat(val) < 0) {
       setFromAmount('');
       setToAmount('');
@@ -86,7 +86,7 @@ export default function SwapPage() {
     const numVal = parseFloat(val);
     setFromAmount(val);
     setToAmount((numVal * conversionRate).toFixed(4));
-  };
+  }, [conversionRate]);
 
   const handleSwapTokens = () => {
     if (fromToken === toToken) return;

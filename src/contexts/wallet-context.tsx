@@ -235,72 +235,49 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   const { toast } = useToast();
   const isUpdatingStateRef = useRef(false);
-  const nativeBalanceRef = useRef(nativeBalance);
 
-  useEffect(() => {
-    nativeBalanceRef.current = nativeBalance;
-  }, [nativeBalance]);
-
-
-  const updateVaultCollateral = useCallback(async () => {
-    if (!isConnected || !address) return;
-    
-    try {
-      const collateral = await getVaultCollateral(address);
-      setVaultCollateral(collateral);
-    } catch (error) {
-      console.error("Failed to update vault collateral:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update vault collateral",
-      });
+  const fetchAllBalances = useCallback(async () => {
+    if (!isConnected || !address || !publicClient) {
+      setBalances({});
+      setDecimals({});
+      return;
     }
-  }, [isConnected, address, toast]);
+    
+    isUpdatingStateRef.current = true;
 
-  // Fetch all balances when wallet connects
-  useEffect(() => {
-    const fetchAllBalances = async () => {
-        if (isUpdatingStateRef.current) return;
-        isUpdatingStateRef.current = true;
+    const newBalances: { [symbol: string]: number } = {};
+    const newDecimals: { [symbol: string]: number } = {};
 
-        const newBalances: { [symbol: string]: number } = {};
-        const newDecimals: { [symbol: string]: number } = {};
+    const nativeBal = await publicClient.getBalance({ address });
+    newBalances['ETH'] = parseFloat(formatEther(nativeBal));
+    newDecimals['ETH'] = 18;
 
-        if (nativeBalanceRef.current) {
-            newBalances['ETH'] = parseFloat(nativeBalanceRef.current.formatted);
-            newDecimals['ETH'] = nativeBalanceRef.current.decimals;
-        }
-
-        for (const symbol of Object.keys(ERC20_CONTRACTS)) {
-            const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
-            if (contract.address && isValidAddress(contract.address)) {
-                try {
-                    const [balanceOf, decimals] = await Promise.all([
-                        publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'balanceOf', args: [address!] }),
-                        publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'decimals' })
-                    ]);
-                    newBalances[symbol] = parseFloat(formatUnits(balanceOf, decimals));
-                    newDecimals[symbol] = decimals;
-                } catch (e) {
-                    console.error(`Failed to fetch balance/decimals for ${symbol}`, e);
-                }
+    for (const symbol of Object.keys(ERC20_CONTRACTS)) {
+        const contract = ERC20_CONTRACTS[symbol as keyof typeof ERC20_CONTRACTS];
+        if (contract.address && isValidAddress(contract.address)) {
+            try {
+                const [balanceOf, decimalsVal] = await Promise.all([
+                    publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'balanceOf', args: [address] }),
+                    publicClient.readContract({ address: contract.address, abi: erc20Abi, functionName: 'decimals' })
+                ]);
+                newBalances[symbol] = parseFloat(formatUnits(balanceOf, decimalsVal));
+                newDecimals[symbol] = decimalsVal;
+            } catch (e) {
+                console.error(`Failed to fetch balance/decimals for ${symbol}`, e);
             }
         }
-        
-        setBalances(newBalances);
-        setDecimals(newDecimals);
-        isUpdatingStateRef.current = false;
-    };
-
-    if (isConnected && address) {
-        fetchAllBalances();
-    } else {
-        setBalances({});
-        setDecimals({});
     }
+    
+    setBalances(newBalances);
+    setDecimals(newDecimals);
+    isUpdatingStateRef.current = false;
   }, [isConnected, address, publicClient]);
 
+
+  useEffect(() => {
+    fetchAllBalances();
+  }, [fetchAllBalances]);
+  
   // Calculate total wallet balance whenever underlying assets or prices change
   const walletBalance = useMemo(() => {
     if (isConnected && isMarketDataLoaded && Object.keys(balances).length > 0) {
@@ -514,6 +491,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
                   console.log(`✅ ${txType} transaction ${txHash} completed successfully`);
                   updateTransactionStatus(txHash, 'Completed');
                   if(onSuccess) await onSuccess(txHash);
+                  await fetchAllBalances(); // Refresh balances on success
               } else {
                   console.error(`❌ ${txType} transaction ${txHash} failed`);
                   let revertReason = 'Transaction was reverted by the contract.';
@@ -778,6 +756,22 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       });
   }, [executeTransaction, decimals, updateVaultCollateral, writeContractAsync, publicClient]);
 
+  const updateVaultCollateral = useCallback(async () => {
+    if (!isConnected || !address) return;
+    
+    try {
+      const collateral = await getVaultCollateral(address);
+      setVaultCollateral(collateral);
+    } catch (error) {
+      console.error("Failed to update vault collateral:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update vault collateral",
+      });
+    }
+  }, [isConnected, address, toast]);
+  
   const getActivePosition = useCallback(async (addr: `0x${string}`) => {
     try {
         const position = await getActivePositionFromService(addr);

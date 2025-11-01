@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -83,13 +84,12 @@ export default function SwapPage() {
   
       const amountInWei = parseUnits(val, fromTokenDecimals);
       
-      const [reserveA, reserveB, contractTokenAAddress, contractTokenBAddress] = await Promise.all([
+      const [reserveA, reserveB, contractTokenAAddress] = await Promise.all([
           publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveA' }),
           publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveB' }),
           publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'tokenA' }),
-          publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'tokenB' }),
       ]);
-  
+      
       const fromTokenAddress = walletState.marketData[fromToken]?.address;
       if (!fromTokenAddress) throw new Error(`Address for ${fromToken} not found`);
 

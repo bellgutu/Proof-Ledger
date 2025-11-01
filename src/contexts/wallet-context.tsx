@@ -633,34 +633,38 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
-    if (!address) throw new Error("Wallet not connected");
+    if (!address || !publicClient) throw new Error("Wallet not connected");
   
     const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
     if (!fromTokenInfo?.address) throw new Error(`Token ${fromToken} is not configured.`);
+    
+    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
+    if (!toTokenInfo?.address) throw new Error(`Token ${toToken} is not configured.`);
   
     const fromTokenDecimals = decimals[fromToken];
     if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
-  
-    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
-    if (!toTokenInfo?.address) throw new Error(`Token ${toToken} is not configured.`);
+    
+    const toTokenDecimals = decimals[toToken];
+    if (toTokenDecimals === undefined) throw new Error(`Decimals for ${toToken} not found.`);
   
     // 1. Approve the DEX contract to spend the `fromToken`
     await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
   
-    // 2. Prepare transaction arguments
+    // 2. Determine which swap function to call
+    let swapFunctionName: 'swapAforB' | 'swapBforA';
+    
+    // Fetch contract token addresses to be certain
+    const contractTokenA = await publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'tokenA' });
+  
+    if (fromTokenInfo.address.toLowerCase() === contractTokenA.toLowerCase()) {
+        swapFunctionName = 'swapAforB';
+    } else {
+        swapFunctionName = 'swapBforA';
+    }
+  
+    // 3. Prepare transaction arguments
     const amountInWei = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
     const minAmountOut = 0n; // No slippage protection for simplicity
-  
-    let swapFunctionName: 'swapAforB' | 'swapBforA';
-  
-    // Assuming TokenA is USDT and TokenB is USDC
-    if (fromToken === 'USDT' && toToken === 'USDC') {
-      swapFunctionName = 'swapAforB';
-    } else if (fromToken === 'USDC' && toToken === 'USDT') {
-      swapFunctionName = 'swapBforA';
-    } else {
-      throw new Error(`Unsupported swap pair: ${fromToken}/${toToken}. This DEX only supports USDT/USDC.`);
-    }
   
     const dialogDetails = {
       amount: amountIn,
@@ -677,7 +681,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
     await executeTransaction('Swap', dialogDetails, txFunction);
   
-  }, [executeTransaction, decimals, approveToken, writeContractAsync, address]);
+  }, [executeTransaction, decimals, approveToken, writeContractAsync, address, publicClient]);
   
 
   const createPool = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {

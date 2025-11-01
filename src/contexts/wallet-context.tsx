@@ -96,6 +96,7 @@ interface MarketData {
     symbol: AssetSymbol;
     price: number;
     change: number;
+    address?: Address;
   };
 }
 
@@ -160,31 +161,23 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-const erc20Abi = parseAbi([
-    "function name() view returns (string)",
-    "function symbol() view returns (string)",
-    "function decimals() view returns (uint8)",
-    "function balanceOf(address account) view returns (uint256)",
-    "function allowance(address owner, address spender) external view returns (uint256)",
-    "function approve(address spender, uint256 amount) external returns (bool)",
-    "function transfer(address to, uint256 amount) external returns (bool)"
-]);
+const erc20Abi = [{"inputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"symbol","type":"string"},{"internalType":"uint8","name":"decimals_","type":"uint8"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"subtractedValue","type":"uint256"}],"name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"addedValue","type":"uint256"}],"name":"increaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}];
 
 // --- INITIAL STATE ---
 
 const initialMarketData: MarketData = {
-    ETH: { name: 'Ethereum', symbol: 'ETH', price: 0, change: 0 },
-    BTC: { name: 'Bitcoin', symbol: 'BTC', price: 0, change: 0 },
-    SOL: { name: 'Solana', symbol: 'SOL', price: 0, change: 0 },
-    BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0 },
-    USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0 },
-    USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0 },
-    WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0},
-    LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0},
-    XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0},
-    XAUT: { name: 'Tether Gold', symbol: 'XAUT', price: 0, change: 0},
-    PEPE: { name: 'Pepe', symbol: 'PEPE', price: 0, change: 0},
-    DOGE: { name: 'Dogecoin', symbol: 'DOGE', price: 0, change: 0},
+    ETH: { name: 'Ethereum', symbol: 'ETH', price: 0, change: 0, address: undefined },
+    BTC: { name: 'Bitcoin', symbol: 'BTC', price: 0, change: 0, address: undefined },
+    SOL: { name: 'Solana', symbol: 'SOL', price: 0, change: 0, address: ERC20_CONTRACTS['SOL']?.address },
+    BNB: { name: 'BNB', symbol: 'BNB', price: 0, change: 0, address: ERC20_CONTRACTS['BNB']?.address },
+    USDT: { name: 'Tether', symbol: 'USDT', price: 1, change: 0, address: ERC20_CONTRACTS['USDT']?.address },
+    USDC: { name: 'USD Coin', symbol: 'USDC', price: 1, change: 0, address: ERC20_CONTRACTS['USDC']?.address },
+    WETH: { name: 'Wrapped Ether', symbol: 'WETH', price: 0, change: 0, address: ERC20_CONTRACTS['WETH']?.address},
+    LINK: { name: 'Chainlink', symbol: 'LINK', price: 0, change: 0, address: ERC20_CONTRACTS['LINK']?.address},
+    XRP: { name: 'XRP', symbol: 'XRP', price: 0, change: 0, address: undefined},
+    XAUT: { name: 'Tether Gold', symbol: 'XAUT', price: 0, change: 0, address: undefined},
+    PEPE: { name: 'Pepe', symbol: 'PEPE', price: 0, change: 0, address: undefined},
+    DOGE: { name: 'Dogecoin', symbol: 'DOGE', price: 0, change: 0, address: undefined},
 };
 
 const initialAvailablePools: Pool[] = [
@@ -634,36 +627,25 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
   const swapTokens = useCallback(async (fromToken: string, toToken: string, amountIn: number) => {
     if (!address || !publicClient) throw new Error("Wallet not connected");
-  
-    const fromTokenInfo = ERC20_CONTRACTS[fromToken as keyof typeof ERC20_CONTRACTS];
+
+    const fromTokenInfo = marketData[fromToken];
     if (!fromTokenInfo?.address) throw new Error(`Token ${fromToken} is not configured.`);
     
-    const toTokenInfo = ERC20_CONTRACTS[toToken as keyof typeof ERC20_CONTRACTS];
+    const toTokenInfo = marketData[toToken];
     if (!toTokenInfo?.address) throw new Error(`Token ${toToken} is not configured.`);
-  
-    const fromTokenDecimals = decimals[fromToken];
-    if (fromTokenDecimals === undefined) throw new Error(`Decimals for ${fromToken} not found.`);
+
+    const fromDecimals = decimals[fromToken];
+    const toDecimals = decimals[toToken];
+    if (fromDecimals === undefined || toDecimals === undefined) throw new Error("Decimals not found for swap tokens.");
     
-    const toTokenDecimals = decimals[toToken];
-    if (toTokenDecimals === undefined) throw new Error(`Decimals for ${toToken} not found.`);
-  
-    // 1. Approve the DEX contract to spend the `fromToken`
     await approveToken(fromToken, amountIn, DEX_CONTRACT_ADDRESS);
   
-    // 2. Determine which swap function to call
-    let swapFunctionName: 'swapAforB' | 'swapBforA';
-    
-    // Fetch contract token addresses to be certain
+    // Determine which swap function to call
     const contractTokenA = await publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'tokenA' });
+    const fromIsTokenA = fromTokenInfo.address.toLowerCase() === contractTokenA.toLowerCase();
+    const swapFunctionName = fromIsTokenA ? 'swapAforB' : 'swapBforA';
   
-    if (fromTokenInfo.address.toLowerCase() === contractTokenA.toLowerCase()) {
-        swapFunctionName = 'swapAforB';
-    } else {
-        swapFunctionName = 'swapBforA';
-    }
-  
-    // 3. Prepare transaction arguments
-    const amountInWei = parseTokenAmount(amountIn.toString(), fromTokenDecimals);
+    const amountInWei = parseUnits(amountIn.toString(), fromDecimals);
     const minAmountOut = 0n; // No slippage protection for simplicity
   
     const dialogDetails = {
@@ -681,7 +663,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   
     await executeTransaction('Swap', dialogDetails, txFunction);
   
-  }, [executeTransaction, decimals, approveToken, writeContractAsync, address, publicClient]);
+  }, [executeTransaction, decimals, approveToken, writeContractAsync, address, publicClient, marketData]);
   
 
   const createPool = useCallback(async (tokenA: string, tokenB: string, stable: boolean = false) => {

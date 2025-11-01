@@ -74,49 +74,49 @@ export default function SwapPage() {
       setToAmount('');
       return;
     }
-  
+
     try {
-      const fromTokenDecimals = decimals[fromToken];
-      const toTokenDecimals = decimals[toToken];
-      if (fromTokenDecimals === undefined || toTokenDecimals === undefined) {
-        throw new Error("Token decimals not loaded");
-      }
-  
-      const amountInWei = parseUnits(val, fromTokenDecimals);
-      
-      const [reserveA, reserveB, contractTokenAAddress] = await Promise.all([
-          publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveA' }),
-          publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveB' }),
-          publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'tokenA' }),
-      ]);
-      
-      const fromTokenAddress = walletState.marketData[fromToken]?.address;
-      if (!fromTokenAddress) throw new Error(`Address for ${fromToken} not found`);
+        const fromTokenInfo = walletState.marketData[fromToken];
+        const toTokenInfo = walletState.marketData[toToken];
+        const fromDecimals = decimals[fromToken];
+        const toDecimals = decimals[toToken];
 
-      const fromIsTokenA = fromTokenAddress.toLowerCase() === contractTokenAAddress.toLowerCase();
-  
-      const reserveIn = fromIsTokenA ? reserveA : reserveB;
-      const reserveOut = fromIsTokenA ? reserveB : reserveA;
+        if (!fromTokenInfo?.address || !toTokenInfo?.address || fromDecimals === undefined || toDecimals === undefined) {
+            throw new Error("Token info or decimals not loaded");
+        }
 
-      if (reserveIn === 0n || reserveOut === 0n) {
-          setToAmount('0');
-          return;
-      }
-  
-      const amountOutWei = await publicClient.readContract({
-        address: DEX_CONTRACT_ADDRESS,
-        abi: DEX_ABI,
-        functionName: 'getAmountOut',
-        args: [amountInWei, reserveIn, reserveOut]
-      });
-  
-      setToAmount(formatUnits(amountOutWei, toTokenDecimals));
-  
+        const amountInWei = parseUnits(val, fromDecimals);
+
+        const [reserveA, reserveB, contractTokenAAddress] = await Promise.all([
+            publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveA' }),
+            publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'reserveB' }),
+            publicClient.readContract({ address: DEX_CONTRACT_ADDRESS, abi: DEX_ABI, functionName: 'tokenA' }),
+        ]);
+
+        const fromIsTokenA = fromTokenInfo.address.toLowerCase() === contractTokenAAddress.toLowerCase();
+        
+        const reserveIn = fromIsTokenA ? reserveA : reserveB;
+        const reserveOut = fromIsTokenA ? reserveB : reserveA;
+
+        if (reserveIn === 0n || reserveOut === 0n) {
+            setToAmount('0');
+            return;
+        }
+
+        const amountOutWei = await publicClient.readContract({
+            address: DEX_CONTRACT_ADDRESS,
+            abi: DEX_ABI,
+            functionName: 'getAmountOut',
+            args: [amountInWei, reserveIn, reserveOut]
+        });
+
+        setToAmount(formatUnits(amountOutWei, toDecimals));
+
     } catch (e) {
-      console.error("Failed to get swap estimate:", e);
-      setToAmount('0');
+        console.error("Failed to get swap estimate:", e);
+        setToAmount('0');
     }
-  }, [publicClient, fromToken, toToken, decimals, walletState.marketData]);
+}, [publicClient, fromToken, toToken, decimals, walletState.marketData]);
 
   const handleSwapTokens = () => {
     if (fromToken === toToken) return;

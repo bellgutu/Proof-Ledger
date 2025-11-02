@@ -131,7 +131,7 @@ const initialTrustLayerState: TrustLayerState = {
   isUserOracleProvider: false
 };
 
-const USDC_ADDRESS = '0x09d011D52413DC89DFe3fa64694d67451ee49Cef' as Address;
+const USDC_ADDRESS = DEPLOYED_CONTRACTS.USDC as Address;
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
@@ -316,7 +316,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const approveDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: DEPLOYED_CONTRACTS.ProofBond,
+            to: DEPLOYED_CONTRACTS.ProofBond as Address,
             details: `Approving ${amount} USDC for bond purchase`
         };
     
@@ -330,14 +330,18 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         try {
             await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
         } catch (e) {
+            // Error is handled by context, but we should stop execution here.
             console.error("Approval failed, stopping bond purchase.", e);
-            return;
+            return; 
         }
         
+        // Only proceed if approval was successful
+        toast({ title: "Approval Successful", description: "Proceeding with bond purchase..." });
+
         const issueDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: DEPLOYED_CONTRACTS.ProofBond,
+            to: DEPLOYED_CONTRACTS.ProofBond as Address,
             details: `Purchasing bond worth ${amount} USDC`
         };
         

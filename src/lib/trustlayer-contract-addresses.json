@@ -7,6 +7,7 @@
   "ProofBond": "0x98e84f8F812cDFD21debF85f85cbe46a729E608a",
   "OpenGovernor": "0xf2500D9170e6f85D29a69d5a50764a8b44370AD6",
   "SafeVault": "0xbE5dd587b17eb4c0e2c6156c599851e164D37A37",
+  "USDC": "0x09d011D52413DC89DFe3fa64694d67451ee49Cef",
   "network": "sepolia",
   "chainId": 11155111,
   "abis": {
@@ -17,5 +18,3 @@
     "AdaptiveMarketMaker": []
   }
 }
-
-    

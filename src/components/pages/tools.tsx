@@ -20,6 +20,7 @@ import { auditToken } from '@/ai/flows/token-auditor-flow';
 import { analyzeWhitePaper } from '@/ai/flows/whitepaper-analyzer-flow';
 import { marked } from 'marked';
 import { Skeleton } from '../ui/skeleton';
+import { EcosystemAuthorizerPanel } from '../tools/ecosystem-authorizer-panel';
 
 // Schemas
 const BridgeSchema = z.object({
@@ -123,10 +124,11 @@ export default function ToolsPage() {
   return (
     <div className="space-y-8">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="bridge"><GitBranch className="mr-2"/>Cross-Chain Bridge</TabsTrigger>
           <TabsTrigger value="auditors"><ShieldCheck className="mr-2"/>Auditors</TabsTrigger>
           <TabsTrigger value="analyzer"><FileText className="mr-2"/>Doc Analyzer</TabsTrigger>
+          <TabsTrigger value="authorizer"><HardHat className="mr-2"/>Ecosystem Authorizer</TabsTrigger>
           <TabsTrigger value="fixer"><HardHat className="mr-2"/>Fee Fixer</TabsTrigger>
         </TabsList>
         
@@ -254,6 +256,11 @@ export default function ToolsPage() {
                     </Card>
                 )}
             </div>
+        </TabsContent>
+
+        {/* Authorizer Tab */}
+        <TabsContent value="authorizer" className="mt-6">
+            <EcosystemAuthorizerPanel />
         </TabsContent>
 
         {/* Fee Fixer Tab */}

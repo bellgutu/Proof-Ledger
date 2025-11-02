@@ -1,12 +1,14 @@
 
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight, Bot, ShieldCheck, TrendingUp, BrainCircuit, Droplets, RefreshCw } from 'lucide-react';
 import { WalletHeader } from '../shared/wallet-header';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useWallet } from '@/contexts/wallet-context';
 
 const FeatureCard = ({ title, description, icon, link }: { title: string, description: string, icon: React.ReactNode, link: string }) => (
     <Link href={link} className="block h-full">
@@ -29,8 +31,27 @@ const FeatureCard = ({ title, description, icon, link }: { title: string, descri
     </Link>
 );
 
+// Generate some plausible-looking historical data for the chart
+const generateChartData = (currentPrice: number) => {
+  const data = [];
+  let value = currentPrice * (0.95 + Math.random() * 0.05); 
+  for (let i = 0; i < 30; i++) {
+    data.push({
+      name: `Day ${i + 1}`,
+      price: Math.max(0, value),
+    });
+    value *= (0.98 + Math.random() * 0.045); // Fluctuate by -2% to +2.5% daily
+  }
+  data[29].price = currentPrice; // Ensure the last point is the current price
+  return data;
+};
+
 
 export default function DashboardPage() {
+  const { walletState } = useWallet();
+  const ethPrice = walletState.marketData['ETH']?.price || 3500;
+  const chartData = useMemo(() => generateChartData(ethPrice), [ethPrice]);
+
   return (
     <div className="space-y-8">
         <WalletHeader />
@@ -69,6 +90,44 @@ export default function DashboardPage() {
                 <Link href="/swap"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><RefreshCw className="mr-4"/><div><p className="font-bold">Token Swap</p><p className="text-xs text-muted-foreground">Exchange tokens on-chain.</p></div></Button></Link>
                 <Link href="/intelligence"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><BrainCircuit className="mr-4"/><div><p className="font-bold">Market Intelligence</p><p className="text-xs text-muted-foreground">Get briefings on assets.</p></div></Button></Link>
                 <Link href="/liquidity"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><Droplets className="mr-4"/><div><p className="font-bold">Provide Liquidity</p><p className="text-xs text-muted-foreground">Earn fees on your assets.</p></div></Button></Link>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Market Overview</CardTitle>
+                <CardDescription>A real-time, animated visualization of simulated market trends.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <defs>
+                            <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(typeof value === 'number' ? value/1000 : 0).toFixed(0)}k`} />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                                borderRadius: 'var(--radius)',
+                            }}
+                            formatter={(value) => [`$${(typeof value === 'number' ? value : 0).toFixed(2)}`, 'Price']}
+                        />
+                        <Area 
+                            type="monotone" 
+                            dataKey="price" 
+                            stroke="hsl(var(--primary))" 
+                            strokeWidth={2}
+                            fillOpacity={1} 
+                            fill="url(#priceGradient)" 
+                            dot={false}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
             </CardContent>
         </Card>
     </div>

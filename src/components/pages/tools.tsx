@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { FileSearch, Search, Loader2, GitBranch, ShieldCheck, ArrowRight, FileText, HardHat } from 'lucide-react';
+import { FileSearch, Search, Loader2, GitBranch, ShieldCheck, ArrowRight, FileText, HardHat, Wrench } from 'lucide-react';
 import { FeeFixerPanel } from '../tools/fee-fixer-panel';
 
 import { getBridgeTransactionDetails } from '@/ai/flows/bridge-narrator-flow';
@@ -21,6 +21,7 @@ import { analyzeWhitePaper } from '@/ai/flows/whitepaper-analyzer-flow';
 import { marked } from 'marked';
 import { Skeleton } from '../ui/skeleton';
 import { EcosystemAuthorizerPanel } from '../tools/ecosystem-authorizer-panel';
+import { DebugWallet } from '../shared/debug-wallet';
 
 // Schemas
 const BridgeSchema = z.object({
@@ -124,12 +125,13 @@ export default function ToolsPage() {
   return (
     <div className="space-y-8">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="bridge"><GitBranch className="mr-2"/>Cross-Chain Bridge</TabsTrigger>
           <TabsTrigger value="auditors"><ShieldCheck className="mr-2"/>Auditors</TabsTrigger>
           <TabsTrigger value="analyzer"><FileText className="mr-2"/>Doc Analyzer</TabsTrigger>
           <TabsTrigger value="authorizer"><HardHat className="mr-2"/>Ecosystem Authorizer</TabsTrigger>
           <TabsTrigger value="fixer"><HardHat className="mr-2"/>Fee Fixer</TabsTrigger>
+          <TabsTrigger value="dev-tools"><Wrench className="mr-2"/>Dev Tools</TabsTrigger>
         </TabsList>
         
         {/* Cross-Chain Bridge Tab */}
@@ -267,6 +269,12 @@ export default function ToolsPage() {
         <TabsContent value="fixer" className="mt-6">
             <FeeFixerPanel />
         </TabsContent>
+        
+        {/* Dev Tools Tab */}
+        <TabsContent value="dev-tools" className="mt-6">
+            <DebugWallet />
+        </TabsContent>
+
 
       </Tabs>
         

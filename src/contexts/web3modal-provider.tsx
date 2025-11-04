@@ -1,17 +1,16 @@
 
 "use client";
 
-import { config, metadata } from '@/lib/wagmi';
-import { createWeb3Modal } from '@web3modal/wagmi/react';
+import { config } from '@/lib/wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { sepolia } from 'wagmi/chains';
 import { ReactNode } from 'react';
 
-// Setup queryClient
-const queryClient = new QueryClient();
-
 // Create modal outside of the component to ensure it's created only once.
+// This is the key to preventing the re-initialization loop.
+import { createWeb3Modal } from '@web3modal/wagmi/react';
+import { mainnet, sepolia } from 'wagmi/chains';
+
 if (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
     createWeb3Modal({
         wagmiConfig: config,
@@ -28,6 +27,10 @@ if (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
         defaultChain: sepolia,
     });
 }
+
+
+// Setup queryClient
+const queryClient = new QueryClient();
 
 
 export function Web3ModalProvider({ children }: { children: ReactNode }) {

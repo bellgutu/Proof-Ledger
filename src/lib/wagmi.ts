@@ -24,6 +24,4 @@ export const config = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
-  ssr: true,
-  // autoConnect: true, // This was causing the issue. It's now disabled.
 });

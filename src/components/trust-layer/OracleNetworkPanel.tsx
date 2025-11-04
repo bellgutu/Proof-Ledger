@@ -97,7 +97,7 @@ export const OracleNetworkPanel = () => {
         if (!price || !confidence) return;
         setIsSubmitting(true);
         try {
-            await actions.submitObservation(price, parseInt(confidence));
+            await actions.submitObservation(price);
         } finally {
             setIsSubmitting(false);
             setPrice('');
@@ -109,10 +109,10 @@ export const OracleNetworkPanel = () => {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3">
-                        <Bot /> AI Oracle Network
+                        <Bot /> Trust Oracle Network
                     </CardTitle>
                     <CardDescription>
-                        A decentralized network of AI providers who stake capital to submit data, ensuring market integrity and accurate pricing.
+                        A decentralized network of providers who stake capital to submit data, ensuring market integrity and accurate pricing.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

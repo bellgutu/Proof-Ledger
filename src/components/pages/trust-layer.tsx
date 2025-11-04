@@ -30,7 +30,7 @@ export default function TrustLayerPage() {
                     </TabsTrigger>
                      <TabsTrigger value="oracle" className="flex items-center gap-2">
                         <Landmark className="h-4 w-4" />
-                        <span>Oracle Network</span>
+                        <span>Trust Oracle Network</span>
                     </TabsTrigger>
                     <TabsTrigger value="integrity" className="flex items-center gap-2">
                         <GitCommit className="h-4 w-4" />

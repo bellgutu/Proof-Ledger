@@ -1,9 +1,8 @@
 
 "use client";
 
-import { createWeb3Modal } from '@web3modal/wagmi/react';
-import { walletConnect, injected } from 'wagmi/connectors';
-import { createConfig, http } from 'wagmi';
+import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
+import { cookieStorage, createStorage } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -19,16 +18,13 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
-export const config = createConfig({
+// Create wagmiConfig
+export const config = defaultWagmiConfig({
   chains: [mainnet, sepolia],
-  transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
-  },
-  connectors: [
-    walletConnect({ projectId, metadata, showQrModal: false }),
-    injected({ shimDisconnect: true }),
-  ],
+  projectId,
+  metadata,
+  ssr: true,
+  storage: createStorage({
+    storage: cookieStorage
+  }),
 });
-
-// The createWeb3Modal function is moved to the provider to ensure it only runs on the client.

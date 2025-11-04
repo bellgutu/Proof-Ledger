@@ -324,6 +324,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
         } catch (e) {
             console.error("Approval failed, stopping bond purchase.", e);
+            // Error is already handled by executeTransaction, so just return
             return; 
         }
         
@@ -407,6 +408,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (walletState.isConnected && walletClient) {
             fetchData();
+            const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+            return () => clearInterval(interval);
         }
     }, [walletState.isConnected, walletClient, fetchData]);
     

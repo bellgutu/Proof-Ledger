@@ -112,7 +112,7 @@ export const YieldInsights = () => {
                                         <p className="text-sm text-muted-foreground">Amount: {bond.amount} USDC</p>
                                         <p className="text-sm text-muted-foreground">Matures: {new Date(bond.maturity * 1000).toLocaleDateString()}</p>
                                     </div>
-                                    <Button onClick={() => handleRedeem(bond.id)} disabled={isRedeeming === bond.id || new Date() > new Date(bond.maturity * 1000)}>
+                                    <Button onClick={() => handleRedeem(bond.id)} disabled={isRedeeming === bond.id || new Date() < new Date(bond.maturity * 1000)}>
                                         {isRedeeming === bond.id ? <Loader2 className="mr-2 animate-spin" /> : 'Redeem'}
                                     </Button>
                                 </div>

@@ -10,6 +10,7 @@ import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { Wallet, CheckCircle, XCircle, RefreshCw, Loader2, LogOut } from 'lucide-react';
 import { getTokenLogo } from '@/lib/tokenLogos';
 import { useWallet } from '@/contexts/wallet-context';
+import { walletActions } from 'viem';
 
 export function WalletPanel() {
     const { state: ammState, actions: ammActions } = useAmmDemo();
@@ -52,7 +53,7 @@ export function WalletPanel() {
                             {isSepolia ? (
                                 <span className="flex items-center gap-2 text-green-400"><CheckCircle size={16} />{chain?.name || 'Sepolia'}</span>
                             ) : (
-                                <Button size="sm" variant="destructive" onClick={() => walletActions.switchChain(11155111)}>
+                                <Button size="sm" variant="destructive" onClick={() => walletActions.Chain(11155111)}>
                                     <XCircle size={16} className="mr-2"/>
                                     Switch to Sepolia
                                 </Button>

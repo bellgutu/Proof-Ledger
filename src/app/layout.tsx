@@ -5,8 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
 import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
 import NetworkCheck from '@/components/shared/NetworkCheck';
-import { Providers } from '@/contexts/providers';
 import { Suspense } from 'react';
+import { DynamicProviders } from '@/contexts/dynamic-providers';
 
 
 export const metadata: Metadata = {
@@ -31,13 +31,13 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <Suspense>
-          <Providers>
+          <DynamicProviders>
               <NetworkCheck />
               <AppShell>
                 {children}
               </AppShell>
               <TransactionStatusDialogController />
-          </Providers>
+          </DynamicProviders>
         </Suspense>
         <Toaster />
       </body>

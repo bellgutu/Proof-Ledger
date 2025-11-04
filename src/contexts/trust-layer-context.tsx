@@ -154,29 +154,26 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             });
 
             // AIPredictiveLiquidityOracle Data
-            const [minStake, minSubmissions, allProviders, activePairCount, latestPrice] = await Promise.all([
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'MIN_PROVIDER_STAKE' }),
+            const [minStake, minSubmissions, allProviders, latestPrice] = await Promise.all([
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minStake' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getAllProviders' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getActivePairCount' }),
+                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'listActiveOracles' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'latestAnswer' }),
             ]);
-
-            const activePairIds = [];
-            for (let i = 0; i < Number(activePairCount); i++) {
-                const pairId = await publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'activePairIds', args: [BigInt(i)] });
-                activePairIds.push(pairId as bigint);
-            }
-
+            
             const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
-                const [stake, lastUpdate] = await Promise.all([
-                     publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'providerStakes', args: [providerAddress] }),
-                     publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'getProviderLastUpdate', args: [providerAddress] }),
-                ]);
+                const oracleData = await publicClient.readContract({ 
+                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, 
+                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, 
+                    functionName: 'oracles', 
+                    args: [providerAddress] 
+                });
+                const [stake, active, index] = oracleData as [bigint, boolean, bigint];
+                
                 return {
                     address: providerAddress,
-                    stake: formatEther(stake as bigint),
-                    lastUpdate: Number(lastUpdate)
+                    stake: formatEther(stake),
+                    lastUpdate: 0 // This needs to be implemented in the contract or tracked off-chain
                 };
             }));
 
@@ -247,7 +244,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     minSubmissions: Number(minSubmissions),
                     activeProviders: providerDetails.length,
                     providers: providerDetails,
-                    activePairIds,
+                    activePairIds: [], // This needs implementation if required
                     latestPrice: formatUnits(latestPrice as bigint, 8)
                 },
                 proofBondData: {
@@ -275,7 +272,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const txFunction = () => writeContractAsync({
             address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
             abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-            functionName: 'registerAsProvider',
+            functionName: 'registerOracle',
             value: parseEther(state.trustOracleData.minStake)
         });
 
@@ -283,13 +280,15 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, state.trustOracleData.minStake, toast, writeContractAsync, walletActions, fetchData]);
 
     const submitObservation = useCallback(async (price: string, confidence: number) => {
+        // Round ID generation based on timestamp
+        const roundId = BigInt(Math.floor(Date.now() / 1000 / 3600)); // Hourly rounds
         const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Submitting observation: ${price}` };
         const txFunction = () => writeContractAsync({
             address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
             abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
             functionName: 'submitObservation',
             args: [
-                BigInt(Math.floor(Date.now() / 1000)), // roundId
+                roundId,
                 parseUnits(price, 8) // value
             ]
         });
@@ -297,15 +296,9 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [writeContractAsync, walletActions, fetchData]);
     
     const addAssetPair = useCallback(async (tokenA: Address, tokenB: Address) => {
-        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Adding asset pair` };
-        const txFunction = () => writeContractAsync({
-            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
-            functionName: 'addAssetPair',
-            args: [tokenA, tokenB, BigInt(3600)] // 1 hour update interval
-        });
-        await walletActions.executeTransaction('Add Asset Pair', details, txFunction, fetchData);
-    }, [writeContractAsync, walletActions, fetchData]);
+        // This function does not exist in the new ABI.
+        toast({ variant: 'destructive', title: 'Function Not Available', description: 'addAssetPair is not a function in the provided TrustOracle ABI.' });
+    }, [toast]);
 
     const purchaseBond = useCallback(async (amount: string) => {
         if (!walletClient) {
@@ -330,12 +323,10 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         try {
             await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
         } catch (e) {
-            // Error is handled by context, but we should stop execution here.
             console.error("Approval failed, stopping bond purchase.", e);
             return; 
         }
         
-        // Only proceed if approval was successful
         toast({ title: "Approval Successful", description: "Proceeding with bond purchase..." });
 
         const issueDetails = {
@@ -375,7 +366,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: parseFloat(amount),
             token: 'USDC',
-            to: DEPLOYED_CONTRACTS.ProofBond,
+            to: DEPLOYED_CONTRACTS.ProofBond as Address,
             details: `Issuing bond tranche of ${amount} for ${investor.slice(0,6)}...`
         };
 
@@ -398,7 +389,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const dialogDetails = {
             amount: 0,
             token: 'USDC',
-            to: DEPLOYED_CONTRACTS.ProofBond,
+            to: DEPLOYED_CONTRACTS.ProofBond as Address,
             details: `Redeeming Bond #${bondId}`,
         };
 

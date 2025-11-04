@@ -75,7 +75,7 @@ export const OracleNetworkPanel = () => {
                             <h4 className="font-semibold">Submit Oracle Data</h4>
                             <div className="flex gap-4">
                                 <Input type="number" placeholder="Price (e.g., 4150.75)" value={price} onChange={e => setPrice(e.target.value)} />
-                                <Input type="number" placeholder="Confidence (0-100)" value={confidence} onChange={e => setConfidence(e.target.value)} />
+                                <Input type="number" placeholder="Confidence (0-100)" value={confidence} onChange={e => setConfidence(e.target.value)} disabled />
                             </div>
                             <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
                                 {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : <Send className="mr-2" />}
@@ -85,7 +85,7 @@ export const OracleNetworkPanel = () => {
                     ) : (
                         <Button onClick={handleRegister} disabled={isRegistering || isLoading} className="w-full">
                             {isRegistering ? <Loader2 className="mr-2 animate-spin" /> : <UserPlus className="mr-2" />}
-                            Register as a Provider ({trustOracleData.minStake} ETH Stake)
+                            Become a Data Provider ({trustOracleData.minStake} ETH Stake)
                         </Button>
                     )}
                 </CardContent>
@@ -103,7 +103,6 @@ export const OracleNetworkPanel = () => {
                                 <TableRow>
                                     <TableHead>Provider Address</TableHead>
                                     <TableHead className="text-right">Stake</TableHead>
-                                    <TableHead className="text-right">Last Update</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -116,9 +115,6 @@ export const OracleNetworkPanel = () => {
                                         <TableRow key={p.address}>
                                             <TableCell className="font-mono text-xs">{p.address}</TableCell>
                                             <TableCell className="text-right font-mono">{parseFloat(p.stake).toFixed(4)} ETH</TableCell>
-                                            <TableCell className="text-right text-xs">
-                                                {p.lastUpdate > 0 ? formatDistanceToNow(new Date(p.lastUpdate * 1000), { addSuffix: true }) : 'Never'}
-                                            </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (

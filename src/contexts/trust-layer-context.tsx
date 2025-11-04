@@ -35,11 +35,18 @@ const ERC20_ABI = [
 ] as const;
 
 // Types for contract data
+interface ProviderDetails {
+    address: Address;
+    stake: string;
+    lastUpdate: number;
+    active: boolean;
+}
+
 interface TrustOracleData {
   activeProviders: number;
   minStake: string;
   minSubmissions: number;
-  providers: Array<{ address: Address; stake: string; lastUpdate: number }>;
+  providers: ProviderDetails[];
   activePairIds: bigint[];
   latestPrice: string;
 }
@@ -71,6 +78,12 @@ interface ArbitrageEngineData {
   totalProfit: string;
 }
 
+interface UserOracleStatus {
+    isProvider: boolean;
+    isActive: boolean;
+    stake: string;
+}
+
 interface TrustLayerState {
   mainContractData: MainContractData;
   trustOracleData: TrustOracleData;
@@ -79,12 +92,13 @@ interface TrustLayerState {
   arbitrageEngineData: ArbitrageEngineData;
   isLoading: boolean;
   lastUpdated: number;
-  isUserOracleProvider: boolean;
+  userOracleStatus: UserOracleStatus;
 }
 
 interface TrustLayerActions {
   refresh: () => Promise<void>;
   registerAsProvider: () => Promise<void>;
+  unregisterAndWithdraw: () => Promise<void>;
   submitObservation: (price: string, confidence: number) => Promise<void>;
   addAssetPair: (tokenA: Address, tokenB: Address) => Promise<void>;
   purchaseBond: (amount: string) => Promise<void>;
@@ -128,7 +142,7 @@ const initialTrustLayerState: TrustLayerState = {
   },
   isLoading: true,
   lastUpdated: 0,
-  isUserOracleProvider: false
+  userOracleStatus: { isProvider: false, isActive: false, stake: '0' },
 };
 
 const USDC_ADDRESS = DEPLOYED_CONTRACTS.USDC as Address;
@@ -161,6 +175,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'latestAnswer' }),
             ]);
             
+            let userProviderStatus: UserOracleStatus = { isProvider: false, isActive: false, stake: '0' };
             const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
                 const oracleData = await publicClient.readContract({ 
                     address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, 
@@ -169,20 +184,23 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     args: [providerAddress] 
                 });
                 const [stake, active, index] = oracleData as [bigint, boolean, bigint];
+
+                if (walletState.isConnected && walletClient && providerAddress.toLowerCase() === walletClient.account.address.toLowerCase()) {
+                    userProviderStatus = {
+                        isProvider: true,
+                        isActive: active,
+                        stake: formatEther(stake)
+                    };
+                }
                 
                 return {
                     address: providerAddress,
                     stake: formatEther(stake),
-                    lastUpdate: 0 // This needs to be implemented in the contract or tracked off-chain
+                    active: active,
+                    lastUpdate: 0 // Placeholder
                 };
             }));
-
-            let isUserProvider = false;
-            if (walletState.isConnected && walletClient) {
-                const userAddress = walletClient.account.address;
-                isUserProvider = (allProviders as Address[]).some(p => p.toLowerCase() === userAddress.toLowerCase());
-            }
-
+            
             // ProofBond Data
             const [bondTrancheSize, bondDecimals] = await Promise.all([
                 publicClient.readContract({
@@ -252,7 +270,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     userBonds: freshUserBonds,
                     tvl: tvl.toString(),
                 },
-                isUserOracleProvider: isUserProvider,
+                userOracleStatus: userProviderStatus,
                 isLoading: false,
                 lastUpdated: Date.now(),
             }));
@@ -278,6 +296,23 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         await walletActions.executeTransaction('Register as Oracle', details, txFunction, fetchData);
     }, [walletClient, state.trustOracleData.minStake, toast, writeContractAsync, walletActions, fetchData]);
+
+    const unregisterAndWithdraw = useCallback(async () => {
+        if (!walletClient) {
+            toast({ variant: 'destructive', title: 'Could not unregister', description: 'Wallet not connected.'});
+            return;
+        }
+
+        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Unregistering as Oracle Provider and withdrawing stake.` };
+        const txFunction = () => writeContractAsync({
+            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
+            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+            functionName: 'unregisterAndWithdraw',
+        });
+
+        await walletActions.executeTransaction('Unregister Oracle', details, txFunction, fetchData);
+    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+
 
     const submitObservation = useCallback(async (price: string, confidence: number) => {
         // Round ID generation based on timestamp
@@ -418,6 +453,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         actions: {
             refresh: fetchData,
             registerAsProvider,
+            unregisterAndWithdraw,
             submitObservation,
             addAssetPair,
             purchaseBond,

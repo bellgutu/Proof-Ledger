@@ -3,7 +3,7 @@
 import React from 'react';
 import { OracleNetworkPanel } from './OracleNetworkPanel';
 
-export const Governance = () => {
+export const OracleNetwork = () => {
     return (
         <div className="space-y-6">
             <OracleNetworkPanel />

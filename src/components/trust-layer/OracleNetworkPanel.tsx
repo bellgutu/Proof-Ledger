@@ -3,16 +3,80 @@
 import React, { useState } from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bot, UserPlus, Loader2, Send, Database } from 'lucide-react';
+import { Bot, UserPlus, Loader2, Send, Database, CheckCircle, AlertTriangle, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '../ui/scroll-area';
-import { formatDistanceToNow } from 'date-fns';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+
+const ProviderStatusPanel = () => {
+    const { state, actions } = useTrustLayer();
+    const { userOracleStatus, isLoading } = state;
+    const [isUnregistering, setIsUnregistering] = useState(false);
+
+    const handleUnregister = async () => {
+        setIsUnregistering(true);
+        try {
+            await actions.unregisterAndWithdraw();
+        } finally {
+            setIsUnregistering(false);
+        }
+    };
+
+    if (isLoading) {
+        return <div className="p-4 border rounded-lg"><Loader2 className="animate-spin" /></div>;
+    }
+    
+    if (!userOracleStatus.isProvider) {
+        return null; // Don't show this panel if the user isn't a provider
+    }
+
+    return (
+        <div className="p-4 border rounded-lg space-y-4 bg-background">
+            <h4 className="font-semibold text-lg text-primary">Your Oracle Status</h4>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className={`font-bold flex items-center gap-2 ${userOracleStatus.isActive ? 'text-green-500' : 'text-yellow-500'}`}>
+                        {userOracleStatus.isActive ? <CheckCircle size={16}/> : <AlertTriangle size={16}/>}
+                        {userOracleStatus.isActive ? 'Active' : 'Inactive'}
+                    </p>
+                </div>
+                 <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Your Stake</p>
+                    <p className="font-bold">{userOracleStatus.stake} ETH</p>
+                </div>
+            </div>
+            
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                        <UserMinus className="mr-2" /> Unregister & Withdraw Stake
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will remove you as a data provider and return your staked ETH. You will no longer be able to submit observations or earn rewards. This action is irreversible.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleUnregister} disabled={isUnregistering}>
+                            {isUnregistering ? <Loader2 className="animate-spin"/> : "Confirm & Unregister"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    )
+}
 
 export const OracleNetworkPanel = () => {
     const { state, actions } = useTrustLayer();
-    const { trustOracleData, isLoading, isUserOracleProvider } = state;
+    const { trustOracleData, isLoading, userOracleStatus } = state;
     
     const [isRegistering, setIsRegistering] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +100,7 @@ export const OracleNetworkPanel = () => {
             await actions.submitObservation(price, parseInt(confidence));
         } finally {
             setIsSubmitting(false);
+            setPrice('');
         }
     };
     
@@ -47,7 +112,7 @@ export const OracleNetworkPanel = () => {
                         <Bot /> AI Oracle Network
                     </CardTitle>
                     <CardDescription>
-                        The decentralized network of AI providers who stake capital to submit data.
+                        A decentralized network of AI providers who stake capital to submit data, ensuring market integrity and accurate pricing.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -70,8 +135,8 @@ export const OracleNetworkPanel = () => {
                     </div>
                     )}
 
-                    {isUserOracleProvider ? (
-                        <div className="p-4 border rounded-lg space-y-4">
+                    {userOracleStatus.isProvider ? (
+                        <div className="p-4 border rounded-lg space-y-4 bg-background">
                             <h4 className="font-semibold">Submit Oracle Data</h4>
                             <div className="flex gap-4">
                                 <Input type="number" placeholder="Price (e.g., 4150.75)" value={price} onChange={e => setPrice(e.target.value)} />
@@ -83,13 +148,17 @@ export const OracleNetworkPanel = () => {
                             </Button>
                         </div>
                     ) : (
-                        <Button onClick={handleRegister} disabled={isRegistering || isLoading} className="w-full">
-                            {isRegistering ? <Loader2 className="mr-2 animate-spin" /> : <UserPlus className="mr-2" />}
-                            Become a Data Provider ({trustOracleData.minStake} ETH Stake)
-                        </Button>
+                        !isLoading && (
+                            <Button onClick={handleRegister} disabled={isRegistering || isLoading} className="w-full">
+                                {isRegistering ? <Loader2 className="mr-2 animate-spin" /> : <UserPlus className="mr-2" />}
+                                Become a Data Provider ({trustOracleData.minStake} ETH Stake)
+                            </Button>
+                        )
                     )}
                 </CardContent>
             </Card>
+
+            <ProviderStatusPanel />
 
             <Card>
                 <CardHeader>
@@ -102,6 +171,7 @@ export const OracleNetworkPanel = () => {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Provider Address</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Stake</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -114,6 +184,12 @@ export const OracleNetworkPanel = () => {
                                     trustOracleData.providers.map(p => (
                                         <TableRow key={p.address}>
                                             <TableCell className="font-mono text-xs">{p.address}</TableCell>
+                                            <TableCell>
+                                                <span className={`flex items-center gap-1 text-xs ${p.active ? 'text-green-500' : 'text-yellow-500'}`}>
+                                                    {p.active ? <CheckCircle size={14} /> : <AlertTriangle size={14}/>}
+                                                    {p.active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </TableCell>
                                             <TableCell className="text-right font-mono">{parseFloat(p.stake).toFixed(4)} ETH</TableCell>
                                         </TableRow>
                                     ))

@@ -4,7 +4,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldCheck, Landmark, GitCommit, LineChart } from 'lucide-react';
 import { Dashboard } from '@/components/trust-layer/dashboard';
-import { Governance } from '@/components/trust-layer/governance';
+import { OracleNetwork } from '@/components/trust-layer/governance';
 import { MarketIntegrity } from '@/components/trust-layer/market-integrity';
 import { YieldInsights } from '@/components/trust-layer/yield-insights';
 import { WalletHeader } from '../shared/wallet-header';
@@ -28,7 +28,7 @@ export default function TrustLayerPage() {
                         <ShieldCheck className="h-4 w-4" />
                         <span>System Health</span>
                     </TabsTrigger>
-                     <TabsTrigger value="governance" className="flex items-center gap-2">
+                     <TabsTrigger value="oracle" className="flex items-center gap-2">
                         <Landmark className="h-4 w-4" />
                         <span>Oracle Network</span>
                     </TabsTrigger>
@@ -45,8 +45,8 @@ export default function TrustLayerPage() {
                 <TabsContent value="dashboard" className="mt-6">
                     <Dashboard />
                 </TabsContent>
-                <TabsContent value="governance" className="mt-6">
-                    <Governance />
+                <TabsContent value="oracle" className="mt-6">
+                    <OracleNetwork />
                 </TabsContent>
                 <TabsContent value="integrity" className="mt-6">
                     <MarketIntegrity />

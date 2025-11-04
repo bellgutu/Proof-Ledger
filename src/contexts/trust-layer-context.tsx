@@ -1,3 +1,4 @@
+
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
@@ -244,8 +245,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 });
                 
                 // FIXED: Proper type assertion
-                const data = oracleData as { stake: bigint; active: boolean; index: bigint };
-                const { stake, active } = data;
+                const data = oracleData as [bigint, boolean, bigint];
+                const [ stake, active ] = data;
 
                 if (walletState.isConnected && walletClient && 
                     providerAddress.toLowerCase() === walletClient.account.address.toLowerCase()) {
@@ -607,3 +608,5 @@ export const useTrustLayer = (): TrustLayerContextType => {
     }
     return context;
 };
+
+    

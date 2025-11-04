@@ -6,6 +6,7 @@ import AppShell from '@/components/app-shell';
 import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
 import NetworkCheck from '@/components/shared/NetworkCheck';
 import { Providers } from '@/contexts/providers';
+import { Suspense } from 'react';
 
 
 export const metadata: Metadata = {
@@ -29,13 +30,15 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <Providers>
-            <NetworkCheck />
-            <AppShell>
-              {children}
-            </AppShell>
-            <TransactionStatusDialogController />
-        </Providers>
+        <Suspense>
+          <Providers>
+              <NetworkCheck />
+              <AppShell>
+                {children}
+              </AppShell>
+              <TransactionStatusDialogController />
+          </Providers>
+        </Suspense>
         <Toaster />
       </body>
     </html>

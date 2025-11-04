@@ -1,10 +1,10 @@
 
 "use client";
 
+import { createWeb3Modal } from '@web3modal/wagmi/react';
+import { walletConnect, injected } from 'wagmi/connectors';
 import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
-import { walletConnect, injected } from 'wagmi/connectors';
-import { createWeb3Modal } from '@web3modal/wagmi/react';
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
@@ -29,7 +29,7 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  reconnectOnMount: false,
+  reconnectOnMount: false, // Explicitly disable auto-reconnect on mount
 });
 
 createWeb3Modal({

@@ -5,6 +5,7 @@ import { config, metadata } from '@/lib/wagmi';
 import { createWeb3Modal } from '@web3modal/wagmi/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
+import { sepolia } from 'wagmi/chains';
 import { ReactNode } from 'react';
 
 // Setup queryClient

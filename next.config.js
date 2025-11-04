@@ -49,11 +49,6 @@ const nextConfig = {
       },
     ];
   },
-   async redirects() {
-    return [
-      // No longer need the redirect from /markets to /
-    ]
-  },
 };
 
 module.exports = nextConfig;

@@ -29,20 +29,6 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  reconnectOnMount: false, // Explicitly disable auto-reconnect on mount
 });
 
-createWeb3Modal({
-  wagmiConfig: config,
-  projectId,
-  enableAnalytics: true,
-  enableOnramp: true,
-  featuredWalletIds: [],
-  themeMode: 'dark',
-  themeVariables: {
-    '--w3m-color-mix': '#00DCFF',
-    '--w3m-color-mix-strength': 20
-  },
-  enableAccountView: false,
-  defaultChain: sepolia,
-});
+// The createWeb3Modal function is moved to the provider to ensure it only runs on the client.

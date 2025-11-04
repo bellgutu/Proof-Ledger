@@ -32,9 +32,10 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
   
   const [coinData, setCoinData] = useState<CoinData | null>(null);
   const [timeframe, setTimeframe] = useState<'24h' | '12h' | '6h'>('24h');
-  const [currentPrice, setCurrentPrice] = useState(0);
   const [briefing, setBriefing] = useState<WatchlistBriefing | null>(null);
   const [isBriefingLoading, setIsBriefingLoading] = useState(true);
+
+  const currentPrice = marketData[symbol.toUpperCase()]?.price || 0;
 
   useEffect(() => {
     if (isMarketDataLoaded) {
@@ -42,7 +43,6 @@ export default function CoinDetail({ symbol }: { symbol: string }) {
       const priceData = marketData[upperSymbol];
 
       if (priceData) {
-        setCurrentPrice(priceData.price);
         setCoinData({
           id: symbol.toLowerCase(),
           name: priceData.name,

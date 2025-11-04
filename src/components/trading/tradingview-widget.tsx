@@ -5,10 +5,9 @@ import React, { useEffect, useRef, memo } from 'react';
 
 interface TradingViewWidgetProps {
   symbol: string;
-  onPriceUpdate?: (price: number) => void;
 }
 
-function TradingViewWidget({ symbol = "BINANCE:ETHUSDT", onPriceUpdate }: TradingViewWidgetProps) {
+function TradingViewWidget({ symbol = "BINANCE:ETHUSDT" }: TradingViewWidgetProps) {
   const container = useRef<HTMLDivElement>(null);
   const isClient = typeof window !== 'undefined';
 
@@ -17,21 +16,6 @@ function TradingViewWidget({ symbol = "BINANCE:ETHUSDT", onPriceUpdate }: Tradin
 
     // Clear the container before appending the new script
     container.current.innerHTML = "";
-
-    // Set up a listener for messages from the widget's iframe
-    const handleMessage = (event: MessageEvent) => {
-      // It's good practice to check the origin for security
-      if (event.origin !== "https://s.tradingview.com") return;
-
-      if (event.data && event.data.name === 'tv-price-update') {
-        const price = event.data.price;
-        if (onPriceUpdate && typeof price === 'number') {
-          onPriceUpdate(price);
-        }
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
 
     const script = document.createElement("script");
     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
@@ -59,57 +43,20 @@ function TradingViewWidget({ symbol = "BINANCE:ETHUSDT", onPriceUpdate }: Tradin
         "watchlist": [],
         "withdateranges": false,
         "compareSymbols": [],
-        "studies": [
-          {
-            "id": "price-update-emitter@tv-scripting-101",
-            "version": "1.0.0"
-          }
-        ],
+        "studies": [],
         "autosize": true
       }`;
       
-    // A script to define our price emitter study
-    const studyScript = document.createElement("script");
-    studyScript.type = "text/javascript";
-    studyScript.innerHTML = `
-      (function(root) {
-        if (typeof root.TradingView === 'undefined') return;
-        var PineJS = root.PineJS;
-
-        class PriceUpdateEmitter {
-          constructor() {
-            this.lastPrice = null;
-          }
-
-          init(context, input) {
-            this.context = context;
-            this.pine = input;
-          }
-
-          main(context, input) {
-            this.context = context;
-            this.pine = input;
-            const price = this.pine.security(this.pine.symbol, this.pine.resolution, this.pine.close);
-            if (price !== this.lastPrice) {
-              this.lastPrice = price;
-              window.parent.postMessage({ name: 'tv-price-update', price: price }, '*');
-            }
-          }
-        }
-
-        PineJS.Std.Indicator(PriceUpdateEmitter, "price-update-emitter@tv-scripting-101", "Price Emitter", true);
-      })(window);
-    `;
-
-    container.current.appendChild(studyScript);
     container.current.appendChild(script);
 
-    // Cleanup listener on component unmount
+    // No cleanup needed since we are not adding event listeners
     return () => {
-      window.removeEventListener('message', handleMessage);
+        if (container.current) {
+            container.current.innerHTML = "";
+        }
     };
 
-  }, [symbol, onPriceUpdate, isClient]);
+  }, [symbol, isClient]);
 
   return (
     <div className="tradingview-widget-container" ref={container} style={{ height: "100%", width: "100%" }}>

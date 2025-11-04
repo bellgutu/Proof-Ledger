@@ -48,6 +48,13 @@ const TradingPageContent = () => {
   const usdtBalance = balances['USDT'] || 0;
   
   const tradingViewSymbol = `BINANCE:${selectedPair.split('/')[0]}USDT`;
+
+  useEffect(() => {
+    const pairAsset = selectedPair.split('/')[0];
+    if (marketData[pairAsset]) {
+      setCurrentPrice(marketData[pairAsset].price);
+    }
+  }, [marketData, selectedPair]);
   
   const requiredCollateralDisplay = useMemo(() => {
     const sizeNum = parseFloat(tradeSize);
@@ -78,12 +85,6 @@ const TradingPageContent = () => {
       return BigInt(0);
     }
   }, [tradeSize]);
-  
-  const handlePriceUpdate = useCallback((price: number) => {
-    if (price) {
-      setCurrentPrice(price);
-    }
-  }, []);
   
   const fetchPositionAndCollateral = useCallback(async () => {
     if (!isConnected || !walletAddress) {
@@ -272,7 +273,7 @@ const TradingPageContent = () => {
           </CardHeader>
           <CardContent>
             <div className="h-96 bg-card rounded-md">
-                <TradingViewWidget symbol={tradingViewSymbol} onPriceUpdate={handlePriceUpdate} />
+                <TradingViewWidget symbol={tradingViewSymbol} />
             </div>
           </CardContent>
         </Card>

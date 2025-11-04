@@ -9,13 +9,13 @@ import { config } from '@/lib/wagmi';
 // Setup queryClient
 const queryClient = new QueryClient();
 
-// Create modal
+// Create modal outside of the component to ensure it's only called once.
 createWeb3Modal({
   wagmiConfig: config,
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
   enableAnalytics: true,
   enableOnramp: true,
-  featuredWalletIds: [], 
+  featuredWalletIds: [],
   themeMode: 'dark',
   themeVariables: {
     '--w3m-color-mix': '#00DCFF',

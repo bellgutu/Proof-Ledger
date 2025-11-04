@@ -93,5 +93,3 @@ export const MarketIntegrity = () => {
         </div>
     );
 };
-
-    

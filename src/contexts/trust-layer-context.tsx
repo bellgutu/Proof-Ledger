@@ -93,6 +93,7 @@ interface TrustLayerState {
   isLoading: boolean;
   lastUpdated: number;
   userOracleStatus: UserOracleStatus;
+  currentRoundId: bigint;
 }
 
 interface TrustLayerActions {
@@ -143,9 +144,12 @@ const initialTrustLayerState: TrustLayerState = {
   isLoading: true,
   lastUpdated: 0,
   userOracleStatus: { isProvider: false, isActive: false, stake: '0' },
+  currentRoundId: 0n,
 };
 
 const USDC_ADDRESS = DEPLOYED_CONTRACTS.USDC as Address;
+const TRUST_ORACLE_ADDRESS = DEPLOYED_CONTRACTS.TrustOracle as Address;
+const TRUST_ORACLE_ABI = DEPLOYED_CONTRACTS.abis.TrustOracle;
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
@@ -160,6 +164,9 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
         setState(prev => ({ ...prev, isLoading: true }));
         try {
+            // Calculate current round ID consistently
+            const roundId = BigInt(Math.floor(Date.now() / 1000 / 86400)); // Daily rounds
+
             // MainContract Data
             const protocolFeeRate = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.MainContract as Address,
@@ -167,19 +174,19 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'protocolFeeRate',
             });
 
-            // AIPredictiveLiquidityOracle Data
+            // TrustOracle Data
             const [minStake, minSubmissions, allProviders, latestPrice] = await Promise.all([
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minStake' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'minSubmissions' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, functionName: 'listActiveOracles' }),
+                 publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minStake' }),
+                 publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minSubmissions' }),
+                 publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'listActiveOracles' }),
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'latestAnswer' }),
             ]);
             
             let userProviderStatus: UserOracleStatus = { isProvider: false, isActive: false, stake: '0' };
             const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
                 const oracleData = await publicClient.readContract({ 
-                    address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address, 
-                    abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle, 
+                    address: TRUST_ORACLE_ADDRESS, 
+                    abi: TRUST_ORACLE_ABI, 
                     functionName: 'oracles', 
                     args: [providerAddress] 
                 });
@@ -250,12 +257,15 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     }
                 } catch (e) {
                     console.error("Error fetching user bonds:", e);
+                    // Do not silently fail. Inform the user.
+                    toast({ variant: 'destructive', title: 'Could not fetch your bonds.', description: 'There was an issue fetching your bond data.' });
                 }
             }
             const tvl = freshUserBonds.reduce((acc, bond) => acc + parseFloat(bond.amount), 0);
 
             setState(prev => ({
                 ...prev,
+                currentRoundId: roundId,
                 mainContractData: { protocolFee: Number(protocolFeeRate) / 100 },
                 trustOracleData: {
                     minStake: formatEther(minStake as bigint),
@@ -276,9 +286,14 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             }));
         } catch (error) {
             console.error("Failed to fetch Trust Layer data:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Failed to load on-chain data',
+                description: 'Could not connect to the Trust Layer contracts. Please check your network and try again.'
+            });
             setState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [publicClient, walletState.isConnected, walletClient]);
+    }, [publicClient, walletState.isConnected, walletClient, toast]);
     
     const registerAsProvider = useCallback(async () => {
         if (!walletClient || !state.trustOracleData.minStake) {
@@ -286,10 +301,10 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Registering as Oracle Provider` };
+        const details = { to: TRUST_ORACLE_ADDRESS, details: `Registering as Oracle Provider` };
         const txFunction = () => writeContractAsync({
-            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+            address: TRUST_ORACLE_ADDRESS,
+            abi: TRUST_ORACLE_ABI,
             functionName: 'registerOracle',
             value: parseEther(state.trustOracleData.minStake)
         });
@@ -303,10 +318,10 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Unregistering as Oracle Provider and withdrawing stake.` };
+        const details = { to: TRUST_ORACLE_ADDRESS, details: `Unregistering as Oracle Provider and withdrawing stake.` };
         const txFunction = () => writeContractAsync({
-            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+            address: TRUST_ORACLE_ADDRESS,
+            abi: TRUST_ORACLE_ABI,
             functionName: 'unregisterAndWithdraw',
         });
 
@@ -315,12 +330,11 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
 
     const submitObservation = useCallback(async (price: string, confidence: number) => {
-        // Round ID generation based on timestamp
-        const roundId = BigInt(Math.floor(Date.now() / 1000 / 3600)); // Hourly rounds
-        const details = { to: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle, details: `Submitting observation: ${price}` };
+        const roundId = state.currentRoundId;
+        const details = { to: TRUST_ORACLE_ADDRESS, details: `Submitting observation: ${price}` };
         const txFunction = () => writeContractAsync({
-            address: DEPLOYED_CONTRACTS.AIPredictiveLiquidityOracle as Address,
-            abi: DEPLOYED_CONTRACTS.abis.AIPredictiveLiquidityOracle,
+            address: TRUST_ORACLE_ADDRESS,
+            abi: TRUST_ORACLE_ABI,
             functionName: 'submitObservation',
             args: [
                 roundId,
@@ -328,11 +342,10 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             ]
         });
         await walletActions.executeTransaction('Submit Observation', details, txFunction, fetchData);
-    }, [writeContractAsync, walletActions, fetchData]);
+    }, [writeContractAsync, walletActions, fetchData, state.currentRoundId]);
     
     const addAssetPair = useCallback(async (tokenA: Address, tokenB: Address) => {
-        // This function does not exist in the new ABI.
-        toast({ variant: 'destructive', title: 'Function Not Available', description: 'addAssetPair is not a function in the provided TrustOracle ABI.' });
+        toast({ variant: 'destructive', title: 'Function Not Available', description: 'This feature is not implemented in the current contract ABI.' });
     }, [toast]);
 
     const purchaseBond = useCallback(async (amount: string) => {
@@ -441,12 +454,15 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
     
     useEffect(() => {
+        if(TRUST_ORACLE_ABI.length === 0) {
+            toast({ variant: 'destructive', title: 'Configuration Error', description: 'TrustOracle ABI is missing!' });
+        }
         if (walletState.isConnected && walletClient) {
             fetchData();
             const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
             return () => clearInterval(interval);
         }
-    }, [walletState.isConnected, walletClient, fetchData]);
+    }, [walletState.isConnected, walletClient, fetchData, toast]);
     
     const value: TrustLayerContextType = {
         state,

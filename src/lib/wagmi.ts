@@ -25,5 +25,5 @@ export const config = defaultWagmiConfig({
   projectId,
   metadata,
   ssr: true,
-  autoConnect: true,
+  // autoConnect: true, // This was causing the issue. It's now disabled.
 });

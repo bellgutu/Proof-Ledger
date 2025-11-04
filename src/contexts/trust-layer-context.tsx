@@ -1,9 +1,8 @@
-
 "use client";
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
 import DEPLOYED_CONTRACTS from '@/lib/trustlayer-contract-addresses.json';
-import { type Address, formatUnits, formatEther, parseEther, maxUint256, parseUnits } from 'viem';
+import { type Address, formatUnits, formatEther, parseEther, parseUnits } from 'viem';
 import { useToast } from '@/hooks/use-toast';
 import { useWallet } from './wallet-context';
 
@@ -12,26 +11,48 @@ const ERC20_ABI = [
   {
     "constant": false,
     "inputs": [
-      {
-        "name": "_spender",
-        "type": "address"
-      },
-      {
-        "name": "_value",
-        "type": "uint256"
-      }
+      { "name": "_spender", "type": "address" },
+      { "name": "_value", "type": "uint256" }
     ],
     "name": "approve",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
+    "outputs": [{ "name": "", "type": "bool" }],
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
   }
+] as const;
+
+// --- TrustOracle ABI (from your provided ABI) ---
+const TRUST_ORACLE_ABI = [
+  {"inputs":[{"internalType":"uint256","name":"_minStake","type":"uint256"},{"internalType":"uint256","name":"_minSubmissions","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
+  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newMinStake","type":"uint256"}],"name":"MinStakeUpdated","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newMinSubmissions","type":"uint256"}],"name":"MinSubmissionsUpdated","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"roundId","type":"uint256"},{"indexed":true,"internalType":"address","name":"oracle","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"ObservationSubmitted","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"oracle","type":"address"},{"indexed":false,"internalType":"uint256","name":"stake","type":"uint256"}],"name":"OracleRegistered","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"oracle","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":true,"internalType":"address","name":"slasher","type":"address"}],"name":"OracleSlashed","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"oracle","type":"address"},{"indexed":false,"internalType":"uint256","name":"returnedStake","type":"uint256"}],"name":"OracleUnregistered","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"roundId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"consensusValue","type":"uint256"}],"name":"RoundFinalized","type":"event"},
+  {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"consensusForRound","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"}],"name":"finalizeRound","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"}],"name":"getConsensus","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"}],"name":"getObservations","outputs":[{"components":[{"internalType":"address","name":"submitter","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"internalType":"struct TrustOracle.Observation[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"listActiveOracles","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"minStake","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"minSubmissions","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"}],"name":"observationCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"oracleAddresses","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"oracles","outputs":[{"internalType":"uint256","name":"stake","type":"uint256"},{"internalType":"bool","name":"active","type":"bool"},{"internalType":"uint256","name":"index","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"registerOracle","outputs":[],"stateMutability":"payable","type":"function"},
+  {"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"newMin","type":"uint256"}],"name":"setMinStake","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"newMin","type":"uint256"}],"name":"setMinSubmissions","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"address","name":"oracleAddr","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"slashOracle","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"roundId","type":"uint256"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"submitObservation","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[],"name":"unregisterAndWithdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"stateMutability":"payable","type":"receive"}
 ] as const;
 
 // Types for contract data
@@ -66,6 +87,7 @@ export interface UserBond {
     maturity: number;
     yield: string;
 }
+
 interface ProofBondData {
   tvl: string;
   userBonds: UserBond[];
@@ -93,18 +115,19 @@ interface TrustLayerState {
   isLoading: boolean;
   lastUpdated: number;
   userOracleStatus: UserOracleStatus;
-  currentRoundId: bigint;
+  currentRoundId: bigint; // NEW: Track current round
 }
 
 interface TrustLayerActions {
   refresh: () => Promise<void>;
   registerAsProvider: () => Promise<void>;
   unregisterAndWithdraw: () => Promise<void>;
-  submitObservation: (price: string, confidence: number) => Promise<void>;
+  submitObservation: (price: string) => Promise<void>; // REMOVED: confidence parameter
   addAssetPair: (tokenA: Address, tokenB: Address) => Promise<void>;
   purchaseBond: (amount: string) => Promise<void>;
   issueTranche: (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => Promise<void>;
   redeemBond: (bondId: number) => Promise<void>;
+  finalizeRound: (roundId: bigint) => Promise<void>; // NEW: Round finalization
 }
 
 interface TrustLayerContextType {
@@ -144,12 +167,11 @@ const initialTrustLayerState: TrustLayerState = {
   isLoading: true,
   lastUpdated: 0,
   userOracleStatus: { isProvider: false, isActive: false, stake: '0' },
-  currentRoundId: 0n,
+  currentRoundId: 0n, // NEW: Initialize round ID
 };
 
 const USDC_ADDRESS = DEPLOYED_CONTRACTS.USDC as Address;
-const TRUST_ORACLE_ADDRESS = DEPLOYED_CONTRACTS.TrustOracle as Address;
-const TRUST_ORACLE_ABI = DEPLOYED_CONTRACTS.abis.TrustOracle;
+const TRUST_ORACLE_ADDRESS = "0x5a92b7E95dC3537E87eC6a755403B9191C9055cD" as Address; // Your TrustOracle address
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
@@ -159,14 +181,18 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const { toast } = useToast();
     const { writeContractAsync } = useWriteContract();
 
+    // Calculate current round ID (hourly rounds)
+    const calculateCurrentRoundId = useCallback((): bigint => {
+        return BigInt(Math.floor(Date.now() / 1000 / 3600)); // Hourly rounds
+    }, []);
+
     const fetchData = useCallback(async () => {
         if (!publicClient) return;
 
         setState(prev => ({ ...prev, isLoading: true }));
         try {
-            // Calculate current round ID consistently
-            const roundId = BigInt(Math.floor(Date.now() / 1000 / 86400)); // Daily rounds
-
+            const currentRoundId = calculateCurrentRoundId();
+            
             // MainContract Data
             const protocolFeeRate = await publicClient.readContract({
                 address: DEPLOYED_CONTRACTS.MainContract as Address,
@@ -174,13 +200,39 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 functionName: 'protocolFeeRate',
             });
 
-            // TrustOracle Data
-            const [minStake, minSubmissions, allProviders, latestPrice] = await Promise.all([
-                 publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minStake' }),
-                 publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minSubmissions' }),
-                 publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'listActiveOracles' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.AdvancedPriceOracle as Address, abi: DEPLOYED_CONTRACTS.abis.AdvancedPriceOracle, functionName: 'latestAnswer' }),
+            // TrustOracle Data - FIXED: Using correct contract and ABI
+            const [minStake, minSubmissions, allProviders] = await Promise.all([
+                 publicClient.readContract({ 
+                   address: TRUST_ORACLE_ADDRESS, 
+                   abi: TRUST_ORACLE_ABI, 
+                   functionName: 'minStake' 
+                 }),
+                 publicClient.readContract({ 
+                   address: TRUST_ORACLE_ADDRESS, 
+                   abi: TRUST_ORACLE_ABI, 
+                   functionName: 'minSubmissions' 
+                 }),
+                 publicClient.readContract({ 
+                   address: TRUST_ORACLE_ADDRESS, 
+                   abi: TRUST_ORACLE_ABI, 
+                   functionName: 'listActiveOracles' 
+                 }),
             ]);
+            
+            // Get current round consensus if available
+            let currentConsensus = '0';
+            try {
+                const consensus = await publicClient.readContract({
+                    address: TRUST_ORACLE_ADDRESS,
+                    abi: TRUST_ORACLE_ABI,
+                    functionName: 'getConsensus',
+                    args: [currentRoundId]
+                });
+                currentConsensus = formatUnits(consensus as bigint, 8);
+            } catch (e) {
+                // Round might not be finalized yet
+                console.log('No consensus for current round yet');
+            }
             
             let userProviderStatus: UserOracleStatus = { isProvider: false, isActive: false, stake: '0' };
             const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
@@ -190,9 +242,13 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     functionName: 'oracles', 
                     args: [providerAddress] 
                 });
-                const [stake, active, index] = oracleData as [bigint, boolean, bigint];
+                
+                // FIXED: Proper type assertion
+                const data = oracleData as { stake: bigint; active: boolean; index: bigint };
+                const { stake, active } = data;
 
-                if (walletState.isConnected && walletClient && providerAddress.toLowerCase() === walletClient.account.address.toLowerCase()) {
+                if (walletState.isConnected && walletClient && 
+                    providerAddress.toLowerCase() === walletClient.account.address.toLowerCase()) {
                     userProviderStatus = {
                         isProvider: true,
                         isActive: active,
@@ -204,7 +260,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     address: providerAddress,
                     stake: formatEther(stake),
                     active: active,
-                    lastUpdate: 0 // Placeholder
+                    lastUpdate: Date.now()
                 };
             }));
             
@@ -235,20 +291,24 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     if (userTrancheIds && Array.isArray(userTrancheIds)) {
                         const newBonds = await Promise.all(
                             (userTrancheIds as bigint[]).map(async (bondId) => {
-                                const bondData = await publicClient.readContract({
-                                    address: DEPLOYED_CONTRACTS.ProofBond as Address,
-                                    abi: DEPLOYED_CONTRACTS.abis.ProofBond,
-                                    functionName: 'tranches',
-                                    args: [bondId],
-                                });
-                                const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean];
-                                if (!redeemed) {
-                                    return {
-                                        id: Number(bondId),
-                                        amount: formatUnits(amount, 6), // Assuming USDC decimals
-                                        maturity: Number(maturity),
-                                        yield: (Number(interest) / 100).toFixed(2)
-                                    };
+                                try {
+                                    const bondData = await publicClient.readContract({
+                                        address: DEPLOYED_CONTRACTS.ProofBond as Address,
+                                        abi: DEPLOYED_CONTRACTS.abis.ProofBond,
+                                        functionName: 'tranches',
+                                        args: [bondId],
+                                    });
+                                    const [amount, interest, maturity, investor, redeemed] = bondData as [bigint, bigint, bigint, Address, boolean];
+                                    if (!redeemed) {
+                                        return {
+                                            id: Number(bondId),
+                                            amount: formatUnits(amount, 6), // Assuming USDC decimals
+                                            maturity: Number(maturity),
+                                            yield: (Number(interest) / 100).toFixed(2)
+                                        };
+                                    }
+                                } catch (e) {
+                                    console.error(`Error fetching bond ${bondId}:`, e);
                                 }
                                 return null;
                             })
@@ -257,23 +317,26 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     }
                 } catch (e) {
                     console.error("Error fetching user bonds:", e);
-                    // Do not silently fail. Inform the user.
-                    toast({ variant: 'destructive', title: 'Could not fetch your bonds.', description: 'There was an issue fetching your bond data.' });
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error loading bonds',
+                        description: 'Failed to load your bond information'
+                    });
                 }
             }
+            
             const tvl = freshUserBonds.reduce((acc, bond) => acc + parseFloat(bond.amount), 0);
 
             setState(prev => ({
                 ...prev,
-                currentRoundId: roundId,
                 mainContractData: { protocolFee: Number(protocolFeeRate) / 100 },
                 trustOracleData: {
                     minStake: formatEther(minStake as bigint),
                     minSubmissions: Number(minSubmissions),
                     activeProviders: providerDetails.length,
                     providers: providerDetails,
-                    activePairIds: [], // This needs implementation if required
-                    latestPrice: formatUnits(latestPrice as bigint, 8)
+                    activePairIds: [],
+                    latestPrice: currentConsensus
                 },
                 proofBondData: {
                     trancheSize: formatUnits(bondTrancheSize as bigint, bondDecimals as number),
@@ -281,6 +344,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     tvl: tvl.toString(),
                 },
                 userOracleStatus: userProviderStatus,
+                currentRoundId,
                 isLoading: false,
                 lastUpdated: Date.now(),
             }));
@@ -288,20 +352,28 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             console.error("Failed to fetch Trust Layer data:", error);
             toast({
                 variant: 'destructive',
-                title: 'Failed to load on-chain data',
-                description: 'Could not connect to the Trust Layer contracts. Please check your network and try again.'
+                title: 'Failed to load data',
+                description: 'Please check your connection and try again.'
             });
             setState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [publicClient, walletState.isConnected, walletClient, toast]);
+    }, [publicClient, walletState.isConnected, walletClient, toast, calculateCurrentRoundId]);
     
     const registerAsProvider = useCallback(async () => {
         if (!walletClient || !state.trustOracleData.minStake) {
-            toast({ variant: 'destructive', title: 'Could not register provider', description: 'Wallet not connected or min stake not loaded.'});
+            toast({ 
+                variant: 'destructive', 
+                title: 'Could not register provider', 
+                description: 'Wallet not connected or min stake not loaded.'
+            });
             return;
         }
 
-        const details = { to: TRUST_ORACLE_ADDRESS, details: `Registering as Oracle Provider` };
+        const details = { 
+            to: TRUST_ORACLE_ADDRESS, 
+            details: `Registering as Oracle Provider with ${state.trustOracleData.minStake} ETH stake` 
+        };
+        
         const txFunction = () => writeContractAsync({
             address: TRUST_ORACLE_ADDRESS,
             abi: TRUST_ORACLE_ABI,
@@ -314,11 +386,19 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
 
     const unregisterAndWithdraw = useCallback(async () => {
         if (!walletClient) {
-            toast({ variant: 'destructive', title: 'Could not unregister', description: 'Wallet not connected.'});
+            toast({ 
+                variant: 'destructive', 
+                title: 'Could not unregister', 
+                description: 'Wallet not connected.'
+            });
             return;
         }
 
-        const details = { to: TRUST_ORACLE_ADDRESS, details: `Unregistering as Oracle Provider and withdrawing stake.` };
+        const details = { 
+            to: TRUST_ORACLE_ADDRESS, 
+            details: `Unregistering as Oracle Provider and withdrawing stake.` 
+        };
+        
         const txFunction = () => writeContractAsync({
             address: TRUST_ORACLE_ADDRESS,
             abi: TRUST_ORACLE_ABI,
@@ -328,24 +408,63 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         await walletActions.executeTransaction('Unregister Oracle', details, txFunction, fetchData);
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
+    const submitObservation = useCallback(async (price: string) => {
+        if (!walletClient) {
+            toast({ 
+                variant: 'destructive', 
+                title: 'Could not submit observation', 
+                description: 'Wallet not connected.'
+            });
+            return;
+        }
 
-    const submitObservation = useCallback(async (price: string, confidence: number) => {
         const roundId = state.currentRoundId;
-        const details = { to: TRUST_ORACLE_ADDRESS, details: `Submitting observation: ${price}` };
+        const details = { 
+            to: TRUST_ORACLE_ADDRESS, 
+            details: `Submitting observation: ${price} for round ${roundId.toString()}` 
+        };
+        
         const txFunction = () => writeContractAsync({
             address: TRUST_ORACLE_ADDRESS,
             abi: TRUST_ORACLE_ABI,
             functionName: 'submitObservation',
-            args: [
-                roundId,
-                parseUnits(price, 8) // value
-            ]
+            args: [roundId, parseUnits(price, 8)] // value with 8 decimals
         });
+        
         await walletActions.executeTransaction('Submit Observation', details, txFunction, fetchData);
-    }, [writeContractAsync, walletActions, fetchData, state.currentRoundId]);
+    }, [walletClient, state.currentRoundId, toast, writeContractAsync, walletActions, fetchData]);
+
+    const finalizeRound = useCallback(async (roundId: bigint) => {
+        if (!walletClient) {
+            toast({ 
+                variant: 'destructive', 
+                title: 'Could not finalize round', 
+                description: 'Wallet not connected.'
+            });
+            return;
+        }
+
+        const details = { 
+            to: TRUST_ORACLE_ADDRESS, 
+            details: `Finalizing round ${roundId.toString()}` 
+        };
+        
+        const txFunction = () => writeContractAsync({
+            address: TRUST_ORACLE_ADDRESS,
+            abi: TRUST_ORACLE_ABI,
+            functionName: 'finalizeRound',
+            args: [roundId]
+        });
+        
+        await walletActions.executeTransaction('Finalize Round', details, txFunction, fetchData);
+    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
     
     const addAssetPair = useCallback(async (tokenA: Address, tokenB: Address) => {
-        toast({ variant: 'destructive', title: 'Function Not Available', description: 'This feature is not implemented in the current contract ABI.' });
+        toast({ 
+            variant: 'destructive', 
+            title: 'Function Not Available', 
+            description: 'addAssetPair is not a function in the TrustOracle ABI.' 
+        });
     }, [toast]);
 
     const purchaseBond = useCallback(async (amount: string) => {
@@ -372,7 +491,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             await walletActions.executeTransaction('Approve USDC', approveDetails, approveTxFunction);
         } catch (e) {
             console.error("Approval failed, stopping bond purchase.", e);
-            // Error is already handled by executeTransaction, so just return
             return; 
         }
         
@@ -403,7 +521,6 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         });
     
         await walletActions.executeTransaction('Purchase Bond', issueDetails, issueTxFunction, fetchData);
-    
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
 
     const issueTranche = useCallback(async (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => {
@@ -423,7 +540,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             address: DEPLOYED_CONTRACTS.ProofBond as Address,
             abi: DEPLOYED_CONTRACTS.abis.ProofBond,
             functionName: 'issueTranche',
-            args: [investor, parseUnits(amount, 6), BigInt(interest), BigInt(duration), collateralToken, parseUnits(collateralAmount, 18)] // Assuming collateral is WETH
+            args: [investor, parseUnits(amount, 6), BigInt(interest), BigInt(duration), collateralToken, parseUnits(collateralAmount, 18)]
         });
 
         await walletActions.executeTransaction('Issue Bond Tranche', dialogDetails, txFunction, fetchData);
@@ -454,15 +571,12 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
     
     useEffect(() => {
-        if(TRUST_ORACLE_ABI.length === 0) {
-            toast({ variant: 'destructive', title: 'Configuration Error', description: 'TrustOracle ABI is missing!' });
-        }
         if (walletState.isConnected && walletClient) {
             fetchData();
             const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
             return () => clearInterval(interval);
         }
-    }, [walletState.isConnected, walletClient, fetchData, toast]);
+    }, [walletState.isConnected, walletClient, fetchData]);
     
     const value: TrustLayerContextType = {
         state,
@@ -474,7 +588,8 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             addAssetPair,
             purchaseBond,
             issueTranche,
-            redeemBond
+            redeemBond,
+            finalizeRound // NEW: Added round finalization
         }
     };
 

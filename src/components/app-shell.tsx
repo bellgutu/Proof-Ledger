@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, 'react';
 import Link from 'next/link';
 import { Sun, Moon, LayoutDashboard, ShieldCheck, FileText, BarChart, Settings, Building, GanttChartSquare, Landmark, TrendingUp, Handshake, CheckSquare, Wallet } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -42,10 +42,10 @@ const enterpriseNav = [
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = React.useState(true);
   const pathname = usePathname();
 
-  useEffect(() => {
+  React.useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
     setIsDarkMode(isDark);
   }, []);
@@ -73,8 +73,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between mb-4 lg:mb-8">
           <Logo />
            <div className='flex items-center gap-2'>
-              <div className="lg:hidden">
-                <w3m-button />
+              <div className="lg:hidden flex items-center gap-2">
+                <w3m-network-button />
+                <w3m-connect-button />
               </div>
               <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -140,8 +141,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-         <header className="hidden lg:flex items-center justify-end h-16 px-8 border-b bg-card">
-            <w3m-button />
+         <header className="hidden lg:flex items-center justify-end h-16 px-8 border-b bg-card gap-4">
+            <w3m-network-button />
+            <w3m-connect-button />
         </header>
         <div className="p-4 md:p-6 lg:p-8">
           {children}

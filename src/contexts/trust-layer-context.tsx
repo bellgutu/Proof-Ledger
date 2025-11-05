@@ -168,21 +168,27 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
             ]);
 
             let currentConsensus = '0';
-            try {
-                const consensus = await publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'getConsensus', args: [currentRoundId] });
-                if(consensus > 0n) currentConsensus = formatUnits(consensus as bigint, 8);
-                else throw new Error("Consensus not finalized for current round");
-            } catch (e) {
+            // Look back up to 5 rounds to find the last valid consensus price
+            for (let i = 0; i < 5; i++) {
+                const roundToTry = currentRoundId - BigInt(i);
+                if (roundToTry <= 0) break;
                 try {
-                    const prevRoundId = currentRoundId > 0n ? currentRoundId - 1n : 0n;
-                    if (prevRoundId > 0) {
-                      const consensus = await publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'getConsensus', args: [prevRoundId] });
-                      if(consensus > 0n) currentConsensus = formatUnits(consensus as bigint, 8);
+                    const consensus = await publicClient.readContract({
+                        address: TRUST_ORACLE_ADDRESS,
+                        abi: TRUST_ORACLE_ABI,
+                        functionName: 'getConsensus',
+                        args: [roundToTry]
+                    });
+                    if (consensus > 0n) {
+                        currentConsensus = formatUnits(consensus as bigint, 8);
+                        break; // Found a valid consensus, stop looking
                     }
-                } catch (e2) {
-                     console.log('No consensus available for current or previous round.');
+                } catch (e) {
+                    // This is expected if a round is not finalized, continue to the next
+                    console.log(`No consensus for round ${roundToTry}. Trying previous.`);
                 }
             }
+
 
             let userProviderStatus: UserOracleStatus = { isProvider: false, isActive: false, stake: '0' };
             const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
@@ -217,13 +223,11 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     );
                     const bondResults = await Promise.all(bondDataPromises);
                     
-                    const bondDecimalsValue = await publicClient.readContract({ address: PROOF_BOND_ADDRESS, abi: PROOF_BOND_ABI, functionName: 'decimals' });
-
                     freshUserBonds = bondResults.map((bond, index) => {
                         const [amount, interestBP, maturity] = bond as [bigint, bigint, bigint];
                         return {
                             id: Number(userBondIds[index]),
-                            amount: formatUnits(amount, bondDecimalsValue),
+                            amount: formatUnits(amount, bondDecimals),
                             maturity: Number(maturity),
                             yield: (Number(interestBP) / 100).toFixed(2),
                         };

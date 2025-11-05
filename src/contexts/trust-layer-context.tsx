@@ -1,3 +1,4 @@
+
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { usePublicClient, useWalletClient, useWriteContract } from 'wagmi';
@@ -41,6 +42,7 @@ export interface UserBond {
     amount: string;
     maturity: number;
     yield: string;
+    redeemed: boolean;
 }
 
 interface ProofBondData {
@@ -222,12 +224,13 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     const bondResults = await Promise.all(bondDataPromises);
                     
                     freshUserBonds = bondResults.map((bond, index) => {
-                        const [amount, interestBP, maturity] = bond as [bigint, bigint, bigint];
+                        const [amount, interestBP, maturity, investor, redeemed] = bond as [bigint, bigint, bigint, Address, boolean];
                         return {
                             id: Number(userBondIds[index]),
-                            amount: formatUnits(amount, 6), // CORRECTED: Use 6 for USDC
+                            amount: formatUnits(amount, 6),
                             maturity: Number(maturity),
                             yield: (Number(interestBP) / 100).toFixed(2),
+                            redeemed: redeemed,
                         };
                     });
                 }
@@ -246,7 +249,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     latestPrice: currentConsensus
                 },
                 proofBondData: {
-                    trancheSize: formatUnits(bondTrancheSize as bigint, 6), // Use 6 for USDC
+                    trancheSize: formatUnits(bondTrancheSize as bigint, 6),
                     userBonds: freshUserBonds,
                     tvl: tvl.toString(),
                 },
@@ -290,12 +293,20 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const txFunction = () => writeContractAsync({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'finalizeRound', args: [roundId] });
         await walletActions.executeTransaction('Finalize Round', details, txFunction, fetchData);
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+    
+    const redeemBond = useCallback(async (bondId: number) => {
+        if (!walletClient) { toast({ variant: 'destructive', title: 'Could not redeem bond' }); return; }
+        const details = { to: PROOF_BOND_ADDRESS, details: `Redeeming ProofBond #${bondId}` };
+        const txFunction = () => writeContractAsync({ address: PROOF_BOND_ADDRESS, abi: PROOF_BOND_ABI, functionName: 'redeemTranche', args: [BigInt(bondId)] });
+        await walletActions.executeTransaction('Redeem Bond', details, txFunction, fetchData);
+    }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
+
 
     // --- Dummy Implementations for now ---
     const addAssetPair = useCallback(async (tokenA: Address, tokenB: Address) => { toast({ title: 'Not Implemented' }); }, [toast]);
     const purchaseBond = useCallback(async (amount: string) => { toast({ title: 'Not Implemented' }); }, [toast]);
     const issueTranche = useCallback(async (investor: Address, amount: string, interest: number, duration: number, collateralToken: Address, collateralAmount: string) => { toast({ title: 'Not Implemented' }); }, [toast]);
-    const redeemBond = useCallback(async (bondId: number) => { toast({ title: 'Not Implemented' }); }, [toast]);
+    
 
     useEffect(() => {
         if (walletState.isConnected && walletClient) {

@@ -8,7 +8,7 @@ import { FileArchive, FileText } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 
 export const BondManagementCard = () => {
-    const { state } = useTrustLayer();
+    const { state, actions } = useTrustLayer();
     const { proofBondData } = state;
 
     return (
@@ -26,19 +26,31 @@ export const BondManagementCard = () => {
                 <ScrollArea className="h-96">
                     <div className="space-y-4">
                         {proofBondData.userBonds.length > 0 ? (
-                            proofBondData.userBonds.map(bond => (
-                                <div key={bond.id} className="p-3 border rounded-lg bg-background">
-                                    <div className="flex justify-between items-center">
-                                        <p className="font-semibold flex items-center gap-2"><FileText size={16}/> Bond #{bond.id}</p>
-                                        <Button size="sm" variant="outline" disabled>Redeem</Button>
+                            proofBondData.userBonds.map(bond => {
+                                const isMatured = bond.maturity < Date.now() / 1000;
+                                const canRedeem = isMatured && !bond.redeemed;
+                                
+                                return (
+                                    <div key={bond.id} className="p-3 border rounded-lg bg-background">
+                                        <div className="flex justify-between items-center">
+                                            <p className="font-semibold flex items-center gap-2"><FileText size={16}/> Bond #{bond.id}</p>
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                disabled={!canRedeem}
+                                                onClick={() => actions.redeemBond(bond.id)}
+                                            >
+                                                {bond.redeemed ? "Redeemed" : "Redeem"}
+                                            </Button>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-2 grid grid-cols-2 gap-1">
+                                            <span>Amount:</span><span className="font-mono text-right">{bond.amount} USDC</span>
+                                            <span>Yield:</span><span className="font-mono text-right">{bond.yield}%</span>
+                                            <span>Maturity:</span><span className="font-mono text-right">{new Date(bond.maturity * 1000).toLocaleDateString()}</span>
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-muted-foreground mt-2 grid grid-cols-2 gap-1">
-                                        <span>Amount:</span><span className="font-mono text-right">{bond.amount} USDC</span>
-                                        <span>Yield:</span><span className="font-mono text-right">{bond.yield}%</span>
-                                        <span>Maturity:</span><span className="font-mono text-right">{new Date(bond.maturity * 1000).toLocaleDateString()}</span>
-                                    </div>
-                                </div>
-                            ))
+                                )
+                            })
                         ) : (
                             <div className="text-center text-muted-foreground py-8">
                                 <p>You do not hold any ProofBonds.</p>

@@ -1,3 +1,4 @@
+
 "use client";
 import { RealEstateProvider } from '@/contexts/real-estate-context';
 import { PropertyMarketplace } from '@/components/real-estate/property-marketplace';

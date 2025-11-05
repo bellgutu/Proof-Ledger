@@ -1,91 +1,169 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
+import { TrendingUp, TrendingDown, RefreshCcw, Newspaper, ArrowRight, Loader2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getTokenLogo } from '@/lib/tokenLogos';
 import Link from 'next/link';
-import { ArrowRight, Bot, ShieldCheck, TrendingUp, BrainCircuit, Droplets, RefreshCw } from 'lucide-react';
 import { WalletHeader } from '../shared/wallet-header';
 import { useWallet } from '@/contexts/wallet-context';
-import TradingViewWidget from '@/components/trading/tradingview-widget';
 
-const FeatureCard = ({ title, description, icon, link }: { title: string, description: string, icon: React.ReactNode, link: string }) => (
-    <Link href={link} className="block h-full">
-        <Card className="bg-card/50 hover:bg-card hover:border-primary/50 border-transparent border h-full transition-all duration-300 transform hover:-translate-y-1">
-            <CardHeader>
-                <div className="flex items-center gap-4">
-                    <div className="bg-primary/10 p-3 rounded-lg">
-                        {icon}
-                    </div>
-                    <CardTitle>{title}</CardTitle>
+interface Market {
+  id: string;
+  name: string;
+  symbol: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+}
+
+interface NewsArticle {
+  id: number;
+  title: string;
+  url: string;
+  domain: string;
+  createdAt: string;
+}
+
+const MarketCard = ({ name, symbol, value, change, isPositive }: Market) => {
+    return (
+        <Link href={`/markets/${symbol.toLowerCase()}`} className="block h-full">
+            <Card className="bg-card text-card-foreground transform transition-transform duration-300 hover:scale-105 h-full">
+                <CardContent className="p-6 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-muted-foreground">{name}</h3>
+                    <Image 
+                      src={getTokenLogo(symbol)} 
+                      alt={`${name} logo`} 
+                      width={40} 
+                      height={40}
+                      className="h-10 w-10 drop-shadow-lg"
+                    />
                 </div>
-            </CardHeader>
-            <CardContent>
-                <CardDescription>{description}</CardDescription>
-                <div className="flex items-center text-sm font-semibold text-primary mt-4">
-                    Explore <ArrowRight className="ml-2 h-4 w-4" />
+                <p className="text-3xl font-bold mb-2 text-foreground">
+                    ${value}
+                </p>
+                <div className={`flex items-center font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                    {isPositive ? <TrendingUp className="mr-1" size={16} /> : <TrendingDown className="mr-1" size={16} />}
+                    <span>{change}</span>
                 </div>
-            </CardContent>
-        </Card>
-    </Link>
+                </CardContent>
+            </Card>
+        </Link>
+    );
+};
+
+const NewsCard = ({ title, url, domain }: NewsArticle) => (
+  <a href={url} target="_blank" rel="noopener noreferrer" className="block h-full">
+    <Card className="bg-card text-card-foreground flex-none w-80 min-w-80 h-full p-4 hover:bg-secondary transition-colors duration-200 cursor-pointer">
+      <div className="flex flex-col h-full">
+        <h4 className="text-md font-semibold text-primary mb-2 line-clamp-3">{title}</h4>
+        <div className="mt-auto flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{domain}</span>
+            <div className="flex items-center text-primary font-medium">
+                Read more <ArrowRight size={16} className="ml-1" />
+            </div>
+        </div>
+      </div>
+    </Card>
+  </a>
 );
-
 
 export default function DashboardPage() {
   const { walletState } = useWallet();
-  const ethPrice = walletState.marketData['ETH']?.price || 3500;
+  const { marketData, isMarketDataLoaded } = walletState;
+  
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
+  const [newsFeed, setNewsFeed] = useState<NewsArticle[]>([]);
+
+  const fetchNews = useCallback(async () => {
+    setIsLoadingNews(true);
+    try {
+        const response = await fetch('/api/news');
+        if (!response.ok) {
+            throw new Error('Failed to fetch news');
+        }
+        const data = await response.json();
+        setNewsFeed(data.articles);
+    } catch(e) {
+        console.error("Failed to fetch news:", e);
+        setNewsFeed([]);
+    }
+    setIsLoadingNews(false);
+  }, []);
+
+  useEffect(() => {
+    fetchNews();
+  }, [fetchNews]);
+
+  useEffect(() => {
+    if (isMarketDataLoaded) {
+        const newMarkets = Object.values(marketData).map(data => ({
+            id: data.symbol,
+            name: data.name,
+            symbol: data.symbol,
+            value: parseFloat(data.price.toString()).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: parseFloat(data.price.toString()) > 1 ? 2 : 4}),
+            change: parseFloat(data.change.toString()).toFixed(2) + '%',
+            isPositive: parseFloat(data.change.toString()) >= 0,
+        }));
+        setMarkets(newMarkets);
+    }
+  }, [marketData, isMarketDataLoaded]);
 
   return (
-    <div className="space-y-8">
+    <div className="container mx-auto p-0 space-y-8">
         <WalletHeader />
 
         <div className="text-center space-y-2 mt-8">
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                The Infrastructure for Your Own Decentralized Bank
+                Market Overview
             </h1>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                This isn't just a DeFi app. It’s a platform that lets anyone, anywhere, run their own autonomous financial system — with built-in yield, governance, and automation.
+                A real-time overview of the cryptocurrency market and the latest news.
             </p>
         </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+        {!isMarketDataLoaded ? (
+          Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[170px] w-full" />)
+        ) : (
+          markets.map(market => <MarketCard key={market.id} {...market} />)
+        )}
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-8">
-            <FeatureCard 
-                title="Autonomous Market Engine"
-                description="Interact with a live, next-generation Automated Market Maker on the Sepolia testnet. Experience dynamic fees, data-driven oracles, and enhanced capital efficiency."
-                icon={<Bot className="w-8 h-8 text-primary" />}
-                link="/amm-demo"
-            />
-            <FeatureCard 
-                title="Trust Layer"
-                description="Explore a verified on-chain framework for issuing, governing, and managing tokenized assets. View system health, oracle networks, and yield products."
-                icon={<ShieldCheck className="w-8 h-8 text-primary" />}
-                link="/trust-layer"
-            />
+      <div className="mt-12">
+        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <Newspaper size={24} className="text-primary mr-3" />
+              <h2 className="text-2xl font-bold text-foreground">Top Web3 News</h2>
+            </div>
+            <Button onClick={fetchNews} disabled={isLoadingNews} size="sm" variant="ghost">
+                {isLoadingNews ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                <span className="sr-only">Refresh News</span>
+            </Button>
         </div>
-        
-         <Card className="bg-card/50">
-            <CardHeader>
-                <CardTitle>Platform Tools & Features</CardTitle>
-                <CardDescription>Leverage a full suite of tools for trading, analysis, and portfolio management.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Link href="/trading"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><TrendingUp className="mr-4"/><div><p className="font-bold">Perpetuals Trading</p><p className="text-xs text-muted-foreground">Trade futures with leverage.</p></div></Button></Link>
-                <Link href="/swap"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><RefreshCw className="mr-4"/><div><p className="font-bold">Token Swap</p><p className="text-xs text-muted-foreground">Exchange tokens on-chain.</p></div></Button></Link>
-                <Link href="/intelligence"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><BrainCircuit className="mr-4"/><div><p className="font-bold">Market Intelligence</p><p className="text-xs text-muted-foreground">Get briefings on assets.</p></div></Button></Link>
-                <Link href="/liquidity"><Button variant="outline" className="w-full justify-start p-6 text-left h-auto"><Droplets className="mr-4"/><div><p className="font-bold">Provide Liquidity</p><p className="text-xs text-muted-foreground">Earn fees on your assets.</p></div></Button></Link>
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle>Market Overview</CardTitle>
-                <CardDescription>A real-time, interactive price chart powered by TradingView.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-96">
-                <TradingViewWidget symbol="BINANCE:ETHUSDT" />
-            </CardContent>
-        </Card>
+        <div className="flex overflow-x-auto gap-4 py-4 -mx-6 px-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+           <style>{`
+            .overflow-x-auto::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          {isLoadingNews ? (
+             Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="w-80 h-40 flex-none" />)
+          ) : newsFeed.length > 0 ? (
+            newsFeed.map(news => <NewsCard key={news.id} {...news} />)
+          ) : (
+            <div className="w-full h-40 flex items-center justify-center text-muted-foreground">
+              Could not load news feed.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

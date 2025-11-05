@@ -1,7 +1,8 @@
+
 "use client";
 import React from 'react';
 import { WalletHeader } from '../shared/wallet-header';
-import { DashboardLayout } from '@/components/trust-oracle/dashboard-layout';
+import { DashboardLayout } from '@/components/trust-layer/dashboard-layout';
 
 export default function TrustLayerPage() {
     return (

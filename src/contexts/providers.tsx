@@ -7,10 +7,8 @@ import { Suspense } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense>
-      <Web3ModalProvider>
-        <WalletProvider>{children}</WalletProvider>
-      </Web3ModalProvider>
-    </Suspense>
+    <Web3ModalProvider>
+      <WalletProvider>{children}</WalletProvider>
+    </Web3ModalProvider>
   );
 }

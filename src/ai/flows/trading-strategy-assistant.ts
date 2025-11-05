@@ -5,11 +5,11 @@
  * @fileOverview Provides an AI-powered trading strategy assistant that analyzes market trends
  * and suggests potential strategies based on user risk profiles.
  *
- * - getTradingStrategy - A function to retrieve trading strategies.
+ * - getTradingStrategy - a function to retrieve trading strategies.
  */
 
 import {ai} from '@/ai/genkit';
-import {googleAI} from '@genkit-ai/googleai';
+import {googleAI} from '@genkit-ai/google';
 import {z} from 'genkit';
 
 const TradingStrategyInputSchema = z.object({

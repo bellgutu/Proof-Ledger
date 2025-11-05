@@ -5,7 +5,6 @@ import { GemstoneMarketplace } from '@/components/gemstones/gemstone-marketplace
 import { GemstoneRegistration } from '@/components/gemstones/gemstone-registration';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WalletHeader } from '@/components/shared/wallet-header';
-import { TrustLayerProvider } from '@/contexts/trust-layer-context';
 
 function LuxuryGoodsPageContent() {
   return (
@@ -43,10 +42,8 @@ function LuxuryGoodsPageContent() {
 
 export default function LuxuryGoodsPage() {
     return (
-        <TrustLayerProvider>
-            <GemstoneProvider>
-                <LuxuryGoodsPageContent />
-            </GemstoneProvider>
-        </TrustLayerProvider>
+        <GemstoneProvider>
+            <LuxuryGoodsPageContent />
+        </GemstoneProvider>
     )
 }

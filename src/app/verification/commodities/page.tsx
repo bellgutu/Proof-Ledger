@@ -5,7 +5,6 @@ import { AgricultureMarketplace } from '@/components/agriculture/product-marketp
 import { AgricultureRegistration } from '@/components/agriculture/product-registration';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WalletHeader } from '@/components/shared/wallet-header';
-import { TrustLayerProvider } from '@/contexts/trust-layer-context';
 
 function CommoditiesPageContent() {
     return (
@@ -42,10 +41,8 @@ function CommoditiesPageContent() {
 
 export default function CommoditiesPage() {
     return (
-        <TrustLayerProvider>
-            <AgricultureProvider>
-                <CommoditiesPageContent />
-            </AgricultureProvider>
-        </TrustLayerProvider>
+        <AgricultureProvider>
+            <CommoditiesPageContent />
+        </AgricultureProvider>
     )
 }

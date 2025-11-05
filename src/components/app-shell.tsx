@@ -70,6 +70,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <BarChartHorizontalBig size={20}/>, path: '/' },
     { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/trust-layer' },
+    { id: 'real-estate', label: 'Real Estate', icon: <Home size={20}/>, path: '/real-estate' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
     { id: 'amm-demo', label: 'AI AMM', icon: <Bot size={20} />, path: '/amm-demo' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },
@@ -83,7 +84,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   const isAmmDemoPage = pathname === '/amm-demo';
-  const isTrustLayerPage = pathname === '/trust-layer';
 
   return (
     <>
@@ -98,7 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex flex-col h-[calc(100%-80px)]">
           <ul className="flex flex-row lg:flex-col lg:space-y-2 overflow-x-auto lg:overflow-x-visible space-x-2 lg:space-x-0 flex-grow">
             {navItems.map(item => (
-              (item.id !== 'real-estate' || isTrustLayerPage) && <li key={item.id} className="flex-shrink-0">
+              <li key={item.id} className="flex-shrink-0">
                  <Link
                     href={item.path}
                     className={cn(

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
@@ -33,7 +32,7 @@ import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 type AssetSymbol = 'ETH' | 'USDT' | 'BNB' | 'XRP' | 'SOL' | 'WETH' | 'LINK' | 'USDC' | 'BTC' | 'XAUT' | 'PEPE' | 'DOGE';
 
-export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral' | 'Create Pool' | 'Register as Oracle';
+export type TransactionType = 'Swap' | 'Vault Deposit' | 'Vault Withdraw' | 'AI Rebalance' | 'Add Liquidity' | 'Remove Liquidity' | 'Vote' | 'Send' | 'Receive' | 'Approve' | 'Open Position' | 'Close Position' | 'Claim Rewards' | 'Deposit Collateral' | 'Withdraw Collateral' | 'Create Pool' | 'Register as Oracle' | 'Unregister Oracle' | 'Submit Observation' | 'Finalize Round';
 export type TransactionStatus = 'Completed' | 'Pending' | 'Failed';
 
 export interface PastPosition {
@@ -670,7 +669,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
   
   const addLiquidity = useCallback(async (tokenA: string, tokenB: string, amountA: number, amountB: number, stable: boolean) => {
-    toast({ variant: 'destructive', title: 'Action Not Supported', description: 'The new DEX contract has a different liquidity model.' });
+      toast({ variant: 'destructive', title: 'Action Not Supported', description: 'The new DEX contract has a different liquidity model.' });
   }, [toast]);
 
   const removeLiquidity = useCallback(async (position: UserPosition, percentage: number) => {

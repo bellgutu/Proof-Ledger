@@ -85,7 +85,7 @@ export const AgricultureProvider = ({ children }: { children: ReactNode }) => {
     if(walletState.isConnected) {
         refreshProducts();
     }
-  }, [walletState.isConnected, refreshProducts]);
+  }, [walletState.isConnected]);
 
   const registerProduct = useCallback(async (productData: any) => {
     if (!walletState.walletAddress) {

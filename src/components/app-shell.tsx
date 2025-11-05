@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send, RefreshCw, Bot, ShieldCheck } from 'lucide-react';
+import { Sun, Moon, LineChart, TrendingUp, HandCoins, Plug, BrainCircuit, FileText, SearchCode, BarChartHorizontalBig, Droplets, Wallet, Send, RefreshCw, Bot, ShieldCheck, Home } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -71,6 +71,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <BarChartHorizontalBig size={20}/>, path: '/' },
     { id: 'trust-layer', label: 'Trust Layer', icon: <ShieldCheck size={20}/>, path: '/trust-layer' },
+    { id: 'real-estate', label: 'Real Estate', icon: <Home size={20}/>, path: '/real-estate' },
     { id: 'portfolio', label: 'Portfolio', icon: <Wallet size={20} />, path: '/portfolio' },
     { id: 'amm-demo', label: 'AI AMM', icon: <Bot size={20} />, path: '/amm-demo' },
     { id: 'trading', label: 'Trading', icon: <TrendingUp size={20} />, path: '/trading' },

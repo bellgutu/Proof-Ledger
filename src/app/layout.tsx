@@ -3,6 +3,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import ClientLayout from '@/components/shared/client-layout';
+import AppShell from '@/components/app-shell';
+import NetworkCheck from '@/components/shared/NetworkCheck';
+import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
+
 
 export const metadata: Metadata = {
   title: 'ProfitForge - Your Autonomous Financial Platform',
@@ -25,7 +29,13 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout>
+            <NetworkCheck />
+            <AppShell>
+              {children}
+            </AppShell>
+            <TransactionStatusDialogController />
+        </ClientLayout>
         <Toaster />
       </body>
     </html>

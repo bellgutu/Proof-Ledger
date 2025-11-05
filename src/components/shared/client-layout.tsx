@@ -1,11 +1,7 @@
 
 "use client";
 
-import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import AppShell from '@/components/app-shell';
-import NetworkCheck from '@/components/shared/NetworkCheck';
-import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Providers = dynamic(
@@ -29,14 +25,8 @@ const Providers = dynamic(
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense>
       <Providers>
-        <NetworkCheck />
-        <AppShell>
-          {children}
-        </AppShell>
-        <TransactionStatusDialogController />
+        {children}
       </Providers>
-    </Suspense>
   );
 }

@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Home, Sprout, Gem, Package, Shield, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function VerificationDashboard() {
   return (

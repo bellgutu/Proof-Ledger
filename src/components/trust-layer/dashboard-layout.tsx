@@ -1,4 +1,3 @@
-
 "use client";
 import React from 'react';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
@@ -12,6 +11,9 @@ import { ActiveProvidersCard } from './active-providers';
 import { RoundConsensusCard } from './round-consensus';
 import { RoundHistoryCard } from './round-history';
 import { BondManagementCard } from './bond-management';
+import { PropertyListingCard } from './property-listing';
+import { PropertyMarketplace } from './property-marketplace';
+import { PropertyVerificationPanel } from './property-verification';
 
 export const DashboardLayout = () => {
   const { state } = useTrustLayer();
@@ -64,22 +66,22 @@ export const DashboardLayout = () => {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Provider Management */}
-        <div className="space-y-6">
+        <div className="lg:col-span-3">
+            <PropertyMarketplace />
+        </div>
+        <div className="lg:col-span-1 space-y-6">
           <ProviderRegistrationCard />
+          <PropertyListingCard />
           <ObservationSubmissionCard />
         </div>
-
-        {/* Middle Column - Live Data */}
-        <div className="space-y-6">
-          <ActiveProvidersCard />
-          <RoundConsensusCard />
-        </div>
-
-        {/* Right Column - Historical Data */}
-        <div className="space-y-6">
-          <RoundHistoryCard />
-          <BondManagementCard />
+        <div className="lg:col-span-2 space-y-6">
+           <PropertyVerificationPanel />
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <ActiveProvidersCard />
+             <RoundConsensusCard />
+             <RoundHistoryCard />
+             <BondManagementCard />
+           </div>
         </div>
       </div>
     </div>

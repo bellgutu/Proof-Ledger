@@ -1,7 +1,6 @@
-
 "use client";
 import React, { useState } from 'react';
-import { useRealEstate } from '@/contexts/real-estate-context';
+import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { Shield, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 export const PropertyVerificationPanel = () => {
-  const { state, actions } = useRealEstate();
+  const { state, actions } = useTrustLayer();
   const { walletState } = useWallet();
   const { properties, isLoading } = state;
   const [isVerifyingId, setIsVerifyingId] = useState<string | null>(null);
@@ -24,23 +23,8 @@ export const PropertyVerificationPanel = () => {
     setIsVerifyingId(null);
   };
 
-  if (!walletState.userOracleStatus.isProvider) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Property Verification</CardTitle>
-          <CardDescription>Verify real estate properties</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              You need to be a registered oracle provider to verify properties.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
+  if (!state.userOracleStatus.isProvider) {
+    return null; // Don't show the card if user is not an oracle
   }
 
   return (
@@ -48,10 +32,10 @@ export const PropertyVerificationPanel = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
-          Property Verification
+          Property Verification Queue
         </CardTitle>
         <CardDescription>
-          Verify property listings as a trusted oracle
+          Verify property listings as a trusted oracle provider.
         </CardDescription>
       </CardHeader>
       <CardContent>

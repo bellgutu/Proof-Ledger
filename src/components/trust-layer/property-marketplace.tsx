@@ -1,7 +1,6 @@
-
 "use client";
 import React, { useState } from 'react';
-import { useRealEstate, type Property } from '@/contexts/real-estate-context';
+import { useTrustLayer, type Property } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +10,7 @@ import { Home, Shield, ShoppingCart, Eye, CheckCircle, XCircle } from 'lucide-re
 import { Skeleton } from '../ui/skeleton';
 
 export const PropertyMarketplace = () => {
-  const { state, actions } = useRealEstate();
+  const { state, actions } = useTrustLayer();
   const { verifiedProperties, isLoading } = state;
   const [purchaseAmount, setPurchaseAmount] = useState<{ [key: string]: string }>({});
 

@@ -1,7 +1,6 @@
-
 "use client";
 import React, { useState } from 'react';
-import { useRealEstate } from '@/contexts/real-estate-context';
+import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,7 @@ import { Home, Upload, AlertCircle, Loader2 } from 'lucide-react';
 import { useWallet } from '@/contexts/wallet-context';
 
 export const PropertyListingCard = () => {
-  const { actions } = useRealEstate();
+  const { actions } = useTrustLayer();
   const { walletState } = useWallet();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({

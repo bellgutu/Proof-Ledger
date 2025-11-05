@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
+import { useRealEstate } from '@/contexts/real-estate-context';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
-import { useWallet } from '@/contexts/wallet-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +10,12 @@ import { Shield, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 export const PropertyVerificationPanel = () => {
-  const { state, actions } = useTrustLayer();
-  const { walletState } = useWallet();
+  const { state, actions } = useRealEstate();
+  const { state: trustState } = useTrustLayer();
   const { properties, isLoading } = state;
   const [isVerifyingId, setIsVerifyingId] = useState<string | null>(null);
 
-  const pendingProperties = properties.filter(p => p.verificationStatus === 'pending');
+  const pendingProperties = (properties || []).filter(p => p.verificationStatus === 'pending');
 
   const handleVerify = async (propertyId: string) => {
     setIsVerifyingId(propertyId);
@@ -23,7 +23,7 @@ export const PropertyVerificationPanel = () => {
     setIsVerifyingId(null);
   };
 
-  if (!state.userOracleStatus.isProvider) {
+  if (!trustState.userOracleStatus.isProvider) {
     return null; // Don't show the card if user is not an oracle
   }
 

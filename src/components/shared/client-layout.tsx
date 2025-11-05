@@ -1,32 +1,25 @@
 
 "use client";
 
+import { Providers } from '@/contexts/providers';
+import NetworkCheck from '@/components/shared/NetworkCheck';
+import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
+import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { Skeleton } from '@/components/ui/skeleton';
 
-const Providers = dynamic(
-  () => import('@/contexts/providers').then((mod) => mod.Providers),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="p-8 space-y-8">
-        <Skeleton className="h-24 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-        <Skeleton className="h-96 w-full" />
-      </div>
-    ),
-  }
-);
+// Dynamically import providers to ensure they only run on the client
+const DynamicProviders = dynamic(() => import('@/contexts/providers').then(mod => mod.Providers), {
+  ssr: false,
+  loading: () => <div className="h-screen w-full flex items-center justify-center">Loading...</div>
+});
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+
+export function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
-      <Providers>
+    <DynamicProviders>
+        <NetworkCheck />
         {children}
-      </Providers>
+        <TransactionStatusDialogController />
+    </DynamicProviders>
   );
 }

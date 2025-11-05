@@ -2,15 +2,13 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import ClientLayout from '@/components/shared/client-layout';
+import { ClientLayout } from '@/components/shared/client-layout';
 import AppShell from '@/components/app-shell';
-import NetworkCheck from '@/components/shared/NetworkCheck';
-import { TransactionStatusDialogController } from '@/components/shared/transaction-status-dialog';
-
 
 export const metadata: Metadata = {
   title: 'ProfitForge - Your Autonomous Financial Platform',
-  description: 'The infrastructure for communities, DAOs, and everyday users to run their own decentralized bank.',
+  description:
+    'The infrastructure for communities, DAOs, and everyday users to run their own decentralized bank.',
 };
 
 export default function RootLayout({
@@ -19,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -30,11 +28,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <ClientLayout>
-            <NetworkCheck />
-            <AppShell>
-              {children}
-            </AppShell>
-            <TransactionStatusDialogController />
+          <AppShell>
+            {children}
+          </AppShell>
         </ClientLayout>
         <Toaster />
       </body>

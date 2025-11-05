@@ -39,15 +39,6 @@ export function WalletHeader() {
                         </p>
                     </div>
                 </div>
-                {process.env.NODE_ENV === 'development' && (
-                  <Button onClick={() => {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    window.location.reload();
-                  }} variant="outline" size="sm">
-                    Clear Storage
-                  </Button>
-                )}
                 <Button onClick={() => disconnect()} variant="secondary" size="sm">
                     Disconnect
                 </Button>
@@ -72,6 +63,15 @@ export function WalletHeader() {
                 )}
               </Button>
           </>
+        )}
+        {process.env.NODE_ENV === 'development' && (
+          <Button onClick={() => {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+          }} variant="outline" size="sm">
+            Clear Storage (Debug)
+          </Button>
         )}
       </CardContent>
     </Card>

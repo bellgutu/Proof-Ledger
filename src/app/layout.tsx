@@ -6,9 +6,9 @@ import { ClientLayout } from '@/components/shared/client-layout';
 import AppShell from '@/components/app-shell';
 
 export const metadata: Metadata = {
-  title: 'ProfitForge - Your Autonomous Financial Platform',
+  title: 'Enterprise Verification Platform',
   description:
-    'The infrastructure for communities, DAOs, and everyday users to run their own decentralized bank.',
+    'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
 };
 
 export default function RootLayout({

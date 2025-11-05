@@ -1,38 +1,14 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, Building, CheckShield, BarChart2, Settings, LayoutDashboard } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
-
-interface NavItemProps {
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-}
-
-const NavItem = ({ href, label, icon }: NavItemProps) => {
-  const pathname = usePathname();
-  const isActive = pathname === href;
-
-  return (
-    <Link
-      href={href}
-      className={cn(
-        buttonVariants({ variant: isActive ? 'secondary' : 'ghost' }),
-        "w-full flex items-center justify-start text-left text-base font-semibold py-6 pl-10"
-      )}
-    >
-      <div className="mr-3">{icon}</div>
-      <span>{label}</span>
-    </Link>
-  );
-};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -73,9 +49,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="mr-3"><LayoutDashboard size={20}/></div>
                 <span>Dashboard</span>
             </Link>
+            <Link
+                href="/verification"
+                className={cn(
+                    buttonVariants({ variant: pathname.startsWith('/verification') ? 'secondary' : 'ghost' }),
+                    "w-full flex items-center justify-start text-left text-base font-semibold py-6"
+                )}
+                >
+                <div className="mr-3"><ShieldCheck size={20}/></div>
+                <span>Verification</span>
+            </Link>
           
           <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
-              <p className="text-xs text-muted-foreground text-center">ProfitForge v0.1</p>
+              <p className="text-xs text-muted-foreground text-center">Enterprise Verification Platform v1.0</p>
           </div>
         </nav>
       </aside>

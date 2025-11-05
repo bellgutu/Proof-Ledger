@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, 'react';
+import React from 'react';
 import Link from 'next/link';
 import { Sun, Moon, LayoutDashboard, ShieldCheck, FileText, BarChart, Settings, Building, GanttChartSquare, Landmark, TrendingUp, Handshake, CheckSquare, Wallet } from 'lucide-react';
 import { usePathname } from 'next/navigation';

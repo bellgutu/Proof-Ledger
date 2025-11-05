@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
+import { ClientLayout } from '@/components/shared/client-layout';
 
 export const metadata: Metadata = {
   title: 'Enterprise Verification Platform',
@@ -26,9 +27,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <AppShell>
-          {children}
-        </AppShell>
+        <ClientLayout>
+          <AppShell>
+            {children}
+          </AppShell>
+        </ClientLayout>
         <Toaster />
       </body>
     </html>

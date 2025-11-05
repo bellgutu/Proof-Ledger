@@ -1,18 +1,26 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { type Address } from 'viem';
+import { useAccount, useConnect, useDisconnect, useEnsName, useChainId, useSwitchChain } from 'wagmi';
+import { type Address, type Chain } from 'viem';
+import { InjectedConnector } from 'wagmi/connectors/injected';
 
 // --- TYPE DEFINITIONS ---
 
 interface WalletState {
- // Future state properties
+  isConnected: boolean;
+  isConnecting: boolean;
+  address: Address | undefined;
+  chain: Chain | undefined;
+  ensName: string | null | undefined;
 }
 
 interface WalletActions {
- // Define actions as we build them
+  connect: () => void;
+  disconnect: () => void;
+  switchChain: (chainId: number) => void;
 }
 
 interface WalletContextType {
@@ -24,10 +32,70 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
+  const { toast } = useToast();
+
+  // --- WAGMI HOOKS ---
+  const { address, isConnected, isConnecting, chain } = useAccount();
+  const { connect } = useConnect({
+    connector: new InjectedConnector(),
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Connection Failed",
+        description: error.message || "Could not connect to wallet.",
+      });
+    }
+  });
+  const { disconnect: wagmiDisconnect } = useDisconnect({
+    onSuccess: () => {
+      toast({
+        title: "Disconnected",
+        description: "Your wallet has been disconnected.",
+      });
+    }
+  });
+  const { data: ensName } = useEnsName({ address });
+  const { switchChain: wagmiSwitchChain } = useSwitchChain({
+     onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Chain Switch Failed",
+        description: error.message || "Could not switch network.",
+      });
+    }
+  });
+
+  // --- WRAPPER ACTIONS ---
+  const handleConnect = useCallback(() => {
+    connect();
+  }, [connect]);
+
+  const handleDisconnect = useCallback(() => {
+    wagmiDisconnect();
+  }, [wagmiDisconnect]);
+  
+  const handleSwitchChain = useCallback((chainId: number) => {
+    wagmiSwitchChain({ chainId });
+  }, [wagmiSwitchChain]);
+
+
+  const walletState: WalletState = {
+    isConnected,
+    isConnecting,
+    address,
+    chain,
+    ensName,
+  };
+
+  const walletActions: WalletActions = {
+    connect: handleConnect,
+    disconnect: handleDisconnect,
+    switchChain: handleSwitchChain,
+  };
   
   const value: WalletContextType = {
-      walletState: { },
-      walletActions: {}
+      walletState,
+      walletActions
   }
 
   return (

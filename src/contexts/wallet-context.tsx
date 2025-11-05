@@ -5,7 +5,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useToast } from '@/hooks/use-toast';
 import { useAccount, useConnect, useDisconnect, useEnsName, useChainId, useSwitchChain } from 'wagmi';
 import { type Address, type Chain } from 'viem';
-import { InjectedConnector } from 'wagmi/connectors/injected';
 
 // --- TYPE DEFINITIONS ---
 
@@ -36,8 +35,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // --- WAGMI HOOKS ---
   const { address, isConnected, isConnecting, chain } = useAccount();
-  const { connect } = useConnect({
-    connector: new InjectedConnector(),
+  const { connect, connectors } = useConnect({
     onError: (error) => {
       toast({
         variant: "destructive",
@@ -67,8 +65,17 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
 
   // --- WRAPPER ACTIONS ---
   const handleConnect = useCallback(() => {
-    connect();
-  }, [connect]);
+    // Connect to the first available connector, which is typically the injected one (MetaMask).
+    if (connectors[0]) {
+      connect({ connector: connectors[0] });
+    } else {
+       toast({
+        variant: "destructive",
+        title: "No Connector Found",
+        description: "Please install a wallet like MetaMask.",
+      });
+    }
+  }, [connect, connectors, toast]);
 
   const handleDisconnect = useCallback(() => {
     wagmiDisconnect();

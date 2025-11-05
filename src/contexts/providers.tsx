@@ -35,7 +35,7 @@ createWeb3Modal({
   enableAnalytics: false
 })
 
-export function Providers({ children }: { children: React.ReactNode, initialState?: any }) {
+export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>

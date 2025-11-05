@@ -1,6 +1,5 @@
-import VerificationDashboard from '@/app/verification/page';
+import DashboardPage from '@/components/pages/dashboard';
 
 export default function Home() {
-  // Default to the main dashboard of the new enterprise structure.
-  return <VerificationDashboard />;
+  return <DashboardPage />;
 }

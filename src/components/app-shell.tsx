@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, Building, CheckShield, BarChart2, Settings, Home, Sprout, Gem } from 'lucide-react';
+import { Sun, Moon, Building, CheckShield, BarChart2, Settings, LayoutDashboard } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -54,48 +53,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const getActiveGroup = () => {
-    if (pathname.startsWith('/verification')) return 'asset-verification';
-    if (pathname.startsWith('/compliance')) return 'compliance';
-    if (pathname.startsWith('/analytics')) return 'analytics';
-    return '';
-  }
-
-  const enterpriseNav = [
-    {
-      group: "asset-verification",
-      label: "Asset Verification",
-      icon: <CheckShield size={20} />,
-      items: [
-        { href: '/verification/real-estate', label: 'Real Estate', icon: <Home size={18} /> },
-        { href: '/verification/commodities', label: 'Commodities', icon: <Sprout size={18} /> },
-        { href: '/verification/luxury-goods', label: 'Luxury Goods', icon: <Gem size={18} /> },
-      ]
-    },
-    {
-      group: "compliance",
-      label: "Compliance",
-      icon: <Building size={20} />,
-      items: [
-         // Placeholder pages for now
-        { href: '/compliance', label: 'KYC/AML Checks', icon: <CheckShield size={18} /> },
-        { href: '/compliance', label: 'Audit Trails', icon: <CheckShield size={18} /> },
-        { href: '/compliance', label: 'Regulatory Reports', icon: <CheckShield size={18} /> },
-      ]
-    },
-    {
-      group: "analytics",
-      label: "Analytics",
-      icon: <BarChart2 size={20} />,
-      items: [
-        // Placeholder pages for now
-        { href: '/analytics', label: 'Cost Savings', icon: <BarChart2 size={18} /> },
-        { href: '/analytics', label: 'Fraud Detection', icon: <BarChart2 size={18} /> },
-        { href: '/analytics', label: 'Performance', icon: <BarChart2 size={18} /> },
-      ]
-    }
-  ];
-
   return (
     <div className="flex flex-col min-h-screen lg:flex-row bg-secondary/40">
       <aside className="bg-card text-card-foreground w-full lg:w-72 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-b lg:border-r">
@@ -106,36 +63,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
         <nav className="flex flex-col h-[calc(100%-80px)]">
-          <Accordion type="single" collapsible defaultValue={getActiveGroup()} className="w-full">
-            {enterpriseNav.map(group => (
-              <AccordionItem value={group.group} key={group.group}>
-                <AccordionTrigger className="text-lg font-bold hover:no-underline px-3">
-                  <div className="flex items-center gap-3">
-                    {group.icon} {group.label}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <ul className="space-y-1 py-2">
-                    {group.items.map(item => (
-                      <li key={item.href}><NavItem {...item} /></li>
-                    ))}
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-          
-          <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
-              <Link
-                href="/settings"
+            <Link
+                href="/"
                 className={cn(
-                    buttonVariants({ variant: pathname === '/settings' ? 'secondary' : 'ghost' }),
+                    buttonVariants({ variant: pathname === '/' ? 'secondary' : 'ghost' }),
                     "w-full flex items-center justify-start text-left text-base font-semibold py-6"
                 )}
                 >
-                <div className="mr-3"><Settings size={20}/></div>
-                <span>Enterprise Settings</span>
+                <div className="mr-3"><LayoutDashboard size={20}/></div>
+                <span>Dashboard</span>
             </Link>
+          
+          <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
+              <p className="text-xs text-muted-foreground text-center">ProfitForge v0.1</p>
           </div>
         </nav>
       </aside>

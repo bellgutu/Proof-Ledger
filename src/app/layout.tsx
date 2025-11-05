@@ -2,7 +2,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ClientLayout } from '@/components/shared/client-layout';
 import AppShell from '@/components/app-shell';
 
 export const metadata: Metadata = {
@@ -27,11 +26,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <ClientLayout>
-          <AppShell>
-            {children}
-          </AppShell>
-        </ClientLayout>
+        <AppShell>
+          {children}
+        </AppShell>
         <Toaster />
       </body>
     </html>

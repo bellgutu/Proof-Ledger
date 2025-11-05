@@ -8,6 +8,7 @@ import { useWallet } from './wallet-context';
 
 // --- ABIs ---
 const TRUST_ORACLE_ABI = DEPLOYED_CONTRACTS.abis.TrustOracle;
+const PROOF_BOND_ABI = DEPLOYED_CONTRACTS.abis.ProofBond;
 
 // --- TYPE DEFINITIONS ---
 interface ProviderDetails {
@@ -93,22 +94,22 @@ const TrustLayerContext = createContext<TrustLayerContextType | undefined>(undef
 
 const initialTrustLayerState: TrustLayerState = {
   mainContractData: { protocolFee: 0 },
-  trustOracleData: { 
-    activeProviders: 0, 
-    minStake: '0', 
+  trustOracleData: {
+    activeProviders: 0,
+    minStake: '0',
     minSubmissions: 0,
     providers: [],
     activePairIds: [],
     latestPrice: '0'
   },
-  safeVaultData: { 
+  safeVaultData: {
     totalAssets: '1250000',
     strategies: [
         { name: 'Aave Lending', value: '750450.23', apy: 4.5 },
         { name: 'Convex Farming', value: '415200.50', apy: 8.1 },
     ]
   },
-  proofBondData: { 
+  proofBondData: {
     tvl: '0',
     userBonds: [],
     trancheSize: '0',
@@ -125,6 +126,8 @@ const initialTrustLayerState: TrustLayerState = {
 };
 
 const TRUST_ORACLE_ADDRESS = DEPLOYED_CONTRACTS.TrustOracle as Address;
+const PROOF_BOND_ADDRESS = DEPLOYED_CONTRACTS.ProofBond as Address;
+
 
 export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
     const [state, setState] = useState<TrustLayerState>(initialTrustLayerState);
@@ -147,8 +150,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         setState(prev => ({ ...prev, isLoading: true }));
         try {
             const currentRoundId = calculateCurrentRoundId();
-            
-            // Fetch All Data
+
             const [
                 protocolFeeRate,
                 minStake,
@@ -161,30 +163,27 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                  publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minStake' }),
                  publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minSubmissions' }),
                  publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'listActiveOracles' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.ProofBond as Address, abi: DEPLOYED_CONTRACTS.abis.ProofBond, functionName: 'trancheSize' }),
-                 publicClient.readContract({ address: DEPLOYED_CONTRACTS.ProofBond as Address, abi: DEPLOYED_CONTRACTS.abis.ProofBond, functionName: 'decimals' }),
+                 publicClient.readContract({ address: PROOF_BOND_ADDRESS, abi: PROOF_BOND_ABI, functionName: 'trancheSize' }),
+                 publicClient.readContract({ address: PROOF_BOND_ADDRESS, abi: PROOF_BOND_ABI, functionName: 'decimals' }),
             ]);
 
-            // Get current round consensus if available
             let currentConsensus = '0';
             try {
-                // Try current round first
                 const consensus = await publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'getConsensus', args: [currentRoundId] });
                 if(consensus > 0n) currentConsensus = formatUnits(consensus as bigint, 8);
-                else throw new Error("Consensus not finalized");
+                else throw new Error("Consensus not finalized for current round");
             } catch (e) {
                 try {
-                    // If current fails, try previous round
-                    const prevRoundId = currentRoundId - 1n;
+                    const prevRoundId = currentRoundId > 0n ? currentRoundId - 1n : 0n;
                     if (prevRoundId > 0) {
                       const consensus = await publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'getConsensus', args: [prevRoundId] });
                       if(consensus > 0n) currentConsensus = formatUnits(consensus as bigint, 8);
                     }
                 } catch (e2) {
-                     console.log('No consensus for current or previous round yet');
+                     console.log('No consensus available for current or previous round.');
                 }
             }
-            
+
             let userProviderStatus: UserOracleStatus = { isProvider: false, isActive: false, stake: '0' };
             const providerDetails = await Promise.all((allProviders as Address[]).map(async (providerAddress) => {
                 const oracleData = await publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'oracles', args: [providerAddress] });
@@ -193,14 +192,43 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 if (walletState.isConnected && walletClient && providerAddress.toLowerCase() === walletClient.account.address.toLowerCase()) {
                     userProviderStatus = { isProvider: true, isActive: active, stake: formatEther(stake) };
                 }
-                
+
                 return { address: providerAddress, stake: formatEther(stake), active: active, lastUpdate: Date.now() };
             }));
 
             // --- ProofBond Data ---
             let freshUserBonds: UserBond[] = [];
             if (walletState.isConnected && walletClient) {
-                // ... (bond fetching logic remains the same)
+                const userBondIds = await publicClient.readContract({
+                    address: PROOF_BOND_ADDRESS,
+                    abi: PROOF_BOND_ABI,
+                    functionName: 'getInvestorTranches',
+                    args: [walletClient.account.address]
+                }) as bigint[];
+
+                if (userBondIds.length > 0) {
+                    const bondDataPromises = userBondIds.map(id =>
+                        publicClient.readContract({
+                            address: PROOF_BOND_ADDRESS,
+                            abi: PROOF_BOND_ABI,
+                            functionName: 'tranches',
+                            args: [id]
+                        })
+                    );
+                    const bondResults = await Promise.all(bondDataPromises);
+                    
+                    const bondDecimalsValue = await publicClient.readContract({ address: PROOF_BOND_ADDRESS, abi: PROOF_BOND_ABI, functionName: 'decimals' });
+
+                    freshUserBonds = bondResults.map((bond, index) => {
+                        const [amount, interestBP, maturity] = bond as [bigint, bigint, bigint];
+                        return {
+                            id: Number(userBondIds[index]),
+                            amount: formatUnits(amount, bondDecimalsValue),
+                            maturity: Number(maturity),
+                            yield: (Number(interestBP) / 100).toFixed(2),
+                        };
+                    });
+                }
             }
             const tvl = freshUserBonds.reduce((acc, bond) => acc + parseFloat(bond.amount), 0);
 
@@ -260,7 +288,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
         const txFunction = () => writeContractAsync({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'finalizeRound', args: [roundId] });
         await walletActions.executeTransaction('Finalize Round', details, txFunction, fetchData);
     }, [walletClient, toast, writeContractAsync, walletActions, fetchData]);
-    
+
     // --- Dummy Implementations for now ---
     const addAssetPair = useCallback(async (tokenA: Address, tokenB: Address) => { toast({ title: 'Not Implemented' }); }, [toast]);
     const purchaseBond = useCallback(async (amount: string) => { toast({ title: 'Not Implemented' }); }, [toast]);
@@ -276,7 +304,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
              setState(prev => ({...prev, isLoading: false, userOracleStatus: { isProvider: false, isActive: false, stake: '0' }}));
         }
     }, [walletState.isConnected, walletClient, fetchData]);
-    
+
     const value: TrustLayerContextType = {
         state,
         actions: {

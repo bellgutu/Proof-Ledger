@@ -87,7 +87,7 @@ export const GemstoneProvider = ({ children }: { children: ReactNode }) => {
     if (walletState.isConnected) {
       refreshGemstones();
     }
-  }, [walletState.isConnected]);
+  }, [walletState.isConnected, refreshGemstones]);
 
   const registerGemstone = useCallback(async (gemstoneData: any) => {
     if (!walletState.walletAddress) {

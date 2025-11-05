@@ -157,14 +157,12 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                 minSubmissions,
                 allProviders,
                 bondTrancheSize,
-                bondDecimals
             ] = await Promise.all([
                  publicClient.readContract({ address: DEPLOYED_CONTRACTS.MainContract as Address, abi: DEPLOYED_CONTRACTS.abis.MainContract, functionName: 'protocolFeeRate' }),
                  publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minStake' }),
                  publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'minSubmissions' }),
                  publicClient.readContract({ address: TRUST_ORACLE_ADDRESS, abi: TRUST_ORACLE_ABI, functionName: 'listActiveOracles' }),
                  publicClient.readContract({ address: PROOF_BOND_ADDRESS, abi: PROOF_BOND_ABI, functionName: 'trancheSize' }),
-                 publicClient.readContract({ address: PROOF_BOND_ADDRESS, abi: PROOF_BOND_ABI, functionName: 'decimals' }),
             ]);
 
             let currentConsensus = '0';
@@ -227,7 +225,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                         const [amount, interestBP, maturity] = bond as [bigint, bigint, bigint];
                         return {
                             id: Number(userBondIds[index]),
-                            amount: formatUnits(amount, Number(bondDecimals)),
+                            amount: formatUnits(amount, 6), // CORRECTED: Use 6 for USDC
                             maturity: Number(maturity),
                             yield: (Number(interestBP) / 100).toFixed(2),
                         };
@@ -248,7 +246,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     latestPrice: currentConsensus
                 },
                 proofBondData: {
-                    trancheSize: formatUnits(bondTrancheSize as bigint, Number(bondDecimals)),
+                    trancheSize: formatUnits(bondTrancheSize as bigint, 6), // Use 6 for USDC
                     userBonds: freshUserBonds,
                     tvl: tvl.toString(),
                 },

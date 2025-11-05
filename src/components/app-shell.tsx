@@ -10,8 +10,6 @@ import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { useWallet } from '@/contexts/wallet-context';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const enterpriseNav = [
   {
@@ -46,9 +44,6 @@ const enterpriseNav = [
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const pathname = usePathname();
-  const { walletState, walletActions } = useWallet();
-  const { isConnected, address, chain, ensName } = walletState;
-  const { connect, disconnect } = walletActions;
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
@@ -72,29 +67,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return activeGroup ? [activeGroup.label] : [];
   };
   
-  const renderWalletButton = () => {
-    if (isConnected && address) {
-      const displayAddress = ensName || `${address.slice(0, 6)}...${address.slice(-4)}`;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Wallet size={18} />
-              <span>{displayAddress}</span>
-              {chain && <span className="text-xs text-muted-foreground">{chain.name}</span>}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={disconnect}>
-              Disconnect
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    }
-    return <Button onClick={() => connect()}>Connect Wallet</Button>;
-  }
-
   return (
     <div className="flex flex-col min-h-screen lg:flex-row bg-secondary/40">
       <aside className="bg-card text-card-foreground w-full lg:w-72 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-b lg:border-r">
@@ -102,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Logo />
            <div className='flex items-center gap-2'>
               <div className="lg:hidden">
-                {renderWalletButton()}
+                <w3m-button />
               </div>
               <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -169,7 +141,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-y-auto">
          <header className="hidden lg:flex items-center justify-end h-16 px-8 border-b bg-card">
-            {renderWalletButton()}
+            <w3m-button />
         </header>
         <div className="p-4 md:p-6 lg:p-8">
           {children}

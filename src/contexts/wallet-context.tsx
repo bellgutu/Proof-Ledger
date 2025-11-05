@@ -1,10 +1,11 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useAccount, useConnect, useDisconnect, useEnsName, useChainId, useSwitchChain } from 'wagmi';
+import { useAccount, useEnsName } from 'wagmi';
 import { type Address, type Chain } from 'viem';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 // --- TYPE DEFINITIONS ---
 
@@ -18,7 +19,7 @@ interface WalletState {
 
 interface WalletActions {
   connect: () => void;
-  disconnect: () => void;
+  disconnect: () => Promise<void>;
   switchChain: (chainId: number) => void;
 }
 
@@ -32,58 +33,25 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
+  const { open } = useWeb3Modal();
 
   // --- WAGMI HOOKS ---
   const { address, isConnected, isConnecting, chain } = useAccount();
-  const { connect, connectors } = useConnect({
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Connection Failed",
-        description: error.message || "Could not connect to wallet.",
-      });
-    }
-  });
-  const { disconnect: wagmiDisconnect } = useDisconnect({
-    onSuccess: () => {
-      toast({
-        title: "Disconnected",
-        description: "Your wallet has been disconnected.",
-      });
-    }
-  });
   const { data: ensName } = useEnsName({ address });
-  const { switchChain: wagmiSwitchChain } = useSwitchChain({
-     onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Chain Switch Failed",
-        description: error.message || "Could not switch network.",
-      });
-    }
-  });
-
+  
   // --- WRAPPER ACTIONS ---
   const handleConnect = useCallback(() => {
-    // Connect to the first available connector, which is typically the injected one (MetaMask).
-    if (connectors[0]) {
-      connect({ connector: connectors[0] });
-    } else {
-       toast({
-        variant: "destructive",
-        title: "No Connector Found",
-        description: "Please install a wallet like MetaMask.",
-      });
-    }
-  }, [connect, connectors, toast]);
+    open();
+  }, [open]);
 
-  const handleDisconnect = useCallback(() => {
-    wagmiDisconnect();
-  }, [wagmiDisconnect]);
+  const handleDisconnect = useCallback(async () => {
+    // Web3Modal handles disconnect. We can just open it.
+    open();
+  }, [open]);
   
   const handleSwitchChain = useCallback((chainId: number) => {
-    wagmiSwitchChain({ chainId });
-  }, [wagmiSwitchChain]);
+    open({ view: 'Networks' });
+  }, [open]);
 
 
   const walletState: WalletState = {

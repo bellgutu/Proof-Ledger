@@ -227,7 +227,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                         const [amount, interestBP, maturity] = bond as [bigint, bigint, bigint];
                         return {
                             id: Number(userBondIds[index]),
-                            amount: formatUnits(amount, bondDecimals),
+                            amount: formatUnits(amount, Number(bondDecimals)),
                             maturity: Number(maturity),
                             yield: (Number(interestBP) / 100).toFixed(2),
                         };
@@ -248,7 +248,7 @@ export const TrustLayerProvider = ({ children }: { children: ReactNode }) => {
                     latestPrice: currentConsensus
                 },
                 proofBondData: {
-                    trancheSize: formatUnits(bondTrancheSize as bigint, bondDecimals as number),
+                    trancheSize: formatUnits(bondTrancheSize as bigint, Number(bondDecimals)),
                     userBonds: freshUserBonds,
                     tvl: tvl.toString(),
                 },

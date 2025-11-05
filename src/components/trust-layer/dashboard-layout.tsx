@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import Link from 'next/link';
 import { useTrustLayer } from '@/contexts/trust-layer-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,6 +12,7 @@ import { ActiveProvidersCard } from './active-providers';
 import { RoundConsensusCard } from './round-consensus';
 import { RoundHistoryCard } from './round-history';
 import { BondManagementCard } from './bond-management';
+import { Button } from '../ui/button';
 
 export const DashboardLayout = () => {
   const { state } = useTrustLayer();
@@ -52,12 +54,17 @@ export const DashboardLayout = () => {
 
       {/* User Status Alert */}
       {userOracleStatus.isProvider && (
-        <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-          <AlertCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <AlertDescription className="text-green-800 dark:text-green-300">
-            You are registered as a data provider with {userOracleStatus.stake} ETH staked.
-            {!userOracleStatus.isActive && " (Currently inactive)"}
-          </AlertDescription>
+        <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 flex justify-between items-center">
+            <div className="flex items-center">
+                <AlertCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <AlertDescription className="text-green-800 dark:text-green-300 ml-2">
+                    You are a registered data provider with {userOracleStatus.stake} ETH staked.
+                    {!userOracleStatus.isActive && " (Currently inactive)"}
+                </AlertDescription>
+            </div>
+            <Link href="/trust-layer/verifiers">
+                <Button variant="outline" size="sm">Go to Verifier Dashboard</Button>
+            </Link>
         </Alert>
       )}
 

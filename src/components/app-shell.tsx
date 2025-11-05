@@ -3,12 +3,43 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, ShieldCheck, FileText, BarChart, Settings, Home, Sprout, Gem, Building, GanttChartSquare, Landmark, TrendingUp, Handshake, CheckSquare } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+const enterpriseNav = [
+  {
+    label: "Asset Verification",
+    icon: ShieldCheck,
+    items: [
+      { label: "Real Estate", href: "/verification/real-estate", icon: Building },
+      { label: "Commodities", href: "/verification/commodities", icon: Sprout },
+      { label: "Luxury Goods", href: "/verification/luxury-goods", icon: Gem }
+    ]
+  },
+  {
+    label: "Compliance",
+    icon: Handshake,
+    items: [
+      { label: "KYC/AML Checks", href: "/compliance/kyc-aml", icon: CheckSquare },
+      { label: "Audit Trails", href: "/compliance/audit-trails", icon: GanttChartSquare },
+      { label: "Regulatory Reports", href: "/compliance/reports", icon: FileText }
+    ]
+  },
+  {
+    label: "Analytics",
+    icon: BarChart,
+    items: [
+      { label: "Cost Savings", href: "/analytics/cost-savings", icon: TrendingUp },
+      { label: "Fraud Detection", href: "/analytics/fraud-detection", icon: Landmark },
+      { label: "Performance", href: "/analytics/performance", icon: LayoutDashboard }
+    ]
+  }
+];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -27,6 +58,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  };
+
+  const getOpenAccordionItems = () => {
+    const activeGroup = enterpriseNav.find(group => 
+      group.items.some(item => pathname.startsWith(item.href))
+    );
+    return activeGroup ? [activeGroup.label] : [];
   };
 
   return (
@@ -49,18 +87,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="mr-3"><LayoutDashboard size={20}/></div>
                 <span>Dashboard</span>
             </Link>
-            <Link
-                href="/verification"
+
+            <Accordion type="multiple" defaultValue={getOpenAccordionItems()} className="w-full">
+              {enterpriseNav.map((group) => (
+                <AccordionItem value={group.label} key={group.label} className="border-none">
+                  <AccordionTrigger className="text-base font-semibold py-3 hover:no-underline [&[data-state=open]>svg]:text-accent">
+                    <div className="flex items-center">
+                      <div className="mr-3"><group.icon size={20} /></div>
+                      <span>{group.label}</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pl-4">
+                    <div className="flex flex-col space-y-1">
+                      {group.items.map((item) => (
+                        <Link
+                          key={item.label}
+                          href={item.href}
+                           className={cn(
+                                buttonVariants({ variant: pathname.startsWith(item.href) ? 'secondary' : 'ghost' }),
+                                "w-full flex items-center justify-start text-left text-base font-normal py-5"
+                            )}
+                        >
+                          <div className="mr-3"><item.icon size={18}/></div>
+                          <span>{item.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          
+          <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
+              <Link
+                href="/enterprise/settings"
                 className={cn(
-                    buttonVariants({ variant: pathname.startsWith('/verification') ? 'secondary' : 'ghost' }),
+                    buttonVariants({ variant: pathname.startsWith('/enterprise/settings') ? 'secondary' : 'ghost' }),
                     "w-full flex items-center justify-start text-left text-base font-semibold py-6"
                 )}
                 >
-                <div className="mr-3"><ShieldCheck size={20}/></div>
-                <span>Verification</span>
+                <div className="mr-3"><Settings size={20}/></div>
+                <span>Enterprise Settings</span>
             </Link>
-          
-          <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
               <p className="text-xs text-muted-foreground text-center">Enterprise Verification Platform v1.0</p>
           </div>
         </nav>

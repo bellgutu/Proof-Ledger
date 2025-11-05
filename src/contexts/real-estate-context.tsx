@@ -135,7 +135,7 @@ export const RealEstateProvider = ({ children }: { children: ReactNode }) => {
   }, [walletClient, walletAddress, walletActions, toast]);
 
   const verifyProperty = useCallback(async (propertyId: string) => {
-    if (!walletState.userOracleStatus.isProvider) {
+    if (!walletState.userOracleStatus?.isProvider) {
       toast({
         variant: 'destructive',
         title: 'Provider Required',
@@ -174,7 +174,7 @@ export const RealEstateProvider = ({ children }: { children: ReactNode }) => {
       title: 'Property Verified',
       description: 'Your verification has been recorded.',
     });
-  }, [walletState.userOracleStatus.isProvider, walletAddress, toast, walletActions]);
+  }, [walletState.userOracleStatus, walletAddress, toast, walletActions]);
 
   const purchaseTokens = useCallback(async (propertyId: string, amount: string) => {
     const property = state.properties.find(p => p.id === propertyId);

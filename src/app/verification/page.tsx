@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Home, Sprout, Gem, Package, Shield, Users } from 'lucide-react';
+import { Home, Sprout, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function VerificationDashboard() {
@@ -28,11 +28,11 @@ export default function VerificationDashboard() {
             <CardDescription>Property title & value verification</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               Verify land deeds, confirm property valuations, and tokenize real estate assets for fractional ownership.
             </p>
-            <Link href="/verification/real-estate">
-                <Button variant="outline" className="mt-4 w-full">Go to Real Estate</Button>
+            <Link href="/verification/real-estate" passHref>
+                <Button variant="outline" className="w-full">Go to Real Estate</Button>
             </Link>
           </CardContent>
         </Card>
@@ -46,11 +46,11 @@ export default function VerificationDashboard() {
             <CardDescription>Supply chain & quality tracking</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               Track agricultural products or raw materials from source to destination, ensuring quality and preventing fraud.
             </p>
-            <Link href="/verification/commodities">
-                 <Button variant="outline" className="mt-4 w-full">Go to Commodities</Button>
+            <Link href="/verification/commodities" passHref>
+                 <Button variant="outline" className="w-full">Go to Commodities</Button>
             </Link>
           </CardContent>
         </Card>
@@ -64,11 +64,11 @@ export default function VerificationDashboard() {
             <CardDescription>Gemstone & item provenance</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               Certify the origin, quality, and ownership history of high-value goods like gemstones, art, and collectibles.
             </p>
-             <Link href="/verification/luxury-goods">
-                 <Button variant="outline" className="mt-4 w-full">Go to Luxury Goods</Button>
+             <Link href="/verification/luxury-goods" passHref>
+                 <Button variant="outline" className="w-full">Go to Luxury Goods</Button>
             </Link>
           </CardContent>
         </Card>

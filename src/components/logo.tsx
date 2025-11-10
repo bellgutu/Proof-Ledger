@@ -3,7 +3,7 @@ import React from 'react';
 
 export function Logo() {
   return (
-    <div className="flex items-center gap-3" aria-label="Enterprise Verification Platform logo">
+    <div className="flex items-center gap-3" aria-label="EnterpriseVerifi logo">
       <svg
         width="32"
         height="32"

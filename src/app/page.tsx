@@ -18,7 +18,6 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        <Link href="/verification" className="hover:scale-105 transition-transform duration-200">
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
@@ -32,8 +31,6 @@ export default function Home() {
               </CardDescription>
             </CardContent>
           </Card>
-        </Link>
-        <Link href="/verification" className="hover:scale-105 transition-transform duration-200">
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
@@ -47,8 +44,6 @@ export default function Home() {
               </CardDescription>
             </CardContent>
           </Card>
-        </Link>
-        <Link href="/verification" className="hover:scale-105 transition-transform duration-200">
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
@@ -62,7 +57,6 @@ export default function Home() {
               </CardDescription>
             </CardContent>
           </Card>
-        </Link>
       </div>
     </div>
   );

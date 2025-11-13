@@ -95,10 +95,10 @@ export default function CommandCenterPage() {
         </Card>
       </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* === WIDGET 3: VERIFIED ASSET STATUS VIEWER === */}
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-2">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Globe size={20} /> Verified Asset Status Viewer</CardTitle>
                 <CardDescription>Real-time tracking of active shipments and their status.</CardDescription>
@@ -118,7 +118,7 @@ export default function CommandCenterPage() {
                         <p className="text-4xl font-bold text-green-400">42</p>
                     </div>
                 </div>
-                <div className="h-96 w-full rounded-lg bg-secondary overflow-hidden relative">
+                <div className="h-[600px] w-full rounded-lg bg-secondary overflow-hidden relative">
                     <InteractiveMap />
                      <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg text-xs z-[1000]">
                         <Map className="h-4 w-4 inline-block mr-1 text-primary"/>
@@ -128,7 +128,7 @@ export default function CommandCenterPage() {
             </CardContent>
         </Card>
 
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-1 space-y-6">
             {/* === WIDGET 4: ASSET VERIFICATION SUMMARY === */}
             <Card>
               <CardHeader>

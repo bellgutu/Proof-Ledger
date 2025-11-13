@@ -1,4 +1,6 @@
 
+"use client";
+
 import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
 import { createWeb3Modal } from '@web3modal/wagmi/react';
@@ -24,7 +26,7 @@ export const wagmiConfig = createConfig({
     [mainnet.id]: http(),
     [sepolia.id]: http(),
   },
-  ssr: false, // Important for Web3Modal
+  ssr: false, // Required for Web3Modal
 });
 
 createWeb3Modal({

@@ -5,7 +5,7 @@ Proof Ledger is a closed-loop system for end-to-end verification of shipping, in
 ## Technical Stack
 
 -   **Frontend**: Next.js (App Router), TypeScript, Tailwind CSS, ShadCN UI
--   **Deployment**: Firebase App Hosting
+-   **Deployment**: Vercel
 
 ---
 
@@ -14,14 +14,14 @@ Proof Ledger is a closed-loop system for end-to-end verification of shipping, in
 ### Prerequisites
 
 -   [Node.js](https://nodejs.org/en/) version 20 or later.
--   [Firebase CLI](https://firebase.google.com/docs/cli) for deployment.
+-   [Vercel CLI](https://vercel.com/docs/cli) for deployment (optional).
 
 ### 1. Installation
 
 Clone the repository and install the dependencies:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/bellgutu/Proof-Ledger.git
 cd proof-ledger
 npm install
 ```
@@ -46,25 +46,19 @@ npm run build
 
 ## Deployment
 
-This application is configured for easy deployment to **Firebase App Hosting**.
+This application is configured for easy deployment to **Vercel**.
 
 ### Prerequisites
 
-1.  Make sure you have the [Firebase CLI](https://firebase.google.com/docs/cli) installed and you are logged in (`firebase login`).
-2.  Set up a Firebase project in the [Firebase Console](https://console.firebase.google.com/).
+1.  Create a Vercel account at [vercel.com](https://vercel.com).
+2.  Push your code to your GitHub repository.
 
-### Deployment Steps
+### Deployment Steps (via Vercel Dashboard)
 
-1.  **Initialize Firebase (if not already done):**
-    ```bash
-    firebase init hosting
-    ```
-    When prompted, select "Use an existing project" and choose the project you created. For the hosting setup, use the default options and specify that it's a Next.js app.
+1.  **Import Project**: From your Vercel dashboard, click "Add New..." and select "Project".
+2.  **Import Git Repository**: Select the `Proof-Ledger` repository from your GitHub account. Vercel will automatically detect that it's a Next.js project.
+3.  **Configure Project**: You may need to add your Environment Variables (like `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) in the project settings on Vercel.
+4.  **Deploy**: Click the "Deploy" button.
 
-2.  **Deploy the Application:**
-    ```bash
-    firebase deploy --only hosting
-    ```
-
-This command will build your Next.js application and deploy it to Firebase App Hosting. The `apphosting.yaml` and `firebase.json` files are already configured for this process.
+Vercel will now build and deploy your application. The `vercel.json` file is already configured for this process.
 # Proof-Ledger

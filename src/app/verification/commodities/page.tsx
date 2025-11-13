@@ -7,43 +7,75 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Sprout, FileJson, PackageCheck, Ship } from "lucide-react";
+import { CheckCircle, Sprout, FileJson, PackageCheck, Ship, Loader2, AlertCircle, Truck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Separator } from '@/components/ui/separator';
 
-const initialShipments = [
-  { id: "SHIP-C55A1", origin: "Colombia", destination: "Port of Hamburg", status: "Delivered", date: "2024-07-12" },
-  { id: "SHIP-B34D9", origin: "Ghana", destination: "Port of Amsterdam", status: "In Transit", date: "2024-07-19" },
-  { id: "SHIP-F98E2", origin: "Vietnam", destination: "Port of Los Angeles", status: "Delivered", date: "2024-07-08" },
+type ShipmentStatus = "Delivered" | "In Transit" | "At Port";
+
+interface Shipment {
+  id: string;
+  origin: string;
+  destination: string;
+  status: ShipmentStatus;
+  date: string;
+  details: {
+      originScan: boolean;
+      inTransit: boolean;
+      destinationScan: boolean;
+  };
+}
+
+const initialShipments: Shipment[] = [
+  { id: "SHIP-C55A1", origin: "Colombia", destination: "Port of Hamburg", status: "Delivered", date: "2024-07-12", details: { originScan: true, inTransit: true, destinationScan: true } },
+  { id: "SHIP-B34D9", origin: "Ghana", destination: "Port of Amsterdam", status: "In Transit", date: "2024-07-19", details: { originScan: true, inTransit: true, destinationScan: false } },
+  { id: "SHIP-F98E2", origin: "Vietnam", destination: "Port of Los Angeles", status: "Delivered", date: "2024-07-08", details: { originScan: true, inTransit: true, destinationScan: true } },
 ];
 
 const origins = ["Colombia", "Ghana", "Vietnam", "Brazil", "Kenya"];
 const destinations = ["Port of Hamburg", "Port of Amsterdam", "Port of Los Angeles", "Port of Shanghai", "Port of Singapore"];
 
+const StatusIcon = ({ status }: { status: boolean }) => {
+    if (status) return <CheckCircle className="h-5 w-5 text-green-500" />;
+    return <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />;
+};
+
+
 export default function CommoditiesPage() {
-  const [shipments, setShipments] = useState(initialShipments);
+  const [shipments, setShipments] = useState<Shipment[]>(initialShipments);
   const [inputValue, setInputValue] = useState('');
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
   const handleTrackShipment = () => {
     if (!inputValue.trim()) return;
 
-    const newShipment = {
+    const newShipment: Shipment = {
       id: inputValue.toUpperCase(),
       origin: origins[Math.floor(Math.random() * origins.length)],
       destination: destinations[Math.floor(Math.random() * destinations.length)],
-      status: "In Transit",
+      status: "At Port",
       date: new Date().toISOString().split('T')[0],
+      details: { originScan: true, inTransit: false, destinationScan: false }
     };
 
     setShipments(prev => [newShipment, ...prev]);
     setInputValue('');
 
-    // Simulate oracle verification
     setTimeout(() => {
       setShipments(prev =>
         prev.map(shipment =>
-          shipment.id === newShipment.id ? { ...shipment, status: "Delivered" } : shipment
+          shipment.id === newShipment.id ? { ...shipment, status: "In Transit", details: {...shipment.details, inTransit: true} } : shipment
         )
       );
-    }, 4000);
+    }, 2500);
+
+     setTimeout(() => {
+      setShipments(prev =>
+        prev.map(shipment =>
+          shipment.id === newShipment.id ? { ...shipment, status: "Delivered", details: {...shipment.details, destinationScan: true} } : shipment
+        )
+      );
+    }, 5000);
   };
 
   return (
@@ -74,31 +106,6 @@ export default function CommoditiesPage() {
         </CardContent>
       </Card>
 
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Quality Certificates</CardTitle>
-            <PackageCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500 flex items-center gap-2">
-                <CheckCircle /> Verified
-            </div>
-            <p className="text-xs text-muted-foreground">Fair Trade & Organic Certs Confirmed</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Chain of Custody</CardTitle>
-            <FileJson className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">4 Handoffs</div>
-            <p className="text-xs text-muted-foreground">Immutable log from farm to port</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Tracked Shipments</CardTitle>
@@ -116,7 +123,7 @@ export default function CommoditiesPage() {
             </TableHeader>
             <TableBody>
               {shipments.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} onClick={() => setSelectedShipment(item)} className="cursor-pointer">
                   <TableCell className="font-medium">{item.id}</TableCell>
                   <TableCell>{item.origin}</TableCell>
                   <TableCell>{item.destination}</TableCell>
@@ -125,7 +132,7 @@ export default function CommoditiesPage() {
                       variant={
                         item.status === 'Delivered' ? 'default' 
                         : item.status === 'In Transit' ? 'secondary' 
-                        : 'destructive'
+                        : 'outline'
                       }
                     >
                       {item.status}
@@ -138,6 +145,75 @@ export default function CommoditiesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedShipment && (
+         <Dialog open={!!selectedShipment} onOpenChange={(isOpen) => !isOpen && setSelectedShipment(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                Shipment Status: {selectedShipment.id}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedShipment.origin} to {selectedShipment.destination}
+              </DialogDescription>
+            </DialogHeader>
+            <Separator />
+            <div className="space-y-4 py-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <PackageCheck className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Scanned at Origin</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <StatusIcon status={selectedShipment.details.originScan} />
+                        <span className="text-sm">{selectedShipment.details.originScan ? 'Complete' : 'Pending'}</span>
+                    </div>
+                </div>
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Truck className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">In Transit</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                         <StatusIcon status={selectedShipment.details.inTransit} />
+                        <span className="text-sm">{selectedShipment.details.inTransit ? 'Complete' : 'Pending'}</span>
+                    </div>
+                </div>
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Ship className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Scanned at Destination</span>
+                    </div>
+                     <div className="flex items-center gap-2">
+                        <StatusIcon status={selectedShipment.details.destinationScan} />
+                        <span className="text-sm">{selectedShipment.details.destinationScan ? 'Complete' : 'Pending'}</span>
+                    </div>
+                </div>
+            </div>
+            <Separator />
+             <div className="text-center text-sm text-muted-foreground pt-2">
+                Overall Status: 
+                 <Badge 
+                    variant={
+                    selectedShipment.status === 'Delivered' ? 'default' 
+                    : selectedShipment.status === 'In Transit' ? 'secondary' 
+                    : 'outline'
+                    }
+                    className="ml-2"
+                >
+                    {selectedShipment.status}
+                </Badge>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">
+                        Close
+                    </Button>
+                </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -7,13 +7,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, FileText, Home, Landmark, Scale } from "lucide-react";
+import { CheckCircle, FileText, Home, Landmark, Scale, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Separator } from '@/components/ui/separator';
 
-const initialVerifications = [
-  { id: "PROP-12345", address: "123 Main St, San Francisco, CA", status: "Verified", date: "2024-07-15" },
-  { id: "PROP-67890", address: "456 Oak Ave, New York, NY", status: "In Progress", date: "2024-07-18" },
-  { id: "PROP-54321", address: "789 Pine Ln, Miami, FL", status: "Verified", date: "2024-07-10" },
-  { id: "PROP-09876", address: "101 Maple Dr, Chicago, IL", status: "Failed", date: "2024-07-14" },
+type VerificationStatus = "Verified" | "In Progress" | "Failed";
+
+interface Verification {
+  id: string;
+  address: string;
+  status: VerificationStatus;
+  date: string;
+  details?: {
+    title: string;
+    appraisal: string;
+    zoning: string;
+  };
+}
+
+const initialVerifications: Verification[] = [
+  { id: "PROP-12345", address: "123 Main St, San Francisco, CA", status: "Verified", date: "2024-07-15", details: { title: "Verified", appraisal: "Verified", zoning: "Verified" } },
+  { id: "PROP-67890", address: "456 Oak Ave, New York, NY", status: "In Progress", date: "2024-07-18", details: { title: "In Progress", appraisal: "Pending", zoning: "Pending" } },
+  { id: "PROP-54321", address: "789 Pine Ln, Miami, FL", status: "Verified", date: "2024-07-10", details: { title: "Verified", appraisal: "Verified", zoning: "Verified" } },
+  { id: "PROP-09876", address: "101 Maple Dr, Chicago, IL", status: "Failed", date: "2024-07-14", details: { title: "Verified", appraisal: "Failed", zoning: "Verified" } },
 ];
 
 const addresses = [
@@ -24,33 +40,60 @@ const addresses = [
     "742 Evergreen Terrace, Springfield, IL"
 ];
 
+const StatusIcon = ({ status }: { status: VerificationStatus }) => {
+    if (status === 'Verified') return <CheckCircle className="h-5 w-5 text-green-500" />;
+    if (status === 'In Progress') return <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />;
+    if (status === 'Failed') return <AlertCircle className="h-5 w-5 text-red-500" />;
+    return <Clock className="h-5 w-5 text-muted-foreground" />;
+};
+
 export default function RealEstatePage() {
-  const [verifications, setVerifications] = useState(initialVerifications);
+  const [verifications, setVerifications] = useState<Verification[]>(initialVerifications);
   const [inputValue, setInputValue] = useState('');
+  const [selectedVerification, setSelectedVerification] = useState<Verification | null>(null);
 
   const handleVerification = () => {
     if (!inputValue.trim()) return;
 
-    const newVerification = {
+    const newVerification: Verification = {
       id: inputValue.toUpperCase(),
       address: addresses[Math.floor(Math.random() * addresses.length)],
       status: "In Progress",
       date: new Date().toISOString().split('T')[0],
+      details: { title: "In Progress", appraisal: "Pending", zoning: "Pending" }
     };
 
     setVerifications(prev => [newVerification, ...prev]);
     setInputValue('');
 
-    // Simulate oracle verification
     setTimeout(() => {
       setVerifications(prev =>
         prev.map(v =>
           v.id === newVerification.id
-            ? { ...v, status: Math.random() > 0.2 ? "Verified" : "Failed" }
+            ? { ...v, details: { ...v.details!, title: "Verified", appraisal: "In Progress" } }
             : v
         )
       );
-    }, 5000);
+    }, 2000);
+
+    setTimeout(() => {
+        const finalStatus: VerificationStatus = Math.random() > 0.2 ? "Verified" : "Failed";
+        setVerifications(prev =>
+            prev.map(v =>
+            v.id === newVerification.id
+                ? { 
+                    ...v, 
+                    status: finalStatus,
+                    details: {
+                        title: "Verified",
+                        appraisal: finalStatus === "Verified" ? "Verified" : "Failed",
+                        zoning: "Verified"
+                    }
+                }
+                : v
+            )
+        );
+    }, 4500);
   };
 
   return (
@@ -81,43 +124,6 @@ export default function RealEstatePage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Title Deed</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500 flex items-center gap-2">
-                <CheckCircle /> Verified
-            </div>
-            <p className="text-xs text-muted-foreground">Last checked: 2024-07-15</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Appraisal Value</CardTitle>
-            <Scale className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$1,250,000</div>
-            <p className="text-xs text-muted-foreground">Source: Verified Appraisal Report #AV-5821</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Zoning & Compliance</CardTitle>
-            <Landmark className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500 flex items-center gap-2">
-                <CheckCircle /> Compliant
-            </div>
-            <p className="text-xs text-muted-foreground">Zoning: R-1, No violations found</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Recent Verifications</CardTitle>
@@ -134,7 +140,7 @@ export default function RealEstatePage() {
             </TableHeader>
             <TableBody>
               {verifications.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} onClick={() => setSelectedVerification(item)} className="cursor-pointer">
                   <TableCell className="font-medium">{item.id}</TableCell>
                   <TableCell>{item.address}</TableCell>
                   <TableCell>
@@ -149,6 +155,68 @@ export default function RealEstatePage() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedVerification && (
+        <Dialog open={!!selectedVerification} onOpenChange={(isOpen) => !isOpen && setSelectedVerification(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                Verification Status: {selectedVerification.id}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedVerification.address}
+              </DialogDescription>
+            </DialogHeader>
+            <Separator />
+            <div className="space-y-4 py-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Title Deed Verification</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <StatusIcon status={selectedVerification.details?.title as VerificationStatus ?? "In Progress"} />
+                        <span className="text-sm">{selectedVerification.details?.title}</span>
+                    </div>
+                </div>
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Scale className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Appraisal Value Check</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                         <StatusIcon status={selectedVerification.details?.appraisal as VerificationStatus ?? "In Progress"} />
+                        <span className="text-sm">{selectedVerification.details?.appraisal}</span>
+                    </div>
+                </div>
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Landmark className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">Zoning & Compliance</span>
+                    </div>
+                     <div className="flex items-center gap-2">
+                        <StatusIcon status={selectedVerification.details?.zoning as VerificationStatus ?? "In Progress"} />
+                        <span className="text-sm">{selectedVerification.details?.zoning}</span>
+                    </div>
+                </div>
+            </div>
+            <Separator />
+             <div className="text-center text-sm text-muted-foreground pt-2">
+                Overall Status: 
+                <Badge variant={selectedVerification.status === 'Verified' ? 'default' : selectedVerification.status === 'In Progress' ? 'secondary' : 'destructive'} className="ml-2">
+                    {selectedVerification.status}
+                </Badge>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">
+                        Close
+                    </Button>
+                </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

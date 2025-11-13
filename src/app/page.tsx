@@ -4,9 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, Bot, Gavel } from "lucide-react";
-import Image from "next/image";
+import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, Bot, Gavel, Building, Diamond, Wheat, Box } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const kycStatusData = [
@@ -94,39 +92,52 @@ export default function CommandCenterPage() {
 
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-        {/* === WIDGET 3: ACTIVE SHIPMENTS === */}
+        {/* === WIDGET 3: VERIFIED ASSET STATUS VIEWER === */}
         <Card className="lg:col-span-3">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Globe size={20} /> Active Shipments & Trust Map</CardTitle>
-                <CardDescription>Real-time operational status of all active smart contracts.</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Globe size={20} /> Verified Asset Status Viewer</CardTitle>
+                <CardDescription>Real-time asset verification status and data integrity.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-lg bg-secondary/50">
-                        <p className="text-sm text-muted-foreground">Shipments In Transit</p>
-                        <p className="text-4xl font-bold">142</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <Building className="h-8 w-8 mx-auto text-green-400 mb-2" />
+                        <p className="font-semibold">Real Estate</p>
+                        <p className="text-xs text-muted-foreground">99.8% Verified</p>
                     </div>
-                    <div className="sm:col-span-2 p-4 rounded-lg bg-secondary/50 space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Verification Status Breakdown</p>
-                        <div className="flex items-center gap-2">
-                            <div className="w-[45%] h-3 rounded-l-full bg-green-500" title="FOB Verified"></div>
-                            <div className="w-[35%] h-3 bg-blue-500" title="In-Transit"></div>
-                            <div className="w-[15%] h-3 bg-yellow-500" title="Customs Pending"></div>
-                            <div className="w-[5%] h-3 rounded-r-full bg-red-500" title="Delayed/Exception"></div>
-                        </div>
-                         <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>FOB Verified</span>
-                            <span>Exception</span>
-                         </div>
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <Diamond className="h-8 w-8 mx-auto text-green-400 mb-2" />
+                        <p className="font-semibold">Luxury/Gems</p>
+                        <p className="text-xs text-muted-foreground">99.9% Verified</p>
+                    </div>
+                     <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <Wheat className="h-8 w-8 mx-auto text-green-400 mb-2" />
+                        <p className="font-semibold">Commodities</p>
+                        <p className="text-xs text-muted-foreground">98.5% Verified</p>
+                    </div>
+                     <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <Box className="h-8 w-8 mx-auto text-yellow-400 mb-2" />
+                        <p className="font-semibold">Shipping</p>
+                        <p className="text-xs text-muted-foreground">3% At Risk</p>
                     </div>
                 </div>
-                 <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                    <Image src="https://picsum.photos/seed/map/1200/600" alt="World Map" layout="fill" objectFit="cover" className="opacity-30" />
-                    <div className="absolute top-[50%] left-[55%] w-4 h-4 bg-red-500 rounded-full animate-pulse-strong" title="SH-734-556"></div>
-                    <div className="absolute top-[25%] left-[70%] w-4 h-4 bg-red-500 rounded-full animate-pulse-strong" title="SH-456-881"></div>
-                    <div className="absolute top-[60%] left-[80%] w-4 h-4 bg-red-500 rounded-full animate-pulse-strong" title="SH-992-109"></div>
-                    <div className="absolute flex items-center gap-4 text-sm text-foreground/80 bottom-4 right-4 bg-background/50 backdrop-blur-sm p-2 rounded-md border">
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full"></div> Delayed Shipments</div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-lg bg-secondary/50">
+                        <p className="text-sm text-muted-foreground">At-Risk Assets</p>
+                        <p className="text-4xl font-bold text-yellow-400">8</p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-secondary/50">
+                         <p className="text-sm text-muted-foreground">Provenance Integrity</p>
+                        <p className="text-4xl font-bold text-green-400">99.7%</p>
+                    </div>
+                     <div className="sm:col-span-3 lg:sm:col-span-1 p-4 rounded-lg bg-secondary/50 space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Live Sensor Alerts</p>
+                        <div className="text-xs space-y-1">
+                            <p className="font-mono text-red-400">Tamper Alert: Asset #...f4d5</p>
+                            <p className="font-mono text-yellow-400">Temp Breach: Batch #...a1c2</p>
+                            <p className="font-mono text-yellow-400">Temp Breach: Batch #...b3e8</p>
+                        </div>
                     </div>
                 </div>
             </CardContent>
@@ -189,3 +200,6 @@ export default function CommandCenterPage() {
     </div>
   );
 }
+
+
+    

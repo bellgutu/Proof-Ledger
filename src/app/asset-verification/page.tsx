@@ -2,7 +2,8 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sprout, Gem, Home } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sprout, Gem, Home, CheckCircle, FileText, Building, Map } from "lucide-react";
 
 export default function AssetVerificationPage() {
   return (
@@ -16,47 +17,64 @@ export default function AssetVerificationPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mt-8">
-          <Card className="h-full">
+      <Tabs defaultValue="commodity" className="w-full">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto">
+          <TabsTrigger value="commodity" className="py-3 text-base">
+            <Sprout className="mr-2 h-5 w-5" /> Commodity & Agricultural
+          </TabsTrigger>
+          <TabsTrigger value="luxury" className="py-3 text-base">
+            <Gem className="mr-2 h-5 w-5" /> Luxury Goods & Gemstones
+          </TabsTrigger>
+          <TabsTrigger value="real_estate" className="py-3 text-base">
+            <Home className="mr-2 h-5 w-5" /> Real Estate
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="commodity">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Sprout className="h-6 w-6 text-accent" />
-                Commodity & Agricultural
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>Commodity & Agricultural Verification</CardTitle>
               <CardDescription>
                 Validates certifications for organic, fair trade, and quality grading for commodities like coffee, cocoa, and other agricultural products.
               </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">Verification dashboard for agricultural products coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-          <Card className="h-full">
+        </TabsContent>
+        <TabsContent value="luxury">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Gem className="h-6 w-6 text-accent" />
-                Luxury Goods & Gemstones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>Luxury Goods & Gemstone Verification</CardTitle>
               <CardDescription>
                 Verifies provenance and quality for high-value items by validating GIA/IGI certifications, appraisals, and conflict-free sourcing.
               </CardDescription>
+            </CardHeader>
+             <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">Verification dashboard for luxury goods coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-          <Card className="h-full">
+        </TabsContent>
+        <TabsContent value="real_estate">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Home className="h-6 w-6 text-accent" />
-                Real Estate Verification
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>Real Estate Verification</CardTitle>
               <CardDescription>
                 Confirms property condition, environmental compliance, and zoning regulations through verified inspection reports and public records.
               </CardDescription>
+            </CardHeader>
+             <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">Verification dashboard for real estate coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

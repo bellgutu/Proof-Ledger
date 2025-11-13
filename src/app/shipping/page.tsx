@@ -2,6 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, MapPin, Anchor } from "lucide-react";
 
 export default function ShippingPage() {
@@ -16,47 +17,64 @@ export default function ShippingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-          <Card className="h-full">
+       <Tabs defaultValue="fob" className="w-full">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto">
+          <TabsTrigger value="fob" className="py-3 text-base">
+            <Anchor className="mr-2 h-5 w-5" /> FOB Verification
+          </TabsTrigger>
+          <TabsTrigger value="cif" className="py-3 text-base">
+            <FileText className="mr-2 h-5 w-5" /> CIF Verification
+          </TabsTrigger>
+          <TabsTrigger value="tracking" className="py-3 text-base">
+            <MapPin className="mr-2 h-5 w-5" /> Real-time Tracking
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="fob">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Anchor className="h-6 w-6 text-accent" />
-                FOB Verification
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>Free On Board (FOB) Verification</CardTitle>
               <CardDescription>
                 Verifies that goods have been successfully transferred at the port of origin, confirming bill of lading, export documentation, and customs status.
               </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">FOB verification dashboard coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-          <Card className="h-full">
+        </TabsContent>
+        <TabsContent value="cif">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <FileText className="h-6 w-6 text-accent" />
-                CIF Verification
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>Cost, Insurance, and Freight (CIF) Verification</CardTitle>
               <CardDescription>
                 Verifies the successful delivery of goods to the destination port, including validation of shipping insurance, freight costs, and import clearance.
               </CardDescription>
+            </CardHeader>
+             <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">CIF verification dashboard coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-          <Card className="h-full">
+        </TabsContent>
+        <TabsContent value="tracking">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <MapPin className="h-6 w-6 text-accent" />
-                Real-time Shipment Tracking
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>Real-time Shipment Tracking</CardTitle>
               <CardDescription>
                 Integrates with IoT sensors and GPS to provide live tracking of container location, temperature, humidity, and tamper detection.
               </CardDescription>
+            </CardHeader>
+             <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">Real-time tracking dashboard coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

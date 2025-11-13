@@ -2,6 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserCheck, GanttChartSquare } from "lucide-react";
 
 export default function CompliancePage() {
@@ -16,34 +17,46 @@ export default function CompliancePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mt-8">
-          <Card className="h-full">
+       <Tabs defaultValue="kyc_aml" className="w-full">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-2 h-auto">
+          <TabsTrigger value="kyc_aml" className="py-3 text-base">
+            <UserCheck className="mr-2 h-5 w-5" /> KYC/AML Verification
+          </TabsTrigger>
+          <TabsTrigger value="regulatory" className="py-3 text-base">
+            <GanttChartSquare className="mr-2 h-5 w-5" /> Regulatory Checks
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="kyc_aml">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <UserCheck className="h-6 w-6 text-accent" />
-                KYC/AML Verification
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>KYC/AML Verification</CardTitle>
               <CardDescription>
                 Verifies customer identities and performs anti-money laundering checks for financial compliance.
               </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">KYC/AML dashboard coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-          <Card className="h-full">
+        </TabsContent>
+        <TabsContent value="regulatory">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <GanttChartSquare className="h-6 w-6 text-accent" />
-                Regulatory Checks
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              <CardTitle>Regulatory Checks</CardTitle>
               <CardDescription>
                 Ensures all activities meet regulatory standards, including trade compliance and industry-specific rules.
               </CardDescription>
+            </CardHeader>
+             <CardContent className="space-y-4">
+              <div className="p-6 bg-secondary/50 rounded-lg border">
+                <p className="text-center text-muted-foreground">Regulatory checks dashboard coming soon.</p>
+              </div>
             </CardContent>
           </Card>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

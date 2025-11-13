@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from "next/image";
 import imageData from '@/lib/placeholder-images.json';
+import { ConnectWallet } from '@/components/connect-wallet';
 
 type AssetType = 'gemstone' | 'luxury_item';
 type LuxurySubType = 'watch' | 'bag' | 'automobile' | 'garment' | '';
@@ -247,7 +248,8 @@ const renderReVerificationContent = (asset: AssetType, subType: LuxurySubType) =
                 <History className="mr-2 h-4 w-4" /> View Full Provenance
               </Button>
             </CardContent>
-             <CardFooter>
+             <CardFooter className="gap-2">
+                 <ConnectWallet variant="outline" />
                  <Button className="w-full h-12 text-base">
                     <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
                 </Button>

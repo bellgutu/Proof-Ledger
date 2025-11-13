@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FileUp, MapPin, Building, ShieldAlert, Users, CheckCircle, ArrowRight } from "lucide-react";
 import Image from "next/image";
+import { ConnectWallet } from "@/components/connect-wallet";
 
 export default function RealEstatePage() {
   return (
@@ -50,7 +51,7 @@ export default function RealEstatePage() {
                 </Badge>
               </div>
               <div className="w-full aspect-square bg-muted rounded-lg overflow-hidden relative">
-                 <Image src="https://picsum.photos/seed/realestate/600/600" layout="fill" objectFit="cover" alt="Abstract image of a property" data-ai-hint="abstract property" className="opacity-70" />
+                 <Image src="https://picsum.photos/seed/property1/600/600" layout="fill" objectFit="cover" alt="Abstract image of a property" data-ai-hint="abstract property" className="opacity-70" />
                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                     <MapPin className="h-8 w-8 text-primary animate-pulse-strong" />
                  </div>
@@ -127,8 +128,9 @@ export default function RealEstatePage() {
                 <Button variant="outline" className="w-full mt-2 h-11 text-base"><FileUp className="mr-2 h-4 w-4" /> Upload PDF/DWG</Button>
               </div>
             </CardContent>
-             <CardFooter>
-                 <Button className="w-full h-12 text-base">
+             <CardFooter className="gap-2">
+                <ConnectWallet variant="outline" />
+                <Button className="w-full h-12 text-base">
                     <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
                 </Button>
             </CardFooter>

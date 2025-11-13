@@ -21,7 +21,7 @@ export default function Home() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
-                <Ship className="h-6 w-6" />
+                <Ship className="h-6 w-6 text-accent" />
                 Shipping & Logistics
               </CardTitle>
             </CardHeader>
@@ -34,7 +34,7 @@ export default function Home() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
-                <ShieldCheck className="h-6 w-6" />
+                <ShieldCheck className="h-6 w-6 text-accent" />
                 Insurance & Finance
               </CardTitle>
             </CardHeader>
@@ -47,7 +47,7 @@ export default function Home() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
-                <HardHat className="h-6 w-6" />
+                <HardHat className="h-6 w-6 text-accent" />
                 Quality & Compliance
               </CardTitle>
             </CardHeader>

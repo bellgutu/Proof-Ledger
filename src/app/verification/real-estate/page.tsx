@@ -1,6 +1,7 @@
 
 "use client";
 
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,14 +9,50 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, FileText, Home, Landmark, Scale } from "lucide-react";
 
-const recentVerifications = [
+const initialVerifications = [
   { id: "PROP-12345", address: "123 Main St, San Francisco, CA", status: "Verified", date: "2024-07-15" },
   { id: "PROP-67890", address: "456 Oak Ave, New York, NY", status: "In Progress", date: "2024-07-18" },
   { id: "PROP-54321", address: "789 Pine Ln, Miami, FL", status: "Verified", date: "2024-07-10" },
   { id: "PROP-09876", address: "101 Maple Dr, Chicago, IL", status: "Failed", date: "2024-07-14" },
 ];
 
+const addresses = [
+    "21 Jump Street, Los Angeles, CA",
+    "10 Downing Street, London, UK",
+    "221B Baker Street, London, UK",
+    "1600 Pennsylvania Ave, Washington, DC",
+    "742 Evergreen Terrace, Springfield, IL"
+];
+
 export default function RealEstatePage() {
+  const [verifications, setVerifications] = useState(initialVerifications);
+  const [inputValue, setInputValue] = useState('');
+
+  const handleVerification = () => {
+    if (!inputValue.trim()) return;
+
+    const newVerification = {
+      id: inputValue.toUpperCase(),
+      address: addresses[Math.floor(Math.random() * addresses.length)],
+      status: "In Progress",
+      date: new Date().toISOString().split('T')[0],
+    };
+
+    setVerifications(prev => [newVerification, ...prev]);
+    setInputValue('');
+
+    // Simulate oracle verification
+    setTimeout(() => {
+      setVerifications(prev =>
+        prev.map(v =>
+          v.id === newVerification.id
+            ? { ...v, status: Math.random() > 0.2 ? "Verified" : "Failed" }
+            : v
+        )
+      );
+    }, 5000);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -34,8 +71,13 @@ export default function RealEstatePage() {
           <CardDescription>Enter a property identifier (e.g., APN or Address) to begin the verification process.</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-4">
-          <Input placeholder="Enter property identifier..." className="max-w-lg" />
-          <Button>Start Verification</Button>
+          <Input 
+            placeholder="Enter property identifier (e.g., PROP-ABCDE)..." 
+            className="max-w-lg"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+          />
+          <Button onClick={handleVerification}>Start Verification</Button>
         </CardContent>
       </Card>
 
@@ -91,7 +133,7 @@ export default function RealEstatePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentVerifications.map((item) => (
+              {verifications.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.id}</TableCell>
                   <TableCell>{item.address}</TableCell>

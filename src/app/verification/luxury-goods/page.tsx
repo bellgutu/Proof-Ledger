@@ -1,6 +1,7 @@
 
 "use client";
 
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,13 +9,41 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Gem, FileText, History } from "lucide-react";
 
-const recentItems = [
+const initialItems = [
   { id: "GIA-22078", item: "3.02ct Diamond", status: "Verified", date: "2024-07-17" },
   { id: "PATEK-5711", item: "Patek Philippe Nautilus", status: "Verified", date: "2024-07-16" },
   { id: "ART-004B", item: "Warhol Screenprint", status: "In Review", date: "2024-07-19" },
 ];
 
+const itemTypes = ["Emerald Necklace", "Rolex Submariner", "Van Cleef Bracelet", "Sapphire Ring", "Picasso Lithograph"];
+
 export default function LuxuryGoodsPage() {
+  const [items, setItems] = useState(initialItems);
+  const [inputValue, setInputValue] = useState('');
+
+  const handleVerifyAsset = () => {
+    if (!inputValue.trim()) return;
+
+    const newItem = {
+      id: inputValue.toUpperCase(),
+      item: itemTypes[Math.floor(Math.random() * itemTypes.length)],
+      status: "In Review",
+      date: new Date().toISOString().split('T')[0],
+    };
+
+    setItems(prev => [newItem, ...prev]);
+    setInputValue('');
+
+    // Simulate oracle verification
+    setTimeout(() => {
+      setItems(prev =>
+        prev.map(item =>
+          item.id === newItem.id ? { ...item, status: "Verified" } : item
+        )
+      );
+    }, 3500);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -33,8 +62,13 @@ export default function LuxuryGoodsPage() {
           <CardDescription>Enter a serial number or certification ID to begin.</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-4">
-          <Input placeholder="Enter asset identifier..." className="max-w-lg" />
-          <Button>Verify Asset</Button>
+          <Input 
+            placeholder="Enter asset identifier (e.g., GIA-XYZ123)..." 
+            className="max-w-lg" 
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+          />
+          <Button onClick={handleVerifyAsset}>Verify Asset</Button>
         </CardContent>
       </Card>
 
@@ -78,7 +112,7 @@ export default function LuxuryGoodsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentItems.map((item) => (
+              {items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.id}</TableCell>
                   <TableCell>{item.item}</TableCell>

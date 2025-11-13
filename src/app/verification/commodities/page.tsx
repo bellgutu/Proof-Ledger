@@ -1,20 +1,51 @@
 
 "use client";
 
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Sprout, FileJson, PackageCheck } from "lucide-react";
+import { CheckCircle, Sprout, FileJson, PackageCheck, Ship } from "lucide-react";
 
-const recentShipments = [
+const initialShipments = [
   { id: "SHIP-C55A1", origin: "Colombia", destination: "Port of Hamburg", status: "Delivered", date: "2024-07-12" },
   { id: "SHIP-B34D9", origin: "Ghana", destination: "Port of Amsterdam", status: "In Transit", date: "2024-07-19" },
   { id: "SHIP-F98E2", origin: "Vietnam", destination: "Port of Los Angeles", status: "Delivered", date: "2024-07-08" },
 ];
 
+const origins = ["Colombia", "Ghana", "Vietnam", "Brazil", "Kenya"];
+const destinations = ["Port of Hamburg", "Port of Amsterdam", "Port of Los Angeles", "Port of Shanghai", "Port of Singapore"];
+
 export default function CommoditiesPage() {
+  const [shipments, setShipments] = useState(initialShipments);
+  const [inputValue, setInputValue] = useState('');
+
+  const handleTrackShipment = () => {
+    if (!inputValue.trim()) return;
+
+    const newShipment = {
+      id: inputValue.toUpperCase(),
+      origin: origins[Math.floor(Math.random() * origins.length)],
+      destination: destinations[Math.floor(Math.random() * destinations.length)],
+      status: "In Transit",
+      date: new Date().toISOString().split('T')[0],
+    };
+
+    setShipments(prev => [newShipment, ...prev]);
+    setInputValue('');
+
+    // Simulate oracle verification
+    setTimeout(() => {
+      setShipments(prev =>
+        prev.map(shipment =>
+          shipment.id === newShipment.id ? { ...shipment, status: "Delivered" } : shipment
+        )
+      );
+    }, 4000);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -33,8 +64,13 @@ export default function CommoditiesPage() {
           <CardDescription>Enter a Bill of Lading or Container ID to track a new commodity shipment.</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-4">
-          <Input placeholder="Enter shipment identifier..." className="max-w-lg" />
-          <Button>Track Shipment</Button>
+          <Input 
+            placeholder="Enter shipment identifier (e.g., SHIP-GHI789)..." 
+            className="max-w-lg" 
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+          />
+          <Button onClick={handleTrackShipment}>Track Shipment</Button>
         </CardContent>
       </Card>
 
@@ -79,13 +115,19 @@ export default function CommoditiesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentShipments.map((item) => (
+              {shipments.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.id}</TableCell>
                   <TableCell>{item.origin}</TableCell>
                   <TableCell>{item.destination}</TableCell>
                   <TableCell>
-                    <Badge variant={item.status === 'Delivered' ? 'default' : 'secondary'}>
+                     <Badge 
+                      variant={
+                        item.status === 'Delivered' ? 'default' 
+                        : item.status === 'In Transit' ? 'secondary' 
+                        : 'destructive'
+                      }
+                    >
                       {item.status}
                     </Badge>
                   </TableCell>

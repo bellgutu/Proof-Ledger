@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sprout, Gem, Home, GanttChartSquare } from "lucide-react";
+import { Sprout, Gem, Home } from "lucide-react";
 
 export default function QualityPage() {
   return (
@@ -53,19 +53,6 @@ export default function QualityPage() {
             <CardContent>
               <CardDescription>
                 Confirms property condition, environmental compliance, and zoning regulations through verified inspection reports and public records.
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <GanttChartSquare className="h-6 w-6 text-accent" />
-                Compliance & Regulatory
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Ensures all activities meet regulatory standards, including trade compliance and industry-specific rules.
               </CardDescription>
             </CardContent>
           </Card>

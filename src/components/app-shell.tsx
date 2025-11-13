@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, HardHat } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, HardHat, GanttChartSquare } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -34,6 +34,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/shipping', label: 'Shipping', icon: Ship },
     { href: '/insurance', label: 'Insurance', icon: ShieldCheck },
     { href: '/quality', label: 'Quality', icon: HardHat },
+    { href: '/compliance', label: 'Compliance', icon: GanttChartSquare },
   ];
 
   return (

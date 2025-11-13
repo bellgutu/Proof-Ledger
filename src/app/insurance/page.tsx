@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Landmark, FileCheck, FileHeart, UserCheck } from "lucide-react";
+import { Landmark, FileCheck, FileHeart } from "lucide-react";
 
 export default function InsurancePage() {
   return (
@@ -53,19 +53,6 @@ export default function InsurancePage() {
             <CardContent>
               <CardDescription>
                 Allows businesses to access working capital by using verified shipments and assets as collateral.
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <UserCheck className="h-6 w-6 text-accent" />
-                KYC/AML Verification
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Verifies customer identities and performs anti-money laundering checks for financial compliance.
               </CardDescription>
             </CardContent>
           </Card>

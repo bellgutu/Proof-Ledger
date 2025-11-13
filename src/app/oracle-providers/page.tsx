@@ -9,124 +9,190 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, DollarSign, BarChart2, Zap, Key, Copy, PlusCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
-const mockOracleData = [
-    { id: 'DP-001', type: 'Real Estate', provider: 'VeriProp', dataHash: '0x123...abc', status: 'Verified', timestamp: '2023-10-27 10:00' },
-    { id: 'DP-002', type: 'Gemstone', provider: 'GemTrust', dataHash: '0x456...def', status: 'Pending', timestamp: '2023-10-27 10:05' },
-    { id: 'DP-003', type: 'Commodity', provider: 'AgriChain', dataHash: '0x789...ghi', status: 'Verified', timestamp: '2023-10-26 15:30' },
-    { id: 'DP-004', type: 'Shipping', provider: 'ShipSure', dataHash: '0xabc...123', status: 'Failed', timestamp: '2023-10-25 09:12' },
+
+const paymentLedgerData = [
+    { id: 'ATTEST-0012', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0011', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0010', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Pending', date: '2023-10-26' },
+    { id: 'ATTEST-0009', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Paid', date: '2023-10-25' },
 ];
-
-const StatusIcon = ({ status }: { status: string }) => {
-    switch (status) {
-        case 'Verified':
-            return <CheckCircle className="h-5 w-5 text-green-500" />;
-        case 'Pending':
-            return <Clock className="h-5 w-5 text-yellow-500" />;
-        case 'Failed':
-            return <AlertCircle className="h-5 w-5 text-red-500" />;
-        default:
-            return null;
-    }
-};
 
 export default function OracleProvidersPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // Simulate API call
         setTimeout(() => {
             setIsSubmitting(false);
-            // Here you would typically show a success/error toast
+            toast({
+                title: 'Submission Successful',
+                description: 'Your verified data has been received and is being attested.',
+                variant: 'default'
+            })
         }, 1500);
     }
+
+    const copyApiKey = () => {
+        navigator.clipboard.writeText('ep_live_xxxxxxxxxxxxxxxxxxxxxxxx');
+        toast({ title: 'API Key Copied' });
+    }
+
   return (
     <div className="container mx-auto p-0 space-y-8">
       <div className="text-left space-y-2">
         <h1 className="text-4xl font-bold tracking-tight text-primary">
-          Oracle Data Providers
+          Verification Partner Portal
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl">
-          A secure interface for trusted oracle providers to feed verification data into the platform. This data forms the immutable backbone for all asset verification processes.
+          A secure, enterprise-grade interface for our trusted data partners. Monetize your data, monitor performance, and provide critical verification for real-world assets.
         </p>
       </div>
 
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Total Revenue Earned (MTD)</CardTitle>
+                    <DollarSign size={20} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold">$4,823.00</div>
+                    <p className="text-xs text-muted-foreground pt-1">+15.2% from last month</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">API Requests Served (MTD)</CardTitle>
+                    <BarChart2 size={20} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold">4,823</div>
+                    <p className="text-xs text-muted-foreground pt-1">Avg. 160 requests/day</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">SLA Performance</CardTitle>
+                    <Zap size={20} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold text-green-400">99.98%</div>
+                    <p className="text-xs text-muted-foreground pt-1">Latency: 45ms (avg)</p>
+                </CardContent>
+            </Card>
+        </div>
+
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Submit Verification Data</CardTitle>
-                    <CardDescription>Enter the details for the data point you are providing.</CardDescription>
+                    <CardTitle>Manual Submission Console</CardTitle>
+                    <CardDescription>For human-centric workflows like inspector reports or expert appraisals.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="dataType">Data Type</Label>
+                            <Label htmlFor="dataType">Certification Type</Label>
                              <Select>
                                 <SelectTrigger id="dataType">
-                                    <SelectValue placeholder="Select data type..." />
+                                    <SelectValue placeholder="Select certification type..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="real_estate">Real Estate</SelectItem>
-                                    <SelectItem value="gemstone">Luxury & Gemstone</SelectItem>
-                                    <SelectItem value="commodity">Commodity & Agricultural</SelectItem>
-                                    <SelectItem value="shipping">Shipping & Logistics</SelectItem>
-                                    <SelectItem value="insurance">Insurance</SelectItem>
+                                    <SelectItem value="real_estate">Real Estate Title</SelectItem>
+                                    <SelectItem value="gemstone">Gemstone Grading</SelectItem>
+                                    <SelectItem value="commodity_coa">Commodity CoA</SelectItem>
+                                    <SelectItem value="shipping_event">Shipping Milestone</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="providerId">Provider ID</Label>
-                            <Input id="providerId" placeholder="e.g., VeriProp_001" />
-                        </div>
                         <div className="space-y-2">
-                            <Label htmlFor="dataPayload">Data Payload (JSON)</Label>
-                            <Textarea id="dataPayload" placeholder='{ "assetId": "PROP123", "inspectionPassed": true }' rows={6} />
+                            <Label htmlFor="dataPayload">Certification Data (JSON)</Label>
+                            <Textarea id="dataPayload" placeholder='{ "assetId": "GIA-12345", "grade": "VVS1", "authentic": true }' rows={5} />
                         </div>
                     </CardContent>
                     <CardFooter>
                          <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? 'Submitting...' : 'Submit to Trust Oracle'}
+                            {isSubmitting ? 'Submitting...' : 'Submit & Attest Data'}
                         </Button>
                     </CardFooter>
                 </form>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Verified Data Submission API</CardTitle>
+                    <CardDescription>Integrate your systems with our platform for automated, real-time data feeds.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                   <div className="space-y-2">
+                        <Label>Your API Key</Label>
+                        <div className="flex items-center gap-2">
+                            <Input readOnly type="password" value="ep_live_xxxxxxxxxxxxxxxxxxxxxxxx" className="font-mono" />
+                            <Button variant="outline" size="icon" onClick={copyApiKey}>
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                        </div>
+                   </div>
+                    <div className="space-y-2">
+                        <Label>API Endpoint</Label>
+                        <Input readOnly value="https://api.enterpriseverifi.com/v1/attest" className="font-mono" />
+                   </div>
+                </CardContent>
+                <CardFooter>
+                    <Button variant="secondary" className="w-full">View API Documentation</Button>
+                </CardFooter>
             </Card>
         </div>
         <div className="lg:col-span-2">
             <Card>
                 <CardHeader>
-                    <CardTitle>Recent Data Submissions</CardTitle>
-                    <CardDescription>A log of the most recent data fed by oracle providers.</CardDescription>
+                    <CardTitle>Payment & Audit Ledger</CardTitle>
+                    <CardDescription>A record of all data attestations and the revenue you've earned.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Status</TableHead>
-                                <TableHead>ID</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Provider</TableHead>
-                                <TableHead>Data Hash</TableHead>
-                                <TableHead>Timestamp</TableHead>
+                                <TableHead>Verification ID</TableHead>
+                                <TableHead>Requestor</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-right">Fee Earned ($)</TableHead>
+                                <TableHead className="text-right">Payment Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockOracleData.map((data) => (
+                            {paymentLedgerData.map((data) => (
                                 <TableRow key={data.id}>
-                                    <TableCell className="flex justify-center items-center"><StatusIcon status={data.status} /></TableCell>
-                                    <TableCell className="font-medium">{data.id}</TableCell>
-                                    <TableCell>{data.type}</TableCell>
-                                    <TableCell>{data.provider}</TableCell>
-                                    <TableCell className="font-mono text-xs">{data.dataHash}</TableCell>
-                                    <TableCell>{data.timestamp}</TableCell>
+                                    <TableCell className="font-mono text-xs">{data.id}</TableCell>
+                                    <TableCell>{data.requestor}</TableCell>
+                                    <TableCell>{data.date}</TableCell>
+                                    <TableCell className="font-mono text-right text-green-400">${data.fee}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Badge
+                                            variant={data.status === 'Paid' ? 'default' : 'secondary'}
+                                            className={cn(data.status === 'Paid' && 'bg-green-600/20 text-green-300 border-green-500/30')}
+                                        >
+                                            <div className={cn(
+                                                "w-2 h-2 rounded-full mr-2",
+                                                data.status === 'Paid' && 'bg-green-400',
+                                                data.status === 'Pending' && 'bg-yellow-400',
+                                            )}></div>
+                                            {data.status}
+                                        </Badge>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </CardContent>
+                 <CardFooter className="justify-end">
+                    <Button variant="outline"><PlusCircle className="mr-2 h-4 w-4" /> View Full History</Button>
+                </CardFooter>
             </Card>
         </div>
       </div>

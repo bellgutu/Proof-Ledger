@@ -3,6 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HardHat, ShieldCheck, Ship } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -17,45 +18,51 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <Ship className="h-6 w-6" />
-              Shipping & Logistics
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CardDescription>
-              Verify FOB, CIF, and track shipments in real-time with integrated IoT and customs data.
-            </CardDescription>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <ShieldCheck className="h-6 w-6" />
-              Insurance & Finance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CardDescription>
-              Automate cargo, title, and luxury goods insurance validation. Process claims and financing against verified assets.
-            </CardDescription>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <HardHat className="h-6 w-6" />
-              Quality & Compliance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CardDescription>
-              Validate agricultural, gemstone, and real estate quality with certification and inspection data.
-            </CardDescription>
-          </CardContent>
-        </Card>
+        <Link href="/verification" className="hover:scale-105 transition-transform duration-200">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <Ship className="h-6 w-6" />
+                Shipping & Logistics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Verify FOB, CIF, and track shipments in real-time with integrated IoT and customs data.
+              </CardDescription>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/verification" className="hover:scale-105 transition-transform duration-200">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <ShieldCheck className="h-6 w-6" />
+                Insurance & Finance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Automate cargo, title, and luxury goods insurance validation. Process claims and financing against verified assets.
+              </CardDescription>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/verification" className="hover:scale-105 transition-transform duration-200">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <HardHat className="h-6 w-6" />
+                Quality & Compliance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Validate agricultural, gemstone, and real estate quality with certification and inspection data.
+              </CardDescription>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   );

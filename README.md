@@ -2,44 +2,68 @@
 
 Proof Ledger is a closed-loop system for end-to-end verification of shipping, insurance, and quality control. It is designed to reduce costs, mitigate risks, and increase efficiency for businesses that deal with physical assets and complex supply chains.
 
----
-
-## Core Modules
-
-The platform is built on three core pillars that address critical business verification needs:
-
-### 1. Shipping & Logistics Verification
-
-This module provides immutable, on-chain verification for every stage of the shipping process.
-
--   **Free On Board (FOB) Verification**: Verifies that goods have been successfully transferred at the port of origin, confirming bill of lading, export documentation, and customs status.
--   **Cost, Insurance, and Freight (CIF) Verification**: Verifies the successful delivery of goods to the destination port, including validation of shipping insurance, freight costs, and import clearance.
--   **Real-time Shipment Tracking**: Integrates with IoT sensors and GPS to provide live tracking of container location, temperature, humidity, and tamper detection.
-
-### 2. Insurance & Finance Integration
-
-This module automates the verification of insurance policies and financial instruments, streamlining claims and financing.
-
--   **Cargo & Title Insurance**: Integrates with major insurance providers to validate cargo, title, and other asset-backed insurance policies in real-time.
--   **Automated Claims Processing**: Uses verified data from the platform to automate insurance claims processing, reducing delays and disputes.
--   **Supply Chain Financing**: Allows businesses to access working capital by using verified shipments and assets as collateral.
-
-### 3. Quality & Compliance Verification
-
-This module ensures that assets meet required quality standards and regulatory requirements.
-
--   **Commodity & Agricultural Verification**: Validates certifications for organic, fair trade, and quality grading for commodities like coffee, cocoa, and other agricultural products.
--   **Luxury Goods & Gemstone Verification**: Verifies provenance and quality for high-value items by validating GIA/IGI certifications, appraisals, and conflict-free sourcing.
--   **Real Estate Verification**: Confirms property condition, environmental compliance, and zoning regulations through verified inspection reports and public records.
-
----
-
 ## Technical Stack
 
 -   **Frontend**: Next.js (App Router), TypeScript, Tailwind CSS, ShadCN UI
--   **Blockchain Interaction**: placeholder
--   **Backend & APIs**: placeholder
+-   **Deployment**: Firebase App Hosting
+
+---
 
 ## Getting Started
 
-The application is currently under development. Follow the setup instructions to run a local instance.
+### Prerequisites
+
+-   [Node.js](https://nodejs.org/en/) version 20 or later.
+-   [Firebase CLI](https://firebase.google.com/docs/cli) for deployment.
+
+### 1. Installation
+
+Clone the repository and install the dependencies:
+
+```bash
+git clone <your-repo-url>
+cd proof-ledger
+npm install
+```
+
+### 2. Running the Development Server
+
+To run the application in development mode, use the following command. This will start the app on `http://localhost:3000`.
+
+```bash
+npm run dev
+```
+
+### 3. Building for Production
+
+To create a production-ready build of the application, run:
+
+```bash
+npm run build
+```
+
+---
+
+## Deployment
+
+This application is configured for easy deployment to **Firebase App Hosting**.
+
+### Prerequisites
+
+1.  Make sure you have the [Firebase CLI](https://firebase.google.com/docs/cli) installed and you are logged in (`firebase login`).
+2.  Set up a Firebase project in the [Firebase Console](https://console.firebase.google.com/).
+
+### Deployment Steps
+
+1.  **Initialize Firebase (if not already done):**
+    ```bash
+    firebase init hosting
+    ```
+    When prompted, select "Use an existing project" and choose the project you created. For the hosting setup, use the default options and specify that it's a Next.js app.
+
+2.  **Deploy the Application:**
+    ```bash
+    firebase deploy --only hosting
+    ```
+
+This command will build your Next.js application and deploy it to Firebase App Hosting. The `apphosting.yaml` and `firebase.json` files are already configured for this process.

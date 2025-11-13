@@ -19,14 +19,14 @@ const navLinks = [
     icon: LayoutDashboard,
   },
   { 
-    href: '/asset-verification', 
     label: 'Asset Verification', 
     icon: CheckCircle,
     subLinks: [
       { href: '/asset-verification/real-estate', label: 'Real Estate', icon: Building },
       { href: '/asset-verification/luxury-goods', label: 'Luxury & Gemstones', icon: Diamond },
       { href: '/asset-verification/commodities', label: 'Commodities', icon: Wheat },
-    ]
+    ],
+    href: '/asset-verification'
   },
   { 
     href: '/shipping', 
@@ -45,7 +45,7 @@ const navLinks = [
   },
   {
     href: '/oracle-providers',
-    label: 'Oracle Providers',
+    label: 'Proof Partner Console',
     icon: DatabaseZap,
   }
 ];
@@ -233,7 +233,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="mr-3"><Settings size={18}/></div>
                     <span>Settings</span>
                 </Link>
-                <p className="text-xs text-muted-foreground text-center !mt-8">Enterprise Verification Platform v1.0</p>
+                <p className="text-xs text-muted-foreground text-center !mt-8">Proof Ledger v1.0</p>
             </div>
         </div>
       </aside>
@@ -267,7 +267,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                     <div className="mr-3"><Settings size={18}/></div>
                                     <span>Settings</span>
                                 </Link>
-                                <p className="text-xs text-muted-foreground text-center !mt-8">Enterprise Verification Platform v1.0</p>
+                                <p className="text-xs text-muted-foreground text-center !mt-8">Proof Ledger v1.0</p>
                             </div>
                         </div>
                     </aside>
@@ -286,5 +286,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-    

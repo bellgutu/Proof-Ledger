@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
 
 export const metadata: Metadata = {
-  title: 'Enterprise Verification Platform',
+  title: 'Proof Ledger',
   description:
     'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
 };

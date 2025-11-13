@@ -43,7 +43,7 @@ export default function CommandCenterPage() {
         {/* === WIDGET 1: RISK MITIGATION SCORECARD === */}
         <Card className="lg:col-span-1 border-yellow-500/30 bg-yellow-500/5">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-yellow-400"><Shield size={20} /> Risk Mitigation Scorecard</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-yellow-400"><Shield size={20} /> Proof Score | Risk Triage</CardTitle>
                 <CardDescription>Instant assessment of platform-wide risk exposure.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -68,7 +68,7 @@ export default function CommandCenterPage() {
         {/* === WIDGET 2: FINANCIAL & LIQUIDITY SNAPSHOT === */}
         <Card className="lg:col-span-2">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Zap size={20}/> Financial & Liquidity Snapshot</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Zap size={20}/> Ledger-Secured Capital</CardTitle>
                 <CardDescription>Summary of financial health and supply chain financing potential.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -128,7 +128,7 @@ export default function CommandCenterPage() {
             {/* === WIDGET 4: ASSET VERIFICATION SUMMARY === */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><CheckCircle size={20} /> Asset Verification Summary</CardTitle>
+                <CardTitle className="flex items-center gap-2"><CheckCircle size={20} /> Ledger Integrity Status</CardTitle>
                 <CardDescription>
                   Core data integrity status and oracle health.
                 </CardDescription>

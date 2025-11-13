@@ -15,10 +15,10 @@ import { Switch } from '@/components/ui/switch';
 
 
 const paymentLedgerData = [
-    { id: 'ATTEST-0012', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '0.25', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0011', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '0.00', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0010', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '0.00', status: 'Pending', date: '2023-10-26' },
-    { id: 'ATTEST-0009', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '-3.00', status: 'Paid (Slashed)', date: '2023-10-25' },
+    { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '1.00', bonus: '0.25', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '1.00', bonus: '0.00', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '1.00', bonus: '0.00', status: 'Pending', date: '2023-10-26' },
+    { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '1.00', bonus: '-3.00', status: 'Paid (Slashed)', date: '2023-10-25' },
 ];
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
@@ -42,7 +42,7 @@ export default function OracleProvidersPage() {
     }
 
     const copyApiKey = () => {
-        navigator.clipboard.writeText('ep_live_xxxxxxxxxxxxxxxxxxxxxxxx');
+        navigator.clipboard.writeText('pl_live_xxxxxxxxxxxxxxxxxxxxxxxx');
         toast({ title: 'API Key Copied' });
     }
 
@@ -187,7 +187,7 @@ export default function OracleProvidersPage() {
     <div className="container mx-auto p-0 space-y-8">
       <div className="text-left space-y-2">
         <h1 className="text-4xl font-bold tracking-tight text-primary">
-          Verification Partner Portal
+          Proof Partner Console
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl">
           A secure, enterprise-grade interface for our trusted data partners. Monetize your data, monitor performance, and provide critical verification for real-world assets.
@@ -268,7 +268,7 @@ export default function OracleProvidersPage() {
                     </CardContent>
                     <CardFooter>
                          <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType}>
-                            {isSubmitting ? 'Submitting...' : 'Submit & Attest Data'}
+                            {isSubmitting ? 'Submitting...' : 'Submit & Proof Ledger Data'}
                         </Button>
                     </CardFooter>
                 </form>
@@ -282,7 +282,7 @@ export default function OracleProvidersPage() {
                    <div className="space-y-2">
                         <Label>Your API Key</Label>
                         <div className="flex items-center gap-2">
-                            <Input readOnly type="password" value="ep_live_xxxxxxxxxxxxxxxxxxxxxxxx" className="font-mono" />
+                            <Input readOnly type="password" value="pl_live_xxxxxxxxxxxxxxxxxxxxxxxx" className="font-mono" />
                             <Button variant="outline" size="icon" onClick={copyApiKey}>
                                 <Copy className="h-4 w-4" />
                             </Button>
@@ -290,7 +290,7 @@ export default function OracleProvidersPage() {
                    </div>
                     <div className="space-y-2">
                         <Label>API Endpoint</Label>
-                        <Input readOnly value="https://api.enterpriseverifi.com/v1/attest" className="font-mono" />
+                        <Input readOnly value="https://api.proofledger.app/v1/attest" className="font-mono" />
                    </div>
                 </CardContent>
                 <CardFooter>
@@ -310,6 +310,7 @@ export default function OracleProvidersPage() {
                             <TableRow>
                                 <TableHead>Verification ID</TableHead>
                                 <TableHead>Date</TableHead>
+                                <TableHead>Requestor</TableHead>
                                 <TableHead className="text-right">Base Fee</TableHead>
                                 <TableHead className="text-right">Bonus/Penalty</TableHead>
                                 <TableHead className="text-right">Payment Status</TableHead>
@@ -320,6 +321,7 @@ export default function OracleProvidersPage() {
                                 <TableRow key={data.id}>
                                     <TableCell className="font-mono text-xs">{data.id}</TableCell>
                                     <TableCell>{data.date}</TableCell>
+                                    <TableCell>{data.requestor}</TableCell>
                                     <TableCell className="font-mono text-right">${data.fee}</TableCell>
                                     <TableCell className={cn(
                                         "font-mono text-right",

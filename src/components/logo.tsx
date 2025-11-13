@@ -3,7 +3,7 @@ import React from 'react';
 
 export function Logo() {
   return (
-    <div className="flex items-center gap-3" aria-label="EnterpriseVerifi logo">
+    <div className="flex items-center gap-3" aria-label="Proof Ledger logo">
       <svg
         width="32"
         height="32"
@@ -36,7 +36,7 @@ export function Logo() {
         />
       </svg>
       <span className="text-xl font-extrabold tracking-tight">
-        EnterpriseVerifi
+        Proof Ledger
       </span>
     </div>
   );

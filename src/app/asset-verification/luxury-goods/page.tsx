@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { FileUp, Diamond, ShieldAlert, History, CheckCircle, ArrowRight, ScanLine, Car, Watch, ShoppingBag, Shirt } from "lucide-react";
+import { FileUp, Diamond, ShieldAlert, History, CheckCircle, ScanLine, Car, Watch, ShoppingBag, Shirt } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from "next/image";
+import imageData from '@/lib/placeholder-images.json';
 
 type AssetType = 'gemstone' | 'luxury_item';
 type LuxurySubType = 'watch' | 'bag' | 'automobile' | 'garment' | '';
@@ -107,10 +108,13 @@ const renderVisualsContent = (asset: AssetType, subType: LuxurySubType) => {
     let description = "Upload mandatory 360-degree photos for visual hashing.";
     let buttonText = "Upload 360° Photo/Video Set";
     let extraField = null;
-
+    
+    let imageKey: keyof typeof imageData.luxury_goods = 'gemstone';
     if (asset === 'gemstone') {
+        imageKey = 'gemstone';
         extraField = <div className="w-full max-w-xs space-y-2"><Label htmlFor="inclusion-map">Microscopic Inclusions Map Hash (Optional)</Label><Input id="inclusion-map" placeholder="Hash of spectral analysis data..."/></div>
-    } else if (asset === 'luxury_item') {
+    } else if (asset === 'luxury_item' && subType) {
+        imageKey = subType;
         switch (subType) {
             case 'automobile':
                 description = "Upload required photos: 4 exterior sides, interior, and engine bay.";
@@ -123,6 +127,9 @@ const renderVisualsContent = (asset: AssetType, subType: LuxurySubType) => {
         }
     }
 
+    const images = imageData.luxury_goods[imageKey] || imageData.luxury_goods.gemstone;
+
+
     return (
         <>
             <CardHeader>
@@ -132,12 +139,18 @@ const renderVisualsContent = (asset: AssetType, subType: LuxurySubType) => {
             <CardContent className="flex flex-col items-center gap-4">
               <Carousel className="w-full max-w-xs">
                 <CarouselContent>
-                  {Array.from({ length: 5 }).map((_, index) => (
+                  {images.map((image, index) => (
                     <CarouselItem key={index}>
                       <div className="p-1">
                         <Card>
                           <CardContent className="flex aspect-square items-center justify-center p-0 rounded-lg overflow-hidden">
-                             <Image src={`https://picsum.photos/seed/${subType || 'gem'}${index}/400/400`} width={400} height={400} alt={`Asset view ${index + 1}`} />
+                             <Image 
+                                src={image.src} 
+                                width={400} 
+                                height={400} 
+                                alt={image.alt}
+                                data-ai-hint={image.hint}
+                             />
                           </CardContent>
                         </Card>
                       </div>
@@ -301,7 +314,7 @@ export default function LuxuryGoodsPage() {
             {assetType === 'luxury_item' && (
                  <div className="space-y-2">
                     <Label>2. Select Luxury Sub-Type</Label>
-                    <Select onValueChange={(value: LuxurySubType) => setLuxurySubType(value)}>
+                    <Select onValueChange={(value: LuxurySubType) => setLuxurySubType(value)} value={luxurySubType}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select sub-type..." />
                         </SelectTrigger>
@@ -349,5 +362,3 @@ export default function LuxuryGoodsPage() {
     </div>
   );
 }
-
-    

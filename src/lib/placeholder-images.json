@@ -1,0 +1,139 @@
+{
+  "luxury_goods": {
+    "gemstone": [
+      {
+        "src": "https://picsum.photos/seed/gemstone1/400/400",
+        "alt": "Polished diamond on a black background",
+        "hint": "polished diamond"
+      },
+      {
+        "src": "https://picsum.photos/seed/gemstone2/400/400",
+        "alt": "Rough uncut diamond",
+        "hint": "rough diamond"
+      },
+      {
+        "src": "https://picsum.photos/seed/gemstone3/400/400",
+        "alt": "Emerald cut sapphire",
+        "hint": "blue sapphire"
+      },
+      {
+        "src": "https://picsum.photos/seed/gemstone4/400/400",
+        "alt": "Microscopic view of gem inclusions",
+        "hint": "gemstone inclusion"
+      },
+      {
+        "src": "https://picsum.photos/seed/gemstone5/400/400",
+        "alt": "Collection of various cut gemstones",
+        "hint": "cut gemstones"
+      }
+    ],
+    "watch": [
+      {
+        "src": "https://picsum.photos/seed/watch1/400/400",
+        "alt": "Luxury watch face close-up",
+        "hint": "luxury watch"
+      },
+      {
+        "src": "https://picsum.photos/seed/watch2/400/400",
+        "alt": "Side view of a watch case and crown",
+        "hint": "watch crown"
+      },
+      {
+        "src": "https://picsum.photos/seed/watch3/400/400",
+        "alt": "Open caseback showing the watch movement",
+        "hint": "watch movement"
+      },
+      {
+        "src": "https://picsum.photos/seed/watch4/400/400",
+        "alt": "Watch clasp and bracelet details",
+        "hint": "watch clasp"
+      },
+      {
+        "src": "https://picsum.photos/seed/watch5/400/400",
+        "alt": "Watch serial number engraving",
+        "hint": "serial number"
+      }
+    ],
+    "bag": [
+      {
+        "src": "https://picsum.photos/seed/bag1/400/400",
+        "alt": "Front view of a luxury handbag",
+        "hint": "luxury handbag"
+      },
+      {
+        "src": "https://picsum.photos/seed/bag2/400/400",
+        "alt": "Close-up of the bag's leather grain",
+        "hint": "leather grain"
+      },
+      {
+        "src": "https://picsum.photos/seed/bag3/400/400",
+        "alt": "Interior view showing the bag's lining and date code",
+        "hint": "bag interior"
+      },
+      {
+        "src": "https://picsum.photos/seed/bag4/400/400",
+        "alt": "Detail of the hardware, buckle, or lock",
+        "hint": "bag hardware"
+      },
+      {
+        "src": "https://picsum.photos/seed/bag5/400/400",
+        "alt": "Stitching detail on the handbag",
+        "hint": "leather stitching"
+      }
+    ],
+    "automobile": [
+      {
+        "src": "https://picsum.photos/seed/car1/400/400",
+        "alt": "Front three-quarter view of a luxury car",
+        "hint": "luxury car"
+      },
+      {
+        "src": "https://picsum.photos/seed/car2/400/400",
+        "alt": "Interior dashboard and steering wheel",
+        "hint": "car interior"
+      },
+      {
+        "src": "https://picsum.photos/seed/car3/400/400",
+        "alt": "Close-up of the engine bay",
+        "hint": "car engine"
+      },
+      {
+        "src": "https://picsum.photos/seed/car4/400/400",
+        "alt": "VIN plate on the vehicle chassis",
+        "hint": "vehicle identification"
+      },
+      {
+        "src": "https://picsum.photos/seed/car5/400/400",
+        "alt": "Rear view of the luxury car",
+        "hint": "luxury automobile"
+      }
+    ],
+    "garment": [
+      {
+        "src": "https://picsum.photos/seed/garment1/400/400",
+        "alt": "Full view of a haute couture garment on a mannequin",
+        "hint": "haute couture"
+      },
+      {
+        "src": "https://picsum.photos/seed/garment2/400/400",
+        "alt": "Close-up of the fabric weave and texture",
+        "hint": "fabric texture"
+      },
+      {
+        "src": "https://picsum.photos/seed/garment3/400/400",
+        "alt": "Interior label of the designer garment",
+        "hint": "designer label"
+      },
+      {
+        "src": "https://picsum.photos/seed/garment4/400/400",
+        "alt": "Detail of embroidery or embellishment",
+        "hint": "garment embroidery"
+      },
+      {
+        "src": "https://picsum.photos/seed/garment5/400/400",
+        "alt": "Seam and stitching detail",
+        "hint": "seam stitching"
+      }
+    ]
+  }
+}

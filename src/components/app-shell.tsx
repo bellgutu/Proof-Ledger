@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, HardHat, GanttChartSquare, Anchor, FileText, MapPin, FileHeart, FileCheck, Landmark, Sprout, Gem, Home as HomeIcon, UserCheck } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, Anchor, FileText, MapPin, FileHeart, FileCheck, Landmark, Sprout, Gem, Home as HomeIcon, UserCheck } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -59,13 +59,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ]
     },
     { 
-      href: '/quality', 
-      label: 'Quality', 
-      icon: HardHat,
+      href: '/asset-verification', 
+      label: 'Asset Verification', 
+      icon: CheckCircle,
       subLinks: [
-        { href: '/quality', label: 'Commodity & Agri', icon: Sprout },
-        { href: '/quality', label: 'Luxury & Gemstones', icon: Gem },
-        { href: '/quality', label: 'Real Estate', icon: HomeIcon },
+        { href: '/asset-verification', label: 'Commodity & Agri', icon: Sprout },
+        { href: '/asset-verification', label: 'Luxury & Gemstones', icon: Gem },
+        { href: '/asset-verification', label: 'Real Estate', icon: HomeIcon },
       ]
     },
     { 

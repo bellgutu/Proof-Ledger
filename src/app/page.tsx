@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HardHat, ShieldCheck, Ship, GanttChartSquare } from "lucide-react";
+import { CheckCircle, ShieldCheck, Ship, GanttChartSquare } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -20,10 +20,10 @@ export default function Home() {
       description: "Automate cargo, title, and luxury goods insurance validation. Process claims and financing.",
     },
     {
-      href: "/quality",
-      icon: HardHat,
-      title: "Quality Control",
-      description: "Validate agricultural, gemstone, and real estate quality with certification and inspection data.",
+      href: "/asset-verification",
+      icon: CheckCircle,
+      title: "Asset Verification",
+      description: "Validate agricultural, gemstone, and real estate assets with certification and inspection data.",
     },
      {
       href: "/compliance",

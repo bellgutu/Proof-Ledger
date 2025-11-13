@@ -4,15 +4,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sprout, Gem, Home } from "lucide-react";
 
-export default function QualityPage() {
+export default function AssetVerificationPage() {
   return (
     <div className="container mx-auto p-0 space-y-8">
       <div className="text-left space-y-2">
         <h1 className="text-4xl font-bold tracking-tight text-primary">
-          Quality & Compliance Verification
+          Real World Asset Verification
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl">
-          This module ensures that assets meet required quality standards and regulatory requirements. It provides tools to verify certifications, provenance, and condition for a wide range of goods and properties.
+          This module ensures that physical assets meet the required standards for provenance, quality, and compliance. It provides tools to verify certifications and condition for a wide range of real-world assets.
         </p>
       </div>
 

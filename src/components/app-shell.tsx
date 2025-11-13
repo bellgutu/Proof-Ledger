@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, ShieldCheck, FileText, BarChart, Settings, Building, GanttChartSquare, Landmark, TrendingUp, Handshake, CheckSquare } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, ShieldCheck, FileText, BarChart, Settings, Building, GanttChartSquare, Landmark, TrendingUp, Handshake, CheckSquare, Database } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
-const enterpriseNav = [
+const navGroups = [
   {
     label: "Asset Verification",
     icon: ShieldCheck,
@@ -38,6 +38,14 @@ const enterpriseNav = [
       { label: "Fraud Detection", href: "/analytics/fraud-detection", icon: Landmark },
       { label: "Performance", href: "/analytics/performance", icon: LayoutDashboard }
     ]
+  },
+  {
+    label: "Data Management",
+    icon: Database,
+    items: [
+        { label: "Oracle Data", href: "/management/oracle-data", icon: FileText },
+        { label: "Settings", href: "/management/settings", icon: Settings },
+    ]
   }
 ];
 
@@ -61,7 +69,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const getOpenAccordionItems = () => {
-    const activeGroup = enterpriseNav.find(group => 
+    const activeGroup = navGroups.find(group => 
       group.items.some(item => pathname.startsWith(item.href))
     );
     return activeGroup ? [activeGroup.label] : [];
@@ -95,7 +103,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
 
             <Accordion type="multiple" defaultValue={getOpenAccordionItems()} className="w-full">
-              {enterpriseNav.map((group) => (
+              {navGroups.map((group) => (
                 <AccordionItem value={group.label} key={group.label} className="border-none">
                   <AccordionTrigger className="text-base font-semibold py-3 hover:no-underline [&[data-state=open]>svg]:text-accent">
                     <div className="flex items-center">
@@ -125,17 +133,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Accordion>
           
           <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
-              <Link
-                href="/enterprise/settings"
-                className={cn(
-                    buttonVariants({ variant: pathname.startsWith('/enterprise/settings') ? 'secondary' : 'ghost' }),
-                    "w-full flex items-center justify-start text-left text-base font-semibold py-6"
-                )}
-                >
-                <div className="mr-3"><Settings size={20}/></div>
-                <span>Enterprise Settings</span>
-            </Link>
-              <p className="text-xs text-muted-foreground text-center">Enterprise Verification Platform v1.0</p>
+            <p className="text-xs text-muted-foreground text-center">Enterprise Verification Platform v1.0</p>
           </div>
         </nav>
       </aside>

@@ -65,9 +65,6 @@ export default function InsurancePage() {
               <CardTitle>Supply Chain Financing</CardTitle>
               <CardDescription>
                 Allows businesses to access working capital by using verified shipments and assets as collateral.
-              </arameters>
-              <CardDescription>
-                Allows businesses to access working capital by using verified shipments and assets as collateral.
               </CardDescription>
             </CardHeader>
              <CardContent className="space-y-4">

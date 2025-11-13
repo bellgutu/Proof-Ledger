@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck, GanttChartSquare, FileText, CheckCircle, AlertCircle, Clock, Shield, Database, Activity, MoreVertical, PlusCircle, Download } from "lucide-react";
+import { PlusCircle, MoreVertical, Download, Shield, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 
@@ -180,3 +180,4 @@ export default function CompliancePage() {
   );
 }
 
+    

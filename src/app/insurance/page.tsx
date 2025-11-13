@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, FileCheck, FileHeart, Link as LinkIcon, AlertCircle, CheckCircle, Clock, MoreVertical, Search, ArrowRight, Shield, DollarSign, Database } from "lucide-react";
+import { Landmark, FileHeart, AlertCircle, CheckCircle, Clock, MoreVertical, LandmarkIcon, DollarSign } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const claims = [
@@ -128,7 +128,7 @@ export default function InsurancePage() {
                                 <TableCell className="font-mono text-xs">{claim.id}</TableCell>
                                 <TableCell>
                                      <span className="flex items-center gap-1 text-sm">
-                                        {claim.trigger === "Auto (Sensor)" && <CheckCircle className="h-4 w-4 text-green-400" />}
+                                        {claim.trigger.startsWith("Auto") && <CheckCircle className="h-4 w-4 text-green-400" />}
                                         {claim.trigger === "Manual" && <Clock className="h-4 w-4 text-yellow-400" />}
                                         {claim.trigger}
                                     </span>
@@ -170,3 +170,5 @@ export default function InsurancePage() {
     </div>
   );
 }
+
+    

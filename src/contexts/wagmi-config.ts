@@ -1,6 +1,3 @@
-
-"use client";
-
 import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
 import { createWeb3Modal } from '@web3modal/wagmi/react';
@@ -28,8 +25,7 @@ export const wagmiConfig = createConfig({
     [mainnet.id]: http(),
     [sepolia.id]: http(),
   },
-  // In a Next.js app, you need to set `ssr: false` to avoid hydration errors.
-  ssr: false, 
+  ssr: false, // Set to false for client-side rendering with Web3Modal
 });
 
 // 3. Create modal
@@ -38,4 +34,4 @@ createWeb3Modal({
   projectId,
   metadata,
   enableAnalytics: false // Optional - defaults to your Cloud configuration
-})
+});

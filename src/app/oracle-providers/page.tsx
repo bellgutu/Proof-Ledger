@@ -8,17 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, BarChart2, Zap, Key, Copy, PlusCircle } from 'lucide-react';
+import { DollarSign, BarChart2, Zap, Key, Copy, PlusCircle, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 
 
 const paymentLedgerData = [
-    { id: 'ATTEST-0012', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0011', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0010', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Pending', date: '2023-10-26' },
-    { id: 'ATTEST-0009', requestor: 'EnterpriseVerifi', fee: '1.00', status: 'Paid', date: '2023-10-25' },
+    { id: 'ATTEST-0012', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '0.25', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0011', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '0.00', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0010', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '0.00', status: 'Pending', date: '2023-10-26' },
+    { id: 'ATTEST-0009', requestor: 'EnterpriseVerifi', fee: '1.00', bonus: '-3.00', status: 'Paid (Slashed)', date: '2023-10-25' },
 ];
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
@@ -189,15 +189,15 @@ export default function OracleProvidersPage() {
         <h1 className="text-4xl font-bold tracking-tight text-primary">
           Verification Partner Portal
         </h1>
-        <p className="text-lg text-muted-foreground max-wxl">
+        <p className="text-lg text-muted-foreground max-w-xl">
           A secure, enterprise-grade interface for our trusted data partners. Monetize your data, monitor performance, and provide critical verification for real-world assets.
         </p>
       </div>
 
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Total Revenue Earned (MTD)</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Revenue (MTD)</CardTitle>
                     <DollarSign size={20} className="text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -207,7 +207,7 @@ export default function OracleProvidersPage() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">API Requests Served (MTD)</CardTitle>
+                    <CardTitle className="text-sm font-medium">API Requests (MTD)</CardTitle>
                     <BarChart2 size={20} className="text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -223,6 +223,16 @@ export default function OracleProvidersPage() {
                 <CardContent>
                     <div className="text-3xl font-bold text-green-400">99.98%</div>
                     <p className="text-xs text-muted-foreground pt-1">Latency: 45ms (avg)</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Reputation Score</CardTitle>
+                    <Star size={20} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold text-blue-400">Tier 1</div>
+                    <p className="text-xs text-muted-foreground pt-1">98.7% Accuracy</p>
                 </CardContent>
             </Card>
         </div>
@@ -299,9 +309,9 @@ export default function OracleProvidersPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Verification ID</TableHead>
-                                <TableHead>Requestor</TableHead>
                                 <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Fee Earned ($)</TableHead>
+                                <TableHead className="text-right">Base Fee</TableHead>
+                                <TableHead className="text-right">Bonus/Penalty</TableHead>
                                 <TableHead className="text-right">Payment Status</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -309,18 +319,26 @@ export default function OracleProvidersPage() {
                             {paymentLedgerData.map((data) => (
                                 <TableRow key={data.id}>
                                     <TableCell className="font-mono text-xs">{data.id}</TableCell>
-                                    <TableCell>{data.requestor}</TableCell>
                                     <TableCell>{data.date}</TableCell>
-                                    <TableCell className="font-mono text-right text-green-400">${data.fee}</TableCell>
+                                    <TableCell className="font-mono text-right">${data.fee}</TableCell>
+                                    <TableCell className={cn(
+                                        "font-mono text-right",
+                                        parseFloat(data.bonus) > 0 && "text-green-400",
+                                        parseFloat(data.bonus) < 0 && "text-red-400"
+                                    )}>${data.bonus}</TableCell>
                                     <TableCell className="text-right">
                                         <Badge
-                                            variant={data.status === 'Paid' ? 'default' : 'secondary'}
-                                            className={cn(data.status === 'Paid' && 'bg-green-600/20 text-green-300 border-green-500/30')}
+                                            variant={data.status === 'Paid' ? 'default' : data.status === 'Pending' ? 'secondary' : 'destructive'}
+                                            className={cn(
+                                                data.status === 'Paid' && 'bg-green-600/20 text-green-300 border-green-500/30',
+                                                data.status === 'Paid (Slashed)' && 'bg-red-600/20 text-red-300 border-red-500/30'
+                                            )}
                                         >
                                             <div className={cn(
                                                 "w-2 h-2 rounded-full mr-2",
                                                 data.status === 'Paid' && 'bg-green-400',
                                                 data.status === 'Pending' && 'bg-yellow-400',
+                                                data.status === 'Paid (Slashed)' && 'bg-red-400',
                                             )}></div>
                                             {data.status}
                                         </Badge>
@@ -339,5 +357,3 @@ export default function OracleProvidersPage() {
     </div>
   );
 }
-
-    

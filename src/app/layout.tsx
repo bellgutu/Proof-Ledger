@@ -31,8 +31,8 @@ export default function RootLayout({
           <AppShell>
             {children}
           </AppShell>
+          <Toaster />
         </ClientLayout>
-        <Toaster />
       </body>
     </html>
   );

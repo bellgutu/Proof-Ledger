@@ -3,7 +3,11 @@ import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
 import { createWeb3Modal } from '@web3modal/wagmi/react';
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+
+if (!projectId) {
+  throw new Error('NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set')
+}
 
 const metadata = {
   name: 'Enterprise Verification Platform',
@@ -20,6 +24,7 @@ export const wagmiConfig = createConfig({
     [mainnet.id]: http(),
     [sepolia.id]: http(),
   },
+  ssr: false, // Important for Web3Modal
 });
 
 createWeb3Modal({

@@ -12,7 +12,7 @@ export default function InsurancePage() {
           Insurance & Finance Integration
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl">
-          Automates the verification of insurance policies and financial instruments, streamlining claims and financing.
+          This module automates the verification of insurance policies and financial instruments, which dramatically streamlines the process of claims and financing. It connects with major providers to ensure your assets are protected and your capital is accessible.
         </p>
       </div>
 

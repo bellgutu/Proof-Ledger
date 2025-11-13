@@ -12,7 +12,7 @@ export default function CompliancePage() {
           Compliance & Regulatory
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl">
-          Centralized verification for KYC, AML, and other industry-specific regulatory requirements.
+          A centralized hub for managing and verifying all regulatory requirements. This module helps ensure that your business adheres to Know Your Customer (KYC), Anti-Money Laundering (AML), and other industry-specific rules.
         </p>
       </div>
 

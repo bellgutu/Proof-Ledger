@@ -12,7 +12,7 @@ export default function QualityPage() {
           Quality & Compliance Verification
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl">
-          Ensures that assets meet required quality standards and regulatory requirements.
+          This module ensures that assets meet required quality standards and regulatory requirements. It provides tools to verify certifications, provenance, and condition for a wide range of goods and properties.
         </p>
       </div>
 

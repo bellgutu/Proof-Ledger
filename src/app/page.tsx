@@ -40,7 +40,7 @@ export default function Home() {
           Enterprise Verification Platform
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-          A closed-loop system for end-to-end verification of shipping, insurance, and quality control.
+          A closed-loop system for end-to-end verification of shipping, insurance, and quality control. This platform is designed to reduce costs, mitigate risks, and increase efficiency for businesses that deal with physical assets and complex supply chains.
         </p>
       </div>
 

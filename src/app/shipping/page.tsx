@@ -12,7 +12,7 @@ export default function ShippingPage() {
           Shipping & Logistics Verification
         </h1>
         <p className="text-lg text-muted-foreground max-w-3xl">
-          Immutable, on-chain verification for every stage of the shipping process.
+          This module provides immutable, on-chain verification for every stage of the shipping process. From the port of origin to the final destination, each step is tracked and verified to ensure transparency and accountability.
         </p>
       </div>
 

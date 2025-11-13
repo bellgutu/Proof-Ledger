@@ -50,7 +50,7 @@ export default function RealEstatePage() {
                 </Badge>
               </div>
               <div className="w-full aspect-square bg-muted rounded-lg overflow-hidden relative">
-                 <Image src="https://picsum.photos/seed/satmap/600/600" layout="fill" objectFit="cover" alt="Satellite map" className="opacity-50" />
+                 <Image src="https://picsum.photos/seed/realestate/600/600" layout="fill" objectFit="cover" alt="Abstract image of a property" data-ai-hint="abstract property" className="opacity-70" />
                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                     <MapPin className="h-8 w-8 text-primary animate-pulse-strong" />
                  </div>
@@ -138,5 +138,3 @@ export default function RealEstatePage() {
     </div>
   );
 }
-
-    

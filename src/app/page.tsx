@@ -118,7 +118,7 @@ export default function CommandCenterPage() {
                         <p className="text-4xl font-bold text-green-400">42</p>
                     </div>
                 </div>
-                <div className="h-64 w-full rounded-lg bg-secondary overflow-hidden relative">
+                <div className="h-96 w-full rounded-lg bg-secondary overflow-hidden relative">
                     <InteractiveMap />
                      <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg text-xs z-[1000]">
                         <Map className="h-4 w-4 inline-block mr-1 text-primary"/>

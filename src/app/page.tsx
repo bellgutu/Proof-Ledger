@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, ShieldCheck, Ship, GanttChartSquare } from "lucide-react";
+import { CheckCircle, ShieldCheck, Ship, GanttChartSquare, DatabaseZap } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -30,6 +30,12 @@ export default function Home() {
       icon: GanttChartSquare,
       title: "Compliance & Regulatory",
       description: "Centralized verification for KYC, AML, and other industry-specific regulatory requirements.",
+    },
+    {
+      href: "/oracle-providers",
+      icon: DatabaseZap,
+      title: "Oracle Data Providers",
+      description: "Securely feed and manage verification data from trusted external oracle providers.",
     },
   ];
 

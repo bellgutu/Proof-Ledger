@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, Anchor, FileText, MapPin, FileHeart, FileCheck, Landmark, Sprout, Gem, Home as HomeIcon, UserCheck } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, Anchor, FileText, MapPin, FileHeart, FileCheck, Landmark, Sprout, Gem, Home as HomeIcon, UserCheck, DatabaseZap } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -39,6 +39,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       isPrimary: true,
     },
     { 
+      href: '/asset-verification', 
+      label: 'Asset Verification', 
+      icon: CheckCircle,
+      subLinks: [
+        { href: '/asset-verification', label: 'Commodity & Agri', icon: Sprout },
+        { href: '/asset-verification', label: 'Luxury & Gemstones', icon: Gem },
+        { href: '/asset-verification', label: 'Real Estate', icon: HomeIcon },
+      ]
+    },
+    { 
       href: '/shipping', 
       label: 'Shipping', 
       icon: Ship,
@@ -59,16 +69,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ]
     },
     { 
-      href: '/asset-verification', 
-      label: 'Asset Verification', 
-      icon: CheckCircle,
-      subLinks: [
-        { href: '/asset-verification', label: 'Commodity & Agri', icon: Sprout },
-        { href: '/asset-verification', label: 'Luxury & Gemstones', icon: Gem },
-        { href: '/asset-verification', label: 'Real Estate', icon: HomeIcon },
-      ]
-    },
-    { 
       href: '/compliance', 
       label: 'Compliance', 
       icon: GanttChartSquare,
@@ -77,6 +77,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         { href: '/compliance', label: 'Regulatory', icon: GanttChartSquare },
       ]
     },
+    {
+      href: '/oracle-providers',
+      label: 'Oracle Providers',
+      icon: DatabaseZap,
+      isPrimary: true,
+    }
   ];
 
   const getActiveAccordionItem = () => {

@@ -2,10 +2,37 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HardHat, ShieldCheck, Ship } from "lucide-react";
+import { HardHat, ShieldCheck, Ship, GanttChartSquare } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
+  const modules = [
+    {
+      href: "/shipping",
+      icon: Ship,
+      title: "Shipping & Logistics",
+      description: "Verify FOB, CIF, and track shipments in real-time with integrated IoT and customs data.",
+    },
+    {
+      href: "/insurance",
+      icon: ShieldCheck,
+      title: "Insurance & Finance",
+      description: "Automate cargo, title, and luxury goods insurance validation. Process claims and financing.",
+    },
+    {
+      href: "/quality",
+      icon: HardHat,
+      title: "Quality Control",
+      description: "Validate agricultural, gemstone, and real estate quality with certification and inspection data.",
+    },
+     {
+      href: "/compliance",
+      icon: GanttChartSquare,
+      title: "Compliance & Regulatory",
+      description: "Centralized verification for KYC, AML, and other industry-specific regulatory requirements.",
+    },
+  ];
+
   return (
     <div className="container mx-auto p-0 space-y-8">
       <div className="text-center space-y-2 mt-8">
@@ -17,46 +44,24 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Ship className="h-6 w-6 text-accent" />
-                Shipping & Logistics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Verify FOB, CIF, and track shipments in real-time with integrated IoT and customs data.
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <ShieldCheck className="h-6 w-6 text-accent" />
-                Insurance & Finance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Automate cargo, title, and luxury goods insurance validation. Process claims and financing against verified assets.
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <HardHat className="h-6 w-6 text-accent" />
-                Quality & Compliance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Validate agricultural, gemstone, and real estate quality with certification and inspection data.
-              </CardDescription>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        {modules.map((module) => (
+          <Link href={module.href} key={module.href} className="block hover:scale-[1.02] transition-transform duration-200">
+            <Card className="h-full w-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <module.icon className="h-6 w-6 text-accent" />
+                  {module.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  {module.description}
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </div>
   );

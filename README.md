@@ -4,7 +4,10 @@ Proof Ledger is a closed-loop system for end-to-end verification of shipping, in
 
 ## Technical Stack
 
--   **Frontend**: Next.js (App Router), TypeScript, Tailwind CSS, ShadCN UI
+-   **Framework**: Next.js (App Router)
+-   **Language**: TypeScript
+-   **Styling**: Tailwind CSS with ShadCN UI
+-   **Mapping**: Leaflet with OpenStreetMap
 -   **Deployment**: Vercel
 
 ---
@@ -14,15 +17,15 @@ Proof Ledger is a closed-loop system for end-to-end verification of shipping, in
 ### Prerequisites
 
 -   [Node.js](https://nodejs.org/en/) version 20 or later.
--   [Vercel CLI](https://vercel.com/docs/cli) for deployment (optional).
+-   [Vercel CLI](https://vercel.com/docs/cli) (optional, for command-line deployment).
 
 ### 1. Installation
 
-Clone the repository and install the dependencies:
+Clone the repository and install the project dependencies:
 
 ```bash
 git clone https://github.com/bellgutu/Proof-Ledger.git
-cd proof-ledger
+cd Proof-Ledger
 npm install
 ```
 
@@ -46,19 +49,18 @@ npm run build
 
 ## Deployment
 
-This application is configured for easy deployment to **Vercel**.
+This application is optimized for easy deployment to **Vercel**.
 
 ### Prerequisites
 
 1.  Create a Vercel account at [vercel.com](https://vercel.com).
-2.  Push your code to your GitHub repository.
+2.  Push your code to your GitHub repository (`https://github.com/bellgutu/Proof-Ledger`).
 
 ### Deployment Steps (via Vercel Dashboard)
 
 1.  **Import Project**: From your Vercel dashboard, click "Add New..." and select "Project".
 2.  **Import Git Repository**: Select the `Proof-Ledger` repository from your GitHub account. Vercel will automatically detect that it's a Next.js project.
-3.  **Configure Project**: You may need to add your Environment Variables (like `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) in the project settings on Vercel.
+3.  **Configure Project**: No special configuration is needed. The project is ready to be deployed as is.
 4.  **Deploy**: Click the "Deploy" button.
 
-Vercel will now build and deploy your application. The `vercel.json` file is already configured for this process.
-# Proof-Ledger
+Vercel will build and deploy your application. Any future pushes to the `main` branch will automatically trigger a new deployment.

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, Bot, Gavel, Building, Diamond, Wheat, Box, Ship, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
-import GoogleMap from "@/components/google-map";
+import dynamic from 'next/dynamic';
 
 const kycStatusData = [
   { partner: "Global Shipping Co.", status: "Verified", entity: "Logistics" },
@@ -27,6 +27,10 @@ const systemAlerts = [
     { source: "CONTRACT ALERT", message: "Shipment SH-734-556 triggered Parametric Claim", impact: "Insurance", time: "5m ago" },
     { source: "COMPLIANCE", message: "New high-risk partner pending KYC approval", impact: "Onboarding", time: "2h ago" },
 ]
+
+const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
+  ssr: false
+});
 
 
 export default function CommandCenterPage() {
@@ -93,10 +97,10 @@ export default function CommandCenterPage() {
 
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-        {/* === WIDGET 3: GLOBAL ASSET OPERATIONS === */}
+        {/* === WIDGET 3: VERIFIED ASSET STATUS VIEWER === */}
         <Card className="lg:col-span-3">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Globe size={20} /> Global Asset Operations</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Globe size={20} /> Verified Asset Status Viewer</CardTitle>
                 <CardDescription>Real-time tracking of active shipments and their status.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -115,8 +119,8 @@ export default function CommandCenterPage() {
                     </div>
                 </div>
                 <div className="h-64 w-full rounded-lg bg-secondary overflow-hidden relative">
-                    <GoogleMap />
-                     <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg text-xs">
+                    <InteractiveMap />
+                     <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg text-xs z-[1000]">
                         <Map className="h-4 w-4 inline-block mr-1 text-primary"/>
                         Showing At-Risk Shipments.
                     </div>

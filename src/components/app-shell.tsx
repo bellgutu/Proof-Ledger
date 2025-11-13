@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, ShieldCheck, FileText, BarChart, Settings, Building, GanttChartSquare, Landmark, TrendingUp, Handshake, CheckSquare, Wallet } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, ShieldCheck, FileText, BarChart, Settings, Building, GanttChartSquare, Landmark, TrendingUp, Handshake, CheckSquare } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';

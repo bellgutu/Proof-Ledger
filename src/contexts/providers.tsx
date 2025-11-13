@@ -2,7 +2,6 @@
 "use client";
 
 import { createWeb3Modal } from '@web3modal/wagmi/react'
-import { WalletProvider } from '@/contexts/wallet-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
@@ -25,7 +24,6 @@ const wagmiConfig = createConfig({
     [mainnet.id]: http(),
     [sepolia.id]: http(),
   },
-  ssr: true,
 });
 
 createWeb3Modal({
@@ -39,9 +37,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <WalletProvider>
-          {children}
-        </WalletProvider>
+        {children}
       </QueryClientProvider>
     </WagmiProvider>
   );

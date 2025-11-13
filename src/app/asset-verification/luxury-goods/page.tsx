@@ -148,8 +148,8 @@ const renderVisualsContent = (asset: AssetType, subType: LuxurySubType) => {
                 <CarouselNext />
               </Carousel>
               {extraField}
-              <Button variant="outline" className="w-full max-w-xs">
-                <FileUp className="mr-2 h-4 w-4" /> {buttonText}
+              <Button variant="outline" className="w-full max-w-xs h-12 text-base">
+                <FileUp className="mr-2 h-5 w-5" /> {buttonText}
               </Button>
             </CardContent>
         </>
@@ -235,8 +235,8 @@ const renderReVerificationContent = (asset: AssetType, subType: LuxurySubType) =
               </Button>
             </CardContent>
              <CardFooter>
-                 <Button className="w-full">
-                    <CheckCircle className="mr-2 h-4 w-4" /> Finalize & Mint Asset
+                 <Button className="w-full h-12 text-base">
+                    <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
                 </Button>
             </CardFooter>
         </>

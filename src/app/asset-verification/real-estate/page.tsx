@@ -99,7 +99,7 @@ export default function RealEstatePage() {
                 </Badge>
             </CardContent>
             <CardFooter>
-                 <Button className="w-full lg:w-auto">
+                 <Button className="w-full h-11 text-base lg:w-auto">
                     <ArrowRight className="mr-2 h-4 w-4" /> Initiate Multi-Sig Transfer
                 </Button>
             </CardFooter>
@@ -116,20 +116,20 @@ export default function RealEstatePage() {
             <CardContent className="space-y-4">
               <div>
                 <Label className="flex items-center justify-between">Title Deed <Badge variant="destructive">Required</Badge></Label>
-                <Button variant="outline" className="w-full mt-2"><FileUp className="mr-2 h-4 w-4" /> Upload PDF/DWG</Button>
+                <Button variant="outline" className="w-full mt-2 h-11 text-base"><FileUp className="mr-2 h-4 w-4" /> Upload PDF/DWG</Button>
               </div>
                <div>
                 <Label className="flex items-center justify-between">Appraisal Report <Badge variant="destructive">Required</Badge></Label>
-                <Button variant="outline" className="w-full mt-2"><FileUp className="mr-2 h-4 w-4" /> Upload PDF</Button>
+                <Button variant="outline" className="w-full mt-2 h-11 text-base"><FileUp className="mr-2 h-4 w-4" /> Upload PDF</Button>
               </div>
                <div>
                 <Label className="flex items-center justify-between">Survey Map <Badge variant="destructive">Required</Badge></Label>
-                <Button variant="outline" className="w-full mt-2"><FileUp className="mr-2 h-4 w-4" /> Upload PDF/DWG</Button>
+                <Button variant="outline" className="w-full mt-2 h-11 text-base"><FileUp className="mr-2 h-4 w-4" /> Upload PDF/DWG</Button>
               </div>
             </CardContent>
              <CardFooter>
-                 <Button className="w-full">
-                    <CheckCircle className="mr-2 h-4 w-4" /> Finalize & Mint Asset
+                 <Button className="w-full h-12 text-base">
+                    <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
                 </Button>
             </CardFooter>
           </Card>
@@ -138,3 +138,5 @@ export default function RealEstatePage() {
     </div>
   );
 }
+
+    

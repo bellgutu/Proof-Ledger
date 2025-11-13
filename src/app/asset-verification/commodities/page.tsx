@@ -64,7 +64,7 @@ export default function CommoditiesPage() {
               <CardDescription>Upload lab results for automated data extraction.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-               <Button variant="outline" className="w-full"><FileUp className="mr-2 h-4 w-4" /> Upload CoA PDF</Button>
+               <Button variant="outline" className="w-full h-12 text-base"><FileUp className="mr-2 h-5 w-5" /> Upload CoA PDF</Button>
                <div className="p-4 rounded-lg bg-secondary/50 text-sm space-y-2">
                    <p className="text-muted-foreground">AI Extractor Status: <span className="text-foreground font-medium">Ready</span></p>
                    <p className="font-mono text-xs">Awaiting document upload... will extract Protein Content, Moisture Level, etc.</p>
@@ -79,8 +79,8 @@ export default function CommoditiesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Input placeholder="Enter Container/Vessel ID..." />
-                <Button>Add</Button>
+                <Input placeholder="Enter Container/Vessel ID..." className="h-11" />
+                <Button size="lg">Add</Button>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 bg-secondary/50 p-2 rounded-lg">
@@ -99,7 +99,7 @@ export default function CommoditiesPage() {
               <CardTitle>B. Bulk Sensor Data Logging</CardTitle>
               <CardDescription>Define and monitor critical environmental thresholds.</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-4 text-center">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div className="bg-secondary/50 p-4 rounded-lg">
                     <Thermometer className="mx-auto h-6 w-6 text-primary mb-2" />
                     <p className="text-lg font-bold">12.1°C</p>
@@ -115,7 +115,7 @@ export default function CommoditiesPage() {
                     <p className="text-lg font-bold">0.2ppm</p>
                     <p className="text-xs text-muted-foreground">Contaminants</p>
                 </div>
-                <div className="col-span-3 space-y-2 text-left">
+                <div className="col-span-1 sm:col-span-3 space-y-2 text-left">
                     <Label htmlFor="tempThreshold">Temperature Threshold (&gt; 10°C)</Label>
                     <Input id="tempThreshold" type="number" defaultValue="10" />
                 </div>
@@ -128,7 +128,7 @@ export default function CommoditiesPage() {
               <CardDescription>Split or merge batches while maintaining provenance.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex gap-2 mb-4">
+                <div className="flex flex-col sm:flex-row gap-2 mb-4">
                     <Input readOnly defaultValue="BATCH-001" />
                     <Button variant="outline"><GitMerge className="h-4 w-4 mr-2" /> Merge</Button>
                     <Button variant="outline"><GitPullRequest className="h-4 w-4 mr-2" /> Split</Button>
@@ -147,8 +147,8 @@ export default function CommoditiesPage() {
                 </Table>
             </CardContent>
             <CardFooter>
-                 <Button className="w-full">
-                    <CheckCircle className="mr-2 h-4 w-4" /> Finalize & Mint Batch Assets
+                 <Button className="w-full h-12 text-base">
+                    <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Batch Assets
                 </Button>
             </CardFooter>
           </Card>
@@ -157,3 +157,5 @@ export default function CommoditiesPage() {
     </div>
   );
 }
+
+    

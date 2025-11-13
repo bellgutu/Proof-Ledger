@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { FileUp, MapPin, Anchor, AlertTriangle, Send, MoreVertical, PlusCircle, ArrowRight, Bot, GitCommit, Check, X, FileText, Gavel } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const exceptionQueue = [
@@ -20,6 +20,12 @@ const exceptionQueue = [
 
 export default function ShippingPage() {
   const [selectedException, setSelectedException] = useState<(typeof exceptionQueue[0]) | null>(exceptionQueue[0]);
+  const [eventTimestamp, setEventTimestamp] = useState('');
+
+  useEffect(() => {
+    setEventTimestamp(new Date().toLocaleString());
+  }, []);
+
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -174,7 +180,7 @@ export default function ShippingPage() {
                         <h4 className="font-semibold text-base flex items-center justify-center"><AlertTriangle className="h-5 w-5 mr-2 text-yellow-400"/>Stage 2: Event Trigger</h4>
                         <p className="text-sm mt-1">
                             <span className="text-yellow-400 font-bold">EVENT: </span>  
-                            {selectedException.issue} at {new Date().toLocaleString()}
+                            {selectedException.issue} at {eventTimestamp}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">Oracle data attests a container breach occurred while asset was in-transit.</p>
                     </div>

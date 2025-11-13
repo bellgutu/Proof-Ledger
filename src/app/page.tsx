@@ -4,8 +4,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, Bot, Gavel, Building, Diamond, Wheat, Box } from "lucide-react";
+import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, Bot, Gavel, Building, Diamond, Wheat, Box, Ship, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
+import GoogleMap from "@/components/google-map";
 
 const kycStatusData = [
   { partner: "Global Shipping Co.", status: "Verified", entity: "Logistics" },
@@ -92,52 +93,32 @@ export default function CommandCenterPage() {
 
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-        {/* === WIDGET 3: VERIFIED ASSET STATUS VIEWER === */}
+        {/* === WIDGET 3: GLOBAL ASSET OPERATIONS === */}
         <Card className="lg:col-span-3">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Globe size={20} /> Verified Asset Status Viewer</CardTitle>
-                <CardDescription>Real-time asset verification status and data integrity.</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Globe size={20} /> Global Asset Operations</CardTitle>
+                <CardDescription>Real-time tracking of active shipments and their status.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                        <Building className="h-8 w-8 mx-auto text-green-400 mb-2" />
-                        <p className="font-semibold">Real Estate</p>
-                        <p className="text-xs text-muted-foreground">99.8% Verified</p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                        <Diamond className="h-8 w-8 mx-auto text-green-400 mb-2" />
-                        <p className="font-semibold">Luxury/Gems</p>
-                        <p className="text-xs text-muted-foreground">99.9% Verified</p>
-                    </div>
-                     <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                        <Wheat className="h-8 w-8 mx-auto text-green-400 mb-2" />
-                        <p className="font-semibold">Commodities</p>
-                        <p className="text-xs text-muted-foreground">98.5% Verified</p>
-                    </div>
-                     <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                        <Box className="h-8 w-8 mx-auto text-yellow-400 mb-2" />
-                        <p className="font-semibold">Shipping</p>
-                        <p className="text-xs text-muted-foreground">3% At Risk</p>
-                    </div>
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-lg bg-secondary/50">
-                        <p className="text-sm text-muted-foreground">At-Risk Assets</p>
+                     <div className="p-4 rounded-lg bg-secondary/50">
+                        <p className="text-sm text-muted-foreground">Shipments In-Transit</p>
+                        <p className="text-4xl font-bold">128</p>
+                    </div>
+                     <div className="p-4 rounded-lg bg-secondary/50">
+                        <p className="text-sm text-muted-foreground">At-Risk Shipments</p>
                         <p className="text-4xl font-bold text-yellow-400">8</p>
                     </div>
-                    <div className="p-4 rounded-lg bg-secondary/50">
-                         <p className="text-sm text-muted-foreground">Provenance Integrity</p>
-                        <p className="text-4xl font-bold text-green-400">99.7%</p>
+                     <div className="p-4 rounded-lg bg-secondary/50">
+                         <p className="text-sm text-muted-foreground">FOB/CIF Verified (24h)</p>
+                        <p className="text-4xl font-bold text-green-400">42</p>
                     </div>
-                     <div className="sm:col-span-3 lg:sm:col-span-1 p-4 rounded-lg bg-secondary/50 space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Live Sensor Alerts</p>
-                        <div className="text-xs space-y-1">
-                            <p className="font-mono text-red-400">Tamper Alert: Asset #...f4d5</p>
-                            <p className="font-mono text-yellow-400">Temp Breach: Batch #...a1c2</p>
-                            <p className="font-mono text-yellow-400">Temp Breach: Batch #...b3e8</p>
-                        </div>
+                </div>
+                <div className="h-64 w-full rounded-lg bg-secondary overflow-hidden relative">
+                    <GoogleMap />
+                     <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg text-xs">
+                        <Map className="h-4 w-4 inline-block mr-1 text-primary"/>
+                        Showing At-Risk Shipments.
                     </div>
                 </div>
             </CardContent>
@@ -200,6 +181,3 @@ export default function CommandCenterPage() {
     </div>
   );
 }
-
-
-    

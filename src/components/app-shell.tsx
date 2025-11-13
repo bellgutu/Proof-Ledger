@@ -1,8 +1,9 @@
+
 "use client";
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, HardHat } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -28,6 +29,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
   
+  const navLinks = [
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/shipping', label: 'Shipping', icon: Ship },
+    { href: '/insurance', label: 'Insurance', icon: ShieldCheck },
+    { href: '/quality', label: 'Quality', icon: HardHat },
+  ];
+
   return (
     <div className="flex flex-col min-h-screen lg:flex-row bg-secondary/40">
       <aside className="bg-card text-card-foreground w-full lg:w-72 p-4 flex-shrink-0 lg:h-screen lg:sticky lg:top-0 border-b lg:border-r">
@@ -40,16 +48,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
         </div>
         <nav className="flex flex-col h-[calc(100%-80px)]">
-            <Link
-                href="/"
+          <div className="flex flex-col gap-2">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
                 className={cn(
-                    buttonVariants({ variant: pathname === '/' ? 'secondary' : 'ghost' }),
-                    "w-full flex items-center justify-start text-left text-base font-semibold py-6"
+                  buttonVariants({ variant: pathname === link.href ? 'secondary' : 'ghost' }),
+                  "w-full flex items-center justify-start text-left text-base font-semibold py-6"
                 )}
-                >
-                <div className="mr-3"><LayoutDashboard size={20}/></div>
-                <span>Dashboard</span>
-            </Link>
+              >
+                <div className="mr-3"><link.icon size={20}/></div>
+                <span>{link.label}</span>
+              </Link>
+            ))}
+          </div>
 
           <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
              <Link

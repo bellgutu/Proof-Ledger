@@ -2,49 +2,44 @@
 "use client";
 
 import React from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAccount, useDisconnect } from 'wagmi';
 import { Button, type ButtonProps } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { ChevronDown, LogOut } from 'lucide-react';
 
-export function ConnectWallet({ variant = "default", className }: { variant?: ButtonProps["variant"], className?: string }) {
+function ConnectWallet({ variant, className }: ButtonProps) {
+  const { open } = useWeb3Modal();
   const { address, isConnected } = useAccount();
-  const { connectors, connect } = useConnect();
   const { disconnect } = useDisconnect();
 
-  if (isConnected && address) {
+  if (!isConnected) {
     return (
-       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant={variant} className={cn("w-full md:w-auto", className)}>
-            {address.slice(0, 6)}...{address.slice(-4)}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => disconnect()}>
-            Disconnect
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button variant={variant} className={cn(className)} onClick={() => open()}>
+        Connect Wallet
+      </Button>
     );
   }
 
+  const truncatedAddress = `${address?.slice(0, 6)}...${address?.slice(-4)}`;
+
   return (
     <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-             <Button variant={variant} className={cn("w-full md:w-auto", className)}>
-                Connect Wallet
-            </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Connect with</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {connectors.map((connector) => (
-                <DropdownMenuItem key={connector.uid} onClick={() => connect({ connector })}>
-                    {connector.name}
-                </DropdownMenuItem>
-            ))}
-        </DropdownMenuContent>
+      <DropdownMenuTrigger asChild>
+        <Button variant={variant} className={cn("flex items-center gap-2", className)}>
+          <span>{truncatedAddress}</span>
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => disconnect()} className="cursor-pointer">
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Disconnect</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+
+export { ConnectWallet };

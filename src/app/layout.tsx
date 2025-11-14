@@ -4,7 +4,6 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
 import { Web3Provider } from '@/components/web3-provider';
-import { headers } from 'next/headers';
 
 export const metadata: Metadata = {
   title: 'Proof Ledger',
@@ -12,13 +11,11 @@ export const metadata: Metadata = {
     'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headersObj = await headers();
-  const cookies = headersObj.get('cookie');
 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
@@ -38,7 +35,7 @@ export default async function RootLayout({
           crossOrigin=""/>
       </head>
       <body className="font-body antialiased">
-        <Web3Provider cookies={cookies}>
+        <Web3Provider>
           <AppShell>{children}</AppShell>
           <Toaster />
         </Web3Provider>

@@ -1,44 +1,18 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAccount, useDisconnect } from 'wagmi';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Wallet, LogOut, FileCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-
 export function ConnectWallet({ variant = "default", className }: { variant?: ButtonProps["variant"], className?: string }) {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [address, setAddress] = useState<string | null>(null);
-
-  const connectWallet = useCallback(async () => {
-    setIsConnecting(true);
-    // Simulate a network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const mockAddress = '0x84d436A568A5C2D3B24F3319808d928221B20A7B';
-    setAddress(mockAddress);
-    setIsConnected(true);
-    setIsConnecting(false);
-    localStorage.setItem('mockWalletConnected', 'true');
-    localStorage.setItem('mockWalletAddress', mockAddress);
-  }, []);
-
-  const disconnect = useCallback(() => {
-    setIsConnected(false);
-    setAddress(null);
-    localStorage.removeItem('mockWalletConnected');
-    localStorage.removeItem('mockWalletAddress');
-  }, []);
-
-  useEffect(() => {
-    if (localStorage.getItem('mockWalletConnected') === 'true') {
-      setAddress(localStorage.getItem('mockWalletAddress'));
-      setIsConnected(true);
-    }
-  }, []);
+  const { open } = useWeb3Modal();
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
 
   const truncateAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -60,7 +34,7 @@ export function ConnectWallet({ variant = "default", className }: { variant?: Bu
                 View Compliance Status
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={disconnect}>
+          <DropdownMenuItem onClick={() => disconnect()}>
             <LogOut size={16} className="mr-2" />
             Disconnect
           </DropdownMenuItem>
@@ -71,15 +45,14 @@ export function ConnectWallet({ variant = "default", className }: { variant?: Bu
 
   return (
     <Button 
-      onClick={connectWallet} 
-      disabled={isConnecting}
+      onClick={() => open()} 
       variant={variant}
       className={cn(
         "bg-cyan-600 hover:bg-cyan-700 text-white",
         variant === 'outline' && "border-cyan-600 text-cyan-600 hover:bg-cyan-600/10 hover:text-cyan-500",
         className
     )}>
-      {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+      Connect Wallet
     </Button>
   );
 }

@@ -1,23 +1,22 @@
-
 "use client";
 
 import React from 'react';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors'
+import { useAccount, useDisconnect } from 'wagmi';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, LogOut } from 'lucide-react';
 
 
 function ConnectWallet({ variant, className }: ButtonProps) {
-  const { address, isConnected } = useAccount()
-  const { connect } = useConnect()
-  const { disconnect } = useDisconnect()
+  const { open } = useWeb3Modal();
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
 
   if (!isConnected) {
     return (
-      <Button variant={variant} className={cn(className)} onClick={() => connect({ connector: injected() })}>
+      <Button variant={variant} className={cn(className)} onClick={() => open()}>
         Connect Wallet
       </Button>
     );

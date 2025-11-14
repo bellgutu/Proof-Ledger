@@ -2,15 +2,14 @@
 "use client";
 
 import React from 'react';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { Button, type ButtonProps } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 export function ConnectWallet({ variant = "default", className }: { variant?: ButtonProps["variant"], className?: string }) {
-  const { open } = useWeb3Modal();
   const { address, isConnected } = useAccount();
+  const { connectors, connect } = useConnect();
   const { disconnect } = useDisconnect();
 
   if (isConnected && address) {
@@ -31,8 +30,21 @@ export function ConnectWallet({ variant = "default", className }: { variant?: Bu
   }
 
   return (
-    <Button onClick={() => open()} variant={variant} className={cn("w-full md:w-auto", className)}>
-      Connect Wallet
-    </Button>
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+             <Button variant={variant} className={cn("w-full md:w-auto", className)}>
+                Connect Wallet
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Connect with</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {connectors.map((connector) => (
+                <DropdownMenuItem key={connector.uid} onClick={() => connect({ connector })}>
+                    {connector.name}
+                </DropdownMenuItem>
+            ))}
+        </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

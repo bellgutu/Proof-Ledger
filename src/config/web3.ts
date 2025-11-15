@@ -2,7 +2,7 @@
 import { createWeb3Modal, defaultConfig } from '@web3modal/ethers/react';
 
 // 1. Get projectId
-export const projectId = '72ce27d6c08f163e01daa618f3175370';
+export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
 
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
@@ -41,9 +41,7 @@ const ethersConfig = defaultConfig({
   /*Optional*/
   enableEIP6963: true, // true by default
   enableInjected: true, // true by default
-  enableCoinbase: true, // true by default
-  rpcUrl: '...', // used for the Coinbase SDK
-  defaultChainId: 1, // used for the Coinbase SDK
+  enableCoinbase: false, // false by default
 });
 
 // 5. Create a Web3Modal instance

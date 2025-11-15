@@ -28,6 +28,7 @@ This document provides a detailed breakdown of every feature and page within the
 -   **Framework**: Next.js (App Router)
 -   **Language**: TypeScript
 -   **Styling**: Tailwind CSS with ShadCN UI
+-   **Wallet Integration**: Web3Modal with WalletConnect, enabling connectivity with over 500 wallet types. Users can connect seamlessly via browser extensions or use a QR code for fast, secure mobile wallet connections.
 -   **Mapping**: Leaflet with OpenStreetMap
 -   **Deployment**: Vercel
 

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
+import Web3Provider from '@/components/web3-provider';
 
 export const metadata: Metadata = {
   title: 'Proof Ledger',
@@ -34,8 +35,10 @@ export default function RootLayout({
           crossOrigin=""/>
       </head>
       <body className="font-body antialiased">
-        <AppShell>{children}</AppShell>
-        <Toaster />
+        <Web3Provider>
+          <AppShell>{children}</AppShell>
+          <Toaster />
+        </Web3Provider>
       </body>
     </html>
   );

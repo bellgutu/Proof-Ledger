@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X, Wallet } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { ConnectButton } from './connect-button';
 
 const navLinks = [
   { 
@@ -277,14 +278,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </Button>
-              <Button><Wallet className="mr-2 h-4 w-4" />Connect Wallet</Button>
+              <ConnectButton />
             </div>
         </header>
         <header className="hidden lg:flex items-center justify-end h-16 px-8 gap-4 sticky top-0 z-40 bg-card/80 backdrop-blur-sm border-b">
             <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </Button>
-            <Button><Wallet className="mr-2 h-4 w-4" />Connect Wallet</Button>
+            <ConnectButton />
         </header>
         <div className="p-4 md:p-6 lg:p-8">
           {children}

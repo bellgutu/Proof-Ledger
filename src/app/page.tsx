@@ -38,7 +38,7 @@ export default function CommandCenterPage() {
   return (
     <div className="container mx-auto p-0 space-y-6">
       <div className="text-left">
-        <h1 className="text-4xl font-bold tracking-tight text-primary">Enterprise Command Center</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-primary">Ledger Overview</h1>
         <p className="text-lg text-muted-foreground">Risk & Financial Triage Dashboard</p>
       </div>
       

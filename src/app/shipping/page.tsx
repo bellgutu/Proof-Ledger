@@ -23,6 +23,7 @@ export default function ShippingPage() {
   const [eventTimestamp, setEventTimestamp] = useState('');
 
   useEffect(() => {
+    // This will only run on the client, after hydration
     setEventTimestamp(new Date().toLocaleString());
   }, []);
 
@@ -179,8 +180,9 @@ export default function ShippingPage() {
                     <div className="md:col-span-2 p-4 bg-secondary rounded-lg text-center">
                         <h4 className="font-semibold text-base flex items-center justify-center"><AlertTriangle className="h-5 w-5 mr-2 text-yellow-400"/>Stage 2: Event Trigger</h4>
                         <p className="text-sm mt-1">
-                            <span className="text-yellow-400 font-bold">EVENT: </span>  
-                            {selectedException.issue} at {eventTimestamp}
+                          <span className="text-yellow-400 font-bold">EVENT: </span>  
+                          {selectedException.issue} 
+                          {eventTimestamp && ` at ${eventTimestamp}`}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">Oracle data attests a container breach occurred while asset was in-transit.</p>
                     </div>

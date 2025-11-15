@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FileUp, MapPin, Building, ShieldAlert, Users, CheckCircle, ArrowRight } from "lucide-react";
 import Image from "next/image";
-import { ConnectWallet } from "@/components/connect-wallet";
 
 export default function RealEstatePage() {
   return (
@@ -129,7 +128,7 @@ export default function RealEstatePage() {
               </div>
             </CardContent>
              <CardFooter className="gap-2">
-                <ConnectWallet variant="outline" />
+                <Button variant="outline">Connect Wallet</Button>
                 <Button className="w-full h-12 text-base">
                     <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
                 </Button>

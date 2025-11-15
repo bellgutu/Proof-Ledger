@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileUp, Wheat, Thermometer, Droplets, FlaskConical, CheckCircle, Ship, GitMerge, GitPullRequest, Search, Beaker, Unplug, Coffee, Wind, HardHat, LandPlot } from "lucide-react";
-import { ConnectWallet } from '@/components/connect-wallet';
 
 type CommodityType = 'wheat' | 'coffee' | 'oil' | 'steel' | '';
 
@@ -229,7 +228,7 @@ export default function CommoditiesPage() {
                 </Table>
             </CardContent>
             <CardFooter className="gap-2">
-                 <ConnectWallet variant="outline" />
+                 <Button variant="outline">Connect Wallet</Button>
                  <Button className="w-full h-12 text-base">
                     <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Batch Assets
                 </Button>

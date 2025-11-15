@@ -1,32 +1,18 @@
 
 'use client'
 
-import { createWeb3Modal, defaultConfig } from '@web3modal/ethers/react'
+import { createWeb3Modal } from '@web3modal/wagmi/react'
+import { walletConnect, injected, coinbaseWallet } from 'wagmi/connectors'
+import { createConfig, http, WagmiProvider } from 'wagmi'
+import { mainnet, arbitrum } from 'wagmi/chains'
+import React from 'react'
 
-// 1. Get projectId
+// 1. Get projectId from https://cloud.walletconnect.com
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID
 
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set')
 
-// 2. Set chains
-const mainnet = {
-  chainId: 1,
-  name: 'Ethereum',
-  currency: 'ETH',
-  explorerUrl: 'https://etherscan.io',
-  rpcUrl: 'https://cloudflare-eth.com'
-}
-
-const arbitrum = {
-    chainId: 42161,
-    name: 'Arbitrum',
-    currency: 'ETH',
-    explorerUrl: 'https://arbiscan.io',
-    rpcUrl: 'https://arb1.arbitrum.io/rpc'
-}
-
-
-// 3. Create a metadata object
+// 2. Create wagmiConfig
 const metadata = {
   name: 'Proof Ledger',
   description: 'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
@@ -34,23 +20,27 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 }
 
-// 4. Create Ethers config
-const ethersConfig = defaultConfig({
-  /*Required*/
-  metadata,
-
-  /*Optional*/
-  enableEIP6963: true, // true by default
-  enableInjected: true, // true by default
-  enableCoinbase: true, // true by default
-  rpcUrl: '...', // used for the Coinbase SDK
-  defaultChainId: 1, // used for the Coinbase SDK
+const chains = [mainnet, arbitrum] as const
+export const config = createConfig({
+  chains,
+  transports: {
+    [mainnet.id]: http(),
+    [arbitrum.id]: http()
+  },
+  connectors: [
+    walletConnect({ projectId, metadata, showQrModal: false }),
+    injected({ shimDisconnect: true }),
+    coinbaseWallet({
+      appName: metadata.name,
+      appLogoUrl: metadata.icons[0]
+    })
+  ],
+  ssr: true,
 })
 
-// 5. Create a Web3Modal instance
+// 3. Create modal
 createWeb3Modal({
-  ethersConfig,
-  chains: [mainnet, arbitrum],
+  wagmiConfig: config,
   projectId,
   enableAnalytics: true, // Optional - defaults to your Cloud configuration
   themeVariables: {
@@ -62,6 +52,6 @@ createWeb3Modal({
   }
 })
 
-export function Web3ModalProvider({ children }: {children: React.ReactNode}) {
-  return children;
+export function Web3ModalProvider({ children }: { children: React.ReactNode }) {
+  return <WagmiProvider config={config}>{children}</WagmiProvider>
 }

@@ -3,12 +3,11 @@
 
 import { createWeb3Modal } from '@web3modal/wagmi/react'
 import { walletConnect, injected, coinbaseWallet } from 'wagmi/connectors'
-import { createConfig, http, WagmiProvider } from 'wagmi'
+import { createConfig, http } from 'wagmi'
 import { mainnet, arbitrum } from 'wagmi/chains'
-import React from 'react'
 
 // 1. Get projectId from https://cloud.walletconnect.com
-export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID
+export const projectId = '72ce27d6c08f163e01daa618f3175370'
 
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set')
 
@@ -51,7 +50,3 @@ createWeb3Modal({
     '--w3m-font-family': 'Inter, sans-serif',
   }
 })
-
-export function Web3ModalProvider({ children }: { children: React.ReactNode }) {
-  return <WagmiProvider config={config}>{children}</WagmiProvider>
-}

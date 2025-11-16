@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 
 // This is a placeholder API route to demonstrate creating an integration.
@@ -24,9 +23,7 @@ export async function POST(request: Request) {
     headers: {
       accept: 'application/json',
       'content-type': 'application/json',
-      // Note: The header is 'Authorization', not 'ApiKey'. 
-      // Using 'Authorization' with a Bearer token is standard.
-      'Authorization': `Bearer ${apiKey}`,
+      'ApiKey': apiKey,
     },
     body: JSON.stringify({ name: integrationName }) // In a real request, you'd send a body
   };

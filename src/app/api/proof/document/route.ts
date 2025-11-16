@@ -22,9 +22,7 @@ export async function GET(request: Request) {
     method: 'GET',
     headers: {
       accept: 'application/json',
-      // Note: The header is 'Authorization', not 'ApiKey'. 
-      // Using 'Authorization' with a Bearer token is standard.
-      'Authorization': `Bearer ${apiKey}`,
+      'ApiKey': apiKey,
     },
   };
 

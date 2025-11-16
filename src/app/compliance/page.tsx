@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,10 +20,11 @@ type Partner = {
 // which in turn securely calls the Proof.com SCIM API.
 async function fetchProofPartners(): Promise<Partner[]> {
     console.log("Fetching partners from internal API route...");
-    // In a real app, you would use fetch() here:
     const response = await fetch('/api/proof/users');
     if (!response.ok) {
-       throw new Error('Failed to fetch partners');
+       // You can get more specific error messages from the API route
+       const errorBody = await response.json();
+       throw new Error(errorBody.error || 'Failed to fetch partners');
     }
     const data = await response.json();
     // The SCIM API returns users in a 'Resources' array
@@ -45,7 +45,7 @@ export default function CompliancePage() {
         setIsLoading(false);
     }).catch(error => {
         console.error("Failed to fetch partners:", error);
-        setError("Failed to load partner data. Please check the API key and server logs.");
+        setError(`Failed to load partner data. The API key might be invalid or the service may be down. Please check the server logs for more details.`);
         setIsLoading(false);
     });
   }, []);
@@ -89,7 +89,7 @@ export default function CompliancePage() {
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
+                                Array.from({ length: 3 }).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                                         <TableCell className="text-right"><Skeleton className="h-5 w-[80px] inline-block" /></TableCell>

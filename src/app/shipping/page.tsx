@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileUp, MapPin, Anchor, AlertTriangle, Send, MoreVertical, PlusCircle, ArrowRight, Bot, GitCommit, Check, X, FileText, Gavel } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const exceptionQueue = [
     { id: 'SH-734-556', issue: "Tamper Alert Triggered", priority: "Critical", status: "Action Required" },
@@ -21,11 +22,37 @@ const exceptionQueue = [
 export default function ShippingPage() {
   const [selectedException, setSelectedException] = useState<(typeof exceptionQueue[0]) | null>(exceptionQueue[0]);
   const [eventTimestamp, setEventTimestamp] = useState('');
+  const { toast } = useToast();
+
 
   useEffect(() => {
     // This will only run on the client, after hydration
     setEventTimestamp(new Date().toLocaleString());
   }, []);
+
+  const handleFetchDocument = async (docType: string) => {
+    try {
+        const response = await fetch('/api/proof/document');
+        if (!response.ok) {
+            throw new Error("Failed to fetch document");
+        }
+        const data = await response.json();
+        toast({
+            title: `Fetched Document: ${docType}`,
+            description: (
+                <pre className="mt-2 w-full rounded-md bg-secondary p-4">
+                    <code className="text-foreground">{JSON.stringify(data, null, 2)}</code>
+                </pre>
+            ),
+        });
+    } catch (error: any) {
+         toast({
+            title: "Error",
+            description: error.message || "Could not fetch document details.",
+            variant: "destructive"
+        });
+    }
+  }
 
 
   return (
@@ -153,7 +180,7 @@ export default function ShippingPage() {
                         </div>
                         <div className="flex justify-between items-center text-sm pt-2 border-t">
                              <span className="text-muted-foreground">Visuals</span>
-                             <Button variant="ghost" size="sm"><FileText className="h-4 w-4 mr-1"/> View Hashed Photos</Button>
+                             <Button variant="ghost" size="sm" onClick={() => handleFetchDocument("Pre-Transit VSS")}><FileText className="h-4 w-4 mr-1"/> View Hashed Photos</Button>
                         </div>
                     </div>
                     {/* After Snapshot */}
@@ -173,7 +200,7 @@ export default function ShippingPage() {
                         </div>
                          <div className="flex justify-between items-center text-sm pt-2 border-t border-destructive/30">
                              <span className="text-muted-foreground">Evidence</span>
-                             <Button variant="ghost" size="sm"><FileText className="h-4 w-4 mr-1"/> View Damage Photos</Button>
+                             <Button variant="ghost" size="sm" onClick={() => handleFetchDocument("Post-Damage VSS")}><FileText className="h-4 w-4 mr-1"/> View Damage Photos</Button>
                         </div>
                     </div>
                     {/* Trigger */}

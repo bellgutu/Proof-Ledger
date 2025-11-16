@@ -13,7 +13,9 @@ export async function POST(request: Request) {
   }
 
   // In a real app, you might pass a name or configuration in the request body
-  // const body = await request.json();
+  const body = await request.json();
+  const integrationName = body.name || "Default Integration";
+
 
   const url = 'https://api.proof.com/v1/integrations';
   
@@ -26,7 +28,7 @@ export async function POST(request: Request) {
       // Using 'Authorization' with a Bearer token is standard.
       'Authorization': `Bearer ${apiKey}`,
     },
-    // body: JSON.stringify(body) // In a real request, you'd send a body
+    body: JSON.stringify({ name: integrationName }) // In a real request, you'd send a body
   };
 
   try {
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
     
     const mockData = {
       id: `int_${new Date().getTime()}`,
-      name: "New Webhook Integration",
+      name: integrationName,
       status: "active",
       created: new Date().toISOString()
     };

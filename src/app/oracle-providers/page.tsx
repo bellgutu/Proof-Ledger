@@ -22,10 +22,12 @@ const paymentLedgerData = [
 ];
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
+type IntegrationName = "ADOBE" | "DOCUTECH";
 
 export default function OracleProvidersPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [certificationType, setCertificationType] = useState<CertificationType | ''>('');
+    const [integrationName, setIntegrationName] = useState<IntegrationName | ''>('');
     const { toast } = useToast();
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -42,8 +44,22 @@ export default function OracleProvidersPage() {
     }
 
     const handleCreateIntegration = async () => {
+        if (!integrationName) {
+            toast({
+                title: "Error",
+                description: "Please select an integration name.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         try {
-            const response = await fetch('/api/proof/integrations', { method: 'POST' });
+            const response = await fetch('/api/proof/integrations', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: integrationName }),
+            });
+
             if (!response.ok) {
                 throw new Error("Failed to create integration.");
             }
@@ -316,9 +332,21 @@ export default function OracleProvidersPage() {
                         <Label>API Endpoint</Label>
                         <Input readOnly value="https://api.proofledger.app/v1/attest" className="font-mono" />
                    </div>
+                   <div className="space-y-2 pt-4 border-t">
+                      <Label htmlFor="integrationName">New Integration Name</Label>
+                      <Select onValueChange={(value: IntegrationName) => setIntegrationName(value)}>
+                          <SelectTrigger id="integrationName">
+                              <SelectValue placeholder="Select integration..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="ADOBE">ADOBE</SelectItem>
+                              <SelectItem value="DOCUTECH">DOCUTECH</SelectItem>
+                          </SelectContent>
+                      </Select>
+                   </div>
                 </CardContent>
                 <CardFooter className="flex-col gap-2">
-                    <Button variant="outline" className="w-full" onClick={handleCreateIntegration}>
+                    <Button variant="outline" className="w-full" onClick={handleCreateIntegration} disabled={!integrationName}>
                         <GitBranch className="mr-2 h-4 w-4" /> Create New Integration
                     </Button>
                     <Button variant="secondary" className="w-full">View API Documentation</Button>

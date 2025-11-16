@@ -12,52 +12,47 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
-const mockPartners = [
-    { name: "Global Shipping Co.", status: "Verified" },
-    { name: "Precious Gems Inc.", status: "Verified" },
-    { name: "AgriSource", status: "Pending" },
-    { name: "Financier Alliance", status: "Verified" },
-    { name: "PropertyVerifier", status: "Revoked" },
-];
-
 type Partner = {
-    name: string;
-    status: "Verified" | "Pending" | "Revoked" | string;
+    displayName: string;
+    active: boolean;
 };
 
-// This function simulates a call to the Proof.com SCIM API's "List Users" endpoint.
-// In a real application, this would securely fetch data from your backend,
-// which in turn calls the Proof.com API.
+// This function now fetches data from our own Next.js API route,
+// which in turn securely calls the Proof.com SCIM API.
 async function fetchProofPartners(): Promise<Partner[]> {
-    console.log("Fetching partners from Proof.com SCIM API...");
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.log("Fetching partners from internal API route...");
     // In a real app, you would use fetch() here:
-    // const response = await fetch('/api/proof/users');
-    // if (!response.ok) {
-    //   throw new Error('Failed to fetch partners');
-    // }
-    // const data = await response.json();
-    // return data.Resources; // Assuming the API returns users in a 'Resources' array
-    return mockPartners; // Returning mock data for now
+    const response = await fetch('/api/proof/users');
+    if (!response.ok) {
+       throw new Error('Failed to fetch partners');
+    }
+    const data = await response.json();
+    // The SCIM API returns users in a 'Resources' array
+    return data.Resources || [];
 }
 
 
 export default function CompliancePage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
+    setError(null);
     fetchProofPartners().then(data => {
         setPartners(data);
         setIsLoading(false);
     }).catch(error => {
         console.error("Failed to fetch partners:", error);
-        // Handle error state in UI if necessary
+        setError("Failed to load partner data. Please check the API key and server logs.");
         setIsLoading(false);
     });
   }, []);
+
+  const getStatus = (active: boolean) => {
+    return active ? "Verified" : "Inactive";
+  }
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -84,6 +79,7 @@ export default function CompliancePage() {
                         <Button variant="outline">Search</Button>
                         <Button><PlusCircle className="h-4 w-4" /></Button>
                     </div>
+                    {error && <div className="text-red-500 text-sm bg-red-500/10 p-3 rounded-md">{error}</div>}
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -101,22 +97,21 @@ export default function CompliancePage() {
                                 ))
                             ) : (
                                 partners.map(p => (
-                                    <TableRow key={p.name}>
-                                        <TableCell className="font-medium">{p.name}</TableCell>
+                                    <TableRow key={p.displayName}>
+                                        <TableCell className="font-medium">{p.displayName}</TableCell>
                                         <TableCell className="text-right">
                                             <Badge 
-                                                variant={p.status === 'Verified' ? 'default' : p.status === 'Pending' ? 'secondary' : 'destructive'}
+                                                variant={p.active ? 'default' : 'secondary'}
                                                 className={cn(
-                                                    p.status === 'Verified' && 'bg-green-600/20 text-green-300 border-green-500/30'
+                                                    p.active && 'bg-green-600/20 text-green-300 border-green-500/30'
                                                 )}
                                             >
                                                  <div className={cn(
                                                     "w-2 h-2 rounded-full mr-2",
-                                                    p.status === 'Verified' && 'bg-green-400',
-                                                    p.status === 'Pending' && 'bg-yellow-400',
-                                                    p.status === 'Revoked' && 'bg-red-400',
+                                                    p.active && 'bg-green-400',
+                                                    !p.active && 'bg-yellow-400',
                                                 )}></div>
-                                                {p.status}
+                                                {getStatus(p.active)}
                                             </Badge>
                                         </TableCell>
                                     </TableRow>

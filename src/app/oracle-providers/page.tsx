@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, BarChart2, Zap, Key, Copy, PlusCircle, Star } from 'lucide-react';
+import { DollarSign, BarChart2, Zap, Key, Copy, PlusCircle, Star, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -40,6 +40,30 @@ export default function OracleProvidersPage() {
             })
         }, 1500);
     }
+
+    const handleCreateIntegration = async () => {
+        try {
+            const response = await fetch('/api/proof/integrations', { method: 'POST' });
+            if (!response.ok) {
+                throw new Error("Failed to create integration.");
+            }
+            const data = await response.json();
+            toast({
+                title: "Integration Created",
+                description: (
+                    <pre className="mt-2 w-full rounded-md bg-secondary p-4">
+                        <code className="text-foreground">{JSON.stringify(data, null, 2)}</code>
+                    </pre>
+                ),
+            });
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Could not create integration.",
+                variant: "destructive"
+            });
+        }
+    };
 
     const copyApiKey = () => {
         navigator.clipboard.writeText('pl_live_xxxxxxxxxxxxxxxxxxxxxxxx');
@@ -273,10 +297,10 @@ export default function OracleProvidersPage() {
                     </CardFooter>
                 </form>
             </Card>
-             <Card>
+            <Card>
                 <CardHeader>
-                    <CardTitle>Verified Data Submission API</CardTitle>
-                    <CardDescription>Integrate your systems with our platform for automated, real-time data feeds.</CardDescription>
+                    <CardTitle>API & Integrations</CardTitle>
+                    <CardDescription>Manage keys and automated system connections.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                    <div className="space-y-2">
@@ -293,7 +317,10 @@ export default function OracleProvidersPage() {
                         <Input readOnly value="https://api.proofledger.app/v1/attest" className="font-mono" />
                    </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex-col gap-2">
+                    <Button variant="outline" className="w-full" onClick={handleCreateIntegration}>
+                        <GitBranch className="mr-2 h-4 w-4" /> Create New Integration
+                    </Button>
                     <Button variant="secondary" className="w-full">View API Documentation</Button>
                 </CardFooter>
             </Card>

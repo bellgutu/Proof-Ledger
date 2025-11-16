@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, MoreVertical, Download, Shield, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
-const partners = [
+const mockPartners = [
     { name: "Global Shipping Co.", status: "Verified" },
     { name: "Precious Gems Inc.", status: "Verified" },
     { name: "AgriSource", status: "Pending" },
@@ -18,7 +20,33 @@ const partners = [
     { name: "PropertyVerifier", status: "Revoked" },
 ];
 
+type Partner = {
+    name: string;
+    status: "Verified" | "Pending" | "Revoked" | string;
+};
+
 export default function CompliancePage() {
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate fetching data from an API like Proof.com
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+        // In a real app, you would use fetch() here:
+        // fetch('https://api.proof.com/v1/partners')
+        //   .then(res => res.json())
+        //   .then(data => {
+        //       setPartners(data);
+        //       setIsLoading(false);
+        //   });
+        setPartners(mockPartners);
+        setIsLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="container mx-auto p-0 space-y-8">
       <div className="text-left space-y-2">
@@ -52,27 +80,36 @@ export default function CompliancePage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {partners.map(p => (
-                                <TableRow key={p.name}>
-                                    <TableCell className="font-medium">{p.name}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Badge 
-                                            variant={p.status === 'Verified' ? 'default' : p.status === 'Pending' ? 'secondary' : 'destructive'}
-                                            className={cn(
-                                                p.status === 'Verified' && 'bg-green-600/20 text-green-300 border-green-500/30'
-                                            )}
-                                        >
-                                             <div className={cn(
-                                                "w-2 h-2 rounded-full mr-2",
-                                                p.status === 'Verified' && 'bg-green-400',
-                                                p.status === 'Pending' && 'bg-yellow-400',
-                                                p.status === 'Revoked' && 'bg-red-400',
-                                            )}></div>
-                                            {p.status}
-                                        </Badge>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                        <TableCell className="text-right"><Skeleton className="h-5 w-[80px] inline-block" /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                partners.map(p => (
+                                    <TableRow key={p.name}>
+                                        <TableCell className="font-medium">{p.name}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Badge 
+                                                variant={p.status === 'Verified' ? 'default' : p.status === 'Pending' ? 'secondary' : 'destructive'}
+                                                className={cn(
+                                                    p.status === 'Verified' && 'bg-green-600/20 text-green-300 border-green-500/30'
+                                                )}
+                                            >
+                                                 <div className={cn(
+                                                    "w-2 h-2 rounded-full mr-2",
+                                                    p.status === 'Verified' && 'bg-green-400',
+                                                    p.status === 'Pending' && 'bg-yellow-400',
+                                                    p.status === 'Revoked' && 'bg-red-400',
+                                                )}></div>
+                                                {p.status}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>

@@ -25,26 +25,38 @@ type Partner = {
     status: "Verified" | "Pending" | "Revoked" | string;
 };
 
+// This function simulates a call to the Proof.com SCIM API's "List Users" endpoint.
+// In a real application, this would securely fetch data from your backend,
+// which in turn calls the Proof.com API.
+async function fetchProofPartners(): Promise<Partner[]> {
+    console.log("Fetching partners from Proof.com SCIM API...");
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    // In a real app, you would use fetch() here:
+    // const response = await fetch('/api/proof/users');
+    // if (!response.ok) {
+    //   throw new Error('Failed to fetch partners');
+    // }
+    // const data = await response.json();
+    // return data.Resources; // Assuming the API returns users in a 'Resources' array
+    return mockPartners; // Returning mock data for now
+}
+
+
 export default function CompliancePage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching data from an API like Proof.com
     setIsLoading(true);
-    const timer = setTimeout(() => {
-        // In a real app, you would use fetch() here:
-        // fetch('https://api.proof.com/v1/partners')
-        //   .then(res => res.json())
-        //   .then(data => {
-        //       setPartners(data);
-        //       setIsLoading(false);
-        //   });
-        setPartners(mockPartners);
+    fetchProofPartners().then(data => {
+        setPartners(data);
         setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
+    }).catch(error => {
+        console.error("Failed to fetch partners:", error);
+        // Handle error state in UI if necessary
+        setIsLoading(false);
+    });
   }, []);
 
   return (
@@ -64,7 +76,7 @@ export default function CompliancePage() {
             <Card>
                 <CardHeader>
                     <CardTitle>KYC/AML Partner Onboarding</CardTitle>
-                    <CardDescription>Manage and verify the compliance status of all business partners.</CardDescription>
+                    <CardDescription>Manage and verify the compliance status of all business partners via Proof.com.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-2 mb-4">
@@ -216,5 +228,3 @@ export default function CompliancePage() {
     </div>
   );
 }
-
-    

@@ -1,6 +1,10 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +13,42 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, MoreVertical, Download, Shield, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
 
 
 type Partner = {
-    displayName: string;
-    active: boolean;
+  id: string;
+  userName: string;
+  displayName: string;
+  active: boolean;
+  name: {
+    givenName: string;
+    familyName: string;
+  };
+  emails: {
+    value: string;
+    type: string;
+    primary: boolean;
+  }[];
 };
+
+const formSchema = z.object({
+  givenName: z.string().min(2, { message: "First name must be at least 2 characters." }),
+  familyName: z.string().min(2, { message: "Last name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+});
+
 
 // This function now fetches data from our own Next.js API route,
 // which in turn securely calls the Proof.com SCIM API.
@@ -36,6 +70,17 @@ export default function CompliancePage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      givenName: "",
+      familyName: "",
+      email: "",
+    },
+  });
 
   useEffect(() => {
     setIsLoading(true);
@@ -53,6 +98,33 @@ export default function CompliancePage() {
   const getStatus = (active: boolean) => {
     return active ? "Verified" : "Inactive";
   }
+  
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Simulate API call and update state
+    const newUser: Partner = {
+        id: `new_${new Date().getTime()}`,
+        userName: values.email,
+        displayName: `${values.givenName} ${values.familyName}`,
+        active: true, // New users are active by default
+        name: {
+            givenName: values.givenName,
+            familyName: values.familyName,
+        },
+        emails: [{
+            value: values.email,
+            type: "work",
+            primary: true,
+        }]
+    };
+
+    setPartners(prev => [newUser, ...prev]);
+    setIsDialogOpen(false); // Close the dialog
+    form.reset(); // Reset form fields
+    toast({
+        title: "Partner Added",
+        description: `${newUser.displayName} has been successfully added.`,
+    });
+}
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -77,13 +149,72 @@ export default function CompliancePage() {
                     <div className="flex items-center gap-2 mb-4">
                         <Input placeholder="Search partner..." />
                         <Button variant="outline">Search</Button>
-                        <Button><PlusCircle className="h-4 w-4" /></Button>
+                         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                            <DialogTrigger asChild>
+                               <Button><PlusCircle className="h-4 w-4" /></Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Add New Partner</DialogTitle>
+                                    <DialogDescription>
+                                        Create a new user in the Proof.com SCIM directory.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form {...form}>
+                                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                                    <FormField
+                                      control={form.control}
+                                      name="givenName"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>First Name</FormLabel>
+                                          <FormControl>
+                                            <Input placeholder="Jane" {...field} />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                     <FormField
+                                      control={form.control}
+                                      name="familyName"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Last Name</FormLabel>
+                                          <FormControl>
+                                            <Input placeholder="Doe" {...field} />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                     <FormField
+                                      control={form.control}
+                                      name="email"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Email</FormLabel>
+                                          <FormControl>
+                                            <Input placeholder="jane.doe@example.com" {...field} />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                     <DialogFooter className="pt-4">
+                                        <Button type="submit">Create Partner</Button>
+                                    </DialogFooter>
+                                  </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                     {error && <div className="text-red-500 text-sm bg-red-500/10 p-3 rounded-md">{error}</div>}
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Partner</TableHead>
+                                <TableHead>Email</TableHead>
                                 <TableHead className="text-right">Status</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -92,13 +223,15 @@ export default function CompliancePage() {
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                        <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                                         <TableCell className="text-right"><Skeleton className="h-5 w-[80px] inline-block" /></TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 partners.map(p => (
-                                    <TableRow key={p.displayName}>
+                                    <TableRow key={p.id}>
                                         <TableCell className="font-medium">{p.displayName}</TableCell>
+                                        <TableCell className="text-muted-foreground">{p.emails[0].value}</TableCell>
                                         <TableCell className="text-right">
                                             <Badge 
                                                 variant={p.active ? 'default' : 'secondary'}
@@ -223,3 +356,5 @@ export default function CompliancePage() {
     </div>
   );
 }
+
+    

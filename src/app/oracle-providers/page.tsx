@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, BarChart2, Zap, Key, Copy, PlusCircle, Star, GitBranch, ArrowRight, UserCheck, Banknote } from 'lucide-react';
+import { DollarSign, BarChart2, Zap, Star, Copy, PlusCircle, GitBranch, UserCheck, Banknote, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -25,19 +25,24 @@ const paymentLedgerData = [
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
 type IntegrationName = "ADOBE" | "DOCUTECH";
 
-const OnboardingStep = ({ step, title, description, buttonText, href }: { step: number, title: string, description: string, buttonText: string, href?: string }) => {
+const OnboardingStep = ({ step, title, description, buttonText, href, completed }: { step: number, title: string, description: string, buttonText: string, href?: string, completed?: boolean }) => {
     const content = (
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 group">
             <div className="flex flex-col items-center">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
-                    {step}
+                <div className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold transition-colors",
+                    completed ? "bg-primary text-primary-foreground border-primary" : "bg-transparent border-border group-hover:border-primary"
+                )}>
+                    {completed ? <UserCheck size={16} /> : step}
                 </div>
-                {step < 3 && <div className="mt-2 h-10 w-px bg-border" />}
+                {step < 3 && <div className="mt-2 h-16 w-px bg-border" />}
             </div>
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 space-y-1 pt-1">
                 <h4 className="font-semibold">{title}</h4>
                 <p className="text-sm text-muted-foreground">{description}</p>
-                <Button variant="secondary" size="sm" className="mt-1">{buttonText}</Button>
+                <Button variant={completed ? "outline" : "secondary"} size="sm" className="mt-2 w-full sm:w-auto" disabled={completed}>
+                    {buttonText} <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
             </div>
         </div>
     );
@@ -314,6 +319,7 @@ export default function OracleProvidersPage() {
                         description="Verify your identity and business details via our compliance partner."
                         buttonText="Go to Compliance Hub"
                         href="/compliance"
+                        completed
                     />
                     <OnboardingStep 
                         step={2} 
@@ -328,39 +334,6 @@ export default function OracleProvidersPage() {
                         buttonText="View API Docs"
                     />
                 </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Manual Submission Console</CardTitle>
-                    <CardDescription>For human-centric workflows like inspector reports or expert appraisals.</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleSubmit}>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="dataType">Certification Type</Label>
-                             <Select onValueChange={(value: CertificationType) => setCertificationType(value)}>
-                                <SelectTrigger id="dataType">
-                                    <SelectValue placeholder="Select certification type..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="real_estate">Real Estate Title</SelectItem>
-                                    <SelectItem value="gemstone">Gemstone Grading</SelectItem>
-                                    <SelectItem value="commodity_coa">Commodity CoA</SelectItem>
-                                    <SelectItem value="shipping_event">Shipping Milestone</SelectItem>
-                                    <SelectItem value="sensor_data">Insurance/Sensor Data</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="border-t border-border -mx-6 px-6">
-                            {renderForm()}
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                         <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType}>
-                            {isSubmitting ? 'Submitting...' : 'Submit & Proof Ledger Data'}
-                        </Button>
-                    </CardFooter>
-                </form>
             </Card>
             <Card>
                 <CardHeader>
@@ -402,7 +375,40 @@ export default function OracleProvidersPage() {
                 </CardFooter>
             </Card>
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Manual Submission Console</CardTitle>
+                    <CardDescription>For human-centric workflows like inspector reports or expert appraisals.</CardDescription>
+                </CardHeader>
+                <form onSubmit={handleSubmit}>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="dataType">Certification Type</Label>
+                             <Select onValueChange={(value: CertificationType) => setCertificationType(value)}>
+                                <SelectTrigger id="dataType">
+                                    <SelectValue placeholder="Select certification type..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="real_estate">Real Estate Title</SelectItem>
+                                    <SelectItem value="gemstone">Gemstone Grading</SelectItem>
+                                    <SelectItem value="commodity_coa">Commodity CoA</SelectItem>
+                                    <SelectItem value="shipping_event">Shipping Milestone</SelectItem>
+                                    <SelectItem value="sensor_data">Insurance/Sensor Data</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="border-t border-border -mx-6 px-6">
+                            {renderForm()}
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                         <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType}>
+                            {isSubmitting ? 'Submitting...' : 'Submit & Attest Data'}
+                        </Button>
+                    </CardFooter>
+                </form>
+            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>Payment & Audit Ledger</CardTitle>
@@ -463,3 +469,5 @@ export default function OracleProvidersPage() {
     </div>
   );
 }
+
+    

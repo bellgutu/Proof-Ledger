@@ -1,6 +1,8 @@
 
 "use client";
 import { useState } from 'react';
+import { useWriteContract } from 'wagmi';
+import { ethers } from 'ethers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
+import { contracts } from '@/config/contracts';
 
 
 const paymentLedgerData = [
@@ -25,29 +28,27 @@ const paymentLedgerData = [
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
 type IntegrationName = "ADOBE" | "DOCUTECH";
 
-const OnboardingStep = ({ step, title, description, buttonText, href, completed }: { step: number, title: string, description: string, buttonText: string, href?: string, completed?: boolean }) => {
-    const content = (
+const OnboardingStep = ({ step, title, description, children, completed }: { step: number, title: string, description: string, children: React.ReactNode, completed?: boolean }) => {
+    return (
         <div className="flex items-start gap-4 group">
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center h-full">
                 <div className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold transition-colors",
+                    "flex h-10 w-10 items-center justify-center rounded-full border-2 text-lg font-bold transition-colors",
                     completed ? "bg-primary text-primary-foreground border-primary" : "bg-transparent border-border group-hover:border-primary"
                 )}>
-                    {completed ? <UserCheck size={16} /> : step}
+                    {completed ? <UserCheck size={20} /> : step}
                 </div>
-                {step < 3 && <div className="mt-2 h-16 w-px bg-border" />}
+                {step < 3 && <div className="mt-2 h-full w-px bg-border" />}
             </div>
-            <div className="flex-1 space-y-1 pt-1">
+            <div className="flex-1 space-y-2 pt-1.5 pb-8">
                 <h4 className="font-semibold">{title}</h4>
                 <p className="text-sm text-muted-foreground">{description}</p>
-                <Button variant={completed ? "outline" : "secondary"} size="sm" className="mt-2 w-full sm:w-auto" disabled={completed}>
-                    {buttonText} <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                <div className="pt-2">
+                    {children}
+                </div>
             </div>
         </div>
     );
-
-    return href ? <Link href={href} className="w-full">{content}</Link> : content;
 };
 
 
@@ -55,7 +56,10 @@ export default function OracleProvidersPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [certificationType, setCertificationType] = useState<CertificationType | ''>('');
     const [integrationName, setIntegrationName] = useState<IntegrationName | ''>('');
+    const [stakeAmount, setStakeAmount] = useState('5');
+
     const { toast } = useToast();
+    const { writeContractAsync } = useWriteContract();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,6 +73,28 @@ export default function OracleProvidersPage() {
             })
         }, 1500);
     }
+
+    const handleRegisterOracle = async () => {
+        if (!stakeAmount || parseFloat(stakeAmount) < 5) {
+            toast({ title: "Staking Error", description: "Minimum stake is 5 ETH.", variant: "destructive"});
+            return;
+        }
+
+        try {
+            toast({ title: "Processing Transaction", description: "Please confirm in your wallet." });
+            const tx = await writeContractAsync({
+                abi: contracts.trustOracle.abi,
+                address: contracts.trustOracle.address,
+                functionName: 'registerOracle',
+                args: ['ipfs://YourMetadataURI'], // Placeholder for metadata
+                value: ethers.parseEther(stakeAmount)
+            });
+            toast({ title: "Registration Successful", description: `Transaction sent: ${tx}` });
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Registration Failed", description: error.shortMessage || error.message, variant: "destructive" });
+        }
+    };
 
     const handleCreateIntegration = async () => {
         if (!integrationName) {
@@ -318,22 +344,41 @@ export default function OracleProvidersPage() {
                         step={1} 
                         title="Complete KYC/AML Verification" 
                         description="Verify your identity and business details via our compliance partner."
-                        buttonText="Go to Compliance Hub"
-                        href="/compliance"
                         completed
-                    />
+                    >
+                        <Link href="/compliance" className="w-full">
+                            <Button variant="outline" size="sm" className="mt-2 w-full sm:w-auto" asChild>
+                                <div>View Compliance Hub <ArrowRight className="ml-2 h-4 w-4" /></div>
+                            </Button>
+                        </Link>
+                    </OnboardingStep>
                     <OnboardingStep 
                         step={2} 
                         title="Stake ETH to Register" 
                         description="Lock a minimum of 5 ETH to gain attestation rights. Your stake is slashable."
-                        buttonText="Register as Oracle"
-                    />
+                    >
+                         <div className="flex flex-col sm:flex-row items-center gap-2">
+                            <Input 
+                                type="number" 
+                                value={stakeAmount}
+                                onChange={(e) => setStakeAmount(e.target.value)}
+                                className="w-full sm:w-24"
+                                placeholder="5"
+                            />
+                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto">
+                                Register as Oracle
+                            </Button>
+                        </div>
+                    </OnboardingStep>
                      <OnboardingStep 
                         step={3} 
                         title="Start Submitting Data" 
                         description="Use the console or API to start providing verifications and earning rewards."
-                        buttonText="View API Docs"
-                    />
+                    >
+                         <Button variant="secondary" size="sm" className="mt-2 w-full sm:w-auto">
+                            View API Documentation <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </OnboardingStep>
                 </CardContent>
             </Card>
             <Card>

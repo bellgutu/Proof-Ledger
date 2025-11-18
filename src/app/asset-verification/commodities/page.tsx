@@ -148,10 +148,12 @@ export default function CommoditiesPage() {
         setSensorData(undefined); // Reset to show loading state
         
         // Use a mock asset ID prefix based on commodity
-        const assetIdPrefix = commodityType === 'wheat' ? 'AG' : 'SH';
+        const assetIdPrefix = commodityType === 'coffee' ? 'LX' : 'SH';
         const mockAssetId = `${assetIdPrefix}-mock-123`;
         
         try {
+            // Adding a delay to make loading state more visible
+            await new Promise(resolve => setTimeout(resolve, 500));
             const response = await fetch(`/api/sensor-data/${mockAssetId}`);
             if (!response.ok) throw new Error("Failed to fetch sensor data");
             const data = await response.json();
@@ -160,7 +162,7 @@ export default function CommoditiesPage() {
             setSensorData({
                 humidity: data.humidity,
                 grainTemp: data.temperature,
-                co2Level: data.co2_level,
+                co2Level: data.co2Level,
                 dewPoint: data.dew_point,
                 ambientTemp: data.ambient_temp,
                 tankLevel: data.tank_level,
@@ -346,3 +348,5 @@ export default function CommoditiesPage() {
     </div>
   );
 }
+
+    

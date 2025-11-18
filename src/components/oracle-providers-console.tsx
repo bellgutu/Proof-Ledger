@@ -28,19 +28,20 @@ const paymentLedgerData = [
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
 type IntegrationName = "ADOBE" | "DOCUTECH";
 
-const OnboardingStep = ({ step, title, description, children, completed }: { step: number, title: string, description: string, children: React.ReactNode, completed?: boolean }) => {
+const OnboardingStep = ({ step, title, description, children, completed, isActive }: { step: number, title: string, description: string, children: React.ReactNode, completed?: boolean, isActive?: boolean }) => {
     return (
         <div className="flex items-start gap-4 group">
             <div className="flex flex-col items-center h-full">
                 <div className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-full border-2 text-lg font-bold transition-colors",
-                    completed ? "bg-primary text-primary-foreground border-primary" : "bg-transparent border-border group-hover:border-primary"
+                    completed ? "bg-primary text-primary-foreground border-primary" : 
+                    isActive ? "border-primary" : "bg-transparent border-border group-hover:border-primary/50"
                 )}>
                     {completed ? <UserCheck size={20} /> : step}
                 </div>
                 {step < 3 && <div className="mt-2 h-full w-px bg-border" />}
             </div>
-            <div className="flex-1 space-y-2 pt-1.5 pb-8">
+            <div className={cn("flex-1 space-y-2 pt-1.5 pb-8", !isActive && !completed && "opacity-50")}>
                 <h4 className="font-semibold">{title}</h4>
                 <p className="text-sm text-muted-foreground">{description}</p>
                 <div className="pt-2">
@@ -57,6 +58,7 @@ export function OracleProvidersConsole() {
     const [certificationType, setCertificationType] = useState<CertificationType | ''>('');
     const [integrationName, setIntegrationName] = useState<IntegrationName | ''>('');
     const [stakeAmount, setStakeAmount] = useState('5');
+    const [isRegistered, setIsRegistered] = useState(false);
 
     const { toast } = useToast();
     const { writeContractAsync } = useWriteContract();
@@ -90,6 +92,7 @@ export function OracleProvidersConsole() {
                 value: ethers.parseEther(stakeAmount)
             });
             toast({ title: "Registration Successful", description: `Transaction sent: ${tx}` });
+            setIsRegistered(true);
         } catch (error: any) {
             console.error(error);
             toast({ title: "Registration Failed", description: error.shortMessage || error.message, variant: "destructive" });
@@ -339,12 +342,13 @@ export function OracleProvidersConsole() {
                     <CardTitle>Oracle Network Onboarding</CardTitle>
                     <CardDescription>Follow these steps to become a trusted data provider on the Proof Ledger network.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent>
                     <OnboardingStep 
                         step={1} 
                         title="Complete KYC/AML Verification" 
                         description="Verify your identity and business details via our compliance partner."
-                        completed
+                        completed={true}
+                        isActive={!isRegistered}
                     >
                         <Link href="/compliance" className="w-full">
                             <Button variant="outline" size="sm" className="mt-2 w-full sm:w-auto" asChild>
@@ -356,6 +360,8 @@ export function OracleProvidersConsole() {
                         step={2} 
                         title="Stake ETH to Register" 
                         description="Lock a minimum of 5 ETH to gain attestation rights. Your stake is slashable."
+                        completed={isRegistered}
+                        isActive={!isRegistered}
                     >
                          <div className="flex flex-col sm:flex-row items-center gap-2">
                             <Input 
@@ -364,8 +370,9 @@ export function OracleProvidersConsole() {
                                 onChange={(e) => setStakeAmount(e.target.value)}
                                 className="w-full sm:w-24"
                                 placeholder="5"
+                                disabled={isRegistered}
                             />
-                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto">
+                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered}>
                                 Register as Oracle
                             </Button>
                         </div>
@@ -374,8 +381,9 @@ export function OracleProvidersConsole() {
                         step={3} 
                         title="Start Submitting Data" 
                         description="Use the console or API to start providing verifications and earning rewards."
+                        isActive={isRegistered}
                     >
-                         <Button variant="secondary" size="sm" className="mt-2 w-full sm:w-auto">
+                         <Button variant="secondary" size="sm" className="mt-2 w-full sm:w-auto" disabled={!isRegistered}>
                             View API Documentation <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </OnboardingStep>
@@ -516,3 +524,5 @@ export function OracleProvidersConsole() {
     </div>
   );
 }
+
+    

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Building, Diamond, Wheat, MapPin, Shield, CheckCircle, Clock, FileText, Landmark, Hand, ShieldAlert } from 'lucide-react';
+import { Building, Diamond, Wheat, Hand, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -123,9 +123,13 @@ export default function AssetDetailPage() {
     const params = useParams();
     const { toast } = useToast();
     const tokenId = params.tokenId as string;
+    
     // Fallback to a default asset if the tokenId is not in our mock data
     const asset = mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]];
 
+    if (!tokenId) {
+        return <div className="container mx-auto p-8">Loading...</div>;
+    }
 
     const handleTransferCustody = () => {
         toast({

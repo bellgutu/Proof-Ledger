@@ -1,17 +1,28 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileUp, Wheat, Thermometer, Droplets, FlaskConical, CheckCircle, Ship, GitMerge, GitPullRequest, Beaker, Unplug, Coffee, Wind, HardHat, LandPlot } from "lucide-react";
+import { FileUp, Wheat, Thermometer, Droplets, FlaskConical, CheckCircle, Ship, GitMerge, GitPullRequest, Beaker, Unplug, Coffee, Wind, HardHat, LandPlot, Loader2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 type CommodityType = 'wheat' | 'coffee' | 'oil' | 'steel' | '';
+
+interface SensorData {
+    humidity?: number;
+    grainTemp?: number;
+    co2Level?: number;
+    dewPoint?: number;
+    ambientTemp?: number;
+    tankLevel?: number;
+    pressure?: number;
+}
+
 
 const batches = [
   { id: 'BATCH-001A', weight: '5.0 MT', parent: 'BATCH-001' },
@@ -67,11 +78,35 @@ const renderQCForm = (type: CommodityType) => {
     }
 };
 
-const renderSensorData = (type: CommodityType) => {
+const SensorDisplay = ({ icon: Icon, value, unit, label }: { icon: React.ElementType, value?: number, unit: string, label: string }) => (
+    <div className="bg-secondary/50 p-4 rounded-lg">
+        <Icon className="mx-auto h-6 w-6 text-primary mb-2" />
+        {value !== undefined ? (
+            <p className="text-lg font-bold">{value}{unit}</p>
+        ) : (
+            <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+        )}
+        <p className="text-xs text-muted-foreground">{label}</p>
+    </div>
+);
+
+
+const renderSensorData = (type: CommodityType, data?: SensorData) => {
     switch (type) {
-        case 'wheat': return <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center"><div className="bg-secondary/50 p-4 rounded-lg"><Droplets className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">11.8%</p><p className="text-xs text-muted-foreground">Humidity</p></div><div className="bg-secondary/50 p-4 rounded-lg"><Thermometer className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">18°C</p><p className="text-xs text-muted-foreground">Grain Temp.</p></div><div className="bg-secondary/50 p-4 rounded-lg"><Wind className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">450ppm</p><p className="text-xs text-muted-foreground">CO2 Level</p></div></div>;
-        case 'coffee': return <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center"><div className="bg-secondary/50 p-4 rounded-lg"><Droplets className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">55%</p><p className="text-xs text-muted-foreground">Humidity</p></div><div className="bg-secondary/50 p-4 rounded-lg"><LandPlot className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">15°C</p><p className="text-xs text-muted-foreground">Dew Point</p></div><div className="bg-secondary/50 p-4 rounded-lg"><Thermometer className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">20°C</p><p className="text-xs text-muted-foreground">Ambient</p></div></div>;
-        case 'oil': return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center"><div className="bg-secondary/50 p-4 rounded-lg"><Beaker className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">98.9%</p><p className="text-xs text-muted-foreground">Tank Level</p></div><div className="bg-secondary/50 p-4 rounded-lg"><Unplug className="mx-auto h-6 w-6 text-primary mb-2" /><p className="text-lg font-bold">14.8 psi</p><p className="text-xs text-muted-foreground">Pressure</p></div></div>;
+        case 'wheat': return <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <SensorDisplay icon={Droplets} value={data?.humidity} unit="%" label="Humidity" />
+            <SensorDisplay icon={Thermometer} value={data?.grainTemp} unit="°C" label="Grain Temp." />
+            <SensorDisplay icon={Wind} value={data?.co2Level} unit="ppm" label="CO2 Level" />
+        </div>;
+        case 'coffee': return <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <SensorDisplay icon={Droplets} value={data?.humidity} unit="%" label="Humidity" />
+            <SensorDisplay icon={LandPlot} value={data?.dewPoint} unit="°C" label="Dew Point" />
+            <SensorDisplay icon={Thermometer} value={data?.ambientTemp} unit="°C" label="Ambient" />
+        </div>;
+        case 'oil': return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+            <SensorDisplay icon={Beaker} value={data?.tankLevel} unit="%" label="Tank Level" />
+            <SensorDisplay icon={Unplug} value={data?.pressure} unit=" psi" label="Pressure" />
+        </div>;
         case 'steel': return <p className="text-sm text-muted-foreground p-4 text-center">Sensor data not typically required for this commodity type during transit.</p>;
         default: return <p className="text-sm text-muted-foreground p-4 text-center">Select commodity to view relevant sensor data.</p>;
     }
@@ -100,7 +135,54 @@ const getIcon = (type: CommodityType) => {
 export default function CommoditiesPage() {
   const [commodityType, setCommodityType] = useState<CommodityType>('wheat');
   const [coaFile, setCoaFile] = useState<File | null>(null);
+  const [sensorData, setSensorData] = useState<SensorData | undefined>(undefined);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchSensorData = async () => {
+        if (!commodityType || commodityType === 'steel') {
+            setSensorData(undefined);
+            return;
+        }
+
+        setSensorData(undefined); // Reset to show loading state
+        
+        // Use a mock asset ID prefix based on commodity
+        const assetIdPrefix = commodityType === 'wheat' ? 'AG' : 'SH';
+        const mockAssetId = `${assetIdPrefix}-mock-123`;
+        
+        try {
+            const response = await fetch(`/api/sensor-data/${mockAssetId}`);
+            if (!response.ok) throw new Error("Failed to fetch sensor data");
+            const data = await response.json();
+            
+            // Map API response to our SensorData interface
+            setSensorData({
+                humidity: data.humidity,
+                grainTemp: data.temperature,
+                co2Level: data.co2_level,
+                dewPoint: data.dew_point,
+                ambientTemp: data.ambient_temp,
+                tankLevel: data.tank_level,
+                pressure: data.pressure,
+            });
+
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Sensor Data Error",
+                description: "Could not load live sensor data.",
+                variant: "destructive"
+            })
+        }
+    };
+
+    fetchSensorData();
+    const interval = setInterval(fetchSensorData, 5000); // Refresh every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [commodityType, toast]);
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -221,7 +303,7 @@ export default function CommoditiesPage() {
               <CardDescription>Define and monitor critical environmental thresholds.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {renderSensorData(commodityType)}
+                {renderSensorData(commodityType, sensorData)}
                 <div className="space-y-2 text-left pt-4">
                     <Label htmlFor="tempThreshold">Critical Threshold Logic</Label>
                     <Input id="tempThreshold" readOnly value={ commodityType === 'wheat' ? 'Moisture > 13.5% AND Temp > 25°C' : commodityType ? 'Logic specific to commodity' : 'Select commodity to see logic' } className="text-xs font-mono"/>
@@ -264,5 +346,3 @@ export default function CommoditiesPage() {
     </div>
   );
 }
-
-    

@@ -10,6 +10,7 @@ import { Building, Diamond, Wheat, Hand, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
 
 
 // Mock data - in a real app, this would be fetched based on the tokenId
@@ -24,7 +25,7 @@ const mockAssets: { [key: string]: any } = {
         "Serial No.": "YZ123456",
         "Model No.": "126610LV",
         "Movement Caliber": "Cal. 3235",
-        "Minted On": new Date().toLocaleDateString(),
+        "Minted On": "11/18/2025",
     },
     provenance: [
         { status: "Digital Twin Minted", date: "2023-05-10", verifier: "ProofLedger Genesis" },
@@ -53,7 +54,7 @@ const mockAssets: { [key: string]: any } = {
         "Batch ID": "BATCH-001B",
         "Weight": "15.0 MT",
         "Origin": "Kansas, USA",
-        "Minted On": new Date().toLocaleDateString(),
+        "Minted On": "11/18/2025",
     },
     provenance: [
         { status: "Digital Twin Minted", date: "2024-07-20", verifier: "AgriSource" },
@@ -83,7 +84,7 @@ const mockAssets: { [key: string]: any } = {
         "Parcel ID": "APN-456-78-90",
         "Property Type": "Single Family Residence",
         "Appraised Value": "$1,200,000",
-        "Minted On": new Date().toLocaleDateString(),
+        "Minted On": "11/18/2025",
     },
     provenance: [
         { status: "Digital Twin Minted", date: "2023-11-01", verifier: "TitleCo" },
@@ -124,6 +125,11 @@ export default function AssetDetailPage() {
     const params = useParams();
     const { toast } = useToast();
     const tokenId = params.tokenId as string;
+    const [clientReady, setClientReady] = useState(false);
+
+    useEffect(() => {
+        setClientReady(true);
+    }, []);
     
     // Fallback to a default asset if the tokenId is not in our mock data
     const asset = mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]];
@@ -131,6 +137,11 @@ export default function AssetDetailPage() {
     if (!tokenId) {
         return <div className="container mx-auto p-8">Loading...</div>;
     }
+    
+    if (clientReady) {
+        asset.overview["Minted On"] = new Date().toLocaleDateString();
+    }
+
 
     const handleTransferCustody = () => {
         toast({
@@ -272,5 +283,3 @@ export default function AssetDetailPage() {
     );
 }
 
-
-    

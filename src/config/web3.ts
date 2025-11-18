@@ -1,6 +1,6 @@
 'use client';
 import { createWeb3Modal } from '@web3modal/ethers/react';
-import { http, createConfig, type Chain } from 'wagmi';
+import { http, createConfig } from 'wagmi';
 import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
 

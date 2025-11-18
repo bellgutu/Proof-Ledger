@@ -19,9 +19,19 @@ const exceptionQueue = [
     { id: 'SH-101-322', issue: "Temp. out of range", priority: "Medium", status: "Monitoring" },
 ];
 
+interface Milestone {
+  id: number;
+  value: string;
+}
+
 export default function ShippingPage() {
   const [selectedException, setSelectedException] = useState<(typeof exceptionQueue[0]) | null>(exceptionQueue[0]);
   const [eventTimestamp, setEventTimestamp] = useState('');
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([
+      { id: 1, value: "Port of Origin, Agent Signature" },
+      { id: 2, value: "Destination Port, Document Scan" },
+  ]);
   const { toast } = useToast();
 
 
@@ -56,6 +66,54 @@ export default function ShippingPage() {
     }
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setEvidenceFile(file);
+      toast({
+        title: "File Selected",
+        description: `${file.name} is ready for processing.`
+      });
+    }
+  };
+
+  const handleAddMilestone = () => {
+    setMilestones([...milestones, {id: Date.now(), value: ""}]);
+  }
+
+  const handleMilestoneChange = (id: number, value: string) => {
+    setMilestones(milestones.map(m => m.id === id ? {...m, value} : m));
+  }
+
+  const handleDeployContract = () => {
+    toast({
+        title: "Deploying Shipment Contract",
+        description: (
+            <div className="mt-2 w-full rounded-md bg-secondary p-4">
+                <p className="text-sm font-semibold">Milestones:</p>
+                <ul className="list-disc list-inside text-xs">
+                    {milestones.filter(m => m.value).map(m => <li key={m.id}>{m.value}</li>)}
+                </ul>
+            </div>
+        )
+    });
+  };
+
+  const handleVerifyTransfer = () => {
+    if (!evidenceFile) {
+         toast({
+            title: "Verification Failed",
+            description: "Please upload photo or video evidence before signing.",
+            variant: "destructive"
+        });
+        return;
+    }
+     toast({
+        title: "Transfer Verification Submitted",
+        description: `Evidence file "${evidenceFile.name}" has been hashed and submitted for on-chain verification.`,
+    });
+  }
+
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -77,24 +135,23 @@ export default function ShippingPage() {
               <CardDescription>Define a Smart Contract workflow for a new shipment.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Milestone 1: FOB Verification</Label>
-                <Input defaultValue="Port of Origin, Agent Signature" readOnly />
-              </div>
-              <div className="space-y-2">
-                <Label>Milestone 2: Customs Clearance</Label>
-                <Input defaultValue="Destination Port, Document Scan" readOnly />
-              </div>
-              <div className="space-y-2">
-                <Label>Milestone 3: Final Delivery</Label>
-                <Input placeholder="Add final milestone..." />
-              </div>
-              <Button variant="outline" className="w-full">
+              {milestones.map((milestone, index) => (
+                 <div className="space-y-2" key={milestone.id}>
+                    <Label>Milestone {index + 1}</Label>
+                    <Input 
+                      value={milestone.value}
+                      onChange={(e) => handleMilestoneChange(milestone.id, e.target.value)}
+                      placeholder={index > 1 ? "Add custom milestone..." : undefined}
+                      readOnly={index < 2}
+                    />
+                 </div>
+              ))}
+              <Button variant="outline" className="w-full" onClick={handleAddMilestone}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Milestone
               </Button>
             </CardContent>
             <CardFooter>
-                <Button className="w-full">
+                <Button className="w-full" onClick={handleDeployContract} disabled={milestones.some(m => !m.value)}>
                     <ArrowRight className="mr-2 h-4 w-4" /> Deploy Shipment Contract
                 </Button>
             </CardFooter>
@@ -112,10 +169,16 @@ export default function ShippingPage() {
                         <p className="text-sm text-muted-foreground">Long Beach, CA (Verified)</p>
                     </div>
                 </div>
-                 <Button variant="outline" className="w-full">
-                  <FileUp className="mr-2 h-4 w-4" /> Upload Photo/Video Evidence
-                </Button>
-                 <Button className="w-full">
+                 <div className="relative w-full">
+                    <Button variant="outline" className="w-full h-11 text-base" asChild>
+                        <label htmlFor="evidence-upload" className="cursor-pointer flex items-center justify-center">
+                            <FileUp className="mr-2 h-4 w-4" /> 
+                            {evidenceFile ? <span className="truncate">{evidenceFile.name}</span> : "Upload Photo/Video Evidence"}
+                        </label>
+                    </Button>
+                    <Input id="evidence-upload" type="file" className="hidden" onChange={handleFileChange} />
+                </div>
+                 <Button className="w-full" onClick={handleVerifyTransfer}>
                     <Anchor className="mr-2 h-4 w-4" /> Sign & Verify Transfer
                 </Button>
             </CardContent>
@@ -229,3 +292,5 @@ export default function ShippingPage() {
     </div>
   );
 }
+
+    

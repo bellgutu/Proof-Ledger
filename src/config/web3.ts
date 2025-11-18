@@ -1,5 +1,7 @@
 
+'use client';
 import { createWeb3Modal, defaultConfig } from '@web3modal/ethers/react';
+import { type Chain } from 'wagmi';
 
 // 1. Get projectId
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
@@ -13,8 +15,7 @@ const sepolia = {
   currency: 'ETH',
   explorerUrl: 'https://sepolia.etherscan.io',
   rpcUrl: 'https://rpc.sepolia.org'
-};
-
+} as const satisfies Chain;
 
 // 3. Create a metadata object
 const metadata = {
@@ -24,9 +25,8 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
-
 // 4. Create Ethers config
-const ethersConfig = defaultConfig({
+export const config = defaultConfig({
   /*Required*/
   metadata,
 
@@ -34,11 +34,14 @@ const ethersConfig = defaultConfig({
   enableEIP6963: true, // true by default
   enableInjected: true, // true by default
   enableCoinbase: false, // false by default
+  rpcUrl: 'https://rpc.sepolia.org', // used for Readonly connections
+  defaultChainId: 11155111, // used for Readonly connections
 });
+
 
 // 5. Create a Web3Modal instance
 createWeb3Modal({
-  ethersConfig,
+  ethersConfig: config,
   chains: [sepolia],
   projectId,
   enableAnalytics: true, // Optional - defaults to your Cloud configuration

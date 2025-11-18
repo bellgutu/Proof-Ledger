@@ -126,9 +126,9 @@ export default function ShippingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-1 space-y-8">
           <Card>
             <CardHeader>
               <CardTitle>Shipment Workflow Creator</CardTitle>
@@ -186,7 +186,7 @@ export default function ShippingPage() {
         </div>
 
         {/* Right Column */}
-        <div className="lg:col-span-3 space-y-8">
+        <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
               <CardTitle>Real-Time Exception & Dispute Queue</CardTitle>

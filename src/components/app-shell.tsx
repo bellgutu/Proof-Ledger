@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X, Library } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -18,6 +18,11 @@ const navLinks = [
     href: '/', 
     label: 'Dashboard', 
     icon: LayoutDashboard,
+  },
+  {
+    href: '/my-assets',
+    label: 'My Assets',
+    icon: Library,
   },
   { 
     label: 'Asset Verification', 

@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, BarChart2, Zap, Key, Copy, PlusCircle, Star, GitBranch } from 'lucide-react';
+import { DollarSign, BarChart2, Zap, Key, Copy, PlusCircle, Star, GitBranch, ArrowRight, UserCheck, Banknote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
+import Link from 'next/link';
 
 
 const paymentLedgerData = [
@@ -23,6 +24,27 @@ const paymentLedgerData = [
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
 type IntegrationName = "ADOBE" | "DOCUTECH";
+
+const OnboardingStep = ({ step, title, description, buttonText, href }: { step: number, title: string, description: string, buttonText: string, href?: string }) => {
+    const content = (
+        <div className="flex items-start gap-4">
+            <div className="flex flex-col items-center">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
+                    {step}
+                </div>
+                {step < 3 && <div className="mt-2 h-10 w-px bg-border" />}
+            </div>
+            <div className="flex-1 space-y-1">
+                <h4 className="font-semibold">{title}</h4>
+                <p className="text-sm text-muted-foreground">{description}</p>
+                <Button variant="secondary" size="sm" className="mt-1">{buttonText}</Button>
+            </div>
+        </div>
+    );
+
+    return href ? <Link href={href} className="w-full">{content}</Link> : content;
+};
+
 
 export default function OracleProvidersPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -280,6 +302,33 @@ export default function OracleProvidersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         <div className="lg:col-span-1 space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Oracle Network Onboarding</CardTitle>
+                    <CardDescription>Follow these steps to become a trusted data provider on the Proof Ledger network.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    <OnboardingStep 
+                        step={1} 
+                        title="Complete KYC/AML Verification" 
+                        description="Verify your identity and business details via our compliance partner."
+                        buttonText="Go to Compliance Hub"
+                        href="/compliance"
+                    />
+                    <OnboardingStep 
+                        step={2} 
+                        title="Stake ETH to Register" 
+                        description="Lock a minimum of 5 ETH to gain attestation rights. Your stake is slashable."
+                        buttonText="Register as Oracle"
+                    />
+                     <OnboardingStep 
+                        step={3} 
+                        title="Start Submitting Data" 
+                        description="Use the console or API to start providing verifications and earning rewards."
+                        buttonText="View API Docs"
+                    />
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>Manual Submission Console</CardTitle>

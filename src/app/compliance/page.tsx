@@ -174,7 +174,7 @@ export default function CompliancePage() {
                                     </DialogDescription>
                                 </DialogHeader>
                                 <Form {...form}>
-                                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                                  <form onSubmit={form.handleSubmit(onSubmit)} id="add-partner-form" className="space-y-4 py-4">
                                     <FormField
                                       control={form.control}
                                       name="givenName"
@@ -214,11 +214,11 @@ export default function CompliancePage() {
                                         </FormItem>
                                       )}
                                     />
-                                     <DialogFooter className="pt-4">
-                                        <Button type="submit">Create Partner</Button>
-                                    </DialogFooter>
                                   </form>
                                 </Form>
+                                <DialogFooter>
+                                    <Button type="submit" form="add-partner-form">Create Partner</Button>
+                                </DialogFooter>
                             </DialogContent>
                         </Dialog>
                     </div>
@@ -368,6 +368,5 @@ export default function CompliancePage() {
       </div>
     </div>
   );
-}
 
     

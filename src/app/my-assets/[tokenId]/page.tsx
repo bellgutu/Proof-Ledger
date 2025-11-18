@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Building, Diamond, Wheat, Hand, ShieldAlert } from 'lucide-react';
+import { Building, Diamond, Wheat, Hand, ShieldAlert, GitCommit, FileText, Anchor } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -28,8 +28,8 @@ const mockAssets: { [key: string]: any } = {
         "Minted On": "11/18/2025",
     },
     provenance: [
-        { status: "Digital Twin Minted", date: "2023-05-10", verifier: "ProofLedger Genesis" },
-        { status: "Initial Verification", date: "2023-05-11", verifier: "WatchSpec" },
+        { status: "Digital Twin Minted", date: "2023-05-10", verifier: "ProofLedger Genesis", icon: GitCommit },
+        { status: "Initial Verification", date: "2023-05-11", verifier: "WatchSpec", icon: FileText },
     ],
     insurance: {
         status: "Active",
@@ -57,9 +57,9 @@ const mockAssets: { [key: string]: any } = {
         "Minted On": "11/18/2025",
     },
     provenance: [
-        { status: "Digital Twin Minted", date: "2024-07-20", verifier: "AgriSource" },
-        { status: "CoA Verified", date: "2024-07-21", verifier: "SGS Labs" },
-        { status: "Loaded (FOB)", date: "2024-07-22", verifier: "Port of Houston Agent" },
+        { status: "Digital Twin Minted", date: "2024-07-20", verifier: "AgriSource", icon: GitCommit },
+        { status: "CoA Verified", date: "2024-07-21", verifier: "SGS Labs", icon: FileText },
+        { status: "Loaded (FOB)", date: "2024-07-22", verifier: "Port of Houston Agent", icon: Anchor },
     ],
     insurance: {
         status: "Active",
@@ -87,8 +87,8 @@ const mockAssets: { [key: string]: any } = {
         "Minted On": "11/18/2025",
     },
     provenance: [
-        { status: "Digital Twin Minted", date: "2023-11-01", verifier: "TitleCo" },
-        { status: "Appraisal Verified", date: "2023-11-02", verifier: "ValueAssessors" },
+        { status: "Digital Twin Minted", date: "2023-11-01", verifier: "TitleCo", icon: GitCommit },
+        { status: "Appraisal Verified", date: "2023-11-02", verifier: "ValueAssessors", icon: FileText },
     ],
     insurance: {
         status: "Active",
@@ -105,16 +105,18 @@ const mockAssets: { [key: string]: any } = {
   },
 };
 
-const TimelineItem = ({ isLast, children }: { isLast?: boolean; children: React.ReactNode }) => (
-    <div className="flex gap-4">
+const TimelineItem = ({ isLast, children, icon: Icon }: { isLast?: boolean; children: React.ReactNode; icon: React.ElementType }) => (
+    <div className="flex gap-6">
         <div className="flex flex-col items-center">
              <div className={cn(
-                "flex-shrink-0 h-4 w-4 rounded-full",
-                "bg-primary ring-4 ring-primary/20"
-            )} />
+                "flex-shrink-0 h-12 w-12 rounded-full flex items-center justify-center",
+                "bg-primary/10 text-primary"
+            )}>
+                <Icon size={24} />
+            </div>
             {!isLast && <div className="w-px flex-grow bg-border my-2" />}
         </div>
-        <div className="flex-1 pb-8">
+        <div className="flex-1 pb-10 pt-2.5">
             {children}
         </div>
     </div>
@@ -125,23 +127,20 @@ export default function AssetDetailPage() {
     const params = useParams();
     const { toast } = useToast();
     const tokenId = params.tokenId as string;
-    const [clientReady, setClientReady] = useState(false);
+    const [mintedDate, setMintedDate] = useState("11/18/2025");
 
     useEffect(() => {
-        setClientReady(true);
+        // Set the date only on the client to avoid hydration errors
+        setMintedDate(new Date().toLocaleDateString());
     }, []);
     
     // Fallback to a default asset if the tokenId is not in our mock data
     const asset = mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]];
+    asset.overview["Minted On"] = mintedDate;
 
     if (!tokenId) {
         return <div className="container mx-auto p-8">Loading...</div>;
     }
-    
-    if (clientReady) {
-        asset.overview["Minted On"] = new Date().toLocaleDateString();
-    }
-
 
     const handleTransferCustody = () => {
         toast({
@@ -210,8 +209,8 @@ export default function AssetDetailPage() {
                         <CardContent>
                             <div>
                                 {asset.provenance.map((item: any, index: number) => (
-                                    <TimelineItem key={index} isLast={index === asset.provenance.length - 1}>
-                                        <p className="font-semibold">{item.status}</p>
+                                    <TimelineItem key={index} isLast={index === asset.provenance.length - 1} icon={item.icon}>
+                                        <p className="font-semibold text-base">{item.status}</p>
                                         <p className="text-sm text-muted-foreground">Date: {item.date}</p>
                                         <p className="text-sm text-muted-foreground">Verifier: {item.verifier}</p>
                                     </TimelineItem>
@@ -283,3 +282,4 @@ export default function AssetDetailPage() {
     );
 }
 
+    

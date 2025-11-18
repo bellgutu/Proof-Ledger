@@ -27,6 +27,7 @@ const payoutLog = [
 
 export default function InsurancePage() {
   const [selectedClaim, setSelectedClaim] = useState<(typeof claims[0]) | null>(claims[3]);
+
   return (
     <div className="container mx-auto p-0 space-y-8">
       <div className="text-left space-y-2">
@@ -203,3 +204,5 @@ export default function InsurancePage() {
     </div>
   );
 }
+
+    

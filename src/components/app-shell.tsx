@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -51,7 +50,7 @@ const navLinks = [
   },
   {
     href: '/oracle-providers',
-    label: 'Proof Partner Console',
+    label: 'Oracle Partner Console',
     icon: DatabaseZap,
   }
 ];

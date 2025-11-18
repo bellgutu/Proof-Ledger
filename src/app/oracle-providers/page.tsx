@@ -1,4 +1,3 @@
-
 "use client";
 import { useState } from 'react';
 import { useWriteContract } from 'wagmi';
@@ -280,7 +279,7 @@ export default function OracleProvidersPage() {
     <div className="container mx-auto p-0 space-y-8">
       <div className="text-left space-y-2">
         <h1 className="text-4xl font-bold tracking-tight text-primary">
-          Proof Partner Console
+          Oracle Partner Console
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl">
           A secure, enterprise-grade interface for our trusted data partners. Monetize your data, monitor performance, and provide critical verification for real-world assets.

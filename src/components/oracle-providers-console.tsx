@@ -57,7 +57,7 @@ export function OracleProvidersConsole() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [certificationType, setCertificationType] = useState<CertificationType | ''>('');
     const [integrationName, setIntegrationName] = useState<IntegrationName | ''>('');
-    const [stakeAmount, setStakeAmount] = useState('5');
+    const [stakeAmount, setStakeAmount] = useState('0.5');
     const [isRegistered, setIsRegistered] = useState(false);
 
     const { toast } = useToast();
@@ -77,8 +77,8 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
-        if (!stakeAmount || parseFloat(stakeAmount) < 5) {
-            toast({ title: "Staking Error", description: "Minimum stake is 5 ETH.", variant: "destructive"});
+        if (!stakeAmount || parseFloat(stakeAmount) < 0.5) {
+            toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;
         }
 
@@ -359,7 +359,7 @@ export function OracleProvidersConsole() {
                     <OnboardingStep 
                         step={2} 
                         title="Stake ETH to Register" 
-                        description="Lock a minimum of 5 ETH to gain attestation rights. Your stake is slashable."
+                        description="Lock a minimum of 0.5 ETH to gain attestation rights. Your stake is slashable."
                         completed={isRegistered}
                         isActive={!isRegistered}
                     >
@@ -369,7 +369,7 @@ export function OracleProvidersConsole() {
                                 value={stakeAmount}
                                 onChange={(e) => setStakeAmount(e.target.value)}
                                 className="w-full sm:w-24"
-                                placeholder="5"
+                                placeholder="0.5"
                                 disabled={isRegistered}
                             />
                             <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered}>
@@ -525,4 +525,3 @@ export function OracleProvidersConsole() {
   );
 }
 
-    

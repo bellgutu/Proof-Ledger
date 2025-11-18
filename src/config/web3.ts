@@ -1,23 +1,15 @@
-
 'use client';
-import { createWeb3Modal, defaultConfig } from '@web3modal/ethers/react';
-import { type Chain } from 'wagmi';
+import { createWeb3Modal } from '@web3modal/ethers/react';
+import { http, createConfig, type Chain } from 'wagmi';
+import { walletConnect, injected } from 'wagmi/connectors';
+import { sepolia } from 'wagmi/chains';
 
 // 1. Get projectId
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
 
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
-// 2. Set chains
-const sepolia = {
-  chainId: 11155111,
-  name: 'Sepolia',
-  currency: 'ETH',
-  explorerUrl: 'https://sepolia.etherscan.io',
-  rpcUrl: 'https://rpc.sepolia.org'
-} as const satisfies Chain;
-
-// 3. Create a metadata object
+// 2. Create a metadata object
 const metadata = {
   name: 'Proof Ledger',
   description: 'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
@@ -25,26 +17,25 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
-// 4. Create Ethers config
-export const config = defaultConfig({
-  /*Required*/
-  metadata,
-
-  /*Optional*/
-  enableEIP6963: true, // true by default
-  enableInjected: true, // true by default
-  enableCoinbase: false, // false by default
-  rpcUrl: 'https://rpc.sepolia.org', // used for Readonly connections
-  defaultChainId: 11155111, // used for Readonly connections
+// 3. Create a unified config
+export const config = createConfig({
+  chains: [sepolia],
+  transports: {
+    [sepolia.id]: http(),
+  },
+  connectors: [
+    walletConnect({ projectId, metadata, showQrModal: false }),
+    injected({ shimDisconnect: true }),
+  ],
+  ssr: true, // Enable SSR
 });
 
-
-// 5. Create a Web3Modal instance
+// 4. Create a Web3Modal instance
 createWeb3Modal({
   ethersConfig: config,
   chains: [sepolia],
   projectId,
-  enableAnalytics: true, // Optional - defaults to your Cloud configuration
+  enableAnalytics: true,
   themeVariables: {
     '--w3m-accent': 'hsl(250 80% 60%)',
     '--w3m-color-mix': 'hsl(220 10% 18%)',

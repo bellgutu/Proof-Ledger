@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, FileHeart, AlertCircle, CheckCircle, Clock, MoreVertical, DollarSign, FileText } from "lucide-react";
+import { Landmark, FileHeart, AlertCircle, CheckCircle, Clock, MoreVertical, DollarSign, FileText, ExternalLink } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const claims = [
     { id: "CLAIM-001", asset: "SH-734-556", trigger: "Auto (Sensor Breach)", value: "250,000", status: "Payout Approved" },
@@ -26,7 +27,7 @@ const payoutLog = [
 ]
 
 export default function InsurancePage() {
-  const [selectedClaim, setSelectedClaim] = useState<(typeof claims[0]) | null>(claims[3]);
+  const [selectedClaim, setSelectedClaim] = useState<(typeof claims[0]) | null>(claims[0]);
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -177,6 +178,31 @@ export default function InsurancePage() {
             </Card>
             )}
 
+            {selectedClaim?.status === "Payout Approved" && (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Payout Details: {selectedClaim.id}</CardTitle>
+                    <CardDescription>Details of the automated claim payout transaction.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 space-y-2">
+                        <h4 className="font-semibold flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-green-400"/>Automated Payout Executed</h4>
+                        <p className="text-sm">This claim was automatically approved and paid from the escrow contract based on verified Oracle data.</p>
+                        <div className="p-3 bg-secondary rounded-md text-sm">
+                            <p><span className="font-semibold">Payout Amount:</span> <span className="font-mono text-xs">${selectedClaim.value}</span></p>
+                            <p><span className="font-semibold">Recipient Address:</span> <span className="font-mono text-xs">0xAb...89</span></p>
+                            <p><span className="font-semibold">Transaction Hash:</span> <span className="font-mono text-xs">0x1a...2b</span></p>
+                        </div>
+                    </div>
+                     <Link href="https://sepolia.etherscan.io/" target="_blank" className="w-full">
+                        <Button variant="secondary" className="w-full">
+                            <ExternalLink className="mr-2 h-4 w-4"/> View on Etherscan
+                        </Button>
+                     </Link>
+                </CardContent>
+            </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle>Payout & Reconciliation Log</CardTitle>
@@ -204,5 +230,3 @@ export default function InsurancePage() {
     </div>
   );
 }
-
-    

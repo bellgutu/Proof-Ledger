@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -55,12 +56,15 @@ const navLinks = [
   }
 ];
 
-const DesktopNavContent = () => {
+const NavContent = ({ isMobile = false }: { isMobile?: boolean }) => {
   const pathname = usePathname();
   const getActiveAccordionItem = () => {
     const activeParent = navLinks.find(link => link.subLinks && pathname.startsWith(link.href));
     return activeParent ? activeParent.href : undefined;
-  }
+  };
+
+  const NavLinkWrapper = isMobile ? SheetClose : React.Fragment;
+
   return (
     <div className="flex flex-col gap-1">
       <Accordion type="single" collapsible defaultValue={getActiveAccordionItem()} className="w-full">
@@ -70,7 +74,7 @@ const DesktopNavContent = () => {
               <AccordionTrigger 
                 className={cn(
                   buttonVariants({ variant: 'ghost' }),
-                  "w-full flex items-center justify-between text-left text-base font-semibold py-6",
+                  "w-full flex items-center justify-between text-left text-base font-semibold py-6 hover:no-underline",
                   pathname.startsWith(link.href) && "bg-secondary"
                 )}
               >
@@ -80,89 +84,20 @@ const DesktopNavContent = () => {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pl-6 space-y-1">
-                <Link
-                  href={link.href}
-                  className={cn(
-                    buttonVariants({ variant: pathname === link.href ? 'secondary' : 'ghost' }),
-                    "w-full flex items-center justify-start text-left text-base font-normal py-5"
-                  )}
-                >
-                  <div className="mr-3 w-4"></div>
-                  <span>Hub Overview</span>
-                </Link>
-                {link.subLinks.map(subLink => (
+                <NavLinkWrapper {...(isMobile ? { asChild: true } : {})}>
                   <Link
-                    key={subLink.href}
-                    href={subLink.href}
+                    href={link.href}
                     className={cn(
-                      buttonVariants({ variant: pathname === subLink.href ? 'secondary' : 'ghost' }),
+                      buttonVariants({ variant: pathname === link.href ? 'secondary' : 'ghost' }),
                       "w-full flex items-center justify-start text-left text-base font-normal py-5"
                     )}
                   >
-                    <div className="mr-3"><subLink.icon size={18}/></div>
-                    <span>{subLink.label}</span>
+                    <div className="mr-3 w-4"></div>
+                    <span>Hub Overview</span>
                   </Link>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          ) : (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                buttonVariants({ variant: pathname === link.href ? 'secondary' : 'ghost' }),
-                "w-full flex items-center justify-start text-left text-base font-semibold py-6"
-              )}
-            >
-              <div className="mr-3"><link.icon size={20}/></div>
-              <span>{link.label}</span>
-            </Link>
-          )
-        ))}
-      </Accordion>
-    </div>
-  );
-}
-
-const MobileNavContent = () => {
-  const pathname = usePathname();
-  const getActiveAccordionItem = () => {
-    const activeParent = navLinks.find(link => link.subLinks && pathname.startsWith(link.href));
-    return activeParent ? activeParent.href : undefined;
-  }
-  return (
-    <div className="flex flex-col gap-1">
-      <Accordion type="single" collapsible defaultValue={getActiveAccordionItem()} className="w-full">
-        {navLinks.map((link) => (
-          link.subLinks ? (
-            <AccordionItem value={link.href} key={link.href} className="border-b-0">
-              <AccordionTrigger 
-                className={cn(
-                  buttonVariants({ variant: 'ghost' }),
-                  "w-full flex items-center justify-between text-left text-base font-semibold py-6",
-                  pathname.startsWith(link.href) && "bg-secondary"
-                )}
-              >
-                <div className="flex items-center">
-                  <div className="mr-3"><link.icon size={20}/></div>
-                  <span>{link.label}</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pl-6 space-y-1">
-                 <SheetClose asChild>
-                    <Link
-                      href={link.href}
-                      className={cn(
-                        buttonVariants({ variant: pathname === link.href ? 'secondary' : 'ghost' }),
-                        "w-full flex items-center justify-start text-left text-base font-normal py-5"
-                      )}
-                    >
-                      <div className="mr-3 w-4"></div>
-                      <span>Hub Overview</span>
-                    </Link>
-                  </SheetClose>
+                </NavLinkWrapper>
                 {link.subLinks.map(subLink => (
-                  <SheetClose asChild key={subLink.href}>
+                  <NavLinkWrapper key={subLink.href} {...(isMobile ? { asChild: true } : {})}>
                     <Link
                       href={subLink.href}
                       className={cn(
@@ -173,12 +108,12 @@ const MobileNavContent = () => {
                       <div className="mr-3"><subLink.icon size={18}/></div>
                       <span>{subLink.label}</span>
                     </Link>
-                  </SheetClose>
+                  </NavLinkWrapper>
                 ))}
               </AccordionContent>
             </AccordionItem>
           ) : (
-             <SheetClose asChild key={link.href}>
+             <NavLinkWrapper key={link.href} {...(isMobile ? { asChild: true } : {})}>
               <Link
                 href={link.href}
                 className={cn(
@@ -189,13 +124,13 @@ const MobileNavContent = () => {
                 <div className="mr-3"><link.icon size={20}/></div>
                 <span>{link.label}</span>
               </Link>
-            </SheetClose>
+            </NavLinkWrapper>
           )
         ))}
       </Accordion>
     </div>
   );
-}
+};
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -225,7 +160,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Logo />
             </div>
             <nav className="flex-grow">
-              <DesktopNavContent />
+              <NavContent />
             </nav>
             <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
                  <Link
@@ -263,7 +198,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                               <Logo />
                             </div>
                             <nav className="flex-grow">
-                              <MobileNavContent />
+                              <NavContent isMobile={true} />
                             </nav>
                             <div className="mt-auto flex flex-col space-y-2 pt-8 border-t">
                                  <Link
@@ -306,3 +241,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+    

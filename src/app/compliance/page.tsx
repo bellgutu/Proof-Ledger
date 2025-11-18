@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -71,6 +71,7 @@ export default function CompliancePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -94,6 +95,15 @@ export default function CompliancePage() {
         setIsLoading(false);
     });
   }, []);
+
+  const filteredPartners = useMemo(() => {
+    if (!searchTerm) return partners;
+    return partners.filter(p => 
+        p.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.emails[0].value.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [partners, searchTerm]);
+
 
   const getStatus = (active: boolean) => {
     return active ? "Verified" : "Inactive";
@@ -147,11 +157,14 @@ export default function CompliancePage() {
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-2 mb-4">
-                        <Input placeholder="Search partner..." />
-                        <Button variant="outline">Search</Button>
+                        <Input 
+                          placeholder="Filter by name or email..." 
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                             <DialogTrigger asChild>
-                               <Button><PlusCircle className="h-4 w-4" /></Button>
+                               <Button size="icon"><PlusCircle className="h-4 w-4" /></Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[425px]">
                                 <DialogHeader>
@@ -228,7 +241,7 @@ export default function CompliancePage() {
                                     </TableRow>
                                 ))
                             ) : (
-                                partners.map(p => (
+                                filteredPartners.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell className="font-medium">{p.displayName}</TableCell>
                                         <TableCell className="text-muted-foreground">{p.emails[0].value}</TableCell>

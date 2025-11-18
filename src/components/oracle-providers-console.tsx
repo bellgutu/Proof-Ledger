@@ -19,10 +19,10 @@ import { contracts } from '@/config/contracts';
 
 
 const paymentLedgerData = [
-    { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '$6.00', bonus: '$1.50', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '$6.00', bonus: '$0.00', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '$6.00', bonus: '$0.00', status: 'Pending', date: '2023-10-26' },
-    { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '$6.00', bonus: '-$465.00', status: 'Paid (Slashed)', date: '2023-10-25' },
+    { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '$500.00', bonus: '$50.00', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Pending', date: '2023-10-26' },
+    { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '$500.00', bonus: '-$465.00', status: 'Paid (Slashed)', date: '2023-10-25' },
 ];
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';

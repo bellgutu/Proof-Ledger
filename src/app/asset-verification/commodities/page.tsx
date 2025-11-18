@@ -1,59 +1,59 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileUp, Wheat, Thermometer, Droplets, FlaskConical, CheckCircle, Ship, GitMerge, GitPullRequest, Search, Beaker, Unplug, Coffee, Wind, HardHat, LandPlot } from "lucide-react";
+import { FileUp, Wheat, Thermometer, Droplets, FlaskConical, CheckCircle, Ship, GitMerge, GitPullRequest, Beaker, Unplug, Coffee, Wind, HardHat, LandPlot } from "lucide-react";
+import { useToast } from '@/hooks/use-toast';
 
 type CommodityType = 'wheat' | 'coffee' | 'oil' | 'steel' | '';
 
 const batches = [
-  { id: 'BATCH-001A', weight: '5.0 MT', grade: 'A', parent: 'BATCH-001' },
-  { id: 'BATCH-001B', weight: '15.0 MT', grade: 'A', parent: 'BATCH-001' },
+  { id: 'BATCH-001A', weight: '5.0 MT', parent: 'BATCH-001' },
+  { id: 'BATCH-001B', weight: '15.0 MT', parent: 'BATCH-001' },
 ];
 
 const WheatForm = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2"><Label htmlFor="protein">Protein Content (%)</Label><Input id="protein" type="number" placeholder="e.g., 12.8"/></div>
-        <div className="space-y-2"><Label htmlFor="testWeight">Test Weight (lb/bu)</Label><Input id="testWeight" type="number" placeholder="e.g., 60.5"/></div>
-        <div className="space-y-2"><Label htmlFor="moisture">Moisture (%)</Label><Input id="moisture" type="number" placeholder="e.g., 11.5"/></div>
-        <div className="space-y-2"><Label htmlFor="harvestDate">Expiration/Harvest Date</Label><Input id="harvestDate" type="date"/></div>
+        <div className="space-y-2"><Label htmlFor="protein">Protein Content (%)</Label><Input id="protein" type="number" placeholder="e.g., 12.8" required /></div>
+        <div className="space-y-2"><Label htmlFor="testWeight">Test Weight (lb/bu)</Label><Input id="testWeight" type="number" placeholder="e.g., 60.5" /></div>
+        <div className="space-y-2"><Label htmlFor="moisture">Moisture (%)</Label><Input id="moisture" type="number" placeholder="e.g., 11.5" required /></div>
+        <div className="space-y-2"><Label htmlFor="harvestDate">Expiration/Harvest Date</Label><Input id="harvestDate" type="date" required /></div>
     </div>
 );
 
 const CoffeeForm = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2"><Label htmlFor="defectCount">Bean Defect Count</Label><Input id="defectCount" type="number" placeholder="e.g., 5"/></div>
+        <div className="space-y-2"><Label htmlFor="defectCount">Bean Defect Count</Label><Input id="defectCount" type="number" placeholder="e.g., 5" required /></div>
         <div className="space-y-2">
             <Label htmlFor="screenSize">Screen Size</Label>
             <Select><SelectTrigger id="screenSize"><SelectValue placeholder="Select screen size..."/></SelectTrigger><SelectContent><SelectItem value="18">18</SelectItem><SelectItem value="17">17</SelectItem><SelectItem value="16">16</SelectItem></SelectContent></Select>
         </div>
-        <div className="space-y-2"><Label htmlFor="caffeine">Caffeine Content (%)</Label><Input id="caffeine" type="number" placeholder="e.g., 1.2"/></div>
-        <div className="space-y-2"><Label htmlFor="harvestDate">Expiration/Harvest Date</Label><Input id="harvestDate" type="date"/></div>
+        <div className="space-y-2"><Label htmlFor="caffeine">Caffeine Content (%)</Label><Input id="caffeine" type="number" placeholder="e.g., 1.2" /></div>
+        <div className="space-y-2"><Label htmlFor="harvestDate">Expiration/Harvest Date</Label><Input id="harvestDate" type="date" required /></div>
     </div>
 );
 
 const OilForm = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2"><Label htmlFor="apiGravity">API Gravity (°API)</Label><Input id="apiGravity" type="number" placeholder="e.g., 42.5"/></div>
-        <div className="space-y-2"><Label htmlFor="sulfur">Sulfur Content (%)</Label><Input id="sulfur" type="number" placeholder="e.g., 0.2"/></div>
-        <div className="space-y-2"><Label htmlFor="viscosity">Viscosity (cSt)</Label><Input id="viscosity" type="number" placeholder="e.g., 5.3"/></div>
-        <div className="space-y-2"><Label htmlFor="batchDate">Batch Creation Date</Label><Input id="batchDate" type="date"/></div>
+        <div className="space-y-2"><Label htmlFor="apiGravity">API Gravity (°API)</Label><Input id="apiGravity" type="number" placeholder="e.g., 42.5" required /></div>
+        <div className="space-y-2"><Label htmlFor="sulfur">Sulfur Content (%)</Label><Input id="sulfur" type="number" placeholder="e.g., 0.2" required /></div>
+        <div className="space-y-2"><Label htmlFor="viscosity">Viscosity (cSt)</Label><Input id="viscosity" type="number" placeholder="e.g., 5.3" /></div>
+        <div className="space-y-2"><Label htmlFor="batchDate">Batch Creation Date</Label><Input id="batchDate" type="date" required /></div>
     </div>
 );
 
 const SteelForm = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2"><Label htmlFor="yieldStrength">Yield Strength (MPa)</Label><Input id="yieldStrength" type="number" placeholder="e.g., 345"/></div>
-        <div className="space-y-2"><Label htmlFor="coilWidth">Coil Width (mm)</Label><Input id="coilWidth" type="number" placeholder="e.g., 1500"/></div>
-        <div className="space-y-2"><Label htmlFor="millCertHash">Mill Certification Hash</Label><Input id="millCertHash" placeholder="0x..."/></div>
-        <div className="space-y-2"><Label htmlFor="productionDate">Production Date</Label><Input id="productionDate" type="date"/></div>
+        <div className="space-y-2"><Label htmlFor="yieldStrength">Yield Strength (MPa)</Label><Input id="yieldStrength" type="number" placeholder="e.g., 345" required /></div>
+        <div className="space-y-2"><Label htmlFor="coilWidth">Coil Width (mm)</Label><Input id="coilWidth" type="number" placeholder="e.g., 1500" /></div>
+        <div className="space-y-2"><Label htmlFor="millCertHash">Mill Certification Hash</Label><Input id="millCertHash" placeholder="0x..." required /></div>
+        <div className="space-y-2"><Label htmlFor="productionDate">Production Date</Label><Input id="productionDate" type="date" required /></div>
     </div>
 );
 
@@ -99,6 +99,24 @@ const getIcon = (type: CommodityType) => {
 
 export default function CommoditiesPage() {
   const [commodityType, setCommodityType] = useState<CommodityType>('wheat');
+  const [coaFile, setCoaFile] = useState<File | null>(null);
+  const { toast } = useToast();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCoaFile(file);
+      toast({
+        title: "File Selected",
+        description: `${file.name} is ready for processing.`
+      });
+    }
+  };
+
+  const isMintingDisabled = useMemo(() => {
+    return !commodityType || !coaFile;
+  }, [commodityType, coaFile]);
+
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -146,7 +164,7 @@ export default function CommoditiesPage() {
           <Card>
             <CardHeader>
               <CardTitle>A. Batch & Quality Control</CardTitle>
-              <CardDescription>Define the initial properties of the commodity batch.</CardDescription>
+              <CardDescription>Define the initial properties of the commodity batch. All fields with a * are required.</CardDescription>
             </CardHeader>
             <CardContent>
                 {renderQCForm(commodityType)}
@@ -159,10 +177,18 @@ export default function CommoditiesPage() {
               <CardDescription>Upload lab results for automated data extraction.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-               <Button variant="outline" className="w-full h-12 text-base"><FileUp className="mr-2 h-5 w-5" /> Upload CoA PDF</Button>
+               <div className="relative w-full">
+                <Button variant="outline" className="w-full h-12 text-base" asChild>
+                    <label htmlFor="coa-upload" className="cursor-pointer">
+                       <FileUp className="mr-2 h-5 w-5" /> 
+                       {coaFile ? <span className="truncate">{coaFile.name}</span> : "Upload CoA PDF"}
+                    </label>
+                </Button>
+                <Input id="coa-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+               </div>
                <div className="p-4 rounded-lg bg-secondary/50 text-sm space-y-2">
-                   <p className="text-muted-foreground">AI Extractor Status: <span className="text-foreground font-medium">Ready</span></p>
-                   <p className="font-mono text-xs">Awaiting document upload... will extract {getCoAFields(commodityType)}</p>
+                   <p className="text-muted-foreground">AI Extractor Status: <span className="text-foreground font-medium">{coaFile ? "Processing..." : "Ready"}</span></p>
+                   <p className="font-mono text-xs">{coaFile ? `Extracting data from ${coaFile.name}` : `Awaiting document... will extract ${getCoAFields(commodityType)}`}</p>
                </div>
             </CardContent>
           </Card>
@@ -198,7 +224,7 @@ export default function CommoditiesPage() {
                 {renderSensorData(commodityType)}
                 <div className="space-y-2 text-left pt-4">
                     <Label htmlFor="tempThreshold">Critical Threshold Logic</Label>
-                    <Input id="tempThreshold" readOnly value={ commodityType === 'wheat' ? 'Moisture > 13.5% AND Temp > 25°C' : 'Select commodity to see logic' } className="text-xs font-mono"/>
+                    <Input id="tempThreshold" readOnly value={ commodityType === 'wheat' ? 'Moisture > 13.5% AND Temp > 25°C' : commodityType ? 'Logic specific to commodity' : 'Select commodity to see logic' } className="text-xs font-mono"/>
                 </div>
             </CardContent>
           </Card>
@@ -228,7 +254,7 @@ export default function CommoditiesPage() {
                 </Table>
             </CardContent>
             <CardFooter className="gap-2">
-                 <Button className="w-full h-12 text-base">
+                 <Button className="w-full h-12 text-base" disabled={isMintingDisabled}>
                     <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Batch Assets
                 </Button>
             </CardFooter>

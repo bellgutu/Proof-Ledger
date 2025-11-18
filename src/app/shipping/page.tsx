@@ -27,8 +27,10 @@ export default function ShippingPage() {
 
   useEffect(() => {
     // This will only run on the client, after hydration
-    setEventTimestamp(new Date().toLocaleString());
-  }, []);
+    if (selectedException) {
+      setEventTimestamp(new Date().toLocaleString());
+    }
+  }, [selectedException]);
 
   const handleFetchDocument = async (docType: string) => {
     try {
@@ -40,7 +42,7 @@ export default function ShippingPage() {
         toast({
             title: `Fetched Document: ${docType}`,
             description: (
-                <pre className="mt-2 w-full rounded-md bg-secondary p-4">
+                <pre className="mt-2 w-full rounded-md bg-secondary p-4 max-h-[300px] overflow-auto">
                     <code className="text-foreground">{JSON.stringify(data, null, 2)}</code>
                 </pre>
             ),
@@ -159,7 +161,9 @@ export default function ShippingPage() {
                             <CardTitle>Dispute Resolution: {selectedException.id}</CardTitle>
                             <CardDescription>Comparing "Before & After" snapshots to isolate liability.</CardDescription>
                         </div>
-                        <Badge variant="destructive" className="ml-4"><Gavel className="h-4 w-4 mr-2" /> Dispute Active</Badge>
+                        {selectedException.priority === 'Critical' && (
+                            <Badge variant="destructive" className="ml-4"><Gavel className="h-4 w-4 mr-2" /> Dispute Active</Badge>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">

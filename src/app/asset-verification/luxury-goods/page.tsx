@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from "next/image";
 import imageData from '@/lib/placeholder-images.json';
+import { useToast } from '@/hooks/use-toast';
 
 type AssetType = 'gemstone' | 'luxury_item';
 type LuxurySubType = 'watch' | 'bag' | 'automobile' | 'garment' | '';
@@ -103,19 +104,62 @@ const renderProvenanceForm = (asset: AssetType, subType: LuxurySubType) => {
     return null;
 }
 
-const renderVisualsContent = (asset: AssetType, subType: LuxurySubType) => {
+const getPageIcon = (asset: AssetType, subType: LuxurySubType) => {
+  if (asset === 'gemstone') return <Diamond className="h-12 w-12 text-primary" />;
+  if (asset === 'luxury_item') {
+    switch (subType) {
+      case 'watch': return <Watch className="h-12 w-12 text-primary" />;
+      case 'bag': return <ShoppingBag className="h-12 w-12 text-primary" />;
+      case 'automobile': return <Car className="h-12 w-12 text-primary" />;
+      case 'garment': return <Shirt className="h-12 w-12 text-primary" />;
+    }
+  }
+  return <Diamond className="h-12 w-12 text-primary" />;
+}
+
+export default function LuxuryGoodsPage() {
+  const [assetType, setAssetType] = useState<AssetType>('gemstone');
+  const [luxurySubType, setLuxurySubType] = useState<LuxurySubType>('');
+  const [visualsFile, setVisualsFile] = useState<File | null>(null);
+  const { toast } = useToast();
+
+  const handleAssetTypeChange = (value: AssetType) => {
+    setAssetType(value);
+    setLuxurySubType('');
+    setVisualsFile(null);
+  };
+  
+  const handleSubTypeChange = (value: LuxurySubType) => {
+    setLuxurySubType(value);
+    setVisualsFile(null);
+  }
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setVisualsFile(file);
+      toast({
+        title: "File Selected",
+        description: `${file.name} is ready for processing.`
+      });
+    }
+  }
+  
+  const isMintingDisabled = (assetType === 'luxury_item' && !luxurySubType) || !visualsFile;
+
+  const renderVisualsContent = () => {
     let title = "High-Resolution Visuals";
     let description = "Upload mandatory 360-degree photos for visual hashing.";
     let buttonText = "Upload 360° Photo/Video Set";
     let extraField = null;
     
     let imageKey: keyof typeof imageData.luxury_goods = 'gemstone';
-    if (asset === 'gemstone') {
+    if (assetType === 'gemstone') {
         imageKey = 'gemstone';
         extraField = <div className="w-full max-w-xs space-y-2"><Label htmlFor="inclusion-map">Microscopic Inclusions Map Hash (Optional)</Label><Input id="inclusion-map" placeholder="Hash of spectral analysis data..."/></div>
-    } else if (asset === 'luxury_item' && subType) {
-        imageKey = subType;
-        switch (subType) {
+    } else if (assetType === 'luxury_item' && luxurySubType) {
+        imageKey = luxurySubType;
+        switch (luxurySubType) {
             case 'automobile':
                 description = "Upload required photos: 4 exterior sides, interior, and engine bay.";
                 buttonText = "Upload Damage Assessment Photos";
@@ -161,23 +205,29 @@ const renderVisualsContent = (asset: AssetType, subType: LuxurySubType) => {
                 <CarouselNext />
               </Carousel>
               {extraField}
-              <Button variant="outline" className="w-full max-w-xs h-12 text-base">
-                <FileUp className="mr-2 h-5 w-5" /> {buttonText}
-              </Button>
+               <div className="relative w-full max-w-xs">
+                <Button variant="outline" className="w-full h-12 text-base" asChild>
+                    <label htmlFor="visual-upload" className="cursor-pointer">
+                        <FileUp className="mr-2 h-5 w-5" /> 
+                        {visualsFile ? <span className="truncate">{visualsFile.name}</span> : buttonText}
+                    </label>
+                </Button>
+                <Input id="visual-upload" type="file" className="hidden" onChange={handleFileChange} />
+              </div>
             </CardContent>
         </>
     )
-}
+  }
 
-const renderSecurityContent = (asset: AssetType, subType: LuxurySubType) => {
+  const renderSecurityContent = () => {
     let sensorType = "Security Sensor Data";
     let sensorDesc = "Live feed from the asset's security packaging.";
     let trustScore = "100%";
     let trustColor = "text-green-400";
     let log = <p className="font-mono">✅ Tamper Log Initialized</p>;
 
-    if (asset === 'luxury_item') {
-        switch (subType) {
+    if (assetType === 'luxury_item') {
+        switch (luxurySubType) {
             case 'automobile':
                 sensorType = "GPS & OBD-II Port Monitoring";
                 sensorDesc = "Live feed of location and vehicle diagnostics.";
@@ -214,13 +264,12 @@ const renderSecurityContent = (asset: AssetType, subType: LuxurySubType) => {
             </CardContent>
         </>
     );
-};
+  };
 
-
-const renderReVerificationContent = (asset: AssetType, subType: LuxurySubType) => {
+  const renderReVerificationContent = () => {
     let yearsToAdd = 5; // Default for Gemstones
-     if (asset === 'luxury_item') {
-        switch (subType) {
+     if (assetType === 'luxury_item') {
+        switch (luxurySubType) {
             case 'automobile': yearsToAdd = 7; break;
             case 'bag':
             case 'garment': yearsToAdd = 3; break;
@@ -248,35 +297,14 @@ const renderReVerificationContent = (asset: AssetType, subType: LuxurySubType) =
               </Button>
             </CardContent>
              <CardFooter className="gap-2">
-                 <Button className="w-full h-12 text-base">
+                 <Button className="w-full h-12 text-base" disabled={isMintingDisabled}>
                     <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
                 </Button>
             </CardFooter>
         </>
     );
-};
-
-const getPageIcon = (asset: AssetType, subType: LuxurySubType) => {
-  if (asset === 'gemstone') return <Diamond className="h-12 w-12 text-primary" />;
-  if (asset === 'luxury_item') {
-    switch (subType) {
-      case 'watch': return <Watch className="h-12 w-12 text-primary" />;
-      case 'bag': return <ShoppingBag className="h-12 w-12 text-primary" />;
-      case 'automobile': return <Car className="h-12 w-12 text-primary" />;
-      case 'garment': return <Shirt className="h-12 w-12 text-primary" />;
-    }
-  }
-  return <Diamond className="h-12 w-12 text-primary" />;
-}
-
-export default function LuxuryGoodsPage() {
-  const [assetType, setAssetType] = useState<AssetType>('gemstone');
-  const [luxurySubType, setLuxurySubType] = useState<LuxurySubType>('');
-
-  const handleAssetTypeChange = (value: AssetType) => {
-    setAssetType(value);
-    setLuxurySubType(''); // Reset sub-type when main type changes
   };
+
 
   return (
     <div className="container mx-auto p-0 space-y-8">
@@ -300,7 +328,7 @@ export default function LuxuryGoodsPage() {
             <CardDescription>Select the type of asset you are verifying to customize the workflow.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-             <RadioGroup defaultValue="gemstone" onValueChange={handleAssetTypeChange} className="space-y-2">
+             <RadioGroup defaultValue="gemstone" onValueChange={(value) => handleAssetTypeChange(value as AssetType)} className="space-y-2">
                 <Label>1. Select Certification Type</Label>
                 <div className="flex items-center space-x-2">
                     <RadioGroupItem value="gemstone" id="r-gem" />
@@ -314,7 +342,7 @@ export default function LuxuryGoodsPage() {
             {assetType === 'luxury_item' && (
                  <div className="space-y-2">
                     <Label>2. Select Luxury Sub-Type</Label>
-                    <Select onValueChange={(value: LuxurySubType) => setLuxurySubType(value)} value={luxurySubType}>
+                    <Select onValueChange={(value) => handleSubTypeChange(value as LuxurySubType)} value={luxurySubType}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select sub-type..." />
                         </SelectTrigger>
@@ -345,17 +373,17 @@ export default function LuxuryGoodsPage() {
           </Card>
 
           <Card>
-             {renderVisualsContent(assetType, luxurySubType)}
+             {renderVisualsContent()}
           </Card>
         </div>
 
         {/* Right Column: Security & Re-verification */}
         <div className="lg:col-span-1 space-y-8">
            <Card>
-            {renderSecurityContent(assetType, luxurySubType)}
+            {renderSecurityContent()}
           </Card>
            <Card>
-            {renderReVerificationContent(assetType, luxurySubType)}
+            {renderReVerificationContent()}
           </Card>
         </div>
       </div>

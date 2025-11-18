@@ -21,14 +21,6 @@ const nextConfig = {
         }
     ],
   },
-  webpack: (config) => {
-    config.externals.push("pino-pretty", "lokijs", "encoding");
-    config.watchOptions = {
-      poll: 1000,
-      aggregateTimeout: 300,
-    }
-    return config;
-  },
 };
 
 module.exports = nextConfig;

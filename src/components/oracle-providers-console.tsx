@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, BarChart2, Zap, Star, Copy, PlusCircle, GitBranch, UserCheck, Banknote, ArrowRight } from 'lucide-react';
+import { DollarSign, BarChart2, Zap, Star, Copy, PlusCircle, GitBranch, UserCheck, Banknote, ArrowRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -28,7 +28,7 @@ const paymentLedgerData = [
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
 type IntegrationName = "ADOBE" | "DOCUTECH";
 
-const OnboardingStep = ({ step, title, description, children, completed, isActive }: { step: number, title: string, description: string, children: React.ReactNode, completed?: boolean, isActive?: boolean }) => {
+const OnboardingStep = ({ step, title, description, children, completed, isActive }: { step: number, title: string, description: React.ReactNode, children: React.ReactNode, completed?: boolean, isActive?: boolean }) => {
     return (
         <div className="flex items-start gap-4 group">
             <div className="flex flex-col items-center h-full">
@@ -43,7 +43,7 @@ const OnboardingStep = ({ step, title, description, children, completed, isActiv
             </div>
             <div className={cn("flex-1 space-y-2 pt-1.5 pb-8", !isActive && !completed && "opacity-50")}>
                 <h4 className="font-semibold">{title}</h4>
-                <p className="text-sm text-muted-foreground">{description}</p>
+                <div className="text-sm text-muted-foreground space-y-2">{description}</div>
                 <div className="pt-2">
                     {children}
                 </div>
@@ -359,7 +359,17 @@ export function OracleProvidersConsole() {
                     <OnboardingStep 
                         step={2} 
                         title="Stake ETH to Register" 
-                        description="Lock a minimum of 0.5 ETH to gain attestation rights. Your stake is slashable."
+                        description={
+                            <>
+                                <p>Lock a minimum of 0.5 ETH to gain attestation rights. Your stake is slashable for providing incorrect data.</p>
+                                <div className="mt-2 flex items-start gap-2 text-xs p-2 bg-secondary/50 rounded-md border">
+                                    <AlertTriangle className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <span className="font-semibold">Slashing Rules:</span> A minimum of <span className="font-mono">0.155 ETH</span> will be slashed for false data. Three strikes will trigger a partnership re-evaluation.
+                                    </div>
+                                </div>
+                            </>
+                        }
                         completed={isRegistered}
                         isActive={!isRegistered}
                     >
@@ -524,4 +534,3 @@ export function OracleProvidersConsole() {
     </div>
   );
 }
-

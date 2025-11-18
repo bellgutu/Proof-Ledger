@@ -19,10 +19,10 @@ import { contracts } from '@/config/contracts';
 
 
 const paymentLedgerData = [
-    { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '0.002', bonus: '0.0005', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '0.002', bonus: '0.00', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '0.002', bonus: '0.00', status: 'Pending', date: '2023-10-26' },
-    { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '0.002', bonus: '-0.155', status: 'Paid (Slashed)', date: '2023-10-25' },
+    { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '$6.00', bonus: '$1.50', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '$6.00', bonus: '$0.00', status: 'Paid', date: '2023-10-27' },
+    { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '$6.00', bonus: '$0.00', status: 'Pending', date: '2023-10-26' },
+    { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '$6.00', bonus: '-$465.00', status: 'Paid (Slashed)', date: '2023-10-25' },
 ];
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
@@ -486,8 +486,8 @@ export function OracleProvidersConsole() {
                                 <TableHead>Verification ID</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Requestor</TableHead>
-                                <TableHead className="text-right">Base Fee (ETH)</TableHead>
-                                <TableHead className="text-right">Bonus/Penalty (ETH)</TableHead>
+                                <TableHead className="text-right">Base Fee (USD)</TableHead>
+                                <TableHead className="text-right">Bonus/Penalty (USD)</TableHead>
                                 <TableHead className="text-right">Payment Status</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -500,8 +500,8 @@ export function OracleProvidersConsole() {
                                     <TableCell className="font-mono text-right">{data.fee}</TableCell>
                                     <TableCell className={cn(
                                         "font-mono text-right",
-                                        parseFloat(data.bonus) > 0 && "text-green-400",
-                                        parseFloat(data.bonus) < 0 && "text-red-400"
+                                        !data.bonus.startsWith('-') && data.bonus !== '$0.00' && "text-green-400",
+                                        data.bonus.startsWith('-') && "text-red-400"
                                     )}>{data.bonus}</TableCell>
                                     <TableCell className="text-right">
                                         <Badge
@@ -534,5 +534,3 @@ export function OracleProvidersConsole() {
     </div>
   );
 }
-
-    

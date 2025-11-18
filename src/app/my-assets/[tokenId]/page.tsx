@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import { Building, Diamond, Wheat, Hand, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -270,5 +271,6 @@ export default function AssetDetailPage() {
         </div>
     );
 }
+
 
     

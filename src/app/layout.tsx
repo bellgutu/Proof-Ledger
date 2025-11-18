@@ -5,7 +5,7 @@ import AppShell from '@/components/app-shell';
 import Web3Provider from '@/components/web3-provider';
 import { headers } from 'next/headers';
 import { cookieToInitialState } from 'wagmi';
-import { config } from '@/config/web3'; // Use the single, unified config
+import { config } from '@/config/web3.server'; // Use the new server-safe config
 
 export const metadata: Metadata = {
   title: 'Proof Ledger',

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, BarChart2, Zap, Star, Copy, PlusCircle, GitBranch, UserCheck, Banknote, ArrowRight, AlertTriangle } from 'lucide-react';
+import { DollarSign, BarChart2, Zap, Star, Copy, PlusCircle, GitBranch, UserCheck, Banknote, ArrowRight, AlertTriangle, TrendingUp, ShieldX, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -22,7 +22,7 @@ const paymentLedgerData = [
     { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '$500.00', bonus: '$50.00', status: 'Paid', date: '2023-10-27' },
     { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Paid', date: '2023-10-27' },
     { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Pending', date: '2023-10-26' },
-    { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '$500.00', bonus: '-$465.00', status: 'Paid (Slashed)', date: '2023-10-25' },
+    { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '$465.00', bonus: '-$465.00', status: 'Paid (Slashed)', date: '2023-10-25' },
 ];
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
@@ -339,6 +339,42 @@ export function OracleProvidersConsole() {
         <div className="lg:col-span-1 space-y-8">
             <Card>
                 <CardHeader>
+                    <CardTitle>Oracle Profile Dashboard</CardTitle>
+                    <CardDescription>Your current performance and standing in the network.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="text-center p-4 rounded-lg bg-secondary/50 border">
+                        <p className="text-sm text-muted-foreground">Reputation Score</p>
+                        <p className="text-5xl font-bold text-blue-400">987</p>
+                        <p className="text-xs text-muted-foreground">Network Rank: #12 of 150</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="p-3 rounded-lg bg-secondary/50 text-center border">
+                           <TrendingUp className="h-6 w-6 text-green-400 mx-auto mb-1"/>
+                           <p className="font-semibold">98.7%</p>
+                           <p className="text-xs text-muted-foreground">Accuracy</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-secondary/50 text-center border">
+                            <Zap className="h-6 w-6 text-green-400 mx-auto mb-1"/>
+                           <p className="font-semibold">99.98%</p>
+                           <p className="text-xs text-muted-foreground">Uptime</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-secondary/50 text-center border">
+                            <Clock className="h-6 w-6 text-yellow-400 mx-auto mb-1"/>
+                           <p className="font-semibold">1</p>
+                           <p className="text-xs text-muted-foreground">Active Disputes</p>
+                        </div>
+                         <div className="p-3 rounded-lg bg-secondary/50 text-center border">
+                             <ShieldX className="h-6 w-6 text-red-400 mx-auto mb-1"/>
+                           <p className="font-semibold">$465.00</p>
+                           <p className="text-xs text-muted-foreground">Total Slashed</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
                     <CardTitle>Oracle Network Onboarding</CardTitle>
                     <CardDescription>Follow these steps to become a trusted data provider on the Proof Ledger network.</CardDescription>
                 </CardHeader>
@@ -398,45 +434,6 @@ export function OracleProvidersConsole() {
                         </Button>
                     </OnboardingStep>
                 </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>API & Integrations</CardTitle>
-                    <CardDescription>Manage keys and automated system connections.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                   <div className="space-y-2">
-                        <Label>Your API Key</Label>
-                        <div className="flex items-center gap-2">
-                            <Input readOnly type="password" value="pl_live_xxxxxxxxxxxxxxxxxxxxxxxx" className="font-mono" />
-                            <Button variant="outline" size="icon" onClick={copyApiKey}>
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                        </div>
-                   </div>
-                    <div className="space-y-2">
-                        <Label>API Endpoint</Label>
-                        <Input readOnly value="https://api.proofledger.app/v1/attest" className="font-mono" />
-                   </div>
-                   <div className="space-y-2 pt-4 border-t">
-                      <Label htmlFor="integrationName">New Integration Name</Label>
-                      <Select onValueChange={(value: IntegrationName) => setIntegrationName(value)}>
-                          <SelectTrigger id="integrationName">
-                              <SelectValue placeholder="Select integration..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="ADOBE">ADOBE</SelectItem>
-                              <SelectItem value="DOCUTECH">DOCUTECH</SelectItem>
-                          </SelectContent>
-                      </Select>
-                   </div>
-                </CardContent>
-                <CardFooter className="flex-col gap-2">
-                    <Button variant="outline" className="w-full" onClick={handleCreateIntegration} disabled={!integrationName}>
-                        <GitBranch className="mr-2 h-4 w-4" /> Create New Integration
-                    </Button>
-                    <Button variant="secondary" className="w-full">View API Documentation</Button>
-                </CardFooter>
             </Card>
         </div>
         {/* Right Column */}

@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+// Use the full client-side config for the provider
 import { config } from '@/config/web3';
 import { WagmiProvider, type State } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

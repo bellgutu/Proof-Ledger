@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Building, Diamond, Wheat, MapPin, Shield, CheckCircle, Clock, FileText, Landmark, Hand, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 
 // Mock data - in a real app, this would be fetched based on the tokenId
@@ -71,13 +72,45 @@ const mockAssets: { [key: string]: any } = {
         history: [{ custodian: "AgriSource", date: "2024-07-20" }, { custodian: "Port of Houston", date: "2024-07-22" }],
     }
   },
+   "3001": {
+    tokenId: "3001",
+    name: "456 Oak Street, Anytown",
+    assetType: "Real Estate",
+    status: "Verified",
+    icon: <Building className="h-10 w-10 text-primary" />,
+     overview: {
+        "Parcel ID": "APN-456-78-90",
+        "Property Type": "Single Family Residence",
+        "Appraised Value": "$1,200,000",
+        "Minted On": new Date().toLocaleDateString(),
+    },
+    provenance: [
+        { status: "Digital Twin Minted", date: "2023-11-01", verifier: "TitleCo" },
+        { status: "Appraisal Verified", date: "2023-11-02", verifier: "ValueAssessors" },
+    ],
+    insurance: {
+        status: "Active",
+        policyId: "POL-RE-3001",
+        provider: "State Farm",
+        coverage: "$1,000,000",
+        nextPremiumDue: "2025-01-15",
+    },
+    custody: {
+        current: "John & Jane Doe",
+        location: "Anytown, USA",
+        history: [{ custodian: "Developer Corp", date: "2023-10-30" }],
+    }
+  },
 };
 
 const TimelineItem = ({ isLast, children }: { isLast?: boolean; children: React.ReactNode }) => (
     <div className="flex gap-4">
         <div className="flex flex-col items-center">
-            <div className="flex-shrink-0 h-4 w-4 rounded-full bg-primary" />
-            {!isLast && <div className="w-px flex-grow bg-border" />}
+             <div className={cn(
+                "flex-shrink-0 h-4 w-4 rounded-full",
+                "bg-primary ring-4 ring-primary/20"
+            )} />
+            {!isLast && <div className="w-px flex-grow bg-border my-2" />}
         </div>
         <div className="flex-1 pb-8">
             {children}
@@ -88,8 +121,18 @@ const TimelineItem = ({ isLast, children }: { isLast?: boolean; children: React.
 
 export default function AssetDetailPage() {
     const params = useParams();
+    const { toast } = useToast();
     const tokenId = params.tokenId as string;
-    const asset = mockAssets[tokenId] || mockAssets["1001"]; // Fallback to first asset
+    // Fallback to a default asset if the tokenId is not in our mock data
+    const asset = mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]];
+
+
+    const handleTransferCustody = () => {
+        toast({
+            title: "Custody Transfer Initiated",
+            description: "A request has been sent to the new custodian for approval. This will require a multi-sig transaction.",
+        });
+    };
 
     const getStatusClass = (status: string, prefix: 'bg' | 'text' | 'border') => {
         switch(status) {
@@ -183,7 +226,7 @@ export default function AssetDetailPage() {
                                     <p key={index}><span className="text-muted-foreground">{item.date}:</span> {item.custodian}</p>
                                 ))}
                             </div>
-                            <Button className="w-full"><Hand className="mr-2 h-4 w-4" /> Transfer Custody</Button>
+                            <Button className="w-full" onClick={handleTransferCustody}><Hand className="mr-2 h-4 w-4" /> Transfer Custody</Button>
                         </CardContent>
                     </Card>
                      <Card>
@@ -223,3 +266,5 @@ export default function AssetDetailPage() {
         </div>
     );
 }
+
+    

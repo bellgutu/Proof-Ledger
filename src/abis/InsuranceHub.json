@@ -1,12 +1,71 @@
 
 {
-    "abi": [
-        {
-            "inputs": [],
-            "name": "placeholder",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        }
-    ]
+  "abi": [
+    {
+      "inputs": [
+        {"name": "tokenId", "type": "uint256"},
+        {"name": "insuredValue", "type": "uint256"},
+        {"name": "premium", "type": "uint256"},
+        {"name": "duration", "type": "uint256"},
+        {"name": "coveredRisks", "type": "bytes32[]"},
+        {"name": "deductible", "type": "uint256"},
+        {"name": "metadataURI", "type": "string"}
+      ],
+      "name": "createPolicy",
+      "type": "function",
+      "stateMutability": "payable",
+      "outputs": [{"name": "policyId", "type": "uint256"}]
+    },
+    {
+      "inputs": [
+        {"name": "policyId", "type": "uint256"},
+        {"name": "claimAmount", "type": "uint256"},
+        {"name": "incidentProof", "type": "bytes32"},
+        {"name": "incidentDescription", "type": "string"}
+      ],
+      "name": "fileClaim",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": [{"name": "claimId", "type": "uint256"}]
+    },
+    {
+      "inputs": [
+        {"name": "claimId", "type": "uint256"},
+        {"name": "approve", "type": "bool"},
+        {"name": "payoutAmount", "type": "uint256"},
+        {"name": "assessmentHash", "type": "bytes32"}
+      ],
+      "name": "assessClaim",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": []
+    },
+    {
+      "inputs": [{"name": "claimId", "type": "uint256"}],
+      "name": "processClaim",
+      "type": "function",
+      "stateMutability": "payable",
+      "outputs": []
+    },
+    {
+      "inputs": [
+        {"name": "policyId", "type": "uint256"},
+        {"name": "newDuration", "type": "uint256"}
+      ],
+      "name": "renewPolicy",
+      "type": "function",
+      "stateMutability": "payable",
+      "outputs": []
+    },
+    {
+      "inputs": [
+        {"name": "policyId", "type": "uint256"},
+        {"name": "reason", "type": "string"}
+      ],
+      "name": "cancelPolicy",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": []
+    }
+  ]
 }

@@ -1,12 +1,78 @@
 
 {
-    "abi": [
-        {
-            "inputs": [],
-            "name": "placeholder",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        }
-    ]
+  "abi": [
+    {
+      "inputs": [
+        {"name": "assetId", "type": "bytes32"},
+        {"name": "assetType", "type": "uint8"},
+        {"name": "verifiedValue", "type": "uint256"},
+        {"name": "verificationHash", "type": "bytes32"},
+        {"name": "legalOwner", "type": "address"},
+        {"name": "metadataURI", "type": "string"},
+        {"name": "reVerificationPeriod", "type": "uint256"}
+      ],
+      "name": "mintDigitalTwin",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": [{"name": "tokenId", "type": "uint256"}]
+    },
+    {
+      "inputs": [
+        {"name": "tokenId", "type": "uint256"},
+        {"name": "dataHash", "type": "bytes32"},
+        {"name": "location", "type": "string"},
+        {"name": "currentStatus", "type": "uint8"},
+        {"name": "sensorDataHashes", "type": "bytes32[]"},
+        {"name": "isFinal", "type": "bool"}
+      ],
+      "name": "addVerificationSnapshot",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": []
+    },
+    {
+      "inputs": [
+        {"name": "tokenId", "type": "uint256"},
+        {"name": "newCustodian", "type": "address"}
+      ],
+      "name": "transferCustody",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": []
+    },
+    {
+      "inputs": [
+        {"name": "tokenId", "type": "uint256"},
+        {"name": "custodian", "type": "address"}
+      ],
+      "name": "authorizeCustodian",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": []
+    },
+    {
+      "inputs": [
+        {"name": "tokenId", "type": "uint256"},
+        {"name": "lender", "type": "address"}
+      ],
+      "name": "markAsCollateral",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "outputs": []
+    },
+    {
+      "inputs": [{"name": "tokenId", "type": "uint256"}],
+      "name": "getCurrentCustodian",
+      "type": "function",
+      "stateMutability": "view",
+      "outputs": [{"name": "custodian", "type": "address"}]
+    },
+    {
+      "inputs": [{"name": "tokenId", "type": "uint256"}],
+      "name": "ownerOf",
+      "type": "function",
+      "stateMutability": "view",
+      "outputs": [{"name": "owner", "type": "address"}]
+    }
+  ]
 }

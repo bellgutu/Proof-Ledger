@@ -239,7 +239,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="mr-3"><Settings size={18}/></div>
                     <span>Settings</span>
                 </Link>
-                <p className="text-xs text-muted-foreground text-center !mt-8">Proof Ledger v1.0</p>
+                <div className="text-xs text-muted-foreground text-center !mt-8">
+                  <p>Proof Ledger v1.0</p>
+                  <p className="mt-2">Developed by: Abel Gutu</p>
+                  <p>abelgutu@gmail.com</p>
+                </div>
             </div>
         </div>
       </aside>
@@ -273,7 +277,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                     <div className="mr-3"><Settings size={18}/></div>
                                     <span>Settings</span>
                                 </Link>
-                                <p className="text-xs text-muted-foreground text-center !mt-8">Proof Ledger v1.0</p>
+                                <div className="text-xs text-muted-foreground text-center !mt-8">
+                                  <p>Proof Ledger v1.0</p>
+                                  <p className="mt-2">Developed by: Abel Gutu</p>
+                                  <p>abelgutu@gmail.com</p>
+                                </div>
                             </div>
                         </div>
                     </aside>

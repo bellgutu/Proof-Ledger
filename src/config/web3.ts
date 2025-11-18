@@ -7,21 +7,13 @@ export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
 // 2. Set chains
-const mainnet = {
-  chainId: 1,
-  name: 'Ethereum',
+const sepolia = {
+  chainId: 11155111,
+  name: 'Sepolia',
   currency: 'ETH',
-  explorerUrl: 'https://etherscan.io',
-  rpcUrl: 'https://cloudflare-eth.com'
+  explorerUrl: 'https://sepolia.etherscan.io',
+  rpcUrl: 'https://rpc.sepolia.org'
 };
-
-const arbitrum = {
-    chainId: 42161,
-    name: 'Arbitrum',
-    currency: 'ETH',
-    explorerUrl: 'https://arbiscan.io',
-    rpcUrl: 'https://arb1.arbitrum.io/rpc'
-}
 
 
 // 3. Create a metadata object
@@ -47,7 +39,7 @@ const ethersConfig = defaultConfig({
 // 5. Create a Web3Modal instance
 createWeb3Modal({
   ethersConfig,
-  chains: [mainnet, arbitrum],
+  chains: [sepolia],
   projectId,
   enableAnalytics: true, // Optional - defaults to your Cloud configuration
   themeVariables: {

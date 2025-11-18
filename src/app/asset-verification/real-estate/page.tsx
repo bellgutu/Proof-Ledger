@@ -131,7 +131,7 @@ export default function RealEstatePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Forms */}
+        {/* Main Content Column */}
         <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
@@ -210,7 +210,7 @@ export default function RealEstatePage() {
           </Card>
         </div>
 
-        {/* Right Column: Document Uploads & Summary */}
+        {/* Sidebar Column */}
         <div className="lg:col-span-1 space-y-8">
            <Card>
             <CardHeader>

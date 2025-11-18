@@ -1,3 +1,4 @@
+
 "use client";
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -305,6 +306,7 @@ export default function OracleProvidersPage() {
 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+        {/* Left Column */}
         <div className="lg:col-span-1 space-y-8">
             <Card>
                 <CardHeader>
@@ -374,6 +376,7 @@ export default function OracleProvidersPage() {
                 </CardFooter>
             </Card>
         </div>
+        {/* Right Column */}
         <div className="lg:col-span-2 space-y-8">
             <Card>
                 <CardHeader>

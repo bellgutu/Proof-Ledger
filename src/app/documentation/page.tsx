@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
-// In a real application, this list could be fetched from a CMS or a JSON file.
-// For now, it's defined here. To add a new document, add an object to this array
-// and place the corresponding PDF file in the /public/documents/ folder.
+// This list maps to the PDF files you should place in the /public/documents/ folder.
+// To add a new document, add an object to this array and ensure the PDF file exists.
 const documents = [
   {
     title: "Proof Ledger Technical Whitepaper",
@@ -61,10 +60,12 @@ export default function DocumentationPage() {
             </CardHeader>
             <CardContent className="flex-grow"></CardContent>
             <CardFooter>
-              <Link href={doc.href} passHref target="_blank" rel="noopener noreferrer" className="w-full">
-                <Button className="w-full">
-                  View Document <ExternalLink className="ml-2 h-4 w-4" />
-                </Button>
+              <Link href={doc.href} passHref legacyBehavior>
+                <a target="_blank" rel="noopener noreferrer" className="w-full">
+                    <Button className="w-full">
+                        View Document <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
+                </a>
               </Link>
             </CardFooter>
           </Card>

@@ -4,7 +4,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, ExternalLink } from "lucide-react";
-import Link from "next/link";
 
 // This list maps to the PDF files you should place in the /public/documents/ folder.
 // To add a new document, add an object to this array and ensure the PDF file exists.
@@ -60,13 +59,11 @@ export default function DocumentationPage() {
             </CardHeader>
             <CardContent className="flex-grow"></CardContent>
             <CardFooter>
-              <Link href={doc.href} passHref legacyBehavior>
-                <a target="_blank" rel="noopener noreferrer" className="w-full">
+                <a href={doc.href} target="_blank" rel="noopener noreferrer" className="w-full">
                     <Button className="w-full">
                         View Document <ExternalLink className="ml-2 h-4 w-4" />
                     </Button>
                 </a>
-              </Link>
             </CardFooter>
           </Card>
         ))}

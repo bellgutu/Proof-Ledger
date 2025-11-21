@@ -11,7 +11,7 @@ const documents = [
   {
     title: "Proof Ledger Technical Whitepaper",
     description: "The complete technical overview of the platform's architecture, smart contracts, and decentralized protocols.",
-    href: "/documents/Technical_Whitepaper.pdf",
+    href: "/documents/Proof Ledger_ Institutional Infrastructure for Verifiable Real-World Assets.pdf",
     icon: <FileText className="h-10 w-10 text-primary" />,
   },
   {

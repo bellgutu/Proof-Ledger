@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X, Library, FileText } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X, Library, FileText, UserPlus } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -237,6 +237,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Button onClick={toggleTheme} variant="ghost" size="icon" aria-label="Toggle theme">
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </Button>
+            <Link href="/signup" passHref>
+                <Button variant="ghost">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Sign Up
+                </Button>
+            </Link>
             <ConnectButton />
         </header>
         <div className="p-4 md:p-6 lg:p-8">

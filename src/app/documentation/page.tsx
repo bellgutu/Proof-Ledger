@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -12,6 +11,12 @@ const documents = [
     title: "Proof Ledger Technical Whitepaper",
     description: "The complete technical overview of the platform's architecture, smart contracts, and decentralized protocols.",
     href: "/documents/Proof Ledger_ Institutional Infrastructure for Verifiable Real-World Assets.pdf",
+    icon: <FileText className="h-10 w-10 text-primary" />,
+  },
+  {
+    title: "Proof Ledger Pitch Deck",
+    description: "A presentation summarizing the business model, market opportunity, and vision for investors.",
+    href: "/documents/Proof_Ledger_Pitch_Deck.pdf",
     icon: <FileText className="h-10 w-10 text-primary" />,
   },
   {

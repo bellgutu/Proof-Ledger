@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { ethers, type BrowserProvider } from 'ethers';
-import { useToast } from './ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { getProvider } from '@/lib/blockchain';
 
 interface WalletContextType {
@@ -76,6 +76,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
             window.ethereum.on('accountsChanged', handleAccountsChanged);
             window.ethereum.on('chainChanged', handleChainChanged);
+
+            // Try to connect eagerly on page load
+            const checkConnection = async () => {
+                try {
+                    const accounts = await ethProvider.send('eth_accounts', []);
+                    if (accounts.length > 0) {
+                        handleAccountsChanged(accounts);
+                        const network = await ethProvider.getNetwork();
+                        setChainId(network.chainId);
+                    }
+                } catch (err) {
+                    console.error("Could not check for existing connection:", err);
+                }
+            };
+            checkConnection();
 
             return () => {
                 if (window.ethereum.removeListener) {

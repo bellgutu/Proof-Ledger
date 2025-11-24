@@ -177,7 +177,7 @@ export default function LuxuryGoodsPage() {
             assetType,
             verifiedValue,
             verificationHash,
-            account, // legal owner
+            ethers.ZeroAddress, // legal owner, changed to ZeroAddress
             metadataURI,
             reVerificationPeriod
         );
@@ -210,7 +210,18 @@ export default function LuxuryGoodsPage() {
         } else if (error.message) {
             errorMessage = error.message;
         }
-        toast({ title: "Minting Failed", description: errorMessage, variant: "destructive" });
+        
+        toast({
+            title: "Minting Failed",
+            description: (
+              <pre className="mt-2 w-[340px] rounded-md bg-background p-4">
+                <code className="text-destructive-foreground">{JSON.stringify(error, null, 2)}</code>
+              </pre>
+            ),
+            variant: "destructive",
+            duration: 20000, // Keep toast open longer
+        });
+
     } finally {
         setIsMinting(false);
     }
@@ -466,3 +477,5 @@ export default function LuxuryGoodsPage() {
     </div>
   );
 }
+
+    

@@ -61,7 +61,7 @@ export function OracleProvidersConsole() {
 
     const { toast } = useToast();
     const { writeContractAsync } = useWriteContract();
-    const { connector, isConnected } = useAccount();
+    const { isConnected } = useAccount();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,7 +77,7 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
-        if (!isConnected || !connector) {
+        if (!isConnected) {
             toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive"});
             return;
         }
@@ -95,7 +95,6 @@ export function OracleProvidersConsole() {
                 functionName: 'registerOracle',
                 args: ['ipfs://YourMetadataURI'], // Placeholder for metadata
                 value: ethers.parseEther(stakeAmount),
-                connector: connector,
             });
             toast({ title: "Registration Successful", description: `Transaction sent: ${tx}` });
             setIsRegistered(true);

@@ -5,7 +5,7 @@ import AppShell from '@/components/app-shell';
 import Web3Provider from '@/components/web3-provider';
 import { headers } from 'next/headers';
 import { cookieToInitialState } from 'wagmi';
-import { config } from '@/config/web3.server';
+import { config } from '@/config/web3';
 
 export const metadata: Metadata = {
   title: 'Proof Ledger',

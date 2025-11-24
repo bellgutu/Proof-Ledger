@@ -5,7 +5,6 @@ import { config } from '@/config/web3';
 import { WagmiProvider, type State } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-// Setup queryClient
 const queryClient = new QueryClient()
 
 export default function Web3Provider({

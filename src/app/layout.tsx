@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
-import Web3Provider from '@/components/web3-provider';
 import { headers } from 'next/headers';
 import { cookieToInitialState } from 'wagmi';
 import { config } from '@/config/web3.server';
+import ClientProvider from '@/components/client-provider';
 
 export const metadata: Metadata = {
   title: 'Proof Ledger',
@@ -37,10 +37,10 @@ export default function RootLayout({
           crossOrigin=""/>
       </head>
       <body className="font-body antialiased">
-        <Web3Provider initialState={initialState}>
+        <ClientProvider initialState={initialState}>
           <AppShell>{children}</AppShell>
           <Toaster />
-        </Web3Provider>
+        </ClientProvider>
       </body>
     </html>
   );

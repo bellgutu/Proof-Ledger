@@ -78,11 +78,6 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
-        if (!isConnected) {
-            toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive"});
-            return;
-        }
-
         if (!stakeAmount || parseFloat(stakeAmount) < 0.5) {
             toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;
@@ -389,9 +384,9 @@ export function OracleProvidersConsole() {
                                 onChange={(e) => setStakeAmount(e.target.value)}
                                 className="w-full sm:w-24"
                                 placeholder="0.5"
-                                disabled={isRegistered}
+                                disabled={isRegistered || !isConnected}
                             />
-                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || isRegistering}>
+                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || isRegistering || !isConnected}>
                                 {isRegistering ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

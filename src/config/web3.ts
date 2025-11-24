@@ -1,5 +1,6 @@
+
 'use client';
-import { createWeb3Modal } from '@web3modal/ethers/react';
+import { createWeb3Modal, ethersConfig } from '@web3modal/ethers/react';
 import { http, createConfig } from 'wagmi';
 import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
@@ -27,7 +28,6 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: true, // Enable SSR
 });
 
 // 4. Create a Web3Modal instance

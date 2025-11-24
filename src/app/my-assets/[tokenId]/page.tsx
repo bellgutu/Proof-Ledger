@@ -127,16 +127,21 @@ export default function AssetDetailPage() {
     const params = useParams();
     const { toast } = useToast();
     const tokenId = params.tokenId as string;
-    const [mintedDate, setMintedDate] = useState("11/18/2025");
+    const [asset, setAsset] = useState(mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]]);
 
     useEffect(() => {
         // Set the date only on the client to avoid hydration errors
-        setMintedDate(new Date().toLocaleDateString());
-    }, []);
+        const currentAsset = mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]];
+        const updatedAsset = { 
+            ...currentAsset, 
+            overview: {
+                ...currentAsset.overview,
+                "Minted On": new Date().toLocaleDateString()
+            }
+        };
+        setAsset(updatedAsset);
+    }, [tokenId]);
     
-    // Fallback to a default asset if the tokenId is not in our mock data
-    const asset = mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]];
-    asset.overview["Minted On"] = mintedDate;
 
     if (!tokenId) {
         return <div className="container mx-auto p-8">Loading...</div>;
@@ -281,5 +286,3 @@ export default function AssetDetailPage() {
         </div>
     );
 }
-
-    

@@ -112,8 +112,16 @@ export function OracleProvidersConsole() {
             setPaymentLedgerData(prevData => [newEntry, ...prevData]);
 
         } catch (error: any) {
-            console.error(error);
-            const errorMessage = error.reason || error.message || "An unknown error occurred.";
+            console.error("Submission Error:", error);
+            // Enhanced error handling
+            let errorMessage = "An unknown error occurred.";
+            if (error.reason) {
+                // Ethers v6 often puts the revert reason here
+                errorMessage = `Execution failed: ${error.reason}`;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
             toast({ title: "Submission Failed", description: errorMessage, variant: "destructive" });
         } finally {
             setIsSubmitting(false);
@@ -164,7 +172,12 @@ export function OracleProvidersConsole() {
                 toast({ title: "Already Registered", description: "This wallet is already an active oracle." });
                 setIsRegistered(true);
             } else {
-                const errorMessage = error.reason || error.message || "An unknown error occurred.";
+                 let errorMessage = "An unknown error occurred.";
+                if (error.reason) {
+                    errorMessage = `Registration failed: ${error.reason}`;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
                 toast({ title: "Registration Failed", description: errorMessage, variant: "destructive" });
             }
         } finally {

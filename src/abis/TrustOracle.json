@@ -2,6 +2,21 @@
 {
   "abi": [
     {
+      "inputs": [],
+      "name": "OracleAlreadyRegistered",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OracleNotRegistered",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InsufficientStake",
+      "type": "error"
+    },
+    {
       "inputs": [
         {"name": "metadataURI", "type": "string"}
       ],

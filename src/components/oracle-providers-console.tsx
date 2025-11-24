@@ -1,8 +1,7 @@
 
 'use client';
 import { useState } from 'react';
-import { useWriteContract, useAccount } from 'wagmi';
-import { ethers } from 'ethers';
+import { ethers, type Contract } from 'ethers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { contracts } from '@/config/contracts';
-import { useWeb3Modal } from '@web3modal/ethers/react';
+import { useWallet } from '@/components/wallet-provider';
+import { getContract } from '@/lib/blockchain';
 
 
 const paymentLedgerData = [
@@ -62,9 +62,7 @@ export function OracleProvidersConsole() {
     const [isRegistered, setIsRegistered] = useState(false);
 
     const { toast } = useToast();
-    const { writeContractAsync } = useWriteContract();
-    const { isConnected } = useAccount();
-    const { open } = useWeb3Modal();
+    const { provider, connectWallet, isConnected } = useWallet();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -80,9 +78,9 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
-        if (!isConnected) {
+        if (!isConnected || !provider) {
             toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive"});
-            open();
+            connectWallet();
             return;
         }
 
@@ -95,18 +93,30 @@ export function OracleProvidersConsole() {
 
         try {
             toast({ title: "Processing Transaction", description: "Please confirm in your wallet." });
-            const tx = await writeContractAsync({
-                abi: contracts.trustOracle.abi,
-                address: contracts.trustOracle.address,
-                functionName: 'registerOracle',
-                args: ['ipfs://YourMetadataURI'], // Placeholder for metadata
-                value: ethers.parseEther(stakeAmount),
-            });
-            toast({ title: "Registration Successful", description: `Transaction sent: ${tx}` });
+            const contract = await getContract('trustOracle', provider);
+            if (!contract) {
+                throw new Error("Could not get contract instance");
+            }
+            
+            const tx = await contract.registerOracle(
+                'ipfs://YourMetadataURI', 
+                { value: ethers.parseEther(stakeAmount) }
+            );
+
+            toast({ title: "Transaction Sent", description: "Waiting for confirmation...", action: (
+                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="sm">View on Etherscan</Button>
+                </a>
+            ) });
+            
+            await tx.wait(); // Wait for the transaction to be mined
+
+            toast({ title: "Registration Successful", description: `You are now a registered oracle! Tx: ${tx.hash.slice(0,10)}...` });
             setIsRegistered(true);
         } catch (error: any) {
             console.error(error);
-            toast({ title: "Registration Failed", description: error.shortMessage || error.message, variant: "destructive" });
+            const errorMessage = error.reason || error.message || "An unknown error occurred.";
+            toast({ title: "Registration Failed", description: errorMessage, variant: "destructive" });
         } finally {
             setIsRegistering(false);
         }

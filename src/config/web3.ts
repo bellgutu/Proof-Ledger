@@ -1,29 +1,13 @@
 
 import { http, createConfig } from 'wagmi';
-import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
 
-export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
-
-if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
-
-export const metadata = {
-  name: 'Proof Ledger',
-  description: 'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
-  url: 'https://proof-ledger.app',
-  icons: ['https://avatars.githubusercontent.com/u/37784886']
-};
-
-export const chains = [sepolia] as const;
+// This file is no longer used by the new ethers-based wallet provider.
+// It is kept here for reference but is not active in the application.
 
 export const config = createConfig({
-  chains: chains,
+  chains: [sepolia],
   transports: {
     [sepolia.id]: http(),
   },
-  connectors: [
-    walletConnect({ projectId, metadata, showQrModal: false }),
-    injected({ shimDisconnect: true }),
-  ],
-  ssr: true, 
 });

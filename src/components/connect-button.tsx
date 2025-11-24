@@ -1,25 +1,23 @@
+
 'use client';
 
-import { useWeb3Modal, useWeb3ModalAccount } from '@web3modal/ethers/react';
-import { useDisconnect } from 'wagmi';
+import { useWallet } from '@/components/wallet-provider';
 import { Button } from './ui/button';
 import { Wallet } from 'lucide-react';
 
 export function ConnectButton() {
-  const { open } = useWeb3Modal();
-  const { address, isConnected } = useWeb3ModalAccount();
-  const { disconnect } = useDisconnect();
+  const { connectWallet, disconnectWallet, account } = useWallet();
 
-  if (isConnected && address) {
+  if (account) {
     return (
-      <Button onClick={() => disconnect()}>
-        {address.slice(0, 6)}...{address.slice(-4)}
+      <Button onClick={disconnectWallet}>
+        {account.slice(0, 6)}...{account.slice(-4)}
       </Button>
     );
   }
 
   return (
-    <Button onClick={() => open()}>
+    <Button onClick={connectWallet}>
       <Wallet className="mr-2 h-4 w-4" />
       Connect Wallet
     </Button>

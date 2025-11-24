@@ -1,14 +1,17 @@
 'use client';
 
 import React from 'react';
-import Web3Provider from './web3-provider';
-import { type State } from 'wagmi';
-import { createWeb3Modal } from '@web3modal/ethers/react';
-import { projectId, metadata } from '@/config/web3';
 import { config } from '@/config/web3';
+import { createWeb3Modal } from '@web3modal/ethers/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type State, WagmiProvider } from 'wagmi';
 import { sepolia } from 'wagmi/chains';
+import { projectId, metadata } from '@/config/web3';
 
-// Create the modal outside the component to ensure it's only created once.
+// Setup queryClient
+const queryClient = new QueryClient();
+
+// Create Web3Modal
 createWeb3Modal({
   ethersConfig: config,
   chains: [sepolia],
@@ -20,19 +23,19 @@ createWeb3Modal({
     '--w3m-color-mix-strength': 20,
     '--w3m-border-radius-master': '1px',
     '--w3m-font-family': 'Inter, sans-serif',
-  }
+  },
 });
 
 export default function ClientProvider({
   children,
-  initialState
+  initialState,
 }: {
   children: React.ReactNode;
   initialState?: State;
 }) {
   return (
-    <Web3Provider initialState={initialState}>
-      {children}
-    </Web3Provider>
+    <WagmiProvider config={config} initialState={initialState}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </WagmiProvider>
   );
 }

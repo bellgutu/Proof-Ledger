@@ -18,6 +18,7 @@ import { useWallet } from '@/components/wallet-provider';
 import { getContract } from '@/lib/blockchain';
 import { ethers } from 'ethers';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type AssetType = 'gemstone' | 'luxury_item';
 type LuxurySubType = 'watch' | 'bag' | 'automobile' | 'garment' | '';
@@ -125,10 +126,8 @@ export default function LuxuryGoodsPage() {
   const [assetType, setAssetType] = useState<AssetType>('gemstone');
   const [luxurySubType, setLuxurySubType] = useState<LuxurySubType>('');
   const [visualsFile, setVisualsFile] = useState<File | null>(null);
-  const [isMinting, setIsMinting] = useState(false);
   const { toast } = useToast();
-  const { provider, connectWallet, isConnected, account } = useWallet();
-
+  
   const handleAssetTypeChange = (value: AssetType) => {
     setAssetType(value);
     setLuxurySubType('');
@@ -150,80 +149,8 @@ export default function LuxuryGoodsPage() {
       });
     }
   }
-
-  const handleMintAsset = async () => {
-    if (!isConnected || !provider || !account) {
-        toast({ title: "Wallet Not Connected", description: "Please connect your wallet to mint an asset.", variant: "destructive"});
-        connectWallet();
-        return;
-    }
-
-    setIsMinting(true);
-    toast({ title: "Preparing Asset...", description: "Please confirm the transaction in your wallet." });
-
-    try {
-        const contract = await getContract('proofLedgerCore', provider);
-        if (!contract) throw new Error("Could not connect to ProofLedgerCore contract.");
-
-        // These are mock values. In a real app, you'd get them from the form.
-        const assetId = ethers.id(`GEM-${Date.now()}`); // Unique ID
-        const assetType = 2; // 2 for Luxury Good
-        const verifiedValue = ethers.parseEther("1.2"); // Example: 1.2 ETH
-        const verificationHash = ethers.id("GIA-12345678");
-        const metadataURI = "ipfs://QmW...example";
-        const reVerificationPeriod = 365 * 24 * 60 * 60; // 1 year in seconds
-
-        const tx = await contract.mintDigitalTwin(
-            assetId,
-            assetType,
-            verifiedValue,
-            verificationHash,
-            ethers.ZeroAddress,
-            metadataURI,
-            reVerificationPeriod
-        );
-
-        toast({ title: "Minting Transaction Sent", description: "Waiting for confirmation...", action: (
-            <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm">View on Etherscan</Button>
-            </a>
-        )});
-
-        const receipt = await tx.wait();
-
-        const mintEvent = receipt.logs.find((log: any) => log.fragment && log.fragment.name === 'DigitalTwinMinted');
-        const tokenId = mintEvent ? mintEvent.args[0].toString() : 'Unknown';
-
-        toast({ title: "Asset Minted Successfully!", description: `Token ID: ${tokenId} has been created.`, action: (
-            <a href={`/my-assets/${tokenId}`} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm">View Asset</Button>
-            </a>
-        )});
-        
-    } catch (error: any) {
-        console.error("Minting Error:", error);
-        
-        toast({
-            title: "Minting Failed",
-            description: (
-              <div className="mt-2 w-full rounded-md bg-background p-1">
-                  <Textarea 
-                      className="w-full h-40 text-xs font-mono bg-transparent border-0" 
-                      value={JSON.stringify(error, null, 2)} 
-                      readOnly 
-                  />
-              </div>
-            ),
-            variant: "destructive",
-            duration: 30000,
-        });
-
-    } finally {
-        setIsMinting(false);
-    }
-  }
   
-  const isMintingDisabled = (assetType === 'luxury_item' && !luxurySubType) || !visualsFile || isMinting;
+  const isMintingDisabled = (assetType === 'luxury_item' && !luxurySubType) || !visualsFile;
 
   const renderVisualsContent = () => {
     let title = "High-Resolution Visuals";
@@ -375,14 +302,21 @@ export default function LuxuryGoodsPage() {
               </Button>
             </CardContent>
              <CardFooter className="gap-2">
-                 <Button className="w-full h-12 text-base" disabled={isMintingDisabled} onClick={handleMintAsset}>
-                    {isMinting ? (
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    ) : (
-                      <CheckCircle className="mr-2 h-5 w-5" />
-                    )}
-                    {isMinting ? "Minting..." : "Finalize &amp; Mint Asset"}
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="w-full" tabIndex={0}>
+                        <Button className="w-full h-12 text-base" disabled={true}>
+                          <CheckCircle className="mr-2 h-5 w-5" />
+                          Finalize &amp; Mint Asset
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Minting is restricted to addresses with the MINTER_ROLE.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
             </CardFooter>
         </>
     );

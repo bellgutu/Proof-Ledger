@@ -78,6 +78,11 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
+        if (!isConnected) {
+            toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive" });
+            return;
+        }
+
         if (!stakeAmount || parseFloat(stakeAmount) < 0.5) {
             toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;
@@ -98,13 +103,7 @@ export function OracleProvidersConsole() {
             setIsRegistered(true);
         } catch (error: any) {
             console.error(error);
-            // The wagmi hook will throw an error if not connected, which is more reliable.
-            // We can check for specific error messages to provide better feedback.
-            if (error.shortMessage?.includes('Connector not connected')) {
-                toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive" });
-            } else {
-                toast({ title: "Registration Failed", description: error.shortMessage || error.message, variant: "destructive" });
-            }
+            toast({ title: "Registration Failed", description: error.shortMessage || error.message, variant: "destructive" });
         } finally {
             setIsRegistering(false);
         }

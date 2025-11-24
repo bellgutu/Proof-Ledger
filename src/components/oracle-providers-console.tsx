@@ -100,10 +100,9 @@ export function OracleProvidersConsole() {
                 throw new Error("Could not get contract instance");
             }
             
-            const tx = await contract.registerOracle(
-                'ipfs://YourMetadataURI', 
-                { value: ethers.parseEther(finalStakeAmount) }
-            );
+            const tx = await contract.registerOracle('ipfs://YourMetadataURI', {
+                value: ethers.parseEther(finalStakeAmount),
+            });
 
             toast({ title: "Transaction Sent", description: "Waiting for confirmation...", action: (
                 <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer">

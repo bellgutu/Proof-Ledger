@@ -208,7 +208,7 @@ export default function LuxuryGoodsPage() {
             title: "Minting Failed",
             description: (
               <div className="w-full">
-                <p className="mb-2">The transaction was reverted. You can copy the full error below:</p>
+                <p className="mb-2">The transaction was reverted. This usually happens if the connected wallet does not have the 'VERIFIER' role. You can copy the full error below:</p>
                 <Textarea
                   readOnly
                   className="w-full h-32 text-xs font-mono bg-destructive/10"

@@ -26,7 +26,7 @@ const paymentLedgerData = [
 ];
 
 type CertificationType = 'real_estate' | 'gemstone' | 'commodity_coa' | 'shipping_event' | 'sensor_data';
-type IntegrationName = "ADOBE" | "DOCUTECH";
+
 
 const OnboardingStep = ({ step, title, description, children, completed, isActive }: { step: number, title: string, description: React.ReactNode, children: React.ReactNode, completed?: boolean, isActive?: boolean }) => {
     return (
@@ -56,7 +56,6 @@ const OnboardingStep = ({ step, title, description, children, completed, isActiv
 export function OracleProvidersConsole() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [certificationType, setCertificationType] = useState<CertificationType | ''>('');
-    const [integrationName, setIntegrationName] = useState<IntegrationName | ''>('');
     const [stakeAmount, setStakeAmount] = useState('0.5');
     const [isRegistered, setIsRegistered] = useState(false);
 
@@ -106,43 +105,6 @@ export function OracleProvidersConsole() {
         }
     };
 
-    const handleCreateIntegration = async () => {
-        if (!integrationName) {
-            toast({
-                title: "Error",
-                description: "Please select an integration name.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/proof/integrations', { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: integrationName }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to create integration.");
-            }
-            const data = await response.json();
-            toast({
-                title: "Integration Created",
-                description: (
-                    <pre className="mt-2 w-full rounded-md bg-secondary p-4">
-                        <code className="text-foreground">{JSON.stringify(data, null, 2)}</code>
-                    </pre>
-                ),
-            });
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Could not create integration.",
-                variant: "destructive"
-            });
-        }
-    };
 
     const copyApiKey = () => {
         navigator.clipboard.writeText('pl_live_xxxxxxxxxxxxxxxxxxxxxxxx');
@@ -538,5 +500,3 @@ export function OracleProvidersConsole() {
     </div>
   );
 }
-
-    

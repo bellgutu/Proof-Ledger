@@ -173,14 +173,15 @@ export default function LuxuryGoodsPage() {
       const contract = await getContract('proofLedgerCore', provider);
       if (!contract) throw new Error("Could not connect to contract.");
 
-      // Example data. In a real app, this would come from the form fields.
-      const assetId = ethers.id("LUX-123");
+      // Example data for a verifier role.
+      const assetId = ethers.id("GEM-VERIFICATION-123");
       const assetTypeEnum = 2; // 1: Real Estate, 2: Luxury, 3: Commodity
-      const verifiedValue = ethers.parseUnits("25000", 2); // $25,000.00
-      const verificationHash = ethers.id("GIA-12345678");
-      const legalOwner = account;
+      const verifiedValue = ethers.parseUnits("15000", 2); // $15,000.00
+      const verificationHash = ethers.id("GIA-REPORT-HASH-EXAMPLE");
+      // The legal owner might be a different address that the verifier is minting on behalf of.
+      const legalOwner = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"; // Example: Vitalik's address
       const metadataURI = "ipfs://Qm..."; // Placeholder
-      const reVerificationPeriod = 365 * 2; // 2 years in days
+      const reVerificationPeriod = 365 * 5; // 5 years in days
 
       const tx = await contract.mintDigitalTwin(
         assetId,
@@ -451,7 +452,7 @@ export default function LuxuryGoodsPage() {
           <Card>
             <CardHeader>
               <CardTitle>A. Authenticity &amp; Provenance</CardTitle>
-              <CardDescription>Enter official grading and manufacturing details based on the asset type.</CardDescription>
+              <CardDescription>Enter official grading and manufacturing details. Note: Minting requires the connected wallet to have the 'VERIFIER' role.</CardDescription>
             </CardHeader>
             <CardContent>
                 {renderProvenanceForm(assetType, luxurySubType)}

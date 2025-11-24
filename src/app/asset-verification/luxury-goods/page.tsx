@@ -126,7 +126,9 @@ export default function LuxuryGoodsPage() {
   const [assetType, setAssetType] = useState<AssetType>('gemstone');
   const [luxurySubType, setLuxurySubType] = useState<LuxurySubType>('');
   const [visualsFile, setVisualsFile] = useState<File | null>(null);
+  const [isMinting, setIsMinting] = useState(false);
   const { toast } = useToast();
+  const { provider, account, isConnected, connectWallet } = useWallet();
   
   const handleAssetTypeChange = (value: AssetType) => {
     setAssetType(value);
@@ -150,7 +152,76 @@ export default function LuxuryGoodsPage() {
     }
   }
   
-  const isMintingDisabled = (assetType === 'luxury_item' && !luxurySubType) || !visualsFile;
+  const isMintingDisabled = (assetType === 'luxury_item' && !luxurySubType) || !visualsFile || isMinting;
+
+  const handleMintAsset = async () => {
+    if (!isConnected || !provider || !account) {
+      toast({ title: 'Wallet Not Connected', description: 'Please connect your wallet to mint an asset.', variant: 'destructive' });
+      connectWallet();
+      return;
+    }
+
+    if (isMintingDisabled) {
+      toast({ title: 'Missing Information', description: 'Please select an asset type and upload visuals.', variant: 'destructive' });
+      return;
+    }
+
+    setIsMinting(true);
+    toast({ title: 'Preparing Asset...', description: 'Please confirm the transaction in your wallet.' });
+
+    try {
+      const contract = await getContract('proofLedgerCore', provider);
+      if (!contract) throw new Error("Could not connect to contract.");
+
+      // Example data. In a real app, this would come from the form fields.
+      const assetId = ethers.id("LUX-123");
+      const assetTypeEnum = 2; // 1: Real Estate, 2: Luxury, 3: Commodity
+      const verifiedValue = ethers.parseUnits("25000", 2); // $25,000.00
+      const verificationHash = ethers.id("GIA-12345678");
+      const legalOwner = account;
+      const metadataURI = "ipfs://Qm..."; // Placeholder
+      const reVerificationPeriod = 365 * 2; // 2 years in days
+
+      const tx = await contract.mintDigitalTwin(
+        assetId,
+        assetTypeEnum,
+        verifiedValue,
+        verificationHash,
+        legalOwner,
+        metadataURI,
+        reVerificationPeriod
+      );
+
+      toast({
+        title: 'Transaction Sent',
+        description: 'Waiting for confirmation...',
+        action: <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer"><Button variant="outline" size="sm">View on Etherscan</Button></a>
+      });
+
+      await tx.wait();
+
+      toast({ title: 'Minting Successful!', description: `Asset has been minted. Tx: ${tx.hash.slice(0, 10)}...` });
+    } catch (error: any) {
+        let errorJson = JSON.stringify(error, null, 2);
+        toast({
+            title: "Minting Failed",
+            description: (
+              <div className="w-full">
+                <p className="mb-2">The transaction was reverted. You can copy the full error below:</p>
+                <Textarea
+                  readOnly
+                  className="w-full h-32 text-xs font-mono bg-destructive/10"
+                  value={errorJson}
+                />
+              </div>
+            ),
+            variant: "destructive",
+            duration: 20000,
+        });
+    } finally {
+      setIsMinting(false);
+    }
+  };
 
   const renderVisualsContent = () => {
     let title = "High-Resolution Visuals";
@@ -302,21 +373,19 @@ export default function LuxuryGoodsPage() {
               </Button>
             </CardContent>
              <CardFooter className="gap-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="w-full" tabIndex={0}>
-                        <Button className="w-full h-12 text-base" disabled={true}>
-                          <CheckCircle className="mr-2 h-5 w-5" />
-                          Finalize &amp; Mint Asset
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Minting is restricted to addresses with the MINTER_ROLE.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Button className="w-full h-12 text-base" onClick={handleMintAsset} disabled={isMintingDisabled}>
+                  {isMinting ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Minting...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Finalize &amp; Mint Asset
+                    </>
+                  )}
+                </Button>
             </CardFooter>
         </>
     );

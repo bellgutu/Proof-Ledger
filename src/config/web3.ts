@@ -1,7 +1,9 @@
 'use client';
+
 import { http, createConfig } from 'wagmi';
 import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
+import { createWeb3Modal } from '@web3modal/ethers/react';
 
 // 1. Get projectId
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
@@ -9,7 +11,7 @@ export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
 // 2. Create a metadata object
-export const metadata = {
+const metadata = {
   name: 'Proof Ledger',
   description: 'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
   url: 'https://proof-ledger.app', // origin must match your domain & subdomain
@@ -26,5 +28,20 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: true, // Enable SSR
+  ssr: true,
+});
+
+// 4. Create a Web3Modal instance
+createWeb3Modal({
+  ethersConfig: config,
+  chains: [sepolia],
+  projectId,
+  enableAnalytics: true,
+  themeVariables: {
+    '--w3m-accent': 'hsl(250 80% 60%)',
+    '--w3m-color-mix': 'hsl(220 10% 18%)',
+    '--w3m-color-mix-strength': 20,
+    '--w3m-border-radius-master': '1px',
+    '--w3m-font-family': 'Inter, sans-serif',
+  }
 });

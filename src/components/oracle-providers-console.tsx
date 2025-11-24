@@ -80,6 +80,7 @@ export function OracleProvidersConsole() {
 
     const handleRegisterOracle = async () => {
         if (!isConnected) {
+            toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive"});
             open();
             return;
         }

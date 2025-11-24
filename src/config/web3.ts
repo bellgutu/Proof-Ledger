@@ -1,6 +1,4 @@
 
-'use client';
-
 import { http, createConfig } from 'wagmi';
 import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
@@ -31,5 +29,5 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: false, 
+  ssr: false, // Ensure client-side rendering for wagmi
 });

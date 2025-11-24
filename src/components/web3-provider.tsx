@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { config, projectId } from '@/config/web3';
+import { config, projectId, metadata } from '@/config/web3';
 import { createWeb3Modal } from '@web3modal/ethers/react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ createWeb3Modal({
   ethersConfig: config,
   chains: [config.chains[0]],
   projectId,
+  metadata,
   enableAnalytics: true,
   themeVariables: {
     '--w3m-accent': 'hsl(250 80% 60%)',

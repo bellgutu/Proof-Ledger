@@ -31,5 +31,5 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: false, // Important for App Router to avoid state mismatch
+  ssr: false, 
 });

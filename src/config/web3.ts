@@ -1,4 +1,5 @@
 
+'use client';
 import { http, createConfig } from 'wagmi';
 import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
@@ -8,9 +9,10 @@ export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
 const getUrl = () => {
-  if (process.env.NEXT_PUBLIC_VERCEL_URL) return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  return 'http://localhost:3000';
+  if (typeof window === 'undefined') {
+    return 'https://proof-ledger.app';
+  }
+  return window.location.origin;
 }
 
 export const metadata = {
@@ -29,5 +31,5 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: false, // Ensure client-side rendering for wagmi
+  ssr: false,
 });

@@ -5,22 +5,19 @@ import React from 'react';
 import { config } from '@/config/web3';
 import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import AppShell from './app-shell';
 
 // Setup queryClient
 const queryClient = new QueryClient()
 
 export default function Web3Provider({
-  children,
+  children
 }: {
   children: React.ReactNode;
 }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <AppShell>
-            {children}
-        </AppShell>
+        {children}
       </QueryClientProvider>
     </WagmiProvider>
   )

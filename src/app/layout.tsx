@@ -2,9 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
-import { headers } from 'next/headers';
-import { cookieToInitialState } from 'wagmi';
-import { config } from '@/config/web3.server';
 import ClientProvider from '@/components/client-provider';
 
 export const metadata: Metadata = {
@@ -18,7 +15,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialState = cookieToInitialState(config, headers().get('cookie'));
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
@@ -37,7 +33,7 @@ export default function RootLayout({
           crossOrigin=""/>
       </head>
       <body className="font-body antialiased">
-        <ClientProvider initialState={initialState}>
+        <ClientProvider>
           <AppShell>{children}</AppShell>
           <Toaster />
         </ClientProvider>

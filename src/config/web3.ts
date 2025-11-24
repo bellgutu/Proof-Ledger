@@ -5,9 +5,8 @@ import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
 import { createWeb3Modal } from '@web3modal/ethers/react';
 
-// 1. Get projectId
+// 1. Get projectId from environment variables
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
-
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
 // 2. Create a metadata object
@@ -18,7 +17,7 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
-// 3. Create a unified config
+// 3. Create a unified wagmi config
 export const config = createConfig({
   chains: [sepolia],
   transports: {
@@ -28,10 +27,10 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: true,
+  // ssr: true, // SSR is managed in the layout, not needed here for a pure client config
 });
 
-// 4. Create a Web3Modal instance
+// 4. Create a Web3Modal instance right here in the client-side config
 createWeb3Modal({
   ethersConfig: config,
   chains: [sepolia],

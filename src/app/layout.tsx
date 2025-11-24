@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import Web3Provider from '@/components/web3-provider';
 import './globals.css';

@@ -49,22 +49,33 @@ const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
 });
 
-
-// This function now fetches data from our own Next.js API route,
-// which in turn securely calls the Proof.com SCIM API.
-async function fetchProofPartners(): Promise<Partner[]> {
-    console.log("Fetching partners from internal API route...");
-    const response = await fetch('/api/proof/users');
-    if (!response.ok) {
-       // You can get more specific error messages from the API route
-       const errorBody = await response.json();
-       throw new Error(errorBody.error || 'Failed to fetch partners');
+// Mock data, since the API route was removed.
+const MOCK_PARTNERS: Partner[] = [
+    {
+        id: '1',
+        userName: 'john.doe@globalsbipping.co',
+        displayName: 'John Doe',
+        active: true,
+        name: { givenName: 'John', familyName: 'Doe' },
+        emails: [{ value: 'john.doe@globalsbipping.co', type: 'work', primary: true }],
+    },
+    {
+        id: '2',
+        userName: 'jane.smith@preciousgems.com',
+        displayName: 'Jane Smith',
+        active: true,
+        name: { givenName: 'Jane', familyName: 'Smith' },
+        emails: [{ value: 'jane.smith@preciousgems.com', type: 'work', primary: true }],
+    },
+    {
+        id: '3',
+        userName: 'sam.wilson@agrisource.io',
+        displayName: 'Sam Wilson',
+        active: false,
+        name: { givenName: 'Sam', familyName: 'Wilson' },
+        emails: [{ value: 'sam.wilson@agrisource.io', type: 'work', primary: true }],
     }
-    const data = await response.json();
-    // The SCIM API returns users in a 'Resources' array
-    return data.Resources || [];
-}
-
+];
 
 export default function CompliancePage() {
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -85,15 +96,11 @@ export default function CompliancePage() {
 
   useEffect(() => {
     setIsLoading(true);
-    setError(null);
-    fetchProofPartners().then(data => {
-        setPartners(data);
+    // Simulate fetching data
+    setTimeout(() => {
+        setPartners(MOCK_PARTNERS);
         setIsLoading(false);
-    }).catch(error => {
-        console.error("Failed to fetch partners:", error);
-        setError(`Failed to load partner data. The API key might be invalid or the service may be down. Please check the server logs for more details.`);
-        setIsLoading(false);
-    });
+    }, 500);
   }, []);
 
   const filteredPartners = useMemo(() => {
@@ -153,7 +160,7 @@ export default function CompliancePage() {
             <Card>
                 <CardHeader>
                     <CardTitle>KYC/AML Partner Onboarding</CardTitle>
-                    <CardDescription>Manage and verify the compliance status of all business partners via Proof.com.</CardDescription>
+                    <CardDescription>Manage and verify the compliance status of all business partners.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center gap-2 mb-4">
@@ -170,7 +177,7 @@ export default function CompliancePage() {
                                 <DialogHeader>
                                     <DialogTitle>Add New Partner</DialogTitle>
                                     <DialogDescription>
-                                        Create a new user in the Proof.com SCIM directory.
+                                        Create a new user in the directory.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <Form {...form}>
@@ -369,5 +376,3 @@ export default function CompliancePage() {
     </div>
   );
 }
-
-    

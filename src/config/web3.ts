@@ -1,6 +1,6 @@
 
 'use client';
-import { createWeb3Modal, ethersConfig } from '@web3modal/ethers/react';
+import { createWeb3Modal } from '@web3modal/ethers/react';
 import { http, createConfig } from 'wagmi';
 import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
@@ -30,7 +30,7 @@ export const config = createConfig({
   ],
 });
 
-// 4. Create a Web3Modal instance
+// 4. Create a Web3Modal instance. THIS MUST BE CALLED ONLY ONCE.
 createWeb3Modal({
   ethersConfig: config,
   chains: [sepolia],

@@ -42,28 +42,12 @@ export default function ShippingPage() {
     }
   }, [selectedException]);
 
-  const handleFetchDocument = async (docType: string) => {
-    try {
-        const response = await fetch('/api/proof/document');
-        if (!response.ok) {
-            throw new Error("Failed to fetch document");
-        }
-        const data = await response.json();
-        toast({
-            title: `Fetched Document: ${docType}`,
-            description: (
-                <pre className="mt-2 w-full rounded-md bg-secondary p-4 max-h-[300px] overflow-auto">
-                    <code className="text-foreground">{JSON.stringify(data, null, 2)}</code>
-                </pre>
-            ),
-        });
-    } catch (error: any) {
-         toast({
-            title: "Error",
-            description: error.message || "Could not fetch document details.",
-            variant: "destructive"
-        });
-    }
+  const handleFetchDocument = (docType: string) => {
+    // Since the API route was removed, we show a mock toast message.
+    toast({
+        title: `Fetching Document: ${docType}`,
+        description: "In a real application, this would fetch hashed visual evidence from IPFS or another decentralized storage.",
+    });
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

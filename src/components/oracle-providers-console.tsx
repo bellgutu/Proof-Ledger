@@ -390,7 +390,7 @@ export function OracleProvidersConsole() {
                                 placeholder="0.5"
                                 disabled={isRegistered}
                             />
-                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || isRegistering || !isConnected}>
+                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || isRegistering}>
                                 {isRegistering ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

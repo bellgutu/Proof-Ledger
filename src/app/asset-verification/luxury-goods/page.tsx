@@ -205,6 +205,8 @@ export default function LuxuryGoodsPage() {
         let errorMessage = "An unknown error occurred.";
         if (error.reason) {
             errorMessage = `Execution failed: ${error.reason}`;
+        } else if (error.data && error.data.message) {
+            errorMessage = `Execution failed: ${error.data.message}`;
         } else if (error.message) {
             errorMessage = error.message;
         }
@@ -464,5 +466,3 @@ export default function LuxuryGoodsPage() {
     </div>
   );
 }
-
-    

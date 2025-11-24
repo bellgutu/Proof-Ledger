@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, BarChart2, Zap, Star, Copy, PlusCircle, GitBranch, UserCheck, Banknote, ArrowRight, AlertTriangle, TrendingUp, ShieldX, Clock } from 'lucide-react';
+import { DollarSign, BarChart2, Zap, Star, Copy, PlusCircle, GitBranch, UserCheck, Banknote, ArrowRight, AlertTriangle, TrendingUp, ShieldX, Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -55,6 +55,7 @@ const OnboardingStep = ({ step, title, description, children, completed, isActiv
 
 export function OracleProvidersConsole() {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRegistering, setIsRegistering] = useState(false);
     const [certificationType, setCertificationType] = useState<CertificationType | ''>('');
     const [stakeAmount, setStakeAmount] = useState('0.5');
     const [isRegistered, setIsRegistered] = useState(false);
@@ -86,6 +87,8 @@ export function OracleProvidersConsole() {
             toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;
         }
+        
+        setIsRegistering(true);
 
         try {
             toast({ title: "Processing Transaction", description: "Please confirm in your wallet." });
@@ -101,6 +104,8 @@ export function OracleProvidersConsole() {
         } catch (error: any) {
             console.error(error);
             toast({ title: "Registration Failed", description: error.shortMessage || error.message, variant: "destructive" });
+        } finally {
+            setIsRegistering(false);
         }
     };
 
@@ -386,8 +391,17 @@ export function OracleProvidersConsole() {
                                 placeholder="0.5"
                                 disabled={isRegistered || !isConnected}
                             />
-                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || !isConnected}>
-                                {isRegistered ? "Registered" : "Register as Oracle"}
+                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || !isConnected || isRegistering}>
+                                {isRegistering ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Registering...
+                                    </>
+                                ) : isRegistered ? (
+                                    "Registered"
+                                ) : (
+                                    "Register as Oracle"
+                                )}
                             </Button>
                         </div>
                     </OnboardingStep>
@@ -499,3 +513,5 @@ export function OracleProvidersConsole() {
     </div>
   );
 }
+
+    

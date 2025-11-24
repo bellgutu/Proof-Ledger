@@ -13,10 +13,10 @@ const queryClient = new QueryClient();
 
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
-// Create modal
+// Create modal outside of the component to ensure it's created only once.
 createWeb3Modal({
   ethersConfig: config,
-  chains: [config.chains[0]],
+  chains: config.chains,
   projectId,
   metadata,
   enableAnalytics: true,

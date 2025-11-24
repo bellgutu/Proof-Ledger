@@ -10,6 +10,7 @@ if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
 const getUrl = () => {
   if (typeof window === 'undefined') {
+    // Return a default URL for server-side rendering, though it won't be used for metadata in this setup.
     return 'https://proof-ledger.app';
   }
   return window.location.origin;
@@ -31,5 +32,5 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: false,
+  ssr: false, // Ensure SSR is disabled to avoid server-client state mismatches
 });

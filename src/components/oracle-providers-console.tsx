@@ -19,7 +19,7 @@ import { useWallet } from '@/components/wallet-provider';
 import { getContract } from '@/lib/blockchain';
 
 
-const paymentLedgerData = [
+const initialPaymentLedgerData = [
     { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '$500.00', bonus: '$50.00', status: 'Paid', date: '2023-10-27' },
     { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Paid', date: '2023-10-27' },
     { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Pending', date: '2023-10-26' },
@@ -60,21 +60,64 @@ export function OracleProvidersConsole() {
     const [certificationType, setCertificationType] = useState<CertificationType | ''>('');
     const [stakeAmount, setStakeAmount] = useState('0.5');
     const [isRegistered, setIsRegistered] = useState(false);
+    const [paymentLedgerData, setPaymentLedgerData] = useState(initialPaymentLedgerData);
 
     const { toast } = useToast();
     const { provider, connectWallet, isConnected } = useWallet();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+         if (!isConnected || !provider) {
+            toast({ title: "Wallet Not Connected", description: "Please connect your wallet to submit data.", variant: "destructive"});
+            connectWallet();
+            return;
+        }
+
         setIsSubmitting(true);
-        setTimeout(() => {
+        toast({ title: "Processing Submission", description: "Please confirm the transaction in your wallet." });
+
+        try {
+            const contract = await getContract('trustOracle', provider);
+            if (!contract) throw new Error("Could not connect to contract.");
+
+            // This is example data. A real implementation would pull from the form state.
+            const dataType = 1; // Example: Gemstone
+            const assetId = ethers.id("GEM-123"); // Must be a 32-byte hash
+            const numericValue = 152; // Example: Carat weight * 100
+            const stringValue = "GIA-12345678";
+            const proofHash = ethers.id("0xYourProofData");
+            const confidence = 100;
+
+            const tx = await contract.submitAssetData(dataType, assetId, numericValue, stringValue, proofHash, confidence);
+
+            toast({ title: "Transaction Sent", description: "Waiting for confirmation...", action: (
+                <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="sm">View on Etherscan</Button>
+                </a>
+            ) });
+
+            await tx.wait();
+
+            toast({ title: "Submission Successful", description: `Your data has been attested. Tx: ${tx.hash.slice(0,10)}...` });
+            
+            // Add new entry to the payment ledger for immediate feedback
+            const newEntry = {
+                id: `ATTEST-${tx.hash.slice(2, 8)}`,
+                requestor: 'ProofLedger',
+                fee: '$500.00',
+                bonus: '$0.00',
+                status: 'Pending',
+                date: new Date().toISOString().split('T')[0],
+            };
+            setPaymentLedgerData(prevData => [newEntry, ...prevData]);
+
+        } catch (error: any) {
+            console.error(error);
+            const errorMessage = error.reason || error.message || "An unknown error occurred.";
+            toast({ title: "Submission Failed", description: errorMessage, variant: "destructive" });
+        } finally {
             setIsSubmitting(false);
-            toast({
-                title: 'Submission Successful',
-                description: 'Your verified data has been received and is being attested.',
-                variant: 'default'
-            })
-        }, 1500);
+        }
     }
 
     const handleRegisterOracle = async () => {
@@ -116,8 +159,14 @@ export function OracleProvidersConsole() {
             setIsRegistered(true);
         } catch (error: any) {
             console.error(error);
-            const errorMessage = error.reason || error.message || "An unknown error occurred.";
-            toast({ title: "Registration Failed", description: errorMessage, variant: "destructive" });
+            // A common error is "Oracle already registered" which we can treat as a success for the UI state
+            if (error.reason?.includes("Oracle already registered")) {
+                toast({ title: "Already Registered", description: "This wallet is already an active oracle." });
+                setIsRegistered(true);
+            } else {
+                const errorMessage = error.reason || error.message || "An unknown error occurred.";
+                toast({ title: "Registration Failed", description: errorMessage, variant: "destructive" });
+            }
         } finally {
             setIsRegistering(false);
         }
@@ -462,7 +511,14 @@ export function OracleProvidersConsole() {
                     </CardContent>
                     <CardFooter>
                          <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType}>
-                            {isSubmitting ? 'Submitting...' : 'Submit & Attest Data'}
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Submitting...
+                                </>
+                            ) : (
+                                'Submit & Attest Data'
+                            )}
                         </Button>
                     </CardFooter>
                 </form>

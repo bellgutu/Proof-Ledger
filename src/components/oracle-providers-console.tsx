@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { contracts } from '@/config/contracts';
 import { useWallet } from '@/components/wallet-provider';
 import { getContract } from '@/lib/blockchain';
+import { Textarea } from '@/components/ui/textarea';
 
 
 const initialPaymentLedgerData = [
@@ -112,17 +113,22 @@ export function OracleProvidersConsole() {
             setPaymentLedgerData(prevData => [newEntry, ...prevData]);
 
         } catch (error: any) {
-            console.error("Submission Error:", error);
-            // Enhanced error handling
-            let errorMessage = "An unknown error occurred.";
-            if (error.reason) {
-                // Ethers v6 often puts the revert reason here
-                errorMessage = `Execution failed: ${error.reason}`;
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            toast({ title: "Submission Failed", description: errorMessage, variant: "destructive" });
+            let errorJson = JSON.stringify(error, null, 2);
+            toast({
+                title: "Submission Failed",
+                description: (
+                  <div className="w-full">
+                    <p className="mb-2">The transaction was reverted. This usually happens if the connected wallet does not have the 'ORACLE' role or if the parameters are invalid. You can copy the full error below:</p>
+                    <Textarea
+                      readOnly
+                      className="w-full h-32 text-xs font-mono bg-destructive/10"
+                      value={errorJson}
+                    />
+                  </div>
+                ),
+                variant: "destructive",
+                duration: 20000,
+            });
         } finally {
             setIsSubmitting(false);
         }
@@ -168,17 +174,26 @@ export function OracleProvidersConsole() {
         } catch (error: any) {
             console.error(error);
             // A common error is "Oracle already registered" which we can treat as a success for the UI state
-            if (error.reason?.includes("Oracle already registered")) {
+            if (error.reason?.includes("Oracle already registered") || JSON.stringify(error).includes("OracleAlreadyRegistered")) {
                 toast({ title: "Already Registered", description: "This wallet is already an active oracle." });
                 setIsRegistered(true);
             } else {
-                 let errorMessage = "An unknown error occurred.";
-                if (error.reason) {
-                    errorMessage = `Registration failed: ${error.reason}`;
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                toast({ title: "Registration Failed", description: errorMessage, variant: "destructive" });
+                let errorJson = JSON.stringify(error, null, 2);
+                toast({
+                    title: "Registration Failed",
+                    description: (
+                      <div className="w-full">
+                        <p className="mb-2">The transaction was reverted. You can copy the full error below:</p>
+                        <Textarea
+                          readOnly
+                          className="w-full h-32 text-xs font-mono bg-destructive/10"
+                          value={errorJson}
+                        />
+                      </div>
+                    ),
+                    variant: "destructive",
+                    duration: 20000,
+                });
             }
         } finally {
             setIsRegistering(false);

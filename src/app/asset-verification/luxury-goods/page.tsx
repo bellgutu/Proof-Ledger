@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWallet } from '@/components/wallet-provider';
 import { getContract } from '@/lib/blockchain';
 import { ethers } from 'ethers';
+import { Textarea } from '@/components/ui/textarea';
 
 type AssetType = 'gemstone' | 'luxury_item';
 type LuxurySubType = 'watch' | 'bag' | 'automobile' | 'garment' | '';
@@ -177,7 +178,7 @@ export default function LuxuryGoodsPage() {
             assetType,
             verifiedValue,
             verificationHash,
-            ethers.ZeroAddress, // legal owner, changed to ZeroAddress
+            ethers.ZeroAddress,
             metadataURI,
             reVerificationPeriod
         );
@@ -190,7 +191,6 @@ export default function LuxuryGoodsPage() {
 
         const receipt = await tx.wait();
 
-        // Find the event to get the new tokenId
         const mintEvent = receipt.logs.find((log: any) => log.fragment && log.fragment.name === 'DigitalTwinMinted');
         const tokenId = mintEvent ? mintEvent.args[0].toString() : 'Unknown';
 
@@ -202,24 +202,20 @@ export default function LuxuryGoodsPage() {
         
     } catch (error: any) {
         console.error("Minting Error:", error);
-        let errorMessage = "An unknown error occurred.";
-        if (error.reason) {
-            errorMessage = `Execution failed: ${error.reason}`;
-        } else if (error.data && error.data.message) {
-            errorMessage = `Execution failed: ${error.data.message}`;
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
         
         toast({
             title: "Minting Failed",
             description: (
-              <pre className="mt-2 w-[340px] rounded-md bg-background p-4">
-                <code className="text-destructive-foreground">{JSON.stringify(error, null, 2)}</code>
-              </pre>
+              <div className="mt-2 w-full rounded-md bg-background p-1">
+                  <Textarea 
+                      className="w-full h-40 text-xs font-mono bg-transparent border-0" 
+                      value={JSON.stringify(error, null, 2)} 
+                      readOnly 
+                  />
+              </div>
             ),
             variant: "destructive",
-            duration: 20000, // Keep toast open longer
+            duration: 30000,
         });
 
     } finally {

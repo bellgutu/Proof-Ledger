@@ -21,8 +21,10 @@ export const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
+export const chains = [sepolia] as const;
+
 export const config = createConfig({
-  chains: [sepolia],
+  chains: chains,
   transports: {
     [sepolia.id]: http(),
   },

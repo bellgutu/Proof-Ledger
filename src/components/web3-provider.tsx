@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { config, projectId, metadata } from '@/config/web3';
+import { config, projectId, metadata, chains } from '@/config/web3';
 import { createWeb3Modal } from '@web3modal/ethers/react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,7 +15,7 @@ if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 // Create modal outside of the component to ensure it's created only once.
 createWeb3Modal({
   ethersConfig: config,
-  chains: config.chains,
+  chains: chains,
   projectId,
   metadata,
   enableAnalytics: true,

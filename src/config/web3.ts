@@ -9,11 +9,16 @@ export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID;
 
 if (!projectId) throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is not set');
 
+// Determine the URL dynamically
+const url = typeof window !== 'undefined' 
+  ? window.location.origin 
+  : 'https://proof-ledger.app';
+
 // 2. Create a metadata object
 const metadata = {
   name: 'Proof Ledger',
   description: 'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
-  url: 'https://proof-ledger.app', // origin must match your domain & subdomain
+  url: url,
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
@@ -27,7 +32,7 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: false, // Set to false for a client-side only approach
+  ssr: false, 
 });
 
 // 4. Create a Web3Modal instance
@@ -38,9 +43,9 @@ createWeb3Modal({
   enableAnalytics: true,
   themeVariables: {
     '--w3m-accent': 'hsl(250 80% 60%)',
-    '--w3m-color-mix': 'hsl(220 10% 18%)',
-    '--w3m-color-mix-strength': 20,
-    '--w3m-border-radius-master': '1px',
-    '--w3m-font-family': 'Inter, sans-serif',
+    '--w-color-mix': 'hsl(220 10% 18%)',
+    '--w-color-mix-strength': 20,
+    '--w-border-radius-master': '1px',
+    '--w-font-family': 'Inter, sans-serif',
   }
 });

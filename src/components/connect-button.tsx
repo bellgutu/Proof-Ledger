@@ -1,20 +1,23 @@
 
 'use client';
 
-import { useWeb3Modal, useWeb3ModalState } from '@web3modal/ethers/react';
-import { useWeb3ModalProvider, useDisconnect, useWeb3ModalAccount } from '@web3modal/ethers/react'
+import { useWeb3Modal } from '@web3modal/ethers/react';
+import { useDisconnect, useWeb3ModalAccount } from '@web3modal/ethers/react'
 import { Button } from './ui/button';
 import { Wallet } from 'lucide-react';
-import { useState } from 'react';
 
 export function ConnectButton() {
   const { open } = useWeb3Modal()
   const { address, isConnected } = useWeb3ModalAccount()
   const { disconnect } = useDisconnect()
 
+  const handleDisconnect = () => {
+    disconnect();
+  };
+
   if (isConnected && address) {
      return (
-        <Button onClick={() => disconnect()}>
+        <Button onClick={handleDisconnect}>
             {address?.slice(0, 6)}...{address?.slice(-4)}
         </Button>
     )

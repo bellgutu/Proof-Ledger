@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ethers, type Contract } from 'ethers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 const initialPaymentLedgerData = [
     { id: 'ATTEST-0012', requestor: 'ProofLedger', fee: '$500.00', bonus: '$50.00', status: 'Paid', date: '2023-10-27' },
     { id: 'ATTEST-0011', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Paid', date: '2023-10-27' },
-    { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Pending', date: '2023-10-26' },
+    { id: 'ATTEST-0010', requestor: 'ProofLedger', fee: '$500.00', bonus: '$0.00', status: 'Pending', date: '2033-10-26' },
     { id: 'ATTEST-0009', requestor: 'ProofLedger', fee: '$465.00', bonus: '-$465.00', status: 'Paid (Slashed)', date: '2023-10-25' },
 ];
 
@@ -64,7 +64,13 @@ export function OracleProvidersConsole() {
     const [paymentLedgerData, setPaymentLedgerData] = useState(initialPaymentLedgerData);
 
     const { toast } = useToast();
-    const { provider, connectWallet, isConnected } = useWallet();
+    const { provider, account, connectWallet, isConnected } = useWallet();
+
+    useEffect(() => {
+        // Reset the registration state when the wallet account changes.
+        // This ensures the UI correctly reflects the status for the *newly* connected wallet.
+        setIsRegistered(false);
+    }, [account]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -118,7 +124,7 @@ export function OracleProvidersConsole() {
                 title: "Submission Failed",
                 description: (
                   <div className="w-full">
-                    <p className="mb-2">The transaction was reverted. This usually happens if the connected wallet does not have the 'ORACLE' role or if the parameters are invalid. You can copy the full error below:</p>
+                    <p className="mb-2">The transaction was reverted. You can copy the full error below:</p>
                     <Textarea
                       readOnly
                       className="w-full h-32 text-xs font-mono bg-destructive/10"
@@ -501,6 +507,7 @@ export function OracleProvidersConsole() {
                         title="Start Submitting Data" 
                         description="Use the console or API to start providing verifications and earning rewards."
                         isActive={isRegistered}
+                        completed={isRegistered}
                     >
                          <Button variant="secondary" size="sm" className="mt-2 w-full sm:w-auto" disabled={!isRegistered}>
                             View API Documentation <ArrowRight className="ml-2 h-4 w-4" />
@@ -611,3 +618,5 @@ export function OracleProvidersConsole() {
     </div>
   );
 }
+
+    

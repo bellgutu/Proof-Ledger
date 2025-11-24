@@ -84,7 +84,9 @@ export function OracleProvidersConsole() {
             return;
         }
 
-        if (!stakeAmount || parseFloat(stakeAmount) < 0.5) {
+        const finalStakeAmount = stakeAmount || '0.5';
+
+        if (parseFloat(finalStakeAmount) < 0.5) {
             toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;
         }
@@ -100,7 +102,7 @@ export function OracleProvidersConsole() {
             
             const tx = await contract.registerOracle(
                 'ipfs://YourMetadataURI', 
-                { value: ethers.parseEther(stakeAmount) }
+                { value: ethers.parseEther(finalStakeAmount) }
             );
 
             toast({ title: "Transaction Sent", description: "Waiting for confirmation...", action: (

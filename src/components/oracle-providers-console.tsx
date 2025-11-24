@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { useWriteContract, useAccount } from 'wagmi';
@@ -16,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { contracts } from '@/config/contracts';
+import { useWeb3Modal } from '@web3modal/ethers/react';
 
 
 const paymentLedgerData = [
@@ -63,6 +63,7 @@ export function OracleProvidersConsole() {
     const { toast } = useToast();
     const { writeContractAsync } = useWriteContract();
     const { isConnected } = useAccount();
+    const { open } = useWeb3Modal();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -78,6 +79,11 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
+        if (!isConnected) {
+            open();
+            return;
+        }
+
         if (!stakeAmount || parseFloat(stakeAmount) < 0.5) {
             toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;

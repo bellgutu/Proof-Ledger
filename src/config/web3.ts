@@ -27,7 +27,7 @@ export const config = createConfig({
     walletConnect({ projectId, metadata, showQrModal: false }),
     injected({ shimDisconnect: true }),
   ],
-  ssr: false, // Ensure client-side only state
+  ssr: false, // Ensure client-side only state management
 });
 
 // 4. Create a Web3Modal instance. This is called only once.

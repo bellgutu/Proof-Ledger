@@ -78,11 +78,6 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
-        if (!isConnected) {
-            toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive" });
-            return;
-        }
-
         if (!stakeAmount || parseFloat(stakeAmount) < 0.5) {
             toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;

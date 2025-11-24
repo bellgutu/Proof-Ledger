@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileUp, MapPin, Building, ShieldAlert, Users, CheckCircle, ArrowRight, FileCheck, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type FileState = {
   titleDeed: File | null;
@@ -86,6 +87,7 @@ export default function RealEstatePage() {
     }, [legalId, appraisedValue, files]);
 
     const handleMintAsset = async () => {
+        // This button is disabled and shows a tooltip, but if it were active:
         if (isMintingDisabled) {
             toast({
                 title: 'Missing Information',
@@ -94,24 +96,7 @@ export default function RealEstatePage() {
             });
             return;
         }
-
-        // In a real app, you would hash the files and send to the smart contract.
-        // For now, we simulate this process.
-        toast({
-            title: 'Ready to Mint!',
-            description: "Asset data has been prepared for the smart contract.",
-            action: (
-                 <pre className="mt-2 w-[340px] rounded-md bg-background p-4">
-                    <code className="text-foreground">{JSON.stringify({
-                        legalId,
-                        appraisedValue,
-                        titleDeedHash: `0x...${files.titleDeed?.name.slice(0,4)}`,
-                        appraisalReportHash: `0x...${files.appraisalReport?.name.slice(0,4)}`,
-                        surveyMapHash: `0x...${files.surveyMap?.name.slice(0,4)}`,
-                    }, null, 2)}</code>
-                </pre>
-            )
-        });
+        // Minting logic would go here
     }
 
   return (
@@ -136,7 +121,7 @@ export default function RealEstatePage() {
           <Card>
             <CardHeader>
               <CardTitle>A. Title & Cadastral Data</CardTitle>
-              <CardDescription>Enter the property's legal and geographic identifiers.</CardDescription>
+              <CardDescription>Enter the property's legal and geographic identifiers. Note: Minting requires the connected wallet to have the 'VERIFIER' role.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
@@ -223,9 +208,18 @@ export default function RealEstatePage() {
               <FileUploadButton id="surveyMap" label="Survey Map" required={true} file={files.surveyMap} onFileChange={handleFileChange} onClear={handleClearFile} />
             </CardContent>
              <CardFooter className="gap-2">
-                <Button className="w-full h-12 text-base" onClick={handleMintAsset} disabled={isMintingDisabled}>
-                    <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
-                </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger className="w-full">
+                            <Button className="w-full h-12 text-base" disabled={isMintingDisabled}>
+                                <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
+                            </Button>
+                        </TooltipTrigger>
+                         <TooltipContent>
+                            <p>Minting is restricted to addresses with the 'VERIFIER' role.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </CardFooter>
           </Card>
         </div>

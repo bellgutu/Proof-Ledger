@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileUp, Wheat, Thermometer, Droplets, FlaskConical, CheckCircle, Ship, GitMerge, GitPullRequest, Beaker, Unplug, Coffee, Wind, HardHat, LandPlot, Loader2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type CommodityType = 'wheat' | 'coffee' | 'oil' | 'steel' | '';
 
@@ -248,7 +249,7 @@ export default function CommoditiesPage() {
           <Card>
             <CardHeader>
               <CardTitle>A. Batch & Quality Control</CardTitle>
-              <CardDescription>Define the initial properties of the commodity batch. All fields with a * are required.</CardDescription>
+              <CardDescription>Define the initial properties of the commodity batch. Note: Minting requires the connected wallet to have the 'VERIFIER' role.</CardDescription>
             </CardHeader>
             <CardContent>
                 {renderQCForm(commodityType)}
@@ -338,9 +339,18 @@ export default function CommoditiesPage() {
                 </Table>
             </CardContent>
             <CardFooter className="gap-2">
-                 <Button className="w-full h-12 text-base" disabled={isMintingDisabled}>
-                    <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Batch Assets
-                </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger className="w-full">
+                            <Button className="w-full h-12 text-base" disabled={isMintingDisabled}>
+                                <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Batch Assets
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Minting is restricted to addresses with the 'VERIFIER' role.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </CardFooter>
           </Card>
         </div>
@@ -348,5 +358,3 @@ export default function CommoditiesPage() {
     </div>
   );
 }
-
-    

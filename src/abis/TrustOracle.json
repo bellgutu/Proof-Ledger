@@ -3,8 +3,7 @@
   "abi": [
     {
       "inputs": [
-        {"name": "metadataURI", "type": "string"},
-        {"name": "stake", "type": "uint256"}
+        {"name": "metadataURI", "type": "string"}
       ],
       "name": "registerOracle",
       "type": "function",

@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 import { useState } from 'react';
 import { useWriteContract, useAccount } from 'wagmi';
 import { ethers } from 'ethers';
@@ -390,7 +389,7 @@ export function OracleProvidersConsole() {
                                 placeholder="0.5"
                                 disabled={isRegistered}
                             />
-                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || isRegistering}>
+                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || isRegistering || !isConnected}>
                                 {isRegistering ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -446,7 +445,7 @@ export function OracleProvidersConsole() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                         <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType || !isConnected}>
+                         <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType}>
                             {isSubmitting ? 'Submitting...' : 'Submit & Attest Data'}
                         </Button>
                     </CardFooter>

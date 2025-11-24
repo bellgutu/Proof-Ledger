@@ -1,4 +1,4 @@
-'use client';
+
 import { http, createConfig } from 'wagmi';
 import { walletConnect, injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';

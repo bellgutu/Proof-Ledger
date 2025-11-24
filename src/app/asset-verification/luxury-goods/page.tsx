@@ -8,12 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { FileUp, Diamond, ShieldAlert, History, CheckCircle, ScanLine, Car, Watch, ShoppingBag, Shirt } from "lucide-react";
+import { FileUp, Diamond, ShieldAlert, History, CheckCircle, ScanLine, Car, Watch, ShoppingBag, Shirt, Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from "next/image";
 import imageData from '@/lib/placeholder-images.json';
 import { useToast } from '@/hooks/use-toast';
+import { useWallet } from '@/components/wallet-provider';
+import { getContract } from '@/lib/blockchain';
+import { ethers } from 'ethers';
 
 type AssetType = 'gemstone' | 'luxury_item';
 type LuxurySubType = 'watch' | 'bag' | 'automobile' | 'garment' | '';
@@ -74,7 +77,7 @@ const AutomobileForm = () => (
         <div className="space-y-2"><Label htmlFor="auto-year">Year</Label><Input id="auto-year" type="number" placeholder="e.g., 2023" /></div>
         <div className="space-y-2"><Label htmlFor="auto-mileage">Mileage</Label><Input id="auto-mileage" type="number" placeholder="e.g., 5,400" /></div>
         <div className="space-y-2 md:col-span-2"><Label htmlFor="auto-title-hash">Title Hash</Label><Input id="auto-title-hash" placeholder="Hash of the official vehicle title..." /></div>
-        <div className="md:col-span-2"><Badge variant="secondary" className="w-fit"><ScanLine className="h-4 w-4 mr-2"/>DMV & Insurance Oracle: Ready to verify VIN & history</Badge></div>
+        <div className="md:col-span-2"><Badge variant="secondary" className="w-fit"><ScanLine className="h-4 w-4 mr-2"/>DMV &amp; Insurance Oracle: Ready to verify VIN &amp; history</Badge></div>
     </div>
 );
 
@@ -121,7 +124,9 @@ export default function LuxuryGoodsPage() {
   const [assetType, setAssetType] = useState<AssetType>('gemstone');
   const [luxurySubType, setLuxurySubType] = useState<LuxurySubType>('');
   const [visualsFile, setVisualsFile] = useState<File | null>(null);
+  const [isMinting, setIsMinting] = useState(false);
   const { toast } = useToast();
+  const { provider, connectWallet, isConnected, account } = useWallet();
 
   const handleAssetTypeChange = (value: AssetType) => {
     setAssetType(value);
@@ -144,8 +149,72 @@ export default function LuxuryGoodsPage() {
       });
     }
   }
+
+  const handleMintAsset = async () => {
+    if (!isConnected || !provider || !account) {
+        toast({ title: "Wallet Not Connected", description: "Please connect your wallet to mint an asset.", variant: "destructive"});
+        connectWallet();
+        return;
+    }
+
+    setIsMinting(true);
+    toast({ title: "Preparing Asset...", description: "Please confirm the transaction in your wallet." });
+
+    try {
+        const contract = await getContract('proofLedgerCore', provider);
+        if (!contract) throw new Error("Could not connect to ProofLedgerCore contract.");
+
+        // These are mock values. In a real app, you'd get them from the form.
+        const assetId = ethers.id(`GEM-${Date.now()}`); // Unique ID
+        const assetType = 2; // 2 for Luxury Good
+        const verifiedValue = ethers.parseEther("1.2"); // Example: 1.2 ETH
+        const verificationHash = ethers.id("GIA-12345678");
+        const metadataURI = "ipfs://QmW...example";
+        const reVerificationPeriod = 365 * 24 * 60 * 60; // 1 year in seconds
+
+        const tx = await contract.mintDigitalTwin(
+            assetId,
+            assetType,
+            verifiedValue,
+            verificationHash,
+            account, // legal owner
+            metadataURI,
+            reVerificationPeriod
+        );
+
+        toast({ title: "Minting Transaction Sent", description: "Waiting for confirmation...", action: (
+            <a href={`https://sepolia.etherscan.io/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm">View on Etherscan</Button>
+            </a>
+        )});
+
+        const receipt = await tx.wait();
+
+        // Find the event to get the new tokenId
+        const mintEvent = receipt.logs.find((log: any) => log.fragment && log.fragment.name === 'DigitalTwinMinted');
+        const tokenId = mintEvent ? mintEvent.args[0].toString() : 'Unknown';
+
+        toast({ title: "Asset Minted Successfully!", description: `Token ID: ${tokenId} has been created.`, action: (
+            <a href={`/my-assets/${tokenId}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm">View Asset</Button>
+            </a>
+        )});
+        
+    } catch (error: any) {
+        console.error("Minting Error:", error);
+        let errorMessage = "An unknown error occurred.";
+        if (error.reason) {
+            errorMessage = `Execution failed: ${error.reason}`;
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        toast({ title: "Minting Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+        setIsMinting(false);
+    }
+  }
   
-  const isMintingDisabled = (assetType === 'luxury_item' && !luxurySubType) || !visualsFile;
+  const isMintingDisabled = (assetType === 'luxury_item' && !luxurySubType) || !visualsFile || isMinting;
 
   const renderVisualsContent = () => {
     let title = "High-Resolution Visuals";
@@ -229,9 +298,9 @@ export default function LuxuryGoodsPage() {
     if (assetType === 'luxury_item') {
         switch (luxurySubType) {
             case 'automobile':
-                sensorType = "GPS & OBD-II Port Monitoring";
+                sensorType = "GPS &amp; OBD-II Port Monitoring";
                 sensorDesc = "Live feed of location and vehicle diagnostics.";
-                log = <p className="font-mono">✅ GPS & OBD-II Feed Active</p>;
+                log = <p className="font-mono">✅ GPS &amp; OBD-II Feed Active</p>;
                 break;
             case 'garment':
                 sensorType = "Passive RFID/NFC Tag";
@@ -297,8 +366,13 @@ export default function LuxuryGoodsPage() {
               </Button>
             </CardContent>
              <CardFooter className="gap-2">
-                 <Button className="w-full h-12 text-base" disabled={isMintingDisabled}>
-                    <CheckCircle className="mr-2 h-5 w-5" /> Finalize & Mint Asset
+                 <Button className="w-full h-12 text-base" disabled={isMintingDisabled} onClick={handleMintAsset}>
+                    {isMinting ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                    )}
+                    {isMinting ? "Minting..." : "Finalize &amp; Mint Asset"}
                 </Button>
             </CardFooter>
         </>
@@ -313,7 +387,7 @@ export default function LuxuryGoodsPage() {
             {getPageIcon(assetType, luxurySubType)}
             <div>
                 <h1 className="text-4xl font-bold tracking-tight text-primary">
-                Luxury & High-Value Asset Verification
+                Luxury &amp; High-Value Asset Verification
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-3xl">
                 Prove the provenance, authenticity, and grading of high-value, portable assets.
@@ -364,7 +438,7 @@ export default function LuxuryGoodsPage() {
         <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle>A. Authenticity & Provenance</CardTitle>
+              <CardTitle>A. Authenticity &amp; Provenance</CardTitle>
               <CardDescription>Enter official grading and manufacturing details based on the asset type.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -390,3 +464,5 @@ export default function LuxuryGoodsPage() {
     </div>
   );
 }
+
+    

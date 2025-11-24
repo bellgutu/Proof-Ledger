@@ -1,7 +1,7 @@
 
 "use client";
 import { useState } from 'react';
-import { useWriteContract } from 'wagmi';
+import { useWriteContract, useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,7 @@ export function OracleProvidersConsole() {
 
     const { toast } = useToast();
     const { writeContractAsync } = useWriteContract();
+    const { connector, isConnected } = useAccount();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,6 +78,11 @@ export function OracleProvidersConsole() {
     }
 
     const handleRegisterOracle = async () => {
+        if (!isConnected || !connector) {
+            toast({ title: "Wallet Not Connected", description: "Please connect your wallet to register.", variant: "destructive"});
+            return;
+        }
+
         if (!stakeAmount || parseFloat(stakeAmount) < 0.5) {
             toast({ title: "Staking Error", description: "Minimum stake is 0.5 ETH.", variant: "destructive"});
             return;
@@ -89,7 +95,8 @@ export function OracleProvidersConsole() {
                 address: contracts.trustOracle.address,
                 functionName: 'registerOracle',
                 args: ['ipfs://YourMetadataURI'], // Placeholder for metadata
-                value: ethers.parseEther(stakeAmount)
+                value: ethers.parseEther(stakeAmount),
+                connector: connector,
             });
             toast({ title: "Registration Successful", description: `Transaction sent: ${tx}` });
             setIsRegistered(true);
@@ -530,4 +537,5 @@ export function OracleProvidersConsole() {
       </div>
     </div>
   );
-}
+
+    

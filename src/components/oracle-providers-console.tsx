@@ -511,10 +511,10 @@ export function OracleProvidersConsole() {
         </div>
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-8">
-            <Card>
+            <Card className={cn(!isRegistered && "opacity-50 pointer-events-none")}>
                 <CardHeader>
                     <CardTitle>Manual Submission Console</CardTitle>
-                    <CardDescription>For human-centric workflows like inspector reports or expert appraisals.</CardDescription>
+                    <CardDescription>For human-centric workflows like inspector reports or expert appraisals. You must be a registered Oracle to submit data.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-4">

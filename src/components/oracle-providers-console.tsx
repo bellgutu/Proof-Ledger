@@ -384,10 +384,10 @@ export function OracleProvidersConsole() {
                                 onChange={(e) => setStakeAmount(e.target.value)}
                                 className="w-full sm:w-24"
                                 placeholder="0.5"
-                                disabled={isRegistered}
+                                disabled={isRegistered || !isConnected}
                             />
-                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered}>
-                                Register as Oracle
+                            <Button onClick={handleRegisterOracle} className="w-full sm:w-auto" disabled={isRegistered || !isConnected}>
+                                {isRegistered ? "Registered" : "Register as Oracle"}
                             </Button>
                         </div>
                     </OnboardingStep>
@@ -433,7 +433,7 @@ export function OracleProvidersConsole() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                         <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType}>
+                         <Button type="submit" className="w-full" disabled={isSubmitting || !certificationType || !isConnected}>
                             {isSubmitting ? 'Submitting...' : 'Submit & Attest Data'}
                         </Button>
                     </CardFooter>

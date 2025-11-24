@@ -5,13 +5,19 @@ import { useWeb3Modal } from '@web3modal/ethers/react';
 import { useDisconnect, useWeb3ModalAccount } from '@web3modal/ethers/react'
 import { Button } from './ui/button';
 import { Wallet } from 'lucide-react';
+import { useClient } from 'wagmi';
 
 export function ConnectButton() {
   const { open } = useWeb3Modal()
   const { address, isConnected } = useWeb3ModalAccount()
   const { disconnect } = useDisconnect()
+  const client = useClient();
 
   const handleDisconnect = () => {
+    // Force a clean disconnection by clearing the wagmi client's connections
+    if (client) {
+      client.storage?.removeItem('connections');
+    }
     disconnect();
   };
 

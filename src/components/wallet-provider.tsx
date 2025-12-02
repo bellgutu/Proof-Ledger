@@ -14,7 +14,7 @@ import {
   WagmiConfig
 } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { wagmiConfig } from '@/config/web3.server';
+import { wagmiConfig } from '@/config/web3';
 
 // ================ Contract ABIs ================
 const USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7a9c';

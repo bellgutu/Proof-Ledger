@@ -9,12 +9,37 @@ import {
   useAccount, 
   useDisconnect, 
   useBalance,
-  useNetwork,
-  useSwitchNetwork,
-  WagmiConfig
+  useChainId,
+  useSwitchChain,
+  WagmiConfig,
+  useConnectors,
+  useConnect
 } from 'wagmi';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { wagmiConfig } from '@/config/web3';
+import { createWeb3Modal } from '@web3modal/ethereum'
+import { Web3Modal } from '@web3modal/react'
+
+
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'dfb93c6682129035a09c4c7b5e4905a8'
+
+const metadata = {
+  name: 'Enterprise Asset Platform',
+  description: 'Digital Asset Management Platform',
+  url: 'https://web3modal.com',
+  icons: ['https://avatars.githubusercontent.com/u/37784886']
+}
+
+createWeb3Modal({
+  wagmiConfig,
+  projectId,
+  chains: wagmiConfig.chains,
+  ethereumClient: {} as any,
+  themeMode: 'dark',
+  themeVariables: {
+    '--w3m-color-mix': '#000000',
+    '--w3m-color-mix-strength': 40
+  }
+})
 
 // ================ Contract ABIs ================
 const USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7a9c';
@@ -59,7 +84,7 @@ interface WalletContextType {
   isLoading: boolean;
   isBalanceLoading: boolean;
   error: string | null;
-  connectWallet: () => Promise<void>;
+  connectWallet: (connectorId?: string) => Promise<void>;
   disconnectWallet: () => void;
   switchNetwork: (chainId: number) => Promise<void>;
   refreshBalances: () => Promise<void>;
@@ -73,14 +98,30 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 // Initial alerts
 const initialAlerts: SystemAlert[] = [
-    { 
-        id: '3', 
-        source: "CONTRACT ALERT", 
-        message: "Shipment SH-734-556 triggered Parametric Claim", 
-        impact: "HIGH", 
-        time: new Date(Date.now() - 300000).toISOString(), 
-        read: false 
-    },
+  { 
+    id: '1', 
+    source: "SYSTEM", 
+    message: "Platform initialized successfully", 
+    impact: "LOW", 
+    time: new Date().toISOString(), 
+    read: true 
+  },
+  { 
+    id: '2', 
+    source: "ORACLE", 
+    message: "GIA Grading Oracle latency > 5s", 
+    impact: "MEDIUM", 
+    time: new Date(Date.now() - 60000).toISOString(), 
+    read: false 
+  },
+  { 
+    id: '3', 
+    source: "CONTRACT ALERT", 
+    message: "Shipment SH-734-556 triggered Parametric Claim", 
+    impact: "HIGH", 
+    time: new Date(Date.now() - 300000).toISOString(), 
+    read: false 
+  },
 ];
 
 // ================ Helper Functions ================
@@ -102,19 +143,40 @@ const createAsset = (tokenId: string, type: 'real_estate' | 'luxury' | 'commodit
       name: `Property ID: ${tokenId}`,
       assetType: 'Real Estate',
       icon: <Building key="realestate" className="h-8 w-8 text-blue-400" />,
-      custody: { current: 'Owner', location: '123 Main St, Anytown', history: [{custodian: 'City Registry', date: '01/01/2023'}]}
+      custody: { 
+        current: 'Owner', 
+        location: '123 Main St, Anytown', 
+        history: [
+          { custodian: 'City Registry', date: '01/01/2023' },
+          { custodian: 'Previous Owner', date: '06/15/2022' }
+        ]
+      }
     },
     luxury: {
       name: `Watch Serial: ${tokenId}`,
       assetType: 'Luxury Good',
       icon: <Diamond key="luxury" className="h-8 w-8 text-purple-400" />,
-      custody: { current: 'Secure Vault', location: 'Geneva, CH', history: [{custodian: 'Manufacturer', date: '02/15/2023'}]}
+      custody: { 
+        current: 'Secure Vault', 
+        location: 'Geneva, CH', 
+        history: [
+          { custodian: 'Manufacturer', date: '02/15/2023' },
+          { custodian: 'Retailer', date: '03/01/2023' }
+        ]
+      }
     },
     commodity: {
       name: `Batch ID: ${tokenId}`,
       assetType: 'Commodity',
       icon: <Wheat key="commodity" className="h-8 w-8 text-amber-400" />,
-      custody: { current: 'In-Transit', location: 'Pacific Ocean', history: [{custodian: 'Port of Shanghai', date: '03/20/2024'}]}
+      custody: { 
+        current: 'In-Transit', 
+        location: 'Pacific Ocean', 
+        history: [
+          { custodian: 'Port of Shanghai', date: '03/20/2024' },
+          { custodian: 'Shipping Line', date: '03/21/2024' }
+        ]
+      }
     }
   };
 
@@ -128,22 +190,24 @@ const createAsset = (tokenId: string, type: 'real_estate' | 'luxury' | 'commodit
     icon: specificDetails.icon,
     overview: {
       "Token ID": tokenId,
+      "Asset ID": `ASSET-${tokenId}`,
       "Minted On": new Date().toLocaleDateString(),
       "Asset Type": specificDetails.assetType,
-      "Verification": "Blockchain Verified"
+      "Verification": status === 'Verified' ? "Blockchain Verified" : "Pending Verification",
+      "Current Value": "$250,000"
     },
     provenance: [{
       status: "Digital Twin Minted",
       date: new Date().toLocaleDateString(),
-      verifier: formatAddress('0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B'),
+      verifier: "Blockchain Oracle Network",
       icon: AlertTriangle,
     }],
     insurance: {
-      status: "Active",
-      policyId: `POL-${tokenId.substring(0,4)}`,
+      status: status === 'Verified' ? "Active" : "Pending",
+      policyId: `POL-${tokenId.substring(0, 4).toUpperCase()}`,
       provider: "Digital Asset Insurance Inc.",
-      coverage: "$250,000",
-      nextPremiumDue: "04/30/2025"
+      coverage: status === 'Verified' ? "$250,000" : "$0",
+      nextPremiumDue: status === 'Verified' ? "04/30/2025" : "N/A"
     },
     custody: specificDetails.custody,
     valueUSD: "250,000.00"
@@ -155,28 +219,42 @@ function WalletProvider({ children }: { children: ReactNode }) {
   const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>(initialAlerts);
   const [myAssets, setMyAssets] = useState<Asset[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Wagmi hooks
-  const { open: openModal } = useWeb3Modal();
+  // Wagmi hooks - UPDATED for Wagmi v2
   const { address, isConnected, connector: activeConnector } = useAccount();
-  const { chain, chains: supportedChains } = useNetwork();
+  const chainId = useChainId();
   const { disconnect } = useDisconnect();
-  const { switchNetworkAsync } = useSwitchNetwork();
+  const { switchChain } = useSwitchChain();
+  const { connectors } = useConnectors();
+  const { connect } = useConnect();
+
+  const chain = wagmiConfig.chains.find(c => c.id === chainId);
+
+  // Get supported chains from wagmi config
+  const supportedChains = wagmiConfig.chains;
 
   // Fetch native balance
-  const { data: nativeBalance, refetch: refetchNativeBalance, isLoading: isNativeLoading } = useBalance({
+  const { 
+    data: nativeBalance, 
+    refetch: refetchNativeBalance, 
+    isLoading: isNativeLoading 
+  } = useBalance({
     address: address,
-    watch: true,
-    enabled: !!address,
   });
 
   // Fetch USDC balance
-  const { data: usdcBalance, refetch: refetchUsdcBalance, isLoading: isUsdcLoading } = useBalance({
+  const { 
+    data: usdcBalance, 
+    refetch: refetchUsdcBalance, 
+    isLoading: isUsdcLoading 
+  } = useBalance({
     address: address,
-    token: chain?.id ? getUSDCAddress(chain.id) as `0x${string}` : undefined,
-    watch: true,
-    enabled: !!address && !!chain?.id,
+    token: chainId ? getUSDCAddress(chainId) as `0x${string}` : undefined,
+    query: {
+      enabled: !!address && !!chainId,
+    }
   });
 
   const isBalanceLoading = isNativeLoading || isUsdcLoading;
@@ -184,21 +262,28 @@ function WalletProvider({ children }: { children: ReactNode }) {
   // ================ Balance Management ================
   const refreshBalances = useCallback(async () => {
     if (!address) return;
+    
+    setIsLoading(true);
     try {
       await Promise.all([
         refetchNativeBalance(),
         refetchUsdcBalance()
       ]);
+      
       toast({
         title: "Balances Updated",
+        description: "Successfully refreshed wallet balances",
       });
     } catch (err) {
       console.error("Failed to refresh balances:", err);
       setError("Failed to refresh balances");
       toast({
         title: "Balance Error",
+        description: "Could not refresh balances",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   }, [address, refetchNativeBalance, refetchUsdcBalance, toast]);
 
@@ -210,7 +295,10 @@ function WalletProvider({ children }: { children: ReactNode }) {
       time: new Date().toISOString(),
       read: false
     };
+    
     setSystemAlerts(prev => [newAlert, ...prev].slice(0, 20));
+    
+    // Show toast for high/critical alerts
     if (alert.impact === 'HIGH' || alert.impact === 'CRITICAL') {
       toast({
         title: alert.source,
@@ -228,54 +316,136 @@ function WalletProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const clearAllAlerts = useCallback(() => setSystemAlerts([]), []);
+  const clearAllAlerts = useCallback(() => {
+    setSystemAlerts([]);
+    toast({
+      title: "Alerts Cleared",
+      description: "All system alerts have been cleared"
+    });
+  }, [toast]);
 
   // ================ Asset Management ================
   const fetchUserAssets = useCallback(async (userAddress: `0x${string}`) => {
     if (!userAddress) return;
+    
+    setIsLoading(true);
     try {
-      // Mock implementation
-      setMyAssets([
-        createAsset('12345', 'real_estate', 'Verified'),
-        createAsset('LX-987', 'luxury', 'In-Transit'),
-        createAsset('AG-WHT-01', 'commodity', 'Re-verification Required'),
-      ]);
+      // In production, this would fetch from your smart contracts or API
+      // Mock implementation for demonstration
+      const mockAssets: Asset[] = [
+        createAsset('RE-2024-001', 'real_estate', 'Verified'),
+        createAsset('LX-987-WATCH', 'luxury', 'In-Transit'),
+        createAsset('AG-WHT-01-2024', 'commodity', 'Verified'),
+        createAsset('RE-2024-002', 'real_estate', 'Re-verification Required'),
+        createAsset('LX-123-JEWELRY', 'luxury', 'Verified'),
+      ];
+      
+      setMyAssets(mockAssets);
+      
+      addAlert({
+        source: "ASSETS LOADED",
+        message: `Successfully loaded ${mockAssets.length} digital assets`,
+        impact: "LOW"
+      });
     } catch (err) {
       console.error("Failed to fetch assets:", err);
+      setError("Failed to load assets");
       addAlert({
         source: "ASSET FETCH ERROR",
-        message: "Could not load your digital assets",
+        message: "Could not load your digital assets. Please try again.",
         impact: "MEDIUM"
       });
+    } finally {
+      setIsLoading(false);
     }
   }, [addAlert]);
 
   // ================ Wallet Connection Management ================
-  const connectWallet = useCallback(async () => {
+  const connectWallet = useCallback(async (connectorId?: string) => {
     try {
+      setIsLoading(true);
       setError(null);
-      await openModal();
+
+      if (connectorId) {
+        // Connect to specific connector
+        const connector = connectors.find(c => c.id === connectorId || c.name === connectorId);
+        if (!connector) {
+          throw new Error(`Connector ${connectorId} not found`);
+        }
+        await connect({ connector });
+      } else {
+        // Let user choose (you might want to implement a modal here)
+        // For now, use the first available connector
+        const firstConnector = connectors[0];
+        if (firstConnector) {
+          await connect({ connector: firstConnector });
+        } else {
+          throw new Error("No wallet connectors available");
+        }
+      }
+
+      toast({
+        title: "Wallet Connected",
+        description: `Successfully connected to wallet`,
+      });
+
     } catch (err: any) {
       console.error("Connection error:", err);
       setError(err.message || "Failed to connect wallet");
+      toast({
+        title: "Connection Failed",
+        description: err.message || "Please try again",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [openModal]);
+  }, [connectors, connect, toast]);
 
   const disconnectWallet = useCallback(() => {
-    disconnect();
-    setMyAssets([]);
-    setError(null);
-  }, [disconnect]);
-
-  const switchNetworkHandler = useCallback(async (chainId: number) => {
     try {
-      if (switchNetworkAsync) await switchNetworkAsync(chainId);
+      disconnect();
+      setMyAssets([]);
+      setError(null);
+      
+      toast({
+        title: "Wallet Disconnected",
+        description: "Successfully disconnected wallet"
+      });
+    } catch (err) {
+      console.error("Disconnection error:", err);
+      toast({
+        title: "Disconnect Error",
+        description: "Failed to disconnect wallet",
+        variant: "destructive"
+      });
+    }
+  }, [disconnect, toast]);
+
+  const switchNetworkHandler = useCallback(async (targetChainId: number) => {
+    try {
+      setIsLoading(true);
+      await switchChain({ chainId: targetChainId });
+      
+      const chainName = supportedChains.find(c => c.id === targetChainId)?.name || 'Unknown Network';
+      toast({
+        title: "Network Switched",
+        description: `Connected to ${chainName}`
+      });
     } catch (err: any) {
       console.error("Network switch error:", err);
+      toast({
+        title: "Network Switch Failed",
+        description: err.message || "Could not switch network",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [switchNetworkAsync]);
+  }, [switchChain, supportedChains, toast]);
 
   // ================ Effects ================
+  // Fetch assets when account changes
   useEffect(() => {
     if (address) {
       fetchUserAssets(address);
@@ -284,11 +454,52 @@ function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [address, fetchUserAssets]);
 
+  // Monitor connection status
+  useEffect(() => {
+    if (isConnected && address) {
+      addAlert({
+        source: "WALLET CONNECTED",
+        message: `Connected to ${formatAddress(address)}`,
+        impact: "LOW"
+      });
+      
+      // Initial balance fetch
+      refreshBalances();
+    }
+  }, [isConnected, address, addAlert, refreshBalances]);
+
+  // Monitor network changes
+  useEffect(() => {
+    if (chain) {
+      addAlert({
+        source: "NETWORK",
+        message: `Connected to ${chain.name}`,
+        impact: "LOW"
+      });
+      
+      // Refresh balances on network change
+      if (address) {
+        refreshBalances();
+      }
+    }
+  }, [chain, address, addAlert, refreshBalances]);
+
+  // Auto-refresh balances every 30 seconds
+  useEffect(() => {
+    if (!address) return;
+    
+    const interval = setInterval(() => {
+      refreshBalances();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [address, refreshBalances]);
+
   // ================ Context Value ================
   const contextValue: WalletContextType = useMemo(() => ({
     isConnected,
     account: address,
-    chainId: chain?.id,
+    chainId: chainId,
     connectorId: activeConnector?.id,
     systemAlerts,
     myAssets,
@@ -296,7 +507,7 @@ function WalletProvider({ children }: { children: ReactNode }) {
       native: nativeBalance ? formatUnits(nativeBalance.value, nativeBalance.decimals) : null,
       usdc: usdcBalance ? formatUnits(usdcBalance.value, usdcBalance.decimals) : null,
     },
-    isLoading: false,
+    isLoading,
     isBalanceLoading,
     error,
     connectWallet,
@@ -305,13 +516,32 @@ function WalletProvider({ children }: { children: ReactNode }) {
     refreshBalances,
     markAlertAsRead,
     clearAllAlerts,
-    supportedChains,
+    supportedChains: supportedChains.map(c => ({
+      id: c.id,
+      name: c.name,
+      nativeCurrency: c.nativeCurrency
+    })),
     currentChain: chain ? { id: chain.id, name: chain.name } : null
   }), [
-    isConnected, address, chain, activeConnector, systemAlerts, myAssets,
-    nativeBalance, usdcBalance, isBalanceLoading, error, connectWallet,
-    disconnectWallet, switchNetworkHandler, refreshBalances, markAlertAsRead,
-    clearAllAlerts, supportedChains
+    isConnected,
+    address,
+    chainId,
+    activeConnector,
+    systemAlerts,
+    myAssets,
+    nativeBalance,
+    usdcBalance,
+    isLoading,
+    isBalanceLoading,
+    error,
+    connectWallet,
+    disconnectWallet,
+    switchNetworkHandler,
+    refreshBalances,
+    markAlertAsRead,
+    clearAllAlerts,
+    supportedChains,
+    chain
   ]);
 
   return (
@@ -328,6 +558,7 @@ export function Web3ProviderWrapper({ children }: { children: ReactNode }) {
       <WalletProvider>
         {children}
       </WalletProvider>
+      <Web3Modal projectId={projectId} ethereumClient={{} as any} />
     </WagmiConfig>
   );
 }
@@ -346,12 +577,18 @@ export function useWalletBalances() {
   const { balances, isBalanceLoading, refreshBalances } = useWallet();
   
   const formattedBalances = useMemo(() => {
-    const ethPrice = 3500; // Mock price
+    const ethPrice = 3500; // Mock ETH price - replace with actual price feed
     const nativeValue = parseFloat(balances.native || '0');
     const usdcValue = parseFloat(balances.usdc || '0');
+    const totalValue = (nativeValue * ethPrice) + usdcValue;
+    
     return {
       eth: balances.native ? `${nativeValue.toFixed(4)} ETH` : '0.0000 ETH',
-      usdc: balances.usdc ? `$${usdcValue.toFixed(2)}` : '$0.00',
+      usdc: balances.usdc ? `$${usdcValue.toFixed(2)} USDC` : '$0.00 USDC',
+      totalUSD: `$${totalValue.toFixed(2)}`,
+      nativeValue,
+      usdcValue,
+      totalValue
     };
   }, [balances]);
 

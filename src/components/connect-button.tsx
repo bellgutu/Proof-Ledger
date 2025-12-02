@@ -5,16 +5,17 @@ import { useWallet } from '@/components/wallet-provider';
 import { Button } from '@/components/ui/button';
 import { Wallet, LogOut, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWeb3Modal } from '@web3modal/react';
 
 export function ConnectButton() {
   const { 
     isConnected, 
     account, 
     disconnectWallet, 
-    connectWallet, 
     isBalanceLoading,
     currentChain 
   } = useWallet();
+  const { open } = useWeb3Modal();
 
   const formatAddress = (address: string): string => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -44,7 +45,7 @@ export function ConnectButton() {
   }
 
   return (
-    <Button onClick={() => connectWallet()}>
+    <Button onClick={() => open()}>
       <Wallet className="h-4 w-4 mr-2" />
       Connect Wallet
     </Button>

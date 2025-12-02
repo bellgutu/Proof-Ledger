@@ -1,10 +1,9 @@
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, Bot, Gavel, Building, Diamond, Wheat, Box, Ship, Map } from "lucide-react";
+import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, ArrowUp, Bot, Gavel, Building, Diamond, Wheat, Box, Ship, Map, Wallet, Send, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import { useWallet } from "@/components/wallet-provider";
@@ -24,6 +23,11 @@ const shipmentExceptions = [
     { id: "SH-992-109", issue: "CIF Documents Missing", priority: "High" },
 ];
 
+const mockTransactions = [
+    { type: 'receive', from: '0x...a4b1', asset: '0.5 ETH', time: '2h ago' },
+    { type: 'send', to: '0x...c8d2', asset: '1,500 USDC', time: '6h ago' },
+    { type: 'receive', from: '0x...e3f4', asset: 'Oracle Payout', time: '1d ago' },
+];
 
 const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
   ssr: false
@@ -31,7 +35,62 @@ const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
 
 
 export default function CommandCenterPage() {
-  const { systemAlerts } = useWallet();
+  const { systemAlerts, isConnected, connectWallet } = useWallet();
+
+  const WalletCard = () => (
+     <Card>
+        <CardHeader>
+            <CardTitle  className="flex items-center gap-2"><Wallet size={20} /> My Wallet</CardTitle>
+            <CardDescription>Your current balances and recent transactions.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isConnected ? (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 rounded-lg bg-secondary/50">
+                            <p className="text-sm text-muted-foreground">ETH Balance</p>
+                            <p className="text-xl font-bold">2.45 ETH</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-secondary/50">
+                            <p className="text-sm text-muted-foreground">USDC Balance</p>
+                            <p className="text-xl font-bold">$10,820.50</p>
+                        </div>
+                    </div>
+                     <div>
+                        <h4 className="text-sm font-semibold mb-2">Recent Activity</h4>
+                        <div className="space-y-3">
+                            {mockTransactions.map((tx, index) => (
+                                <div key={index} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-full", tx.type === 'send' ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400')}>
+                                            {tx.type === 'send' ? <ArrowUp size={16}/> : <ArrowDown size={16}/>}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">{tx.type === 'send' ? `Sent to ${tx.to}` : `Received from ${tx.from}`}</p>
+                                            <p className="text-xs text-muted-foreground">{tx.asset}</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{tx.time}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex gap-2 pt-4 border-t">
+                        <Button className="w-full"><Send className="mr-2 h-4 w-4" /> Send</Button>
+                        <Button variant="secondary" className="w-full"><Landmark className="mr-2 h-4 w-4"/> Deposit</Button>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-center py-8">
+                    <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-4 text-sm font-medium text-muted-foreground">Connect your wallet to view your portfolio and transaction history.</p>
+                    <Button onClick={connectWallet} className="mt-4">Connect Wallet</Button>
+                </div>
+            )}
+        </CardContent>
+    </Card>
+  )
+
 
   return (
     <div className="container mx-auto p-0 space-y-6">
@@ -127,6 +186,9 @@ export default function CommandCenterPage() {
         </Card>
 
         <div className="lg:col-span-1 space-y-6">
+             {/* === NEW WIDGET: WALLET & TRANSACTIONS === */}
+            <WalletCard />
+            
             {/* === WIDGET 4: ASSET VERIFICATION SUMMARY === */}
             <Card>
               <CardHeader>
@@ -188,3 +250,5 @@ export default function CommandCenterPage() {
     </div>
   );
 }
+
+    

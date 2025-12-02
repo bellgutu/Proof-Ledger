@@ -1,53 +1,92 @@
 
 'use client';
 
-import { useWallet } from '@/components/wallet-provider';
+import { ConnectButton as RainbowConnectButton } from '@rainbow-me/rainbowkit';
 import { Button } from '@/components/ui/button';
-import { Wallet, LogOut, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useWeb3Modal } from '@web3modal/react';
+import { Wallet } from 'lucide-react';
 
 export function ConnectButton() {
-  const { 
-    isConnected, 
-    account, 
-    disconnectWallet, 
-    isBalanceLoading,
-    currentChain 
-  } = useWallet();
-  const { open } = useWeb3Modal();
-
-  const formatAddress = (address: string): string => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
-  if (isConnected && account) {
-    return (
-      <div className="flex items-center gap-2">
-        {currentChain && (
-          <div className="hidden sm:block px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium">
-            {currentChain.name}
-          </div>
-        )}
-        <div className="px-4 py-2 bg-secondary text-primary-foreground rounded-md font-mono text-sm">
-          {formatAddress(account)}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={disconnectWallet}
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="sr-only">Disconnect</span>
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <Button onClick={() => open()}>
-      <Wallet className="h-4 w-4 mr-2" />
-      Connect Wallet
-    </Button>
+    <RainbowConnectButton.Custom>
+      {({
+        account,
+        chain,
+        openAccountModal,
+        openChainModal,
+        openConnectModal,
+        authenticationStatus,
+        mounted,
+      }) => {
+        const ready = mounted && authenticationStatus !== 'loading';
+        const connected =
+          ready &&
+          account &&
+          chain &&
+          (!authenticationStatus || authenticationStatus === 'authenticated');
+
+        return (
+          <div
+            {...(!ready && {
+              'aria-hidden': true,
+              'style': {
+                opacity: 0,
+                pointerEvents: 'none',
+                userSelect: 'none',
+              },
+            })}
+          >
+            {(() => {
+              if (!connected) {
+                return (
+                  <Button onClick={openConnectModal} type="button">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Connect Wallet
+                  </Button>
+                );
+              }
+
+              if (chain.unsupported) {
+                return (
+                  <Button onClick={openChainModal} type="button" variant="destructive">
+                    Wrong network
+                  </Button>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <Button
+                    onClick={openChainModal}
+                    style={{ display: 'flex', alignItems: 'center' }}
+                    type="button"
+                    variant="outline"
+                  >
+                    {chain.hasIcon && (
+                      <div
+                        style={{
+                          background: chain.iconBackground,
+                          width: 12,
+                          height: 12,
+                          borderRadius: 999,
+                          marginRight: 4,
+                        }}
+                      />
+                    )}
+                    {chain.name}
+                  </Button>
+
+                  <Button onClick={openAccountModal} type="button">
+                    {account.displayName}
+                    {account.displayBalance
+                      ? ` (${account.displayBalance})`
+                      : ''}
+                  </Button>
+                </div>
+              );
+            })()}
+          </div>
+        );
+      }}
+    </RainbowConnectButton.Custom>
   );
 }

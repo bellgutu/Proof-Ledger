@@ -12,34 +12,11 @@ import {
   useChainId,
   useSwitchChain,
   WagmiConfig,
-  useConnectors,
-  useConnect
 } from 'wagmi';
-import { wagmiConfig } from '@/config/web3';
-import { createWeb3Modal } from '@web3modal/ethereum'
-import { Web3Modal } from '@web3modal/react'
+import { config } from '@/config/web3';
+import { RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'dfb93c6682129035a09c4c7b5e4905a8'
-
-const metadata = {
-  name: 'Enterprise Asset Platform',
-  description: 'Digital Asset Management Platform',
-  url: 'https://web3modal.com',
-  icons: ['https://avatars.githubusercontent.com/u/37784886']
-}
-
-createWeb3Modal({
-  wagmiConfig,
-  projectId,
-  chains: wagmiConfig.chains,
-  ethereumClient: {} as any,
-  themeMode: 'dark',
-  themeVariables: {
-    '--w3m-color-mix': '#000000',
-    '--w3m-color-mix-strength': 40
-  }
-})
 
 // ================ Contract ABIs ================
 const USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7a9c';
@@ -84,7 +61,7 @@ interface WalletContextType {
   isLoading: boolean;
   isBalanceLoading: boolean;
   error: string | null;
-  connectWallet: (connectorId?: string) => Promise<void>;
+  connectWallet: () => void;
   disconnectWallet: () => void;
   switchNetwork: (chainId: number) => Promise<void>;
   refreshBalances: () => Promise<void>;
@@ -129,7 +106,7 @@ const getUSDCAddress = (chainId: number): string => {
   switch (chainId) {
     case 1: return USDC_MAINNET;
     case 11155111: return USDC_SEPOLIA;
-    default: return USDC_SEPOLIA; // Fallback to Sepolia
+    default: return USDC_SEPOLIA;
   }
 };
 
@@ -147,8 +124,7 @@ const createAsset = (tokenId: string, type: 'real_estate' | 'luxury' | 'commodit
         current: 'Owner', 
         location: '123 Main St, Anytown', 
         history: [
-          { custodian: 'City Registry', date: '01/01/2023' },
-          { custodian: 'Previous Owner', date: '06/15/2022' }
+          { custodian: 'City Registry', date: '01/01/2023' }
         ]
       }
     },
@@ -160,8 +136,7 @@ const createAsset = (tokenId: string, type: 'real_estate' | 'luxury' | 'commodit
         current: 'Secure Vault', 
         location: 'Geneva, CH', 
         history: [
-          { custodian: 'Manufacturer', date: '02/15/2023' },
-          { custodian: 'Retailer', date: '03/01/2023' }
+          { custodian: 'Manufacturer', date: '02/15/2023' }
         ]
       }
     },
@@ -173,8 +148,7 @@ const createAsset = (tokenId: string, type: 'real_estate' | 'luxury' | 'commodit
         current: 'In-Transit', 
         location: 'Pacific Ocean', 
         history: [
-          { custodian: 'Port of Shanghai', date: '03/20/2024' },
-          { custodian: 'Shipping Line', date: '03/21/2024' }
+          { custodian: 'Port of Shanghai', date: '03/20/2024' }
         ]
       }
     }
@@ -190,24 +164,22 @@ const createAsset = (tokenId: string, type: 'real_estate' | 'luxury' | 'commodit
     icon: specificDetails.icon,
     overview: {
       "Token ID": tokenId,
-      "Asset ID": `ASSET-${tokenId}`,
       "Minted On": new Date().toLocaleDateString(),
       "Asset Type": specificDetails.assetType,
-      "Verification": status === 'Verified' ? "Blockchain Verified" : "Pending Verification",
-      "Current Value": "$250,000"
+      "Verification": status === 'Verified' ? "Blockchain Verified" : "Pending"
     },
     provenance: [{
       status: "Digital Twin Minted",
       date: new Date().toLocaleDateString(),
-      verifier: "Blockchain Oracle Network",
+      verifier: "Blockchain Oracle",
       icon: AlertTriangle,
     }],
     insurance: {
       status: status === 'Verified' ? "Active" : "Pending",
-      policyId: `POL-${tokenId.substring(0, 4).toUpperCase()}`,
+      policyId: `POL-${tokenId.substring(0, 4)}`,
       provider: "Digital Asset Insurance Inc.",
       coverage: status === 'Verified' ? "$250,000" : "$0",
-      nextPremiumDue: status === 'Verified' ? "04/30/2025" : "N/A"
+      nextPremiumDue: "04/30/2025"
     },
     custody: specificDetails.custody,
     valueUSD: "250,000.00"
@@ -222,18 +194,11 @@ function WalletProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Wagmi hooks - UPDATED for Wagmi v2
-  const { address, isConnected, connector: activeConnector } = useAccount();
+  // Wagmi hooks
+  const { address, isConnected, chain } = useAccount();
   const chainId = useChainId();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
-  const { connectors } = useConnectors();
-  const { connect } = useConnect();
-
-  const chain = wagmiConfig.chains.find(c => c.id === chainId);
-
-  // Get supported chains from wagmi config
-  const supportedChains = wagmiConfig.chains;
 
   // Fetch native balance
   const { 
@@ -298,7 +263,6 @@ function WalletProvider({ children }: { children: ReactNode }) {
     
     setSystemAlerts(prev => [newAlert, ...prev].slice(0, 20));
     
-    // Show toast for high/critical alerts
     if (alert.impact === 'HIGH' || alert.impact === 'CRITICAL') {
       toast({
         title: alert.source,
@@ -330,77 +294,32 @@ function WalletProvider({ children }: { children: ReactNode }) {
     
     setIsLoading(true);
     try {
-      // In production, this would fetch from your smart contracts or API
-      // Mock implementation for demonstration
+      // Mock implementation
       const mockAssets: Asset[] = [
-        createAsset('RE-2024-001', 'real_estate', 'Verified'),
-        createAsset('LX-987-WATCH', 'luxury', 'In-Transit'),
-        createAsset('AG-WHT-01-2024', 'commodity', 'Verified'),
-        createAsset('RE-2024-002', 'real_estate', 'Re-verification Required'),
-        createAsset('LX-123-JEWELRY', 'luxury', 'Verified'),
+        createAsset('12345', 'real_estate', 'Verified'),
+        createAsset('LX-987', 'luxury', 'In-Transit'),
+        createAsset('AG-WHT-01', 'commodity', 'Verified'),
       ];
       
       setMyAssets(mockAssets);
       
       addAlert({
         source: "ASSETS LOADED",
-        message: `Successfully loaded ${mockAssets.length} digital assets`,
+        message: `Loaded ${mockAssets.length} digital assets`,
         impact: "LOW"
       });
     } catch (err) {
       console.error("Failed to fetch assets:", err);
       setError("Failed to load assets");
       addAlert({
-        source: "ASSET FETCH ERROR",
-        message: "Could not load your digital assets. Please try again.",
+        source: "ASSET ERROR",
+        message: "Could not load digital assets",
         impact: "MEDIUM"
       });
     } finally {
       setIsLoading(false);
     }
   }, [addAlert]);
-
-  // ================ Wallet Connection Management ================
-  const connectWallet = useCallback(async (connectorId?: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      if (connectorId) {
-        // Connect to specific connector
-        const connector = connectors.find(c => c.id === connectorId || c.name === connectorId);
-        if (!connector) {
-          throw new Error(`Connector ${connectorId} not found`);
-        }
-        await connect({ connector });
-      } else {
-        // Let user choose (you might want to implement a modal here)
-        // For now, use the first available connector
-        const firstConnector = connectors[0];
-        if (firstConnector) {
-          await connect({ connector: firstConnector });
-        } else {
-          throw new Error("No wallet connectors available");
-        }
-      }
-
-      toast({
-        title: "Wallet Connected",
-        description: `Successfully connected to wallet`,
-      });
-
-    } catch (err: any) {
-      console.error("Connection error:", err);
-      setError(err.message || "Failed to connect wallet");
-      toast({
-        title: "Connection Failed",
-        description: err.message || "Please try again",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [connectors, connect, toast]);
 
   const disconnectWallet = useCallback(() => {
     try {
@@ -427,10 +346,9 @@ function WalletProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       await switchChain({ chainId: targetChainId });
       
-      const chainName = supportedChains.find(c => c.id === targetChainId)?.name || 'Unknown Network';
       toast({
         title: "Network Switched",
-        description: `Connected to ${chainName}`
+        description: "Successfully switched network"
       });
     } catch (err: any) {
       console.error("Network switch error:", err);
@@ -442,10 +360,9 @@ function WalletProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [switchChain, supportedChains, toast]);
+  }, [switchChain, toast]);
 
   // ================ Effects ================
-  // Fetch assets when account changes
   useEffect(() => {
     if (address) {
       fetchUserAssets(address);
@@ -454,7 +371,6 @@ function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [address, fetchUserAssets]);
 
-  // Monitor connection status
   useEffect(() => {
     if (isConnected && address) {
       addAlert({
@@ -463,12 +379,10 @@ function WalletProvider({ children }: { children: ReactNode }) {
         impact: "LOW"
       });
       
-      // Initial balance fetch
       refreshBalances();
     }
   }, [isConnected, address, addAlert, refreshBalances]);
 
-  // Monitor network changes
   useEffect(() => {
     if (chain) {
       addAlert({
@@ -477,20 +391,19 @@ function WalletProvider({ children }: { children: ReactNode }) {
         impact: "LOW"
       });
       
-      // Refresh balances on network change
       if (address) {
         refreshBalances();
       }
     }
   }, [chain, address, addAlert, refreshBalances]);
 
-  // Auto-refresh balances every 30 seconds
+  // Auto-refresh balances
   useEffect(() => {
     if (!address) return;
     
     const interval = setInterval(() => {
       refreshBalances();
-    }, 30000); // 30 seconds
+    }, 30000);
     
     return () => clearInterval(interval);
   }, [address, refreshBalances]);
@@ -500,7 +413,7 @@ function WalletProvider({ children }: { children: ReactNode }) {
     isConnected,
     account: address,
     chainId: chainId,
-    connectorId: activeConnector?.id,
+    connectorId: 'rainbowkit', // RainbowKit manages connectors
     systemAlerts,
     myAssets,
     balances: {
@@ -510,13 +423,13 @@ function WalletProvider({ children }: { children: ReactNode }) {
     isLoading,
     isBalanceLoading,
     error,
-    connectWallet,
+    connectWallet: () => {}, // Handled by RainbowKit's ConnectButton
     disconnectWallet,
     switchNetwork: switchNetworkHandler,
     refreshBalances,
     markAlertAsRead,
     clearAllAlerts,
-    supportedChains: supportedChains.map(c => ({
+    supportedChains: config.chains.map((c: any) => ({
       id: c.id,
       name: c.name,
       nativeCurrency: c.nativeCurrency
@@ -526,7 +439,6 @@ function WalletProvider({ children }: { children: ReactNode }) {
     isConnected,
     address,
     chainId,
-    activeConnector,
     systemAlerts,
     myAssets,
     nativeBalance,
@@ -534,13 +446,11 @@ function WalletProvider({ children }: { children: ReactNode }) {
     isLoading,
     isBalanceLoading,
     error,
-    connectWallet,
     disconnectWallet,
     switchNetworkHandler,
     refreshBalances,
     markAlertAsRead,
     clearAllAlerts,
-    supportedChains,
     chain
   ]);
 
@@ -551,17 +461,31 @@ function WalletProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// ================ Wrapper Component for Wagmi ================
+// ================ Wrapper Component ================
 export function Web3ProviderWrapper({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <>{children}</>;
+  }
+
   return (
-    <WagmiConfig config={wagmiConfig}>
-      <WalletProvider>
-        {children}
-      </WalletProvider>
-      <Web3Modal projectId={projectId} ethereumClient={{} as any} />
+    <WagmiConfig config={config}>
+        <QueryClientProvider client={new QueryClient()}>
+            <RainbowKitProvider>
+                <WalletProvider>
+                    {children}
+                </WalletProvider>
+            </RainbowKitProvider>
+        </QueryClientProvider>
     </WagmiConfig>
   );
 }
+
 
 // ================ Custom Hook ================
 export function useWallet() {
@@ -572,12 +496,12 @@ export function useWallet() {
   return context;
 }
 
-// ================ Helper Hook for Balance Display ================
+// ================ Balance Hook ================
 export function useWalletBalances() {
   const { balances, isBalanceLoading, refreshBalances } = useWallet();
   
   const formattedBalances = useMemo(() => {
-    const ethPrice = 3500; // Mock ETH price - replace with actual price feed
+    const ethPrice = 3500;
     const nativeValue = parseFloat(balances.native || '0');
     const usdcValue = parseFloat(balances.usdc || '0');
     const totalValue = (nativeValue * ethPrice) + usdcValue;

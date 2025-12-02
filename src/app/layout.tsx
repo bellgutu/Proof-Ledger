@@ -1,9 +1,11 @@
 
 import type { Metadata } from 'next';
-import { Web3ProviderWrapper } from '@/components/wallet-provider';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
+import { Providers } from './providers';
+import '@rainbow-me/rainbowkit/styles.css';
+
 
 export const metadata: Metadata = {
   title: 'Proof Ledger',
@@ -34,12 +36,12 @@ export default function RootLayout({
           crossOrigin=""/>
       </head>
       <body className="font-body antialiased">
-        <Web3ProviderWrapper>
+        <Providers>
           <AppShell>
             {children}
           </AppShell>
-        </Web3ProviderWrapper>
-        <Toaster />
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

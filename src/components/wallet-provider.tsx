@@ -2,26 +2,50 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { ethers, type BrowserProvider } from 'ethers';
+import { ethers, type BrowserProvider, type Log } from 'ethers';
 import { useToast } from '@/hooks/use-toast';
-import { getProvider } from '@/lib/blockchain';
+import { getProvider, listenToEvent } from '@/lib/blockchain';
+import { AppContracts } from '@/config/contracts';
+
+// Define the shape of an alert
+export interface SystemAlert {
+    source: string;
+    message: string;
+    impact: string;
+    time: string;
+    txHash?: string;
+}
 
 interface WalletContextType {
     provider: BrowserProvider | null;
     account: string | null;
     chainId: bigint | null;
     isConnected: boolean;
+    systemAlerts: SystemAlert[];
     connectWallet: () => Promise<void>;
     disconnectWallet: () => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+// Initial alerts that are present on load
+const initialAlerts: SystemAlert[] = [
+    { source: "ORACLE DOWN", message: "GIA Grading Oracle latency > 5s", impact: "Luxury Minting", time: "1m ago" },
+    { source: "CONTRACT ALERT", message: "Shipment SH-734-556 triggered Parametric Claim", impact: "Insurance", time: "5m ago" },
+    { source: "COMPLIANCE", message: "New high-risk partner pending KYC approval", impact: "Onboarding", time: "2h ago" },
+];
+
 export function WalletProvider({ children }: { children: ReactNode }) {
     const [provider, setProvider] = useState<BrowserProvider | null>(null);
     const [account, setAccount] = useState<string | null>(null);
     const [chainId, setChainId] = useState<bigint | null>(null);
+    const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>(initialAlerts);
     const { toast } = useToast();
+
+    const addAlert = useCallback((alert: Omit<SystemAlert, 'time'>) => {
+        const newAlert = { ...alert, time: 'Just now' };
+        setSystemAlerts(prevAlerts => [newAlert, ...prevAlerts].slice(0, 10)); // Keep a max of 10 alerts
+    }, []);
 
     const handleAccountsChanged = useCallback((accounts: string[]) => {
         if (accounts.length === 0) {
@@ -43,6 +67,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setAccount(null);
         setProvider(null);
         setChainId(null);
+        setSystemAlerts(initialAlerts); // Reset alerts
         toast({ title: "Wallet Disconnected" });
     };
 
@@ -69,15 +94,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
     }, [toast]);
     
-    useEffect(() => {
-        if (window.ethereum) {
+     useEffect(() => {
+        if (typeof window.ethereum !== 'undefined') {
             const ethProvider = getProvider();
+            if (!ethProvider) return;
+
             setProvider(ethProvider);
 
             window.ethereum.on('accountsChanged', handleAccountsChanged);
             window.ethereum.on('chainChanged', handleChainChanged);
 
-            // Try to connect eagerly on page load
             const checkConnection = async () => {
                 try {
                     const accounts = await ethProvider.send('eth_accounts', []);
@@ -100,6 +126,37 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             };
         }
     }, [handleAccountsChanged, handleChainChanged]);
+
+    // Effect for listening to contract events
+    useEffect(() => {
+        if (!provider || !account) return;
+
+        const eventMappings: { contract: keyof AppContracts; event: string; handler: (...args: any[]) => void }[] = [
+            { contract: 'trustOracle', event: 'OracleSlashed', handler: (oracle, amount, reason, event: Log) => {
+                addAlert({ source: 'CONTRACT ALERT', message: `Oracle ${String(oracle).slice(0,6)}... slashed for ${ethers.formatEther(amount)} ETH`, impact: 'Oracle Network', txHash: event.transactionHash });
+            }},
+            { contract: 'proofLedgerCore', event: 'DigitalTwinMinted', handler: (tokenId, assetId, assetType, event: Log) => {
+                addAlert({ source: 'MINTING', message: `New Digital Twin minted with ID ${tokenId.toString()}`, impact: 'Asset Registry', txHash: event.transactionHash });
+            }},
+             { contract: 'insuranceHub', event: 'ClaimFiled', handler: (claimId, policyId, claimant, amount, event: Log) => {
+                addAlert({ source: 'INSURANCE EVENT', message: `Claim #${claimId.toString()} filed for ${ethers.formatUnits(amount, 2)} USD`, impact: 'Insurance', txHash: event.transactionHash });
+            }},
+        ];
+        
+        const unsubscribers: (() => void)[] = [];
+
+        eventMappings.forEach(({ contract, event, handler }) => {
+            listenToEvent(contract, event, handler, provider).then(unsubscriber => {
+                if (unsubscriber) unsubscribers.push(unsubscriber);
+            });
+        });
+
+        // Cleanup function to unsubscribe from all events
+        return () => {
+            unsubscribers.forEach(unsub => unsub());
+        };
+
+    }, [provider, account, addAlert]);
     
 
     const value: WalletContextType = {
@@ -107,6 +164,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         account,
         chainId,
         isConnected: !!account,
+        systemAlerts,
         connectWallet,
         disconnectWallet
     };

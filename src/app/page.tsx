@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, Bot, Gavel, Building, Diamond, Wheat, Box, Ship, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
+import { useWallet } from "@/components/wallet-provider";
+import { Button } from "@/components/ui/button";
 
 const kycStatusData = [
   { partner: "Global Shipping Co.", status: "Verified", entity: "Logistics" },
@@ -22,11 +24,6 @@ const shipmentExceptions = [
     { id: "SH-992-109", issue: "CIF Documents Missing", priority: "High" },
 ];
 
-const systemAlerts = [
-    { source: "ORACLE DOWN", message: "GIA Grading Oracle latency > 5s", impact: "Luxury Minting", time: "1m ago" },
-    { source: "CONTRACT ALERT", message: "Shipment SH-734-556 triggered Parametric Claim", impact: "Insurance", time: "5m ago" },
-    { source: "COMPLIANCE", message: "New high-risk partner pending KYC approval", impact: "Onboarding", time: "2h ago" },
-]
 
 const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
   ssr: false
@@ -34,6 +31,7 @@ const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
 
 
 export default function CommandCenterPage() {
+  const { systemAlerts } = useWallet();
 
   return (
     <div className="container mx-auto p-0 space-y-6">
@@ -171,6 +169,11 @@ export default function CommandCenterPage() {
                                     <TableCell>
                                         <p className="font-semibold">{alert.source}</p>
                                         <p className="text-xs text-muted-foreground">{alert.message}</p>
+                                        {alert.txHash && (
+                                            <a href={`https://sepolia.etherscan.io/tx/${alert.txHash}`} target="_blank" rel="noopener noreferrer">
+                                                <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1">View Tx</Button>
+                                            </a>
+                                        )}
                                     </TableCell>
                                     <TableCell><Badge variant="outline">{alert.impact}</Badge></TableCell>
                                     <TableCell className="text-right text-xs text-muted-foreground">{alert.time}</TableCell>

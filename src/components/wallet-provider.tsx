@@ -11,16 +11,7 @@ import {
   useBalance,
   useChainId,
   useSwitchChain,
-  WagmiConfig,
 } from 'wagmi';
-import { config } from '@/config/web3';
-import { RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-
-// ================ Contract ABIs ================
-const USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7a9c';
-const USDC_MAINNET = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
 // ================ Types ================
 export interface SystemAlert {
@@ -50,25 +41,19 @@ interface WalletContextType {
   isConnected: boolean;
   account: `0x${string}` | undefined;
   chainId: number | undefined;
-  connectorId: string | undefined;
   systemAlerts: SystemAlert[];
   myAssets: Asset[];
   balances: {
     native: string | null;
     usdc: string | null;
-    [key: string]: string | null;
   };
   isLoading: boolean;
-  isBalanceLoading: boolean;
   error: string | null;
-  connectWallet: () => void;
   disconnectWallet: () => void;
   switchNetwork: (chainId: number) => Promise<void>;
   refreshBalances: () => Promise<void>;
   markAlertAsRead: (alertId: string) => void;
   clearAllAlerts: () => void;
-  supportedChains: any[];
-  currentChain: { id: number; name: string } | null;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -83,30 +68,18 @@ const initialAlerts: SystemAlert[] = [
     time: new Date().toISOString(), 
     read: true 
   },
-  { 
-    id: '2', 
-    source: "ORACLE", 
-    message: "GIA Grading Oracle latency > 5s", 
-    impact: "MEDIUM", 
-    time: new Date(Date.now() - 60000).toISOString(), 
-    read: false 
-  },
-  { 
-    id: '3', 
-    source: "CONTRACT ALERT", 
-    message: "Shipment SH-734-556 triggered Parametric Claim", 
-    impact: "HIGH", 
-    time: new Date(Date.now() - 300000).toISOString(), 
-    read: false 
-  },
 ];
 
+// USDC addresses
+const USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7a9c';
+const USDC_MAINNET = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+
 // ================ Helper Functions ================
-const getUSDCAddress = (chainId: number): string => {
+const getUSDCAddress = (chainId: number): `0x${string}` | undefined => {
   switch (chainId) {
-    case 1: return USDC_MAINNET;
-    case 11155111: return USDC_SEPOLIA;
-    default: return USDC_SEPOLIA;
+    case 1: return USDC_MAINNET as `0x${string}`;
+    case 11155111: return USDC_SEPOLIA as `0x${string}`;
+    default: return undefined;
   }
 };
 
@@ -187,7 +160,7 @@ const createAsset = (tokenId: string, type: 'real_estate' | 'luxury' | 'commodit
 };
 
 // ================ Main Provider Component ================
-function WalletProvider({ children }: { children: ReactNode }) {
+export function WalletProvider({ children }: { children: ReactNode }) {
   const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>(initialAlerts);
   const [myAssets, setMyAssets] = useState<Asset[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -195,7 +168,7 @@ function WalletProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   // Wagmi hooks
-  const { address, isConnected, chain } = useAccount();
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
@@ -206,23 +179,19 @@ function WalletProvider({ children }: { children: ReactNode }) {
     refetch: refetchNativeBalance, 
     isLoading: isNativeLoading 
   } = useBalance({
-    address: address,
+    address,
   });
 
   // Fetch USDC balance
+  const usdcAddress = chainId ? getUSDCAddress(chainId) : undefined;
   const { 
     data: usdcBalance, 
     refetch: refetchUsdcBalance, 
     isLoading: isUsdcLoading 
   } = useBalance({
-    address: address,
-    token: chainId ? getUSDCAddress(chainId) as `0x${string}` : undefined,
-    query: {
-      enabled: !!address && !!chainId,
-    }
+    address,
+    token: usdcAddress,
   });
-
-  const isBalanceLoading = isNativeLoading || isUsdcLoading;
 
   // ================ Balance Management ================
   const refreshBalances = useCallback(async () => {
@@ -383,20 +352,6 @@ function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, address, addAlert, refreshBalances]);
 
-  useEffect(() => {
-    if (chain) {
-      addAlert({
-        source: "NETWORK",
-        message: `Connected to ${chain.name}`,
-        impact: "LOW"
-      });
-      
-      if (address) {
-        refreshBalances();
-      }
-    }
-  }, [chain, address, addAlert, refreshBalances]);
-
   // Auto-refresh balances
   useEffect(() => {
     if (!address) return;
@@ -412,29 +367,20 @@ function WalletProvider({ children }: { children: ReactNode }) {
   const contextValue: WalletContextType = useMemo(() => ({
     isConnected,
     account: address,
-    chainId: chainId,
-    connectorId: 'rainbowkit', // RainbowKit manages connectors
+    chainId,
     systemAlerts,
     myAssets,
     balances: {
       native: nativeBalance ? formatUnits(nativeBalance.value, nativeBalance.decimals) : null,
       usdc: usdcBalance ? formatUnits(usdcBalance.value, usdcBalance.decimals) : null,
     },
-    isLoading,
-    isBalanceLoading,
+    isLoading: isLoading || isNativeLoading || isUsdcLoading,
     error,
-    connectWallet: () => {}, // Handled by RainbowKit's ConnectButton
     disconnectWallet,
     switchNetwork: switchNetworkHandler,
     refreshBalances,
     markAlertAsRead,
     clearAllAlerts,
-    supportedChains: config.chains.map((c: any) => ({
-      id: c.id,
-      name: c.name,
-      nativeCurrency: c.nativeCurrency
-    })),
-    currentChain: chain ? { id: chain.id, name: chain.name } : null
   }), [
     isConnected,
     address,
@@ -444,14 +390,14 @@ function WalletProvider({ children }: { children: ReactNode }) {
     nativeBalance,
     usdcBalance,
     isLoading,
-    isBalanceLoading,
+    isNativeLoading,
+    isUsdcLoading,
     error,
     disconnectWallet,
     switchNetworkHandler,
     refreshBalances,
     markAlertAsRead,
     clearAllAlerts,
-    chain
   ]);
 
   return (
@@ -460,32 +406,6 @@ function WalletProvider({ children }: { children: ReactNode }) {
     </WalletContext.Provider>
   );
 }
-
-// ================ Wrapper Component ================
-export function Web3ProviderWrapper({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
-  return (
-    <WagmiConfig config={config}>
-        <QueryClientProvider client={new QueryClient()}>
-            <RainbowKitProvider>
-                <WalletProvider>
-                    {children}
-                </WalletProvider>
-            </RainbowKitProvider>
-        </QueryClientProvider>
-    </WagmiConfig>
-  );
-}
-
 
 // ================ Custom Hook ================
 export function useWallet() {
@@ -498,10 +418,10 @@ export function useWallet() {
 
 // ================ Balance Hook ================
 export function useWalletBalances() {
-  const { balances, isBalanceLoading, refreshBalances } = useWallet();
+  const { balances, isLoading, refreshBalances } = useWallet();
   
   const formattedBalances = useMemo(() => {
-    const ethPrice = 3500;
+    const ethPrice = 3500; // Mock price - replace with actual price feed
     const nativeValue = parseFloat(balances.native || '0');
     const usdcValue = parseFloat(balances.usdc || '0');
     const totalValue = (nativeValue * ethPrice) + usdcValue;
@@ -510,16 +430,13 @@ export function useWalletBalances() {
       eth: balances.native ? `${nativeValue.toFixed(4)} ETH` : '0.0000 ETH',
       usdc: balances.usdc ? `$${usdcValue.toFixed(2)} USDC` : '$0.00 USDC',
       totalUSD: `$${totalValue.toFixed(2)}`,
-      nativeValue,
-      usdcValue,
-      totalValue
     };
   }, [balances]);
 
   return {
     balances: formattedBalances,
     rawBalances: balances,
-    isLoading: isBalanceLoading,
+    isLoading,
     refreshBalances
   };
 }

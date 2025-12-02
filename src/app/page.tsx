@@ -38,7 +38,7 @@ const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
 
 
 export default function CommandCenterPage() {
-  const { systemAlerts, isConnected, connectWallet } = useWallet();
+  const { systemAlerts, isConnected } = useWallet();
 
   const WalletCard = () => (
      <Card>
@@ -78,7 +78,9 @@ export default function CommandCenterPage() {
                 <div className="text-center py-8">
                     <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                     <p className="mt-4 text-sm font-medium text-muted-foreground">Connect your wallet to view your portfolio and transaction history.</p>
-                    <Button onClick={() => connectWallet()} className="mt-4">Connect Wallet</Button>
+                    <div className="mt-4">
+                      <ConnectButton />
+                    </div>
                 </div>
             )}
         </CardContent>

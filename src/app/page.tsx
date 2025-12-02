@@ -1,13 +1,15 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, ArrowUp, Bot, Gavel, Building, Diamond, Wheat, Box, Ship, Map, Wallet, Send, Landmark } from "lucide-react";
+import { AlertTriangle, Shield, Zap, CheckCircle, Anchor, Globe, Users, ArrowDown, ArrowUp, Bot, Gavel, Building, Diamond, Wheat, Box, Ship, Map, Wallet, Send, Landmark, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import { useWallet } from "@/components/wallet-provider";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const kycStatusData = [
   { partner: "Global Shipping Co.", status: "Verified", entity: "Logistics" },
@@ -35,7 +37,7 @@ const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
 
 
 export default function CommandCenterPage() {
-  const { systemAlerts, isConnected, connectWallet } = useWallet();
+  const { systemAlerts, isConnected, connectWallet, ethBalance, usdcBalance, isBalanceLoading } = useWallet();
 
   const WalletCard = () => (
      <Card>
@@ -49,11 +51,11 @@ export default function CommandCenterPage() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-3 rounded-lg bg-secondary/50">
                             <p className="text-sm text-muted-foreground">ETH Balance</p>
-                            <p className="text-xl font-bold">2.45 ETH</p>
+                            {isBalanceLoading ? <Skeleton className="h-7 w-3/4 mt-1" /> : <p className="text-xl font-bold">{ethBalance || '0.00'} ETH</p>}
                         </div>
                         <div className="p-3 rounded-lg bg-secondary/50">
                             <p className="text-sm text-muted-foreground">USDC Balance</p>
-                            <p className="text-xl font-bold">$10,820.50</p>
+                            {isBalanceLoading ? <Skeleton className="h-7 w-3/4 mt-1" /> : <p className="text-xl font-bold">${usdcBalance || '0.00'}</p>}
                         </div>
                     </div>
                      <div>
@@ -250,5 +252,3 @@ export default function CommandCenterPage() {
     </div>
   );
 }
-
-    

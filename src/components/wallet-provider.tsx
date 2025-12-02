@@ -2,11 +2,19 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { ethers, type BrowserProvider, type Log } from 'ethers';
+import { ethers, type BrowserProvider, type Log, formatUnits } from 'ethers';
 import { useToast } from '@/hooks/use-toast';
 import { getProvider, listenToEvent } from '@/lib/blockchain';
 import { AppContracts } from '@/config/contracts';
 import { Diamond, Wheat, Building } from 'lucide-react';
+
+// Sepolia USDC contract address and a minimal ABI for balance fetching
+const USDC_CONTRACT_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7a9c'; 
+const USDC_ABI = [
+    'function balanceOf(address account) view returns (uint256)',
+    'function decimals() view returns (uint8)'
+];
+
 
 // Define the shape of an alert
 export interface SystemAlert {
@@ -20,7 +28,7 @@ export interface SystemAlert {
 // Define the shape of an asset
 export interface Asset {
     tokenId: string;
-    name: string;
+    name:string;
     assetType: string;
     status: string;
     icon: React.ReactNode;
@@ -37,6 +45,9 @@ interface WalletContextType {
     isConnected: boolean;
     systemAlerts: SystemAlert[];
     myAssets: Asset[];
+    ethBalance: string | null;
+    usdcBalance: string | null;
+    isBalanceLoading: boolean;
     connectWallet: () => Promise<void>;
     disconnectWallet: () => void;
 }
@@ -98,18 +109,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const [chainId, setChainId] = useState<bigint | null>(null);
     const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>(initialAlerts);
     const [myAssets, setMyAssets] = useState<Asset[]>([]);
+    const [ethBalance, setEthBalance] = useState<string | null>(null);
+    const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
+    const [isBalanceLoading, setIsBalanceLoading] = useState(false);
     const { toast } = useToast();
 
     const addAlert = useCallback((alert: Omit<SystemAlert, 'time'>) => {
         const newAlert = { ...alert, time: 'Just now' };
         setSystemAlerts(prevAlerts => [newAlert, ...prevAlerts].slice(0, 10)); // Keep a max of 10 alerts
     }, []);
+    
+    const resetState = () => {
+        setAccount(null);
+        setProvider(null);
+        setChainId(null);
+        setMyAssets([]);
+        setEthBalance(null);
+        setUsdcBalance(null);
+        setIsBalanceLoading(false);
+    }
 
     const handleAccountsChanged = useCallback((accounts: string[]) => {
         if (accounts.length === 0) {
             console.log('Please connect to MetaMask.');
-            setAccount(null);
-            setMyAssets([]); // Clear assets on disconnect
+            resetState();
             toast({ title: "Wallet Disconnected", description: "Your wallet has been disconnected.", variant: "destructive" });
         } else if (accounts[0] !== account) {
             setAccount(accounts[0]);
@@ -124,13 +147,33 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const disconnectWallet = () => {
-        setAccount(null);
-        setProvider(null);
-        setChainId(null);
-        setSystemAlerts(initialAlerts); // Reset alerts
-        setMyAssets([]); // Clear assets
+        resetState();
         toast({ title: "Wallet Disconnected" });
     };
+    
+    const fetchBalances = useCallback(async (prov: BrowserProvider, acct: string) => {
+        setIsBalanceLoading(true);
+        try {
+            // Fetch ETH balance
+            const balance = await prov.getBalance(acct);
+            setEthBalance(parseFloat(formatUnits(balance, 'ether')).toFixed(4));
+            
+            // Fetch USDC balance
+            const usdcContract = new ethers.Contract(USDC_CONTRACT_ADDRESS, USDC_ABI, prov);
+            const usdcDecimals = await usdcContract.decimals();
+            const usdcBalanceRaw = await usdcContract.balanceOf(acct);
+            const formattedUsdc = parseFloat(formatUnits(usdcBalanceRaw, usdcDecimals)).toFixed(2);
+            setUsdcBalance(formattedUsdc);
+
+        } catch (error) {
+            console.error("Failed to fetch balances:", error);
+            setEthBalance(null);
+            setUsdcBalance(null);
+            toast({ title: "Balance Error", description: "Could not fetch wallet balances.", variant: "destructive" });
+        } finally {
+            setIsBalanceLoading(false);
+        }
+    }, [toast]);
 
     const connectWallet = useCallback(async () => {
         const ethProvider = getProvider();
@@ -148,13 +191,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             setChainId(network.chainId);
             setMyAssets([]); // Clear any previous assets
             
+            await fetchBalances(ethProvider, accounts[0]);
+            
             toast({ title: "Wallet Connected", description: `Connected to ${accounts[0].slice(0,6)}...${accounts[0].slice(-4)}` });
 
         } catch (error: any) {
             console.error("Failed to connect wallet:", error);
             toast({ title: "Connection Failed", description: error.message || "An unknown error occurred.", variant: "destructive" });
         }
-    }, [toast]);
+    }, [toast, fetchBalances]);
     
      useEffect(() => {
         if (typeof window.ethereum !== 'undefined') {
@@ -173,6 +218,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                         handleAccountsChanged(accounts);
                         const network = await ethProvider.getNetwork();
                         setChainId(network.chainId);
+                        if(accounts[0]) {
+                           await fetchBalances(ethProvider, accounts[0]);
+                        }
                     }
                 } catch (err) {
                     console.error("Could not check for existing connection:", err);
@@ -187,7 +235,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 }
             };
         }
-    }, [handleAccountsChanged, handleChainChanged]);
+    }, [handleAccountsChanged, handleChainChanged, fetchBalances]);
 
     // Effect for listening to contract events
     useEffect(() => {
@@ -230,6 +278,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isConnected: !!account,
         systemAlerts,
         myAssets,
+        ethBalance,
+        usdcBalance,
+        isBalanceLoading,
         connectWallet,
         disconnectWallet
     };

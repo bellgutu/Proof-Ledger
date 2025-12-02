@@ -358,3 +358,5 @@ export default function CommoditiesPage() {
     </div>
   );
 }
+
+    

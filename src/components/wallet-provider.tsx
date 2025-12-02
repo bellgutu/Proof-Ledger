@@ -128,28 +128,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setUsdcBalance(null);
         setIsBalanceLoading(false);
     }
-
-    const handleAccountsChanged = useCallback((accounts: string[]) => {
-        if (accounts.length === 0) {
-            console.log('Please connect to MetaMask.');
-            resetState();
-            toast({ title: "Wallet Disconnected", description: "Your wallet has been disconnected.", variant: "destructive" });
-        } else if (accounts[0] !== account) {
-            setAccount(accounts[0]);
-            setMyAssets([]); // Clear assets on account switch
-            console.log('Account changed to:', accounts[0]);
-            toast({ title: "Account Switched", description: `Connected to ${accounts[0].slice(0,6)}...${accounts[0].slice(-4)}` });
-        }
-    }, [account, toast]);
-
-    const handleChainChanged = useCallback(() => {
-        window.location.reload();
-    }, []);
-
-    const disconnectWallet = () => {
-        resetState();
-        toast({ title: "Wallet Disconnected" });
-    };
     
     const fetchBalances = useCallback(async (prov: BrowserProvider, acct: string) => {
         setIsBalanceLoading(true);
@@ -174,6 +152,33 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             setIsBalanceLoading(false);
         }
     }, [toast]);
+
+    const handleAccountsChanged = useCallback(async (accounts: string[]) => {
+        const ethProvider = getProvider();
+        if (!ethProvider) return;
+
+        if (accounts.length === 0) {
+            console.log('Please connect to MetaMask.');
+            resetState();
+            toast({ title: "Wallet Disconnected", description: "Your wallet has been disconnected.", variant: "destructive" });
+        } else if (accounts[0] !== account) {
+            const newAccount = accounts[0];
+            setAccount(newAccount);
+            setMyAssets([]); // Clear assets on account switch
+            console.log('Account changed to:', newAccount);
+            toast({ title: "Account Switched", description: `Connected to ${newAccount.slice(0,6)}...${newAccount.slice(-4)}` });
+            await fetchBalances(ethProvider, newAccount);
+        }
+    }, [account, toast, fetchBalances]);
+
+    const handleChainChanged = useCallback(() => {
+        window.location.reload();
+    }, []);
+
+    const disconnectWallet = () => {
+        resetState();
+        toast({ title: "Wallet Disconnected" });
+    };
 
     const connectWallet = useCallback(async () => {
         const ethProvider = getProvider();
@@ -214,13 +219,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             const checkConnection = async () => {
                 try {
                     const accounts = await ethProvider.send('eth_accounts', []);
-                    if (accounts.length > 0) {
-                        handleAccountsChanged(accounts);
+                    if (accounts.length > 0 && accounts[0]) {
+                        setAccount(accounts[0]);
                         const network = await ethProvider.getNetwork();
                         setChainId(network.chainId);
-                        if(accounts[0]) {
-                           await fetchBalances(ethProvider, accounts[0]);
-                        }
+                        await fetchBalances(ethProvider, accounts[0]);
                     }
                 } catch (err) {
                     console.error("Could not check for existing connection:", err);

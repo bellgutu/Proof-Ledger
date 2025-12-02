@@ -61,7 +61,12 @@ export async function listenToEvent(
     callback: (...args: any[]) => void,
     provider: BrowserProvider
 ): Promise<() => void> {
-    const contract = await getContract(contractName, provider);
+    const contractConfig = contracts[contractName];
+     if (!contractConfig) {
+        console.error(`Contract ${contractName} not found in config`);
+        return () => {};
+    }
+    const contract = new Contract(contractConfig.address, contractConfig.abi, provider);
 
     if (contract) {
         contract.on(eventName, callback);

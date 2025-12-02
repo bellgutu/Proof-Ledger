@@ -1,6 +1,6 @@
 
 import type { Metadata } from 'next';
-import { WalletProvider } from '@/components/wallet-provider';
+import { Web3ProviderWrapper } from '@/components/wallet-provider';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import AppShell from '@/components/app-shell';
@@ -34,11 +34,11 @@ export default function RootLayout({
           crossOrigin=""/>
       </head>
       <body className="font-body antialiased">
-        <WalletProvider>
+        <Web3ProviderWrapper>
           <AppShell>
             {children}
           </AppShell>
-        </WalletProvider>
+        </Web3ProviderWrapper>
         <Toaster />
       </body>
     </html>

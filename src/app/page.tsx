@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import { useWallet } from "@/components/wallet-provider";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ConnectButton } from "@/components/connect-button";
+import { BalanceDisplay } from "@/components/balance-display";
 
 const kycStatusData = [
   { partner: "Global Shipping Co.", status: "Verified", entity: "Logistics" },
@@ -37,7 +38,7 @@ const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
 
 
 export default function CommandCenterPage() {
-  const { systemAlerts, isConnected, connectWallet, ethBalance, usdcBalance, isBalanceLoading } = useWallet();
+  const { systemAlerts, isConnected, connectWallet } = useWallet();
 
   const WalletCard = () => (
      <Card>
@@ -48,16 +49,7 @@ export default function CommandCenterPage() {
         <CardContent>
             {isConnected ? (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 rounded-lg bg-secondary/50">
-                            <p className="text-sm text-muted-foreground">ETH Balance</p>
-                            {isBalanceLoading ? <Skeleton className="h-7 w-3/4 mt-1" /> : <p className="text-xl font-bold">{ethBalance || '0.00'} ETH</p>}
-                        </div>
-                        <div className="p-3 rounded-lg bg-secondary/50">
-                            <p className="text-sm text-muted-foreground">USDC Balance</p>
-                            {isBalanceLoading ? <Skeleton className="h-7 w-3/4 mt-1" /> : <p className="text-xl font-bold">${usdcBalance || '0.00'}</p>}
-                        </div>
-                    </div>
+                    <BalanceDisplay />
                      <div>
                         <h4 className="text-sm font-semibold mb-2">Recent Activity</h4>
                         <div className="space-y-3">
@@ -86,7 +78,7 @@ export default function CommandCenterPage() {
                 <div className="text-center py-8">
                     <Wallet className="mx-auto h-12 w-12 text-muted-foreground" />
                     <p className="mt-4 text-sm font-medium text-muted-foreground">Connect your wallet to view your portfolio and transaction history.</p>
-                    <Button onClick={connectWallet} className="mt-4">Connect Wallet</Button>
+                    <Button onClick={() => connectWallet()} className="mt-4">Connect Wallet</Button>
                 </div>
             )}
         </CardContent>
@@ -240,7 +232,7 @@ export default function CommandCenterPage() {
                                         )}
                                     </TableCell>
                                     <TableCell><Badge variant="outline">{alert.impact}</Badge></TableCell>
-                                    <TableCell className="text-right text-xs text-muted-foreground">{alert.time}</TableCell>
+                                    <TableCell className="text-right text-xs text-muted-foreground">{new Date(alert.time).toLocaleTimeString()}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

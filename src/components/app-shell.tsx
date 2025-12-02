@@ -139,7 +139,7 @@ const NavContent = ({ isMobile = false }: { isMobile?: boolean }) => {
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [isDarkMode, setIsDarkMode] = React.useState(true);
+  const [isDarkMode, setIsDarkMode] = React.useState(false);
 
   React.useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');

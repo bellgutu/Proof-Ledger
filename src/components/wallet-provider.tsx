@@ -155,7 +155,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     const handleAccountsChanged = useCallback(async (accounts: string[]) => {
         const ethProvider = getProvider();
-        if (!ethProvider) return;
+        if (!ethProvider) {
+            resetState();
+            return;
+        }
 
         if (accounts.length === 0) {
             console.log('Please connect to MetaMask.');

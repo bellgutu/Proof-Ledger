@@ -6,104 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Building, Diamond, Wheat, Hand, ShieldAlert, GitCommit, FileText, Anchor } from 'lucide-react';
+import { Hand, ShieldAlert, GitCommit, FileText, Anchor } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
-
-
-// Mock data - in a real app, this would be fetched based on the tokenId
-const mockAssets: { [key: string]: any } = {
-  "1001": {
-    tokenId: "1001",
-    name: "Rolex Submariner 126610LV",
-    assetType: "Luxury Good",
-    status: "Verified",
-    icon: <Diamond className="h-10 w-10 text-primary" />,
-    overview: {
-        "Serial No.": "YZ123456",
-        "Model No.": "126610LV",
-        "Movement Caliber": "Cal. 3235",
-        "Minted On": "11/18/2025",
-    },
-    provenance: [
-        { status: "Digital Twin Minted", date: "2023-05-10", verifier: "ProofLedger Genesis", icon: GitCommit },
-        { status: "Initial Verification", date: "2023-05-11", verifier: "WatchSpec", icon: FileText },
-    ],
-    insurance: {
-        status: "Active",
-        policyId: "POL-LX-1001",
-        provider: "Lloyd's of London",
-        coverage: "$25,000",
-        nextPremiumDue: "2024-12-01",
-    },
-    custody: {
-        current: "Owner's Vault",
-        location: "New York, NY",
-        history: [{ custodian: "Rolex SA", date: "2023-01-15" }, { custodian: "Certified Watches Inc.", date: "2023-05-09" }],
-    }
-  },
-   "2001": {
-    tokenId: "2001",
-    name: "Lot B7, Hard Red Wheat",
-    assetType: "Commodity",
-    status: "In-Transit",
-    icon: <Wheat className="h-10 w-10 text-primary" />,
-    overview: {
-        "Batch ID": "BATCH-001B",
-        "Weight": "15.0 MT",
-        "Origin": "Kansas, USA",
-        "Minted On": "11/18/2025",
-    },
-    provenance: [
-        { status: "Digital Twin Minted", date: "2024-07-20", verifier: "AgriSource", icon: GitCommit },
-        { status: "CoA Verified", date: "2024-07-21", verifier: "SGS Labs", icon: FileText },
-        { status: "Loaded (FOB)", date: "2024-07-22", verifier: "Port of Houston Agent", icon: Anchor },
-    ],
-    insurance: {
-        status: "Active",
-        policyId: "POL-CM-2001",
-        provider: "Agri-Sure",
-        coverage: "$8,000",
-        nextPremiumDue: "N/A (Single-Trip)",
-    },
-    custody: {
-        current: "Global Shipping Co.",
-        location: "Pacific Ocean",
-        history: [{ custodian: "AgriSource", date: "2024-07-20" }, { custodian: "Port of Houston", date: "2024-07-22" }],
-    }
-  },
-   "3001": {
-    tokenId: "3001",
-    name: "456 Oak Street, Anytown",
-    assetType: "Real Estate",
-    status: "Verified",
-    icon: <Building className="h-10 w-10 text-primary" />,
-     overview: {
-        "Parcel ID": "APN-456-78-90",
-        "Property Type": "Single Family Residence",
-        "Appraised Value": "$1,200,000",
-        "Minted On": "11/18/2025",
-    },
-    provenance: [
-        { status: "Digital Twin Minted", date: "2023-11-01", verifier: "TitleCo", icon: GitCommit },
-        { status: "Appraisal Verified", date: "2023-11-02", verifier: "ValueAssessors", icon: FileText },
-    ],
-    insurance: {
-        status: "Active",
-        policyId: "POL-RE-3001",
-        provider: "State Farm",
-        coverage: "$1,000,000",
-        nextPremiumDue: "2025-01-15",
-    },
-    custody: {
-        current: "John & Jane Doe",
-        location: "Anytown, USA",
-        history: [{ custodian: "Developer Corp", date: "2023-10-30" }],
-    }
-  },
-};
+import { useWallet } from '@/components/wallet-provider';
 
 const TimelineItem = ({ isLast, children, icon: Icon }: { isLast?: boolean; children: React.ReactNode; icon: React.ElementType }) => (
     <div className="flex gap-6">
@@ -126,26 +34,10 @@ const TimelineItem = ({ isLast, children, icon: Icon }: { isLast?: boolean; chil
 export default function AssetDetailPage() {
     const params = useParams();
     const { toast } = useToast();
+    const { myAssets } = useWallet();
     const tokenId = params.tokenId as string;
-    const [asset, setAsset] = useState(mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]]);
-
-    useEffect(() => {
-        // Set the date only on the client to avoid hydration errors
-        const currentAsset = mockAssets[tokenId] || mockAssets[Object.keys(mockAssets)[0]];
-        const updatedAsset = { 
-            ...currentAsset, 
-            overview: {
-                ...currentAsset.overview,
-                "Minted On": new Date().toLocaleDateString()
-            }
-        };
-        setAsset(updatedAsset);
-    }, [tokenId]);
     
-
-    if (!tokenId) {
-        return <div className="container mx-auto p-8">Loading...</div>;
-    }
+    const asset = myAssets.find(a => a.tokenId === tokenId);
 
     const handleTransferCustody = () => {
         toast({
@@ -153,6 +45,24 @@ export default function AssetDetailPage() {
             description: "A request has been sent to the new custodian for approval. This will require a multi-sig transaction.",
         });
     };
+
+    if (!asset) {
+        return (
+            <div className="container mx-auto p-0">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Asset Not Found</CardTitle>
+                        <CardDescription>This asset could not be found in your connected wallet. It may belong to another account or the token ID may be incorrect.</CardDescription>
+                    </CardHeader>
+                     <CardContent>
+                        <Link href="/my-assets">
+                            <Button>Back to My Assets</Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     const getStatusClass = (status: string, prefix: 'bg' | 'text' | 'border') => {
         switch(status) {
@@ -214,7 +124,7 @@ export default function AssetDetailPage() {
                         <CardContent>
                             <div>
                                 {asset.provenance.map((item: any, index: number) => (
-                                    <TimelineItem key={index} isLast={index === asset.provenance.length - 1} icon={item.icon}>
+                                    <TimelineItem key={index} isLast={index === asset.provenance.length - 1} icon={item.icon === ethers.ZeroAddress ? GitCommit : item.icon}>
                                         <p className="font-semibold text-base">{item.status}</p>
                                         <p className="text-sm text-muted-foreground">Date: {item.date}</p>
                                         <p className="text-sm text-muted-foreground">Verifier: {item.verifier}</p>

@@ -6,6 +6,7 @@ import { ethers, type BrowserProvider, type Log } from 'ethers';
 import { useToast } from '@/hooks/use-toast';
 import { getProvider, listenToEvent } from '@/lib/blockchain';
 import { AppContracts } from '@/config/contracts';
+import { Diamond, Wheat, Building } from 'lucide-react';
 
 // Define the shape of an alert
 export interface SystemAlert {
@@ -16,12 +17,26 @@ export interface SystemAlert {
     txHash?: string;
 }
 
+// Define the shape of an asset
+export interface Asset {
+    tokenId: string;
+    name: string;
+    assetType: string;
+    status: string;
+    icon: React.ReactNode;
+    overview: { [key: string]: string };
+    provenance: { status: string; date: string; verifier: string; icon: React.ElementType }[];
+    insurance: { status: string; policyId: string; provider: string; coverage: string; nextPremiumDue: string; };
+    custody: { current: string; location: string; history: { custodian: string; date: string; }[] };
+}
+
 interface WalletContextType {
     provider: BrowserProvider | null;
     account: string | null;
     chainId: bigint | null;
     isConnected: boolean;
     systemAlerts: SystemAlert[];
+    myAssets: Asset[];
     connectWallet: () => Promise<void>;
     disconnectWallet: () => void;
 }
@@ -35,11 +50,54 @@ const initialAlerts: SystemAlert[] = [
     { source: "COMPLIANCE", message: "New high-risk partner pending KYC approval", impact: "Onboarding", time: "2h ago" },
 ];
 
+// A helper to create a new asset object when a mint event is detected
+const createAssetFromEvent = (tokenId: string, assetType: number): Asset => {
+    // This is still using mock details, but it's triggered by a REAL event.
+    // In a full implementation, these details would be fetched from IPFS via the metadataURI.
+    const baseAsset = {
+        tokenId: tokenId,
+        status: "Verified",
+        provenance: [{ status: "Digital Twin Minted", date: new Date().toLocaleDateString(), verifier: "You", icon: ethers.ZeroAddress }],
+        insurance: { status: "Not Insured", policyId: "N/A", provider: "N/A", coverage: "$0", nextPremiumDue: "N/A" },
+        custody: { current: "You", location: "Your Wallet", history: [] },
+    };
+
+    switch (assetType) {
+        case 2: // Luxury
+            return {
+                ...baseAsset,
+                name: `Luxury Asset #${tokenId}`,
+                assetType: "Luxury Good",
+                icon: <Diamond className="h-8 w-8 text-primary" />,
+                overview: { "Serial No.": `SN-${tokenId}`, "Minted On": new Date().toLocaleDateString() },
+            };
+        case 3: // Commodity
+            return {
+                ...baseAsset,
+                name: `Commodity Batch #${tokenId}`,
+                assetType: "Commodity",
+                icon: <Wheat className="h-8 w-8 text-primary" />,
+                overview: { "Batch ID": `BATCH-${tokenId}`, "Minted On": new Date().toLocaleDateString() },
+            };
+        case 1: // Real Estate
+        default:
+            return {
+                ...baseAsset,
+                name: `Real Estate #${tokenId}`,
+                assetType: "Real Estate",
+                icon: <Building className="h-8 w-8 text-primary" />,
+                overview: { "Parcel ID": `APN-${tokenId}`, "Minted On": new Date().toLocaleDateString() },
+            };
+    }
+};
+
+
 export function WalletProvider({ children }: { children: ReactNode }) {
     const [provider, setProvider] = useState<BrowserProvider | null>(null);
     const [account, setAccount] = useState<string | null>(null);
     const [chainId, setChainId] = useState<bigint | null>(null);
     const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>(initialAlerts);
+    const [myAssets, setMyAssets] = useState<Asset[]>([]);
     const { toast } = useToast();
 
     const addAlert = useCallback((alert: Omit<SystemAlert, 'time'>) => {
@@ -51,9 +109,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (accounts.length === 0) {
             console.log('Please connect to MetaMask.');
             setAccount(null);
+            setMyAssets([]); // Clear assets on disconnect
             toast({ title: "Wallet Disconnected", description: "Your wallet has been disconnected.", variant: "destructive" });
         } else if (accounts[0] !== account) {
             setAccount(accounts[0]);
+            setMyAssets([]); // Clear assets on account switch
             console.log('Account changed to:', accounts[0]);
             toast({ title: "Account Switched", description: `Connected to ${accounts[0].slice(0,6)}...${accounts[0].slice(-4)}` });
         }
@@ -68,6 +128,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setProvider(null);
         setChainId(null);
         setSystemAlerts(initialAlerts); // Reset alerts
+        setMyAssets([]); // Clear assets
         toast({ title: "Wallet Disconnected" });
     };
 
@@ -85,6 +146,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             setProvider(ethProvider);
             setAccount(accounts[0]);
             setChainId(network.chainId);
+            setMyAssets([]); // Clear any previous assets
             
             toast({ title: "Wallet Connected", description: `Connected to ${accounts[0].slice(0,6)}...${accounts[0].slice(-4)}` });
 
@@ -136,7 +198,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 addAlert({ source: 'CONTRACT ALERT', message: `Oracle ${String(oracle).slice(0,6)}... slashed for ${ethers.formatEther(amount)} ETH`, impact: 'Oracle Network', txHash: event.transactionHash });
             }},
             { contract: 'proofLedgerCore', event: 'DigitalTwinMinted', handler: (tokenId, assetId, assetType, event: Log) => {
-                addAlert({ source: 'MINTING', message: `New Digital Twin minted with ID ${tokenId.toString()}`, impact: 'Asset Registry', txHash: event.transactionHash });
+                 addAlert({ source: 'MINTING', message: `New Digital Twin minted with ID ${tokenId.toString()}`, impact: 'Asset Registry', txHash: event.transactionHash });
+                 const newAsset = createAssetFromEvent(tokenId.toString(), Number(assetType));
+                 setMyAssets(prevAssets => [newAsset, ...prevAssets]);
             }},
              { contract: 'insuranceHub', event: 'ClaimFiled', handler: (claimId, policyId, claimant, amount, event: Log) => {
                 addAlert({ source: 'INSURANCE EVENT', message: `Claim #${claimId.toString()} filed for ${ethers.formatUnits(amount, 2)} USD`, impact: 'Insurance', txHash: event.transactionHash });
@@ -165,6 +229,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         chainId,
         isConnected: !!account,
         systemAlerts,
+        myAssets,
         connectWallet,
         disconnectWallet
     };

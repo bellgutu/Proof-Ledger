@@ -119,7 +119,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setSystemAlerts(prevAlerts => [newAlert, ...prevAlerts].slice(0, 10)); // Keep a max of 10 alerts
     }, []);
     
-    const resetState = () => {
+    const resetState = useCallback(() => {
         setAccount(null);
         setProvider(null);
         setChainId(null);
@@ -127,7 +127,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setEthBalance(null);
         setUsdcBalance(null);
         setIsBalanceLoading(false);
-    }
+    }, []);
     
     const fetchBalances = useCallback(async (prov: BrowserProvider, acct: string) => {
         setIsBalanceLoading(true);
@@ -160,7 +160,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (accounts.length === 0) {
             console.log('Please connect to MetaMask.');
             resetState();
-            toast({ title: "Wallet Disconnected", description: "Your wallet has been disconnected.", variant: "destructive" });
+            toast({ title: "Wallet Disconnected", description: "Your wallet has been disconnected." });
         } else if (accounts[0] !== account) {
             const newAccount = accounts[0];
             setAccount(newAccount);
@@ -169,7 +169,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             toast({ title: "Account Switched", description: `Connected to ${newAccount.slice(0,6)}...${newAccount.slice(-4)}` });
             await fetchBalances(ethProvider, newAccount);
         }
-    }, [account, toast, fetchBalances]);
+    }, [account, toast, fetchBalances, resetState]);
 
     const handleChainChanged = useCallback(() => {
         window.location.reload();
@@ -213,9 +213,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
             setProvider(ethProvider);
 
-            window.ethereum.on('accountsChanged', handleAccountsChanged);
-            window.ethereum.on('chainChanged', handleChainChanged);
-
             const checkConnection = async () => {
                 try {
                     const accounts = await ethProvider.send('eth_accounts', []);
@@ -230,6 +227,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 }
             };
             checkConnection();
+
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+            window.ethereum.on('chainChanged', handleChainChanged);
 
             return () => {
                 if (window.ethereum.removeListener) {

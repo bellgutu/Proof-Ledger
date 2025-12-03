@@ -1,5 +1,5 @@
 
-import { DigitalTwinMinter } from '@/components/contracts/DigitalTwinMinter';
+import { WorkingDigitalTwinMinter } from '@/components/contracts/WorkingDigitalTwinMinter';
 import { OracleManager } from '@/components/contracts/OracleManager';
 import { WalletDashboard } from '@/components/wallet/WalletDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,7 +42,7 @@ export default function HomePage() {
 
         {/* Mint Tab */}
         <TabsContent value="mint" className="space-y-6">
-          <DigitalTwinMinter />
+          <WorkingDigitalTwinMinter />
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
@@ -107,21 +107,21 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="p-4 bg-green-50 border border-green-200 rounded">
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="font-medium">ProofLedgerCore: Online</span>
                   </div>
                 </div>
                 
-                <div className="p-4 bg-green-50 border border-green-200 rounded">
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="font-medium">TrustOracle: 5/5 Oracles Active</span>
                   </div>
                 </div>
                 
-                <div className="p-4 bg-green-50 border border-green-200 rounded">
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="font-medium">InsuranceHub: $2.5M Pool Active</span>

@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X, Library, FileText, UserPlus } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Settings, Ship, ShieldCheck, CheckCircle, GanttChartSquare, DatabaseZap, Building, Diamond, Wheat, Menu, X, Library, FileText, UserPlus, Wrench } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -58,6 +58,11 @@ const navLinks = [
     href: '/documentation',
     label: 'Documentation',
     icon: FileText,
+  },
+  {
+    href: '/fix-mint',
+    label: 'Fix Minting',
+    icon: Wrench,
   }
 ];
 

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Toaster } from "@/components/ui/toaster";
 import AppShell from "@/components/app-shell";
 import '@rainbow-me/rainbowkit/styles.css';
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -44,6 +45,7 @@ export default function RootLayout({
           </AppShell>
           <Toaster />
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

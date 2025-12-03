@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ const CONTRACT_ADDRESS = '0xb2bC365953cFfF11e80446905393a9cFa48dE2e6' as const;
 // Exact ABI for mintDigitalTwin from Etherscan
 const MINT_DIGITAL_TWIN_ABI = [{
   "inputs": [
-    {"name": "assetId", "type": "bytes32"},
+    {"name": "_assetId", "type": "bytes32"},
     {"name": "_assetType", "type": "uint8"},
     {"name": "_verifiedValue", "type": "uint256"},
     {"name": "_verificationHash", "type": "bytes32"},
@@ -46,6 +46,9 @@ export function WorkingDigitalTwinMinter() {
   const [verifiedValue, setVerifiedValue] = useState('1000000000000000000'); // 1 ETH in wei
   const [metadataURI, setMetadataURI] = useState('');
   const [reVerificationPeriod, setReVerificationPeriod] = useState('31536000'); // 1 year in seconds
+
+  const [previewAssetId, setPreviewAssetId] = useState<Hex | null>(null);
+  const [previewVerificationHash, setPreviewVerificationHash] = useState<Hex | null>(null);
   
   const { 
     writeContractAsync,
@@ -70,6 +73,14 @@ export function WorkingDigitalTwinMinter() {
     return keccak256(toBytes(input));
   };
 
+  useEffect(() => {
+    // Generate preview hashes on the client-side to avoid hydration mismatch
+    setPreviewAssetId(generateAssetId());
+    setPreviewVerificationHash(generateVerificationHash());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetName, assetType, verifiedValue]);
+
+
   const handleMint = async () => {
     if (!address) {
       toast({
@@ -88,7 +99,7 @@ export function WorkingDigitalTwinMinter() {
       
       // Convert values to proper types
       const params = {
-        assetId: assetId,
+        _assetId: assetId,
         _assetType: assetType,
         _verifiedValue: BigInt(verifiedValue || '0'),
         _verificationHash: verificationHash,
@@ -105,7 +116,7 @@ export function WorkingDigitalTwinMinter() {
         abi: MINT_DIGITAL_TWIN_ABI,
         functionName: 'mintDigitalTwin',
         args: [
-          params.assetId,
+          params._assetId,
           params._assetType,
           params._verifiedValue,
           params._verificationHash,
@@ -246,11 +257,11 @@ export function WorkingDigitalTwinMinter() {
         {/* Generated Values Preview */}
         <div className="p-4 border rounded-lg space-y-2 bg-muted/50">
           <Label>Generated Values</Label>
-          <div className="text-xs font-mono space-y-1">
-            <p className='truncate'>Asset ID: {generateAssetId()}</p>
-            <p className='truncate'>Verification Hash: {generateVerificationHash()}</p>
-            <p className='truncate'>Legal Owner: {address || 'Not connected'}</p>
-          </div>
+           <div className="text-xs font-mono space-y-1">
+             <p className='truncate'>Asset ID: {previewAssetId ? `${previewAssetId.slice(0, 32)}...` : 'Generating...'}</p>
+             <p className='truncate'>Verification Hash: {previewVerificationHash ? `${previewVerificationHash.slice(0, 32)}...` : 'Generating...'}</p>
+             <p className='truncate'>Legal Owner: {address || 'Not connected'}</p>
+           </div>
         </div>
 
         {/* Mint Button */}
@@ -321,3 +332,5 @@ export function WorkingDigitalTwinMinter() {
     </Card>
   );
 }
+
+    

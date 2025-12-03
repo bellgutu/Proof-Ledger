@@ -1,99 +1,50 @@
-'use client';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "./providers";
+import { WalletButton } from "@/components/WalletButton";
+import Link from "next/link";
+import { Toaster } from "@/components/ui/toaster";
+import AppShell from "@/components/app-shell";
+import '@rainbow-me/rainbowkit/styles.css';
 
-import { useWallet } from '@/components/wallet-provider';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+const inter = Inter({ subsets: ["latin"] });
 
-export function AssetMinter() {
-  const { 
-    contractActions, 
-    contractData,
-    account,
-    isConnected 
-  } = useWallet();
-  
-  const [assetType, setAssetType] = useState('1');
-  const [tokenURI, setTokenURI] = useState('ipfs://QmTest123/metadata.json');
+export const metadata: Metadata = {
+  title: "Proof Ledger - Digital Asset Platform",
+  description: "Enterprise-grade digital asset management on blockchain",
+};
 
-  if (!isConnected) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Asset Minter</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Connect wallet to mint assets</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const handleMint = async () => {
-    try {
-      if (!contractActions.mintAsset) {
-        console.error("Mint function not available");
-        return;
-      }
-      const result = await contractActions.mintAsset(
-        parseInt(assetType),
-        tokenURI
-      );
-      console.log('Mint result:', result);
-    } catch (error) {
-      console.error('Mint error:', error);
-    }
-  };
-
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Mint Digital Asset</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="assetType">Asset Type</Label>
-          <select
-            id="assetType"
-            value={assetType}
-            onChange={(e) => setAssetType(e.target.value)}
-            className="w-full p-2 border rounded bg-background text-foreground"
-          >
-            <option value="1">🏠 Real Estate</option>
-            <option value="2">💎 Luxury Good</option>
-            <option value="3">🌾 Commodity</option>
-          </select>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="tokenURI">Token URI (IPFS)</Label>
-          <Input
-            id="tokenURI"
-            value={tokenURI}
-            onChange={(e) => setTokenURI(e.target.value)}
-            placeholder="ipfs://Qm..."
-          />
-          <p className="text-sm text-muted-foreground">
-            Example: ipfs://QmTest123/metadata.json
-          </p>
-        </div>
-        
-        <Button 
-          onClick={handleMint} 
-          disabled={contractData?.isMinting}
-          className="w-full"
-        >
-          {contractData?.isMinting ? 'Minting...' : 'Mint Digital Twin'}
-        </Button>
-        
-        {contractData?.userAssets && contractData.userAssets.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <p className="text-sm font-medium">Your Assets: {contractData.userAssets.length}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <html lang="en" suppressHydrationWarning>
+       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossOrigin=""/>
+      </head>
+      <body className="font-body antialiased">
+        <Providers>
+          <AppShell>
+            {children}
+          </AppShell>
+          <Toaster />
+        </Providers>
+      </body>
+    </html>
   );
 }

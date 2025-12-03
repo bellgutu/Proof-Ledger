@@ -1,99 +1,50 @@
-'use client';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "./providers";
+import { WalletButton } from "@/components/WalletButton";
+import Link from "next/link";
+import { Toaster } from "@/components/ui/toaster";
+import AppShell from "@/components/app-shell";
+import '@rainbow-me/rainbowkit/styles.css';
 
-import { useProofLedgerRead, useTrustOracleRead, useInsuranceHubRead } from '@/hooks/useContractReads';
-import { useWallet } from '@/components/wallet-provider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+const inter = Inter({ subsets: ["latin"] });
 
-export function ContractTester() {
-  const { account, isConnected, chainId } = useWallet();
+export const metadata: Metadata = {
+  title: "Proof Ledger - Digital Asset Platform",
+  description: "Enterprise-grade digital asset management on blockchain",
+};
 
-  // Test read functions
-  const { data: tokenCount, refetch: refetchTokenCount } = useProofLedgerRead(
-    'balanceOf',
-    [account],
-    chainId
-  );
-
-  const { data: oracleCount, refetch: refetchOracleCount } = useTrustOracleRead(
-    'getOracleCount',
-    [],
-    chainId
-  );
-
-  const { data: claimCount, refetch: refetchClaimCount } = useInsuranceHubRead(
-    'getClaimCount',
-    [],
-    chainId
-  );
-
-  if (!isConnected) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Contract Tester</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Connect wallet to test contracts</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle>Contract Read Tests</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* ProofLedgerCore Test */}
-        <div className="p-4 border rounded-lg">
-          <h3 className="font-semibold mb-2">ProofLedgerCore</h3>
-          <p>Your NFT Balance: {tokenCount ? tokenCount.toString() : 'Loading...'}</p>
-          <Button 
-            onClick={() => refetchTokenCount()} 
-            size="sm" 
-            variant="outline"
-            className="mt-2"
-          >
-            Refresh
-          </Button>
-        </div>
-
-        {/* TrustOracle Test */}
-        <div className="p-4 border rounded-lg">
-          <h3 className="font-semibold mb-2">TrustOracle</h3>
-          <p>Oracle Count: {oracleCount ? oracleCount.toString() : 'Loading...'}</p>
-          <Button 
-            onClick={() => refetchOracleCount()} 
-            size="sm" 
-            variant="outline"
-            className="mt-2"
-          >
-            Refresh
-          </Button>
-        </div>
-
-        {/* InsuranceHub Test */}
-        <div className="p-4 border rounded-lg">
-          <h3 className="font-semibold mb-2">InsuranceHub</h3>
-          <p>Total Claims: {claimCount ? claimCount.toString() : 'Loading...'}</p>
-          <Button 
-            onClick={() => refetchClaimCount()} 
-            size="sm" 
-            variant="outline"
-            className="mt-2"
-          >
-            Refresh
-          </Button>
-        </div>
-
-        <div className="text-sm text-muted-foreground mt-4">
-          <p>Chain ID: {chainId}</p>
-          <p>Account: {account?.slice(0, 10)}...{account?.slice(-8)}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <html lang="en" suppressHydrationWarning>
+       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossOrigin=""/>
+      </head>
+      <body className="font-body antialiased">
+        <Providers>
+          <AppShell>
+            {children}
+          </AppShell>
+          <Toaster />
+        </Providers>
+      </body>
+    </html>
   );
 }

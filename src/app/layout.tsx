@@ -1,16 +1,18 @@
-
-import type { Metadata } from 'next';
-import './globals.css';
-import { Toaster } from '@/components/ui/toaster';
-import AppShell from '@/components/app-shell';
-import { Providers } from './providers';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "./providers";
+import { WalletButton } from "@/components/WalletButton";
+import Link from "next/link";
+import { Toaster } from "@/components/ui/toaster";
+import AppShell from "@/components/app-shell";
 import '@rainbow-me/rainbowkit/styles.css';
 
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Proof Ledger',
-  description:
-    'A closed-loop system for end-to-end verification of shipping, insurance, and quality control.',
+  title: "Proof Ledger - Digital Asset Platform",
+  description: "Enterprise-grade digital asset management on blockchain",
 };
 
 export default function RootLayout({
@@ -20,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
+       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"

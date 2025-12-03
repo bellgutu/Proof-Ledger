@@ -31,48 +31,11 @@
       "outputs": []
     },
     {
-      "inputs": [
-        {"name": "tokenId", "type": "uint256"},
-        {"name": "newCustodian", "type": "address"}
-      ],
-      "name": "transferCustody",
-      "type": "function",
-      "stateMutability": "nonpayable",
-      "outputs": []
-    },
-    {
-      "inputs": [
-        {"name": "tokenId", "type": "uint256"},
-        {"name": "custodian", "type": "address"}
-      ],
-      "name": "authorizeCustodian",
-      "type": "function",
-      "stateMutability": "nonpayable",
-      "outputs": []
-    },
-    {
-      "inputs": [
-        {"name": "tokenId", "type": "uint256"},
-        {"name": "lender", "type": "address"}
-      ],
-      "name": "markAsCollateral",
-      "type": "function",
-      "stateMutability": "nonpayable",
-      "outputs": []
-    },
-    {
       "inputs": [{"name": "tokenId", "type": "uint256"}],
       "name": "getCurrentCustodian",
       "type": "function",
       "stateMutability": "view",
       "outputs": [{"name": "custodian", "type": "address"}]
-    },
-    {
-      "inputs": [{"name": "tokenId", "type": "uint256"}],
-      "name": "ownerOf",
-      "type": "function",
-      "stateMutability": "view",
-      "outputs": [{"name": "owner", "type": "address"}]
     }
   ]
 }

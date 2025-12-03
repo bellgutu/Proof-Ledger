@@ -2,21 +2,6 @@
 {
   "abi": [
     {
-      "inputs": [],
-      "name": "OracleAlreadyRegistered",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "OracleNotRegistered",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "InsufficientStake",
-      "type": "error"
-    },
-    {
       "inputs": [
         {"name": "metadataURI", "type": "string"}
       ],
@@ -41,28 +26,6 @@
     },
     {
       "inputs": [
-        {"name": "submissionId", "type": "uint256"},
-        {"name": "assetId", "type": "bytes32"},
-        {"name": "dataType", "type": "uint8"},
-        {"name": "reason", "type": "bytes32"}
-      ],
-      "name": "createDispute",
-      "type": "function",
-      "stateMutability": "payable",
-      "outputs": [{"name": "disputeId", "type": "uint256"}]
-    },
-    {
-      "inputs": [
-        {"name": "disputeId", "type": "uint256"},
-        {"name": "challengerWon", "type": "bool"}
-      ],
-      "name": "resolveDispute",
-      "type": "function",
-      "stateMutability": "nonpayable",
-      "outputs": []
-    },
-    {
-      "inputs": [
         {"name": "assetId", "type": "bytes32"},
         {"name": "dataType", "type": "uint8"}
       ],
@@ -75,24 +38,6 @@
         {"name": "submissionCount", "type": "uint256"},
         {"name": "lastUpdated", "type": "uint256"},
         {"name": "consensusReached", "type": "bool"}
-      ]
-    },
-    {
-      "inputs": [{"name": "oracle", "type": "address"}],
-      "name": "getOracleProfile",
-      "type": "function",
-      "stateMutability": "view",
-      "outputs": [
-        {"name": "status", "type": "uint8"},
-        {"name": "reputation", "type": "uint256"},
-        {"name": "stake", "type": "uint256"},
-        {"name": "totalSubmissions", "type": "uint256"},
-        {"name": "verifiedSubmissions", "type": "uint256"},
-        {"name": "disputedSubmissions", "type": "uint256"},
-        {"name": "slashCount", "type": "uint256"},
-        {"name": "lastSubmissionTime", "type": "uint256"},
-        {"name": "registrationTime", "type": "uint256"},
-        {"name": "metadataURI", "type": "string"}
       ]
     }
   ]

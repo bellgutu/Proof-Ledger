@@ -1,43 +1,137 @@
-import { MainDashboard } from '@/components/dashboard/MainDashboard';
+
+import { DigitalTwinMinter } from '@/components/contracts/DigitalTwinMinter';
+import { OracleManager } from '@/components/contracts/OracleManager';
+import { WalletDashboard } from '@/components/wallet/WalletDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Shield, Building, Database, Activity } from 'lucide-react';
 
 export default function HomePage() {
   return (
     <div className="container mx-auto py-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Proof Ledger Dashboard</h1>
+        <h1 className="text-3xl font-bold">Proof Ledger Platform</h1>
         <p className="text-muted-foreground mt-2">
-          Blockchain-powered digital asset management platform
+          Enterprise-grade digital asset verification and management
         </p>
       </div>
 
-      {/* Warning Banner for Testnet */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold text-blue-800">Test Network Active</h3>
-              <p className="text-blue-700 text-sm mt-1">
-                You are connected to Sepolia testnet. Use test ETH for transactions.
-                <br />
-                <a 
-                  href="https://sepoliafaucet.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="underline hover:text-blue-800"
-                >
-                  Get test ETH from Sepolia faucet
-                </a>
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Wallet Overview */}
+      <WalletDashboard />
 
-      {/* Main Dashboard */}
-      <MainDashboard />
+      {/* Main Tabs */}
+      <Tabs defaultValue="mint" className="w-full">
+        <TabsList className="grid grid-cols-4 w-full">
+          <TabsTrigger value="mint" className="flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Mint Assets
+          </TabsTrigger>
+          <TabsTrigger value="oracle" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Oracle Network
+          </TabsTrigger>
+          <TabsTrigger value="assets" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            My Assets
+          </TabsTrigger>
+          <TabsTrigger value="monitor" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Live Monitor
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Mint Tab */}
+        <TabsContent value="mint" className="space-y-6">
+          <DigitalTwinMinter />
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Real Estate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Property, land, buildings with legal verification
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Luxury Goods</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Watches, jewelry, art with provenance tracking
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Commodities</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Gold, oil, agricultural products with quality verification
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Oracle Tab */}
+        <TabsContent value="oracle">
+          <OracleManager />
+        </TabsContent>
+
+        {/* Assets Tab */}
+        <TabsContent value="assets">
+          <Card>
+            <CardHeader>
+              <CardTitle>My Digital Assets</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Asset list will appear here after minting
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Monitor Tab */}
+        <TabsContent value="monitor">
+          <Card>
+            <CardHeader>
+              <CardTitle>Live System Monitor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-4 bg-green-50 border border-green-200 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-medium">ProofLedgerCore: Online</span>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-green-50 border border-green-200 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-medium">TrustOracle: 5/5 Oracles Active</span>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-green-50 border border-green-200 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-medium">InsuranceHub: $2.5M Pool Active</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Contract Info */}
       <Card>
@@ -51,42 +145,21 @@ export default function HomePage() {
               <p className="font-mono text-xs mt-1 break-all">
                 0xb2bc365953cfff11e80446905393a9cfa48de2e6
               </p>
-              <a 
-                href="https://sepolia.etherscan.io/address/0xb2bc365953cfff11e80446905393a9cfa48de2e6"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-xs"
-              >
-                View on Etherscan
-              </a>
+              <p className="text-xs text-muted-foreground mt-1">Digital Twin Minting</p>
             </div>
             <div>
               <p className="font-medium">TrustOracle</p>
               <p className="font-mono text-xs mt-1 break-all">
                 0xac9529cebb617265749910f24edc62e047050a55
               </p>
-              <a 
-                href="https://sepolia.etherscan.io/address/0xac9529cebb617265749910f24edc62e047050a55"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-xs"
-              >
-                View on Etherscan
-              </a>
+              <p className="text-xs text-muted-foreground mt-1">Verification Network</p>
             </div>
             <div>
               <p className="font-medium">InsuranceHub</p>
               <p className="font-mono text-xs mt-1 break-all">
                 0x6e4bc9f2b8736da118afbd35867f29996e9571bb
               </p>
-              <a 
-                href="https://sepolia.etherscan.io/address/0x6e4bc9f2b8736da118afbd35867f29996e9571bb"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-xs"
-              >
-                View on Etherscan
-              </a>
+              <p className="text-xs text-muted-foreground mt-1">Risk Management</p>
             </div>
           </div>
         </CardContent>

@@ -12,7 +12,9 @@ import {
   useSwitchChain,
 } from 'wagmi';
 import { useContractEvent } from '@/hooks/useContractEvents';
-import { useContractWrite, useMintAsset } from '@/hooks/useContractWrites';
+import { useMintDigitalTwin, useFileInsuranceClaim } from '@/hooks/useContractWrites';
+import { useUserAssets } from '@/hooks/useAssets';
+import { getUSDCAddress } from '@/contracts';
 
 // ================ Types ================
 export interface SystemAlert {
@@ -57,21 +59,21 @@ interface WalletContextType {
   clearAllAlerts: () => void;
   // Contract interactions
   contractActions: {
-    mintAsset: (assetType: number, assetData: any) => Promise<any>;
-    fileClaim: (policyId: string, amount: bigint) => Promise<any>;
-    verifyAsset: (tokenId: string) => Promise<any>;
+    mintAsset?: (assetType: number, tokenURI: string) => Promise<any>;
+    fileInsuranceClaim?: (policyId: string, amount: bigint, evidence: string) => Promise<any>;
+    refetchAssets?: () => void;
   };
   
   // Contract data
-  contractData: {
+  contractData?: {
     userAssets: any[];
-    insurancePolicies: any[];
-    oracleStatus: any;
+    isMinting?: boolean;
+    isClaiming?: boolean;
+    assetsLoading?: boolean;
   };
-  
-  // Contract states
-  isMinting: boolean;
-  isClaiming: boolean;
+
+  isMinting?: boolean;
+  isClaiming?: boolean;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -88,19 +90,7 @@ const initialAlerts: SystemAlert[] = [
   },
 ];
 
-// USDC addresses
-const USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7a9c';
-const USDC_MAINNET = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-
 // ================ Helper Functions ================
-const getUSDCAddress = (chainId: number): `0x${string}` | undefined => {
-  switch (chainId) {
-    case 1: return USDC_MAINNET as `0x${string}`;
-    case 11155111: return USDC_SEPOLIA as `0x${string}`;
-    default: return undefined;
-  }
-};
-
 const formatAddress = (address: string): string => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
@@ -190,9 +180,55 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const chainId = useChainId();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
-  
-  const { mint, isLoading: isMinting } = useMintAsset();
-  const { executeWrite, isLoading: isClaiming } = useContractWrite();
+
+  // Contract write hooks
+  const { mint, isLoading: isMinting } = useMintDigitalTwin();
+  const { fileClaim, isLoading: isClaiming } = useFileInsuranceClaim();
+
+  // Asset management hook
+  const { assets: userAssets, isLoading: assetsLoading, refetch: refetchAssets } = useUserAssets();
+
+  // Contract event listeners
+  useContractEvent({
+    contractName: 'ProofLedgerCore',
+    eventName: 'DigitalTwinMinted',
+    onEvent: (log) => {
+      const [tokenId, assetType] = log.args;
+      addAlert({
+        source: 'ASSET MINTED',
+        message: `Digital Twin #${tokenId.toString()} minted (Type: ${assetType})`,
+        impact: 'LOW',
+      });
+      refetchAssets(); // Refresh assets list
+    },
+  });
+
+  useContractEvent({
+    contractName: 'InsuranceHub',
+    eventName: 'ClaimFiled',
+    onEvent: (log) => {
+      const [claimId, policyId, claimant, amount] = log.args;
+      addAlert({
+        source: 'INSURANCE CLAIM',
+        message: `Claim #${claimId.toString()} filed for ${policyId}`,
+        impact: 'MEDIUM',
+      });
+    },
+  });
+
+  useContractEvent({
+    contractName: 'TrustOracle',
+    eventName: 'OracleSlashed',
+    onEvent: (log) => {
+      const [oracle, amount, reason] = log.args;
+      addAlert({
+        source: 'ORACLE SLASHED',
+        message: `Oracle ${oracle.slice(0, 6)}... slashed for misconduct`,
+        impact: 'HIGH',
+      });
+    },
+  });
+
 
   // Fetch native balance
   const { 
@@ -212,66 +248,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   } = useBalance({
     address,
     token: usdcAddress,
-  });
-  
-  const fetchUserAssets = useCallback(async (userAddress: `0x${string}`) => {
-    if (!userAddress) return;
-    
-    setIsLoading(true);
-    try {
-      // Mock implementation
-      const mockAssets: Asset[] = [
-        createAsset('12345', 'real_estate', 'Verified'),
-        createAsset('LX-987', 'luxury', 'In-Transit'),
-        createAsset('AG-WHT-01', 'commodity', 'Verified'),
-      ];
-      
-      setMyAssets(mockAssets);
-      
-      addAlert({
-        source: "ASSETS LOADED",
-        message: `Loaded ${mockAssets.length} digital assets`,
-        impact: "LOW"
-      });
-    } catch (err) {
-      console.error("Failed to fetch assets:", err);
-      setError("Failed to load assets");
-      addAlert({
-        source: "ASSET ERROR",
-        message: "Could not load digital assets",
-        impact: "MEDIUM"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useContractEvent({
-    contractName: 'ProofLedgerCore',
-    eventName: 'DigitalTwinMinted',
-    onEvent: (event: any) => {
-      const [tokenId, assetId, assetType] = event.args;
-      addAlert({
-        source: 'CONTRACT EVENT',
-        message: `Asset ${tokenId.toString()} minted`,
-        impact: 'LOW',
-      });
-      
-      if(address) fetchUserAssets(address);
-    },
-  });
-
-  useContractEvent({
-    contractName: 'InsuranceHub',
-    eventName: 'ClaimFiled',
-    onEvent: (event: any) => {
-      const [claimId, policyId, claimant, amount] = event.args;
-      addAlert({
-        source: 'INSURANCE EVENT',
-        message: `Claim ${claimId.toString()} filed for ${formatUnits(amount, 18)}`,
-        impact: 'MEDIUM',
-      });
-    },
   });
 
   // ================ Balance Management ================
@@ -338,6 +314,39 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     });
   }, [toast]);
 
+  // ================ Asset Management ================
+  const fetchUserAssets = useCallback(async (userAddress: `0x${string}`) => {
+    if (!userAddress) return;
+    
+    setIsLoading(true);
+    try {
+      // Mock implementation
+      const mockAssets: Asset[] = [
+        createAsset('12345', 'real_estate', 'Verified'),
+        createAsset('LX-987', 'luxury', 'In-Transit'),
+        createAsset('AG-WHT-01', 'commodity', 'Verified'),
+      ];
+      
+      setMyAssets(mockAssets);
+      
+      addAlert({
+        source: "ASSETS LOADED",
+        message: `Loaded ${mockAssets.length} digital assets`,
+        impact: "LOW"
+      });
+    } catch (err) {
+      console.error("Failed to fetch assets:", err);
+      setError("Failed to load assets");
+      addAlert({
+        source: "ASSET ERROR",
+        message: "Could not load digital assets",
+        impact: "MEDIUM"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addAlert]);
+
   const disconnectWallet = useCallback(() => {
     try {
       disconnect();
@@ -361,9 +370,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const switchNetworkHandler = useCallback(async (targetChainId: number) => {
     try {
       setIsLoading(true);
-      if(switchChain) {
-        await switchChain({ chainId: targetChainId });
-      }
+      await switchChain({ chainId: targetChainId });
       
       toast({
         title: "Network Switched",
@@ -400,7 +407,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       
       refreshBalances();
     }
-  }, [isConnected, address]);
+  }, [isConnected, address, addAlert, refreshBalances]);
 
   // Auto-refresh balances
   useEffect(() => {
@@ -412,28 +419,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     
     return () => clearInterval(interval);
   }, [address, refreshBalances]);
-  
-  const contractActions = useMemo(() => ({
-    mintAsset: async (assetType: number, assetData: any) => {
-      return mint(assetType, assetData);
-    },
-    fileClaim: async (policyId: string, amount: bigint) => {
-      return executeWrite({
-        contractName: 'InsuranceHub',
-        functionName: 'fileClaim',
-        args: [policyId, amount],
-      });
-    },
-    verifyAsset: async (tokenId: string) => {
-      return executeWrite({
-        contractName: 'TrustOracle',
-        functionName: 'verifyAsset',
-        args: [tokenId],
-      });
-    },
-  }), [mint, executeWrite]);
 
   // ================ Context Value ================
+  const contractActions = useMemo(() => ({
+    mintAsset: async (assetType: number, tokenURI: string) => {
+      return mint(assetType, tokenURI);
+    },
+    fileInsuranceClaim: async (policyId: string, amount: bigint, evidence: string) => {
+      return fileClaim(policyId, amount, evidence);
+    },
+    refetchAssets,
+  }), [mint, fileClaim, refetchAssets]);
+
   const contextValue: WalletContextType = useMemo(() => ({
     isConnected,
     account: address,
@@ -453,9 +450,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     clearAllAlerts,
     contractActions,
     contractData: {
-      userAssets: myAssets,
-      insurancePolicies: [],
-      oracleStatus: null,
+      userAssets,
+      isMinting,
+      isClaiming,
+      assetsLoading,
     },
     isMinting,
     isClaiming,
@@ -477,8 +475,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     markAlertAsRead,
     clearAllAlerts,
     contractActions,
+    userAssets,
     isMinting,
-    isClaiming
+    isClaiming,
+    assetsLoading
   ]);
 
   return (

@@ -1,12 +1,12 @@
 // Import all your contract ABIs here
 import ProofLedgerCore from './ProofLedgerCore.json';
-import InsuranceHub from './InsuranceHub.json';
 import TrustOracle from './TrustOracle.json';
+import InsuranceHub from './InsuranceHub.json';
 
 export const ABIS = {
   ProofLedgerCore: ProofLedgerCore.abi,
-  InsuranceHub: InsuranceHub.abi,
   TrustOracle: TrustOracle.abi,
+  InsuranceHub: InsuranceHub.abi,
 } as const;
 
 // Common ABIs for standard tokens

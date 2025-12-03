@@ -1,44 +1,86 @@
-import { useReadContracts } from 'wagmi';
-import { Address } from 'viem';
+import { useReadContracts, useReadContract } from 'wagmi';
 import { ABIS, getContractAddress } from '@/contracts';
-import { useMemo } from 'react';
 
-export interface ContractCall {
-  address: Address;
-  abi: any;
+interface ContractCall {
+  contractName: keyof typeof ABIS;
   functionName: string;
   args?: any[];
   chainId?: number;
 }
 
-export function useAppContractRead({
-  contractName,
-  functionName,
-  args,
-  chainId,
-  ...options
-}: {
-  contractName: keyof typeof ABIS;
-  functionName: string;
-  args?: any[];
-  chainId?: number;
-  [key: string]: any;
-}) {
-  const contractAddress = getContractAddress(contractName as any, chainId || 11155111);
+export function useContractReads(calls: ContractCall[], options?: any) {
+  const chainId = options?.chainId || 11155111;
 
-  const contract = useMemo(() => {
-    if (!contractAddress) return null;
+  const contracts = calls.map(call => {
+    const address = getContractAddress(call.contractName, chainId);
+    if (!address) {
+      throw new Error(`Contract ${call.contractName} not found on chain ${chainId}`);
+    }
     return {
-      address: contractAddress,
-      abi: ABIS[contractName],
-      functionName,
-      args,
-      chainId,
+      address,
+      abi: ABIS[call.contractName],
+      functionName: call.functionName,
+      args: call.args,
     };
-  }, [contractAddress, contractName, functionName, args, chainId]);
+  });
 
   return useReadContracts({
-    contracts: contract ? [contract] : [],
+    contracts,
     ...options,
+  });
+}
+
+// Specific contract read hooks
+export function useProofLedgerRead(
+  functionName: string,
+  args?: any[],
+  chainId?: number
+) {
+  const address = getContractAddress('ProofLedgerCore', chainId || 11155111);
+  
+  return useReadContract({
+    address: address!,
+    abi: ABIS.ProofLedgerCore,
+    functionName,
+    args,
+    query: {
+      enabled: !!address,
+    },
+  });
+}
+
+export function useTrustOracleRead(
+  functionName: string,
+  args?: any[],
+  chainId?: number
+) {
+  const address = getContractAddress('TrustOracle', chainId || 11155111);
+  
+  return useReadContract({
+    address: address!,
+    abi: ABIS.TrustOracle,
+    functionName,
+    args,
+    query: {
+      enabled: !!address,
+    },
+  });
+}
+
+export function useInsuranceHubRead(
+  functionName: string,
+  args?: any[],
+  chainId?: number
+) {
+  const address = getContractAddress('InsuranceHub', chainId || 11155111);
+  
+  return useReadContract({
+    address: address!,
+    abi: ABIS.InsuranceHub,
+    functionName,
+    args,
+    query: {
+      enabled: !!address,
+    },
   });
 }

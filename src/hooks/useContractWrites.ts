@@ -6,11 +6,11 @@ import {
   useSimulateContract,
 } from 'wagmi';
 import { useToast } from '@/hooks/use-toast';
-import { ABIS, getContractAddress, ContractName } from '@/contracts';
+import { ABIS, getContractAddress } from '@/contracts';
 import { useCallback } from 'react';
 
 interface WriteContractOptions {
-  contractName: ContractName;
+  contractName: keyof typeof ABIS;
   functionName: string;
   args: any[];
   chainId?: number;
@@ -21,9 +21,8 @@ interface WriteContractOptions {
 
 export function useContractWrite() {
   const { toast } = useToast();
-  const { writeContractAsync, isPending, data: hash } = useWriteContract();
-  
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+  const { writeContractAsync, isPending } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt();
 
   const executeWrite = useCallback(async ({
     contractName,
@@ -40,12 +39,12 @@ export function useContractWrite() {
         throw new Error(`Contract ${contractName} not found on chain ${chainId}`);
       }
 
-      const abi = ABIS[contractName as keyof typeof ABIS];
+      const abi = ABIS[contractName];
       if (!abi) {
         throw new Error(`ABI for ${contractName} not found`);
       }
-      
-      const txHash = await writeContractAsync({
+
+      const hash = await writeContractAsync({
         address,
         abi,
         functionName,
@@ -58,17 +57,13 @@ export function useContractWrite() {
         description: "Your transaction has been submitted to the network.",
       });
 
-      if (onSuccess) {
-        onSuccess(txHash);
-      }
-      
-      return { hash: txHash, success: true };
+      return { hash, success: true };
 
     } catch (error: any) {
       console.error('Contract write error:', error);
       
       let errorMessage = error.message || 'Transaction failed';
-      if (errorMessage.includes('User rejected the request')) {
+      if (errorMessage.includes('user rejected')) {
         errorMessage = 'Transaction was rejected by user';
       } else if (errorMessage.includes('insufficient funds')) {
         errorMessage = 'Insufficient funds for transaction';
@@ -93,22 +88,83 @@ export function useContractWrite() {
   };
 }
 
-// Specific write hook for common operations
-export function useMintAsset() {
+// Specific write hooks for your contracts
+export function useMintDigitalTwin() {
   const { executeWrite, isLoading } = useContractWrite();
 
   const mint = useCallback(async (
     assetType: number,
-    assetData: any,
+    tokenURI: string,
     onSuccess?: (data: any) => void
   ) => {
     return executeWrite({
       contractName: 'ProofLedgerCore',
       functionName: 'mintDigitalTwin',
-      args: [assetType, assetData],
+      args: [assetType, tokenURI],
       onSuccess,
     });
   }, [executeWrite]);
 
   return { mint, isLoading };
+}
+
+export function useRegisterOracle() {
+  const { executeWrite, isLoading } = useContractWrite();
+
+  const register = useCallback(async (
+    endpoint: string,
+    stakeAmount: bigint,
+    onSuccess?: (data: any) => void
+  ) => {
+    return executeWrite({
+      contractName: 'TrustOracle',
+      functionName: 'registerOracle',
+      args: [endpoint],
+      value: stakeAmount,
+      onSuccess,
+    });
+  }, [executeWrite]);
+
+  return { register, isLoading };
+}
+
+export function useSubmitAssetData() {
+  const { executeWrite, isLoading } = useContractWrite();
+
+  const submit = useCallback(async (
+    assetId: string,
+    dataHash: string,
+    value: bigint,
+    timestamp: number,
+    onSuccess?: (data: any) => void
+  ) => {
+    return executeWrite({
+      contractName: 'TrustOracle',
+      functionName: 'submitAssetData',
+      args: [assetId, dataHash, value, timestamp],
+      onSuccess,
+    });
+  }, [executeWrite]);
+
+  return { submit, isLoading };
+}
+
+export function useFileInsuranceClaim() {
+  const { executeWrite, isLoading } = useContractWrite();
+
+  const fileClaim = useCallback(async (
+    policyId: string,
+    amount: bigint,
+    evidence: string,
+    onSuccess?: (data: any) => void
+  ) => {
+    return executeWrite({
+      contractName: 'InsuranceHub',
+      functionName: 'fileClaim',
+      args: [policyId, amount, evidence],
+      onSuccess,
+    });
+  }, [executeWrite]);
+
+  return { fileClaim, isLoading };
 }
